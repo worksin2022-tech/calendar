@@ -49,6 +49,26 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
 }
 .sb-brand { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .sb-brand .btn-settings { padding: 6px 9px; font-size: 15px; line-height: 1; }
+.sb-brand-actions { display: flex; gap: 4px; flex: 0 0 auto; }
+.sb-user-badge { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-dim); padding: 2px 2px 6px; }
+.sb-user-badge .sbu-role { font-size: 10px; font-weight: 700; padding: 1px 7px; border-radius: 8px; background: #eef4ff; color: #2563eb; }
+.sb-user-badge .sbu-role.admin { background: #fef3f2; color: var(--danger); }
+.sb-user-badge .sbu-name { font-weight: 600; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* login screen (Supabase magic-link auth) — full-screen gate shown until signed in */
+.login-screen { position: fixed; inset: 0; z-index: 3000; display: flex; align-items: center; justify-content: center; background: var(--panel); }
+.login-screen.hidden { display: none !important; }
+.login-card { width: 92%; max-width: 360px; background: #fff; border: 1px solid var(--border); border-radius: 16px; padding: 28px 26px; box-shadow: 0 4px 24px rgba(16,24,40,.08); text-align: center; }
+.login-logo { display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 20px; font-weight: 700; margin-bottom: 6px; }
+.login-logo .logo { width: 30px; height: 30px; }
+.login-sub { font-size: 13px; color: var(--text-dim); margin: 0 0 20px; }
+.login-card .field { text-align: left; margin-bottom: 14px; }
+.login-card input { width: 100%; padding: 11px 12px; border: 1px solid var(--border-strong); border-radius: 9px; font-size: 15px; box-sizing: border-box; }
+.login-btn { width: 100%; padding: 12px; font-size: 14.5px; }
+.login-msg { min-height: 1.2em; font-size: 12.5px; color: var(--danger); margin-top: 10px; }
+.login-sent { margin-top: 4px; }
+.login-sent-ico { font-size: 34px; margin-bottom: 6px; }
+.login-sent p { font-size: 13px; color: var(--text-dim); margin: 0 0 14px; }
 .sidebar h1 {
   font-size: 18px;
   margin: 0;
@@ -395,6 +415,10 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
 .dash-dots { display: flex; gap: 5px; margin-left: auto; }
 .dash-dot { width: 10px; height: 10px; border-radius: 50%; box-shadow: 0 0 0 1.5px #fff; opacity: .35; }
 .dash-dot.done { opacity: 1; box-shadow: 0 0 0 1.5px #fff, 0 0 0 2.4px #10b981; }
+/* dept workflow markers on project cards = emoji (faded until that dept is done) */
+.dash-dept-ic { position: relative; display: inline-flex; align-items: center; opacity: .4; }
+.dash-dept-ic.done { opacity: 1; }
+.dash-dept-ic .dash-ic-check { font-size: 9px; color: #10b981; font-weight: 800; margin-left: -2px; }
 .dash-empty { text-align: center; color: var(--text-faint); padding: 56px 16px; font-size: 14px; }
 /* per-project dashboard modal */
 .dash-modal { max-width: 640px; }
@@ -506,22 +530,25 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
 
 /* prominent alert popup */
 .alert-overlay { z-index: 1200; }
-.alert-modal { max-width: 480px; width: 94%; border-top: 5px solid var(--danger); }
-.alert-modal .modal-head { background: #fef3f2; }
-.alert-modal .modal-head h3 { color: var(--danger); display: flex; align-items: center; gap: 8px; }
+.alert-modal { max-width: 480px; width: 94%; border-top: 5px solid #2563eb; }
+.alert-modal .modal-head { background: #eff4ff; }
+.alert-modal .modal-head h3 { color: #2563eb; display: flex; align-items: center; gap: 8px; }
 .alert-bell-ico { animation: bellRing 1.4s ease-in-out infinite; display: inline-block; }
 .alert-list { padding: 12px 16px; max-height: 60vh; overflow: auto; display: flex; flex-direction: column; gap: 12px; }
-.alert-card { border: 1px solid #fda29b; border-left: 4px solid var(--danger); border-radius: 9px; padding: 11px 13px; background: #fffbfa; }
+.alert-card { border: 1px solid #b6cdff; border-left: 4px solid #2563eb; border-radius: 9px; padding: 11px 13px; background: #f8fbff; }
 .alert-card-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 5px; }
-.alert-to { font-size: 11px; font-weight: 700; color: #fff; background: var(--danger); padding: 2px 8px; border-radius: 10px; }
+.alert-to { font-size: 11px; font-weight: 700; color: #fff; background: #2563eb; padding: 2px 8px; border-radius: 10px; }
 .alert-from { font-size: 12px; color: var(--text-dim); }
 .alert-time { font-size: 11px; color: var(--text-faint); margin-left: auto; }
 .alert-task { font-size: 13px; font-weight: 700; color: var(--accent); cursor: pointer; }
 .alert-task:hover { text-decoration: underline; }
 .alert-text { font-size: 13px; color: var(--text); margin: 4px 0; white-space: pre-wrap; word-break: break-word; }
 .alert-photo { display: block; max-width: 100%; max-height: 200px; border-radius: 7px; margin-top: 6px; cursor: zoom-in; border: 1px solid var(--border); }
-.alert-card-actions { display: flex; gap: 8px; margin-top: 9px; }
-.btn-ack { background: var(--danger); color: #fff; border-color: var(--danger); }
+.alert-card-actions { display: flex; gap: 8px; margin-top: 9px; flex-wrap: wrap; }
+.btn-ack { background: #2563eb; color: #fff; border-color: #2563eb; }
+.btn-reject { background: #fff; color: var(--danger); border-color: #fda29b; }
+.btn-reject:hover { background: #fef3f2; }
+.pd-input { width: 100%; margin: 12px 0; padding: 9px 10px; border: 1px solid var(--border-strong); border-radius: 8px; font-size: 13px; font-family: inherit; resize: vertical; box-sizing: border-box; }
 .btn-ack:hover { filter: brightness(.94); }
 
 /* alert + photo entries inside the Activity feed */
@@ -534,6 +561,8 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
 .ta-alert-text { font-size: 12px; margin-top: 4px; white-space: pre-wrap; word-break: break-word; }
 .ta-alert-ack { font-size: 11px; color: #12b76a; margin-top: 4px; }
 .ta-alert-ackbtn { margin-top: 8px; }
+.ta-alert-btns { display: flex; gap: 6px; margin-top: 8px; }
+.ta-alert-btns .ta-alert-ackbtn { margin-top: 0; }
 
 /* alert reply thread (shared: Activity card + alert popup) */
 .alert-replies { margin-top: 8px; }
@@ -544,6 +573,36 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
 .ar-time { font-size: 10px; color: var(--text-faint); margin-left: 6px; white-space: nowrap; }
 .ar-compose { display: flex; gap: 6px; }
 .ar-input { flex: 1; min-width: 0; padding: 5px 8px; border: 1px solid var(--border-strong); border-radius: 6px; font-size: 12px; }
+
+/* styled autocomplete dropdown (app version of native datalist) */
+.ac-pop {
+  position: absolute; z-index: 2000;
+  max-height: 240px; overflow-y: auto;
+  background: #fff; border: 1px solid var(--border-strong);
+  border-radius: 8px; box-shadow: 0 8px 24px rgba(16,24,40,.14);
+  padding: 4px;
+}
+.ac-item {
+  display: block; width: 100%; text-align: left;
+  border: none; background: none; cursor: pointer;
+  padding: 8px 10px; border-radius: 6px;
+  font-size: 13px; color: var(--text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.ac-item:hover, .ac-item.active { background: var(--accent); color: #fff; }
+
+/* drawing request form (ยื่นขอแบบ) */
+.dr-modal { max-width: 560px; width: 94%; }
+.dr-req { color: var(--danger); }
+.dr-seg { display: inline-flex; border: 1px solid var(--border-strong); border-radius: 8px; overflow: hidden; }
+.dr-seg button { border: none; background: #fff; padding: 8px 14px; font-size: 13px; font-weight: 600; color: var(--text-dim); cursor: pointer; white-space: nowrap; }
+.dr-seg button + button { border-left: 1px solid var(--border-strong); }
+.dr-seg button.active { background: var(--accent); color: #fff; }
+.dr-attach-hint { display: block; font-size: 12px; font-weight: 600; color: #027a48; margin-top: 4px; }
+#btnDrawReq { width: 100%; }
+.dr-import-btn { width: 100%; position: relative; }
+.dr-import-btn .tb-bell-badge { position: absolute; top: -6px; right: -6px; }
+.dr-import-loading { text-align: center; color: var(--text-faint); padding: 32px 16px; font-size: 13px; }
 
 /* notification settings permission box */
 .notif-perm-box { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 13px; padding: 9px 12px; border-radius: 8px; margin-bottom: 12px; }
@@ -937,6 +996,9 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
 .stage-row { display: flex; align-items: center; gap: 8px; }
 .stage-row.done .stage-dept { text-decoration: line-through; color: var(--text-faint); }
 .stage-dept-dot { width: 10px; height: 10px; border-radius: 50%; flex: 0 0 auto; }
+/* department marker is an emoji (replaces the colour dot, to avoid confusion with status colours) */
+.dept-ico { flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; font-size: 14px; line-height: 1; }
+.dept-ico-input { width: 38px; text-align: center; font-size: 16px; padding: 6px 2px; border: 1px solid var(--border-strong); border-radius: 6px; flex: 0 0 auto; background: #fff; }
 .stage-dept {
   flex: 1; min-width: 0;
   padding: 6px 8px;
@@ -1610,17 +1672,56 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
 </style>
 </head>
 <body>
-<div class="app">
+
+<!-- Phase 2, slice 2a: login gate (Supabase Auth, magic link). Covers the whole screen until
+     signed in; the app underneath doesn't render/start until auth is resolved (see startApp()). -->
+<div class="login-screen" id="loginScreen">
+  <div class="login-card">
+    <div class="login-logo"><span class="logo">Q</span> QC Calendar</div>
+    <p class="login-sub">เข้าสู่ระบบด้วยอีเมลบริษัท — ไม่ต้องใช้รหัสผ่าน</p>
+    <div class="field" id="loginEmailField">
+      <label>อีเมล</label>
+      <input type="text" id="loginEmail" placeholder="name@company.com" autocomplete="email" />
+    </div>
+    <button type="button" class="btn btn-primary login-btn" id="btnSendMagicLink">ส่งลิงก์เข้าสู่ระบบ</button>
+    <div class="login-msg" id="loginMsg"></div>
+    <div class="login-sent hidden" id="loginSent">
+      <div class="login-sent-ico">📩</div>
+      <p><b>ส่งลิงก์แล้ว</b><br>เปิดอีเมลของคุณแล้วกดลิงก์เพื่อเข้าสู่ระบบ</p>
+      <button type="button" class="btn btn-sm" id="btnResendLink">ส่งใหม่อีกครั้ง</button>
+    </div>
+    <div class="login-sent hidden" id="loginSyncing">
+      <div class="login-sent-ico">☁️</div>
+      <p><b>กำลังซิงค์ข้อมูล...</b><br>โหลดข้อมูลล่าสุดจาก cloud</p>
+    </div>
+    <div class="login-sent hidden" id="loginPending">
+      <div class="login-sent-ico">⏳</div>
+      <p><b>รอ Admin อนุมัติ</b><br>บัญชี <span id="loginPendingEmail"></span> เข้าสู่ระบบสำเร็จ แต่ยังไม่มีสิทธิ์เห็นข้อมูล — แจ้ง Admin ให้กดอนุมัติที่ ⚙ ตั้งค่า</p>
+      <div class="row" style="gap:8px; justify-content:center">
+        <button type="button" class="btn btn-sm" id="btnCheckApproval">ตรวจสอบอีกครั้ง</button>
+        <button type="button" class="btn btn-sm" id="btnPendingLogout">ออกจากระบบ</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="app hidden" id="appRoot">
   <aside class="sidebar">
     <div class="sb-brand">
       <h1><span class="logo">Q</span> QC Calendar</h1>
-      <button class="btn btn-settings btn-sm" id="btnSettings" title="ตั้งค่า">⚙</button>
+      <div class="sb-brand-actions">
+        <button class="btn btn-settings btn-sm" id="btnSettings" title="ตั้งค่า">⚙</button>
+        <button class="btn btn-settings btn-sm" id="btnLogout" title="ออกจากระบบ">🚪</button>
+      </div>
     </div>
+    <div class="sb-user-badge" id="sbUserBadge"></div>
 
     <div class="board-seg" id="boardSwitcher" title="สลับปฏิทิน"></div>
 
     <div class="sb-section">
       <button class="btn btn-primary" id="btnQuickAdd">+ เพิ่มงานใหม่</button>
+      <button class="btn" id="btnDrawReq" style="margin-top:6px">📐 ยื่นขอแบบ</button>
+      <button class="btn dr-import-btn" id="btnImportReq" style="margin-top:6px">📥 ดึงคำขอจากฟอร์ม<span class="tb-bell-badge" id="importReqBadge" hidden>0</span></button>
     </div>
 
     <div class="sb-section sb-dept">
@@ -1693,6 +1794,11 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
 
 <input type="file" id="fileImport" accept="application/json" class="hidden" />
 
+<!-- Phase 2, slice 1: Supabase client — used ONLY to pull "ยื่นขอแบบ" requests submitted through the
+     public online form (request.html), which has no login. Everything else in this app still runs
+     entirely on localStorage. Loaded from CDN because this machine has no Node/build step. -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+
 <script>
 /* ============================================================
    QC Calendar — single-file app
@@ -1700,6 +1806,120 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
    ============================================================ */
 
 const STORAGE_KEY = "qc_calendar_v1";
+// Supabase project for the public "ยื่นขอแบบ" form (see request.html + supabase-schema.sql).
+// The anon key is meant to be public — access to drawing_requests is governed by RLS policies in Supabase.
+const SUPABASE_URL = "https://mirkqbmiuhiyuhiktuko.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1pcmtxYm1pdWhpeXVoaWt0dWtvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU4OTYwMjIsImV4cCI6MjEwMTQ3MjAyMn0.BaWomG3CTP99rAuV-ENXVMs3vybzlfbTPrqgGdbtX0c";
+let _supabaseClient = null;
+function getSupabase() {
+  if (!_supabaseClient && window.supabase && window.supabase.createClient) {
+    _supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  }
+  return _supabaseClient;
+}
+
+/* ============================================================
+   Phase 2, slice 2a — Login (Supabase Auth, magic link)
+   Identity + admin gate only. Board/task data still lives in localStorage (unchanged) —
+   see supabase-schema.sql "slice 2a" section for the profiles table + admin bootstrap.
+   ============================================================ */
+let currentProfile = null;   // { id, email, display_name, role } once signed in, else null
+
+function currentUser() {
+  if (currentProfile && currentProfile.display_name) return currentProfile.display_name;
+  return (state.settings && state.settings.currentUser || "").trim() || "ผู้ใช้";
+}
+function isAdmin() { return !!(currentProfile && currentProfile.role === "admin"); }
+
+function showLoginScreen(msg) {
+  document.getElementById("loginScreen").classList.remove("hidden");
+  document.getElementById("appRoot").classList.add("hidden");
+  if (msg) document.getElementById("loginMsg").textContent = msg;
+}
+function hideLoginScreen() {
+  document.getElementById("loginScreen").classList.add("hidden");
+  document.getElementById("appRoot").classList.remove("hidden");
+}
+function renderUserBadge() {
+  const el = document.getElementById("sbUserBadge");
+  if (!el || !currentProfile) return;
+  el.innerHTML = `<span class="sbu-name" title="${escapeHtml(currentProfile.email || "")}">${escapeHtml(currentProfile.display_name || currentProfile.email || "")}</span>` +
+    `<span class="sbu-role${isAdmin() ? " admin" : ""}">${isAdmin() ? "admin" : "member"}</span>`;
+}
+async function loadProfile(userId, email) {
+  const sb = getSupabase();
+  const { data, error } = await sb.from("profiles").select("*").eq("id", userId).single();
+  if (error || !data) {
+    // profiles row not created yet (trigger delay) or table missing — fail CLOSED (unapproved), never open
+    return { id: userId, email, display_name: (email || "").split("@")[0], role: "member", approved: false };
+  }
+  return data;
+}
+async function sendMagicLink() {
+  const emailInput = document.getElementById("loginEmail");
+  const msgEl = document.getElementById("loginMsg");
+  const email = emailInput.value.trim();
+  msgEl.textContent = "";
+  if (!email || !email.includes("@")) { msgEl.textContent = "กรุณาใส่อีเมลให้ถูกต้อง"; return; }
+  const sb = getSupabase();
+  if (!sb) { msgEl.textContent = "โหลดระบบล็อกอินไม่สำเร็จ — เช็คอินเทอร์เน็ต"; return; }
+  const btn = document.getElementById("btnSendMagicLink");
+  btn.disabled = true; btn.textContent = "กำลังส่ง...";
+  const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: window.location.href } });
+  btn.disabled = false; btn.textContent = "ส่งลิงก์เข้าสู่ระบบ";
+  if (error) { msgEl.textContent = "ส่งลิงก์ไม่สำเร็จ: " + error.message; return; }
+  document.getElementById("loginEmailField").classList.add("hidden");
+  btn.classList.add("hidden");
+  document.getElementById("loginSent").classList.remove("hidden");
+}
+async function signOutUser() {
+  const sb = getSupabase();
+  if (sb) await sb.auth.signOut();
+  currentProfile = null;
+  location.reload();   // simplest clean reset back to the login screen
+}
+// resolves once auth is settled: shows the login screen, or loads the profile + starts the app
+async function initAuth() {
+  const sb = getSupabase();
+  if (!sb) { showLoginScreen("โหลดระบบล็อกอินไม่สำเร็จ — เช็คอินเทอร์เน็ตแล้วรีเฟรชหน้านี้"); return; }
+  document.getElementById("btnSendMagicLink").addEventListener("click", sendMagicLink);
+  document.getElementById("btnResendLink").addEventListener("click", () => {
+    document.getElementById("loginEmailField").classList.remove("hidden");
+    document.getElementById("btnSendMagicLink").classList.remove("hidden");
+    document.getElementById("loginSent").classList.add("hidden");
+  });
+  document.getElementById("loginEmail").addEventListener("keydown", (e) => { if (e.key === "Enter") sendMagicLink(); });
+  document.getElementById("btnPendingLogout").addEventListener("click", signOutUser);
+  document.getElementById("btnCheckApproval").addEventListener("click", async () => {
+    const { data } = await sb.auth.getSession();
+    if (data && data.session) { document.getElementById("loginPending").classList.add("hidden"); await onSignedIn(data.session); }
+  });
+
+  sb.auth.onAuthStateChange((event, session) => {
+    if (event === "SIGNED_IN" && session) onSignedIn(session);
+    else if (event === "SIGNED_OUT") showLoginScreen();
+  });
+  const { data, error } = await sb.auth.getSession();
+  if (error) { showLoginScreen("เช็คสถานะล็อกอินไม่สำเร็จ: " + error.message); return; }
+  if (data && data.session) await onSignedIn(data.session);
+  else showLoginScreen();
+}
+async function onSignedIn(session) {
+  currentProfile = await loadProfile(session.user.id, session.user.email);
+  ["loginEmailField", "loginSent"].forEach(id => document.getElementById(id).classList.add("hidden"));
+  document.getElementById("btnSendMagicLink").classList.add("hidden");
+
+  // ★ approval gate: magic link accepts any email — block access to real data until an admin approves
+  if (!currentProfile.approved && currentProfile.role !== "admin") {
+    document.getElementById("loginPendingEmail").textContent = currentProfile.email || "";
+    document.getElementById("loginPending").classList.remove("hidden");
+    return;   // stays on the login screen — startApp() never runs until approved
+  }
+  document.getElementById("loginPending").classList.add("hidden");
+  document.getElementById("loginSyncing").classList.remove("hidden");
+  await startApp();
+  hideLoginScreen();
+}
 const TH_MONTHS = ["มกราคม","กุมภาพันธ์","มีนาคม","เมษายน","พฤษภาคม","มิถุนายน","กรกฎาคม","สิงหาคม","กันยายน","ตุลาคม","พฤศจิกายน","ธันวาคม"];
 const TH_DAYS = ["อาทิตย์","จันทร์","อังคาร","พุธ","พฤหัสบดี","ศุกร์","เสาร์"];
 
@@ -1715,6 +1935,7 @@ function priFlag(pr) { return `<span class="pri-flag" style="color:${pr.color}">
 
 // default checklist for the QC department (the original inspection items)
 const DEFAULT_CHECKLIST = ["Busbar", "Wiring", "Nameplate", "Poly", "Cleaning"];
+const DEFAULT_DEPT_ICONS = { d_design: "✏️", d_prod: "🔧", d_qc: "🔍", d_deliver: "🚚" };
 // builds a fresh cabinet checklist from ALL departments' templates — each item is
 // tagged with its department (deptId). `departments` can be passed during migration.
 function makeCabinetChecklist(departments) {
@@ -1807,6 +2028,14 @@ function effectiveUserDept() {
   const vs = activeViewDepts();
   return vs.length === 1 ? vs[0] : null;   // a single department in view → use it; else "all"
 }
+// default the department-view to the user's own department when nothing is selected yet
+// (so opening the app / switching board lands on "my department" instead of "all")
+function applyMyDeptDefaultView() {
+  const my = state.settings && state.settings.myDept;
+  if (my && getDept(my) && !((state.settings.viewDepts || []).filter(id => getDept(id)).length)) {
+    state.settings.viewDepts = [my];
+  }
+}
 // the currently-selected view departments (valid ids); empty = "ทุกแผนก"
 function activeViewDepts() {
   return ((state.settings && state.settings.viewDepts) || []).filter(id => getDept(id));
@@ -1867,10 +2096,10 @@ function defaultState() {
     // workflow departments (ด่านส่งต่อ) — each task carries a deadline per department,
     // and each department has its own checklist (the work it does on every cabinet)
     departments: [
-      { id: "d_design",  name: "ออกแบบ",       color: "#a855f7", checklist: [], fields: [] },
-      { id: "d_prod",    name: "ผลิต/ประกอบ",  color: "#3b82f6", checklist: [], fields: [] },
-      { id: "d_qc",      name: "QC",           color: "#f59e0b", checklist: [...DEFAULT_CHECKLIST], fields: [] },
-      { id: "d_deliver", name: "ส่งมอบ",       color: "#10b981", checklist: [], fields: [] },
+      { id: "d_design",  name: "ออกแบบ",       color: "#a855f7", icon: "✏️", checklist: [], fields: [] },
+      { id: "d_prod",    name: "ผลิต/ประกอบ",  color: "#3b82f6", icon: "🔧", checklist: [], fields: [] },
+      { id: "d_qc",      name: "QC",           color: "#f59e0b", icon: "🔍", checklist: [...DEFAULT_CHECKLIST], fields: [] },
+      { id: "d_deliver", name: "ส่งมอบ",       color: "#10b981", icon: "🚚", checklist: [], fields: [] },
     ],
     tasks: [],
     // defaultStages = department ids auto-added as "กำหนดส่งต่อแผนก" on every new task (in workflow order)
@@ -1882,12 +2111,12 @@ function defaultState() {
 
 // Multiple independent calendars ("boards") in one app — each board is a full workspace
 // (own statuses, departments, checklist templates, settings, tasks). Default: โรงงาน + ออกไซต์.
-const DEFAULT_BOARDS = [{ id: "factory", name: "โรงงาน" }, { id: "onsite", name: "ออกไซต์" }];
+const DEFAULT_BOARDS = [{ id: "factory", name: "โรงงาน" }, { id: "onsite", name: "ออกไซต์" }, { id: "drawing", name: "เขียนแบบโครงสร้าง" }];
 function defaultRoot() {
   return {
     activeBoard: "factory",
     boardMeta: DEFAULT_BOARDS.map(b => ({ ...b })),
-    boards: { factory: defaultState(), onsite: defaultState() },
+    boards: { factory: defaultState(), onsite: defaultState(), drawing: defaultState() },
   };
 }
 
@@ -1918,6 +2147,8 @@ function loadRoot() {
     // new multi-board format
     if (parsed.boards && typeof parsed.boards === "object") {
       if (!Array.isArray(parsed.boardMeta) || !parsed.boardMeta.length) parsed.boardMeta = DEFAULT_BOARDS.map(b => ({ ...b }));
+      // ensure the structure-drawing board exists (added for the drawing-request feature)
+      if (!parsed.boardMeta.some(b => b.id === "drawing")) parsed.boardMeta.push({ id: "drawing", name: "เขียนแบบโครงสร้าง" });
       parsed.boardMeta.forEach(b => { if (!parsed.boards[b.id]) parsed.boards[b.id] = defaultState(); });
       Object.values(parsed.boards).forEach(ws => migrateState(ws));
       if (!parsed.boards[parsed.activeBoard]) parsed.activeBoard = parsed.boardMeta[0].id;
@@ -1941,6 +2172,7 @@ function setBoard(id) {
   document.querySelectorAll(".overlay, .checklist-popover, #appToast").forEach(n => n.remove());
   root.activeBoard = id;
   state = root.boards[id];
+  applyMyDeptDefaultView();   // each board defaults to its own user's department
   saveState();
   renderAll();
   checkAlerts();   // pop any unacknowledged alerts for the board we just switched to
@@ -1999,6 +2231,8 @@ function migrateState(s) {
   }
   // Option A: each department owns a checklist template
   s.departments.forEach(d => { if (!Array.isArray(d.checklist)) d.checklist = []; });
+  // department emoji marker (replaces colour dot) — seed defaults / a generic for custom depts
+  s.departments.forEach(d => { if (!d.icon) d.icon = DEFAULT_DEPT_ICONS[d.id] || "🏷️"; });
   // custom dropdown fields per department: [{ id, name, showOnChip, groups:[{ id, name, options:[{id,label}] }] }]
   s.departments.forEach(d => {
     if (!Array.isArray(d.fields)) d.fields = [];
@@ -2044,12 +2278,58 @@ function migrateState(s) {
 }
 function saveState() {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(root));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(root));   // local cache/backup — always kept, cloud push is best-effort on top
   } catch (e) {
     // most likely QuotaExceededError — attached photos (base64) can fill localStorage (~5MB)
     console.warn("saveState failed", e);
     try { toast("⚠️ พื้นที่จัดเก็บเต็ม (รูปแนบอาจมากไป) — บันทึกไม่สำเร็จ · ลองลบรูปเก่า หรือ Export ข้อมูลออก"); } catch (_) {}
   }
+  scheduleCloudSave();
+}
+
+/* ----- Phase 2, slice 2b: board data synced to Supabase (public.boards, one row per board) -----
+   localStorage stays the always-on local cache/backup (saveState() above is unchanged for that part);
+   this layer pushes the same data to the cloud so every signed-in device sees it. Whole-board JSON
+   blobs, last-write-wins per board — no realtime/merge yet (that's slice 3). */
+let _cloudSaveTimer = null;
+function scheduleCloudSave() {
+  if (!currentProfile) return;   // not signed in yet (e.g. still on the login screen) — nothing to push
+  clearTimeout(_cloudSaveTimer);
+  _cloudSaveTimer = setTimeout(pushAllBoardsToCloud, 900);   // debounce: collapse rapid edits into one write
+}
+async function pushAllBoardsToCloud() {
+  const sb = getSupabase();
+  if (!sb || !currentProfile) return;
+  const rows = (root.boardMeta || []).map(b => ({
+    id: b.id, name: b.name, data: root.boards[b.id],
+    updated_at: new Date().toISOString(), updated_by: currentProfile.display_name,
+  }));
+  if (!rows.length) return;
+  const { error } = await sb.from("boards").upsert(rows);
+  if (error) toast("⚠️ บันทึกขึ้น cloud ไม่สำเร็จ (บันทึกในเครื่องไว้แล้ว): " + error.message);
+}
+// called once from startApp(): first login ever → upload local data as the cloud seed;
+// every login after that → cloud is the source of truth, overwrite in-memory root/state with it.
+async function syncRootFromCloud() {
+  const sb = getSupabase();
+  if (!sb) { toast("⚠️ ไม่มีอินเทอร์เน็ต — ใช้ข้อมูลในเครื่องไปก่อน (จะไม่เห็นการแก้ไขจากเครื่องอื่น)"); return; }
+  const { data, error } = await sb.from("boards").select("*");
+  if (error) { toast("⚠️ โหลดข้อมูลจาก cloud ไม่สำเร็จ — ใช้ข้อมูลในเครื่องไปก่อน: " + error.message); return; }
+
+  if (!data || !data.length) {
+    // first time ever: nothing in the cloud yet — seed it from whatever's currently in this browser
+    await pushAllBoardsToCloud();
+    return;
+  }
+  // cloud has data → it's the source of truth from here on; replace in-memory root/state with it
+  const boards = {};
+  const boardMeta = data.map(row => ({ id: row.id, name: row.name }));
+  data.forEach(row => { boards[row.id] = row.data; migrateState(boards[row.id]); });
+  root.boardMeta = boardMeta;
+  root.boards = boards;
+  if (!root.boards[root.activeBoard]) root.activeBoard = (boardMeta[0] || {}).id || "factory";
+  state = root.boards[root.activeBoard];
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(root));   // refresh the local cache to match the cloud
 }
 function uid(prefix = "id") {
   return prefix + "_" + Math.random().toString(36).slice(2, 9) + Date.now().toString(36).slice(-4);
@@ -2075,6 +2355,36 @@ function getPriority(id) {
 }
 function getDept(id) {
   return (state.departments || []).find(d => d.id === id) || null;
+}
+// department marker = an emoji (not a colour dot) so it isn't confused with a status colour.
+// accepts a dept object or a dept id.
+function deptIco(deptOrId) {
+  const d = (typeof deptOrId === "string") ? getDept(deptOrId) : deptOrId;
+  const ic = (d && d.icon) ? d.icon : "🏷️";
+  return `<span class="dept-ico" title="${escapeHtml((d && d.name) || "")}">${escapeHtml(ic)}</span>`;
+}
+// ----- Drawing request (ยื่นขอแบบ) -----
+// the "drawing" department of a workspace (เขียนแบบ/ออกแบบ), else its first department
+function drawingDeptOf(ws) {
+  const depts = (ws && ws.departments) || [];
+  return depts.find(d => /เขียนแบบ|ออกแบบ|drawing|design/i.test(d.name || "")) || depts[0] || null;
+}
+// active board's tasks whose drawing stage isn't finished yet (for the "แนบกับงานที่มีอยู่" dropdown)
+function undrawnJobs() {
+  const dept = drawingDeptOf(state);
+  return (state.tasks || []).filter(t => {
+    if (!dept) return true;
+    const stg = taskStage(t, dept.id);
+    return !stg || !isDeptComplete(t, dept.id);
+  });
+}
+// collect previously-used values of a request field across all boards (for autocomplete)
+function pastRequestValues(key) {
+  const set = new Set();
+  Object.values(root.boards || {}).forEach(ws => (ws.tasks || []).forEach(t => {
+    const v = t.request && t.request[key]; if (v) set.add(v);
+  }));
+  return [...set];
 }
 // the department stage object for a task, or null
 function taskStage(t, deptId) {
@@ -2129,7 +2439,7 @@ function openDeptDropdown(anchor) {
     ${(state.departments || []).map(d => `
       <label class="dept-dd-item dept-dd-check">
         <input type="checkbox" data-dept="${d.id}" ${sel.has(d.id) ? "checked" : ""} />
-        <span class="dept-dd-cdot" style="background:${d.color}"></span>
+        ${deptIco(d)}
         <span>${escapeHtml(d.name)}</span>
       </label>`).join("")}
   `;
@@ -2552,7 +2862,7 @@ function renderDeptChip(t, stage) {
   const flag = pr.id !== "none" ? priFlag(pr) : "";
   const doneBadge = deptDone ? `<span class="dept-done-badge">✓ เสร็จ</span>` : "";
   // when several departments are in view, mark which dept this chip belongs to
-  const deptDot = activeViewDepts().length > 1 ? `<span class="chip-dept-dot" style="background:${(dept||{}).color||'#888'}" title="${escapeHtml((dept||{}).name||'')}"></span>` : "";
+  const deptDot = activeViewDepts().length > 1 ? deptIco(dept) : "";
   const badgeRow = (badges || flag || doneBadge) ? `<div class="task-substatus">${badges}${flag}${doneBadge}</div>` : "";
   // selected custom-field values for this department, flagged to show on chips
   const fchips = stageFieldChips(t, deptId);
@@ -2601,7 +2911,7 @@ function renderDeptCabChip(t, stage, sub) {
   // no progress number on the chip — the left "วันนี้" panel shows checklist detail; status is the colour
   const doneBadge = done ? `<span class="dept-done-badge">✓ เสร็จ</span>` : "";
   // when several departments are in view, mark which dept this chip belongs to
-  const deptDot = activeViewDepts().length > 1 ? `<span class="chip-dept-dot" style="background:${(dept||{}).color||'#888'}" title="${escapeHtml((dept||{}).name||'')}"></span>` : "";
+  const deptDot = activeViewDepts().length > 1 ? deptIco(dept) : "";
   chip.innerHTML = `
     <div class="chip-title-row">
       ${deptDot}${pr.id !== "none" ? priFlag(pr) : ""}
@@ -2780,7 +3090,7 @@ function openChecklistPopover(anchorEl, sub, onChange, opts = {}) {
         if (!items.length) return;
         const grp = document.createElement("div");
         grp.className = "cl-pop-group";
-        grp.innerHTML = `<span class="cl-pop-group-dot" style="background:${d.color}"></span>${escapeHtml(d.name)} <span class="cl-pop-group-add" title="เพิ่มรายการ">+</span>`;
+        grp.innerHTML = `${deptIco(d)}${escapeHtml(d.name)} <span class="cl-pop-group-add" title="เพิ่มรายการ">+</span>`;
         grp.querySelector(".cl-pop-group-add").addEventListener("click", (e) => { e.stopPropagation(); addItem(d.id); });
         itemsEl.appendChild(grp);
         items.forEach(it => itemsEl.appendChild(buildItemRow(it)));
@@ -3022,6 +3332,33 @@ function confirmDialog({ title, message = "", confirmText = "ลบ", cancelText
   });
 }
 
+/* in-app text prompt → resolves to the entered text (may be ""), or null if cancelled */
+function promptDialog({ title, message = "", placeholder = "", confirmText = "ตกลง", cancelText = "ยกเลิก", danger = false }) {
+  return new Promise(resolve => {
+    const overlay = document.createElement("div");
+    overlay.className = "overlay confirm-overlay";
+    overlay.innerHTML = `
+      <div class="confirm-dialog" role="alertdialog" aria-modal="true">
+        <div class="confirm-title">${escapeHtml(title)}</div>
+        ${message ? `<div class="confirm-msg">${escapeHtml(message)}</div>` : ""}
+        <textarea class="pd-input" rows="3" placeholder="${escapeHtml(placeholder)}"></textarea>
+        <div class="confirm-actions">
+          <button class="btn" data-act="cancel">${escapeHtml(cancelText)}</button>
+          <button class="btn ${danger ? "btn-danger-solid" : "btn-primary"}" data-act="ok">${escapeHtml(confirmText)}</button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    const ta = overlay.querySelector(".pd-input");
+    function close(val) { overlay.remove(); document.removeEventListener("keydown", onKey, true); resolve(val); }
+    function onKey(e) { if (e.key === "Escape") { e.preventDefault(); close(null); } }
+    overlay.querySelector('[data-act="cancel"]').addEventListener("click", () => close(null));
+    overlay.querySelector('[data-act="ok"]').addEventListener("click", () => close(ta.value.trim()));
+    overlay.addEventListener("mousedown", (e) => { if (e.target === overlay) close(null); });
+    document.addEventListener("keydown", onKey, true);
+    setTimeout(() => ta.focus(), 30);
+  });
+}
+
 /* Duplicate a project: clone structure + dates, reset progress.
    New ids for task/cabinets/checklist; status → first; checklist ticks, stage "done" and Activity cleared.
    Kept: title (+ " (สำเนา)"), all dates, departments/stages, custom-field values, labels, checklist items. */
@@ -3044,6 +3381,319 @@ function duplicateTask(src) {
   return c;
 }
 
+/* styled autocomplete dropdown for a text input (replaces native <datalist>).
+   getItems() returns the current candidate strings; filters by substring as you type. */
+function attachAutocomplete(input, getItems, opts = {}) {
+  let pop = null, items = [], active = -1;
+  const close = () => { if (pop) { pop.remove(); pop = null; } document.removeEventListener("mousedown", onDoc, true); window.removeEventListener("resize", close); active = -1; };
+  const onDoc = (e) => { if (pop && !pop.contains(e.target) && e.target !== input) close(); };
+  function place() {
+    const r = input.getBoundingClientRect();
+    pop.style.top = (r.bottom + window.scrollY + 3) + "px";
+    pop.style.left = (r.left + window.scrollX) + "px";
+    pop.style.width = r.width + "px";
+  }
+  function paintActive() {
+    [...pop.children].forEach((c, i) => c.classList.toggle("active", i === active));
+    if (active >= 0 && pop.children[active]) pop.children[active].scrollIntoView({ block: "nearest" });
+  }
+  function open() {
+    const q = input.value.trim().toLowerCase();
+    const all = (getItems() || []).filter(Boolean);
+    items = q ? all.filter(s => s.toLowerCase().includes(q)) : all;
+    if (!items.length) { close(); return; }
+    if (!pop) { pop = document.createElement("div"); pop.className = "ac-pop"; document.body.appendChild(pop); document.addEventListener("mousedown", onDoc, true); window.addEventListener("resize", close); }
+    pop.innerHTML = items.slice(0, 50).map(s => `<button type="button" class="ac-item">${escapeHtml(s)}</button>`).join("");
+    active = -1;
+    place();
+    [...pop.children].forEach((b, i) => {
+      b.addEventListener("mousedown", (e) => { e.preventDefault(); pick(i); });
+      b.addEventListener("mousemove", () => { active = i; paintActive(); });
+    });
+  }
+  function pick(i) {
+    if (i < 0 || i >= items.length) return;
+    input.value = items[i];
+    input.dispatchEvent(new Event("input"));
+    close();
+    if (opts.onPick) opts.onPick(items[i]);
+  }
+  input.addEventListener("focus", open);
+  input.addEventListener("input", open);
+  input.addEventListener("keydown", (e) => {
+    if (!pop) return;
+    if (e.key === "ArrowDown") { e.preventDefault(); active = Math.min(active + 1, items.length - 1); paintActive(); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); active = Math.max(active - 1, 0); paintActive(); }
+    else if (e.key === "Enter" && active >= 0) { e.preventDefault(); pick(active); }
+    else if (e.key === "Escape") { close(); }
+  });
+  return { close };
+}
+
+/* ---------- Drawing request routing (shared by the in-app form AND requests imported from the
+   public online form via Supabase) ----------
+   โครงสร้าง → สร้างงานใน board "เขียนแบบโครงสร้าง"; วงจร → ปฏิทินผลิต (active board) ที่ด่านเขียนแบบ,
+   เลือก "สร้างใหม่" หรือ "แนบกับงานที่ยังไม่เขียนแบบ" (ชื่อโครงการตรงกับงานที่ยังไม่เขียนแบบเป๊ะ). แจ้งเตือนแผนกเขียนแบบ. */
+function buildReqTask(ws, project, due, detail, reqMeta, summary, photo) {
+  const dept = drawingDeptOf(ws);
+  return {
+    id: uid("t"), title: project, description: detail, date: due, startDate: null,
+    statusId: (ws.statuses[0] || {}).id, priority: "none", labels: ["คำขอแบบ"], subtasks: [],
+    deptStages: dept ? [{ deptId: dept.id, due, done: false, fields: {} }] : [],
+    comments: [{ id: uid("al"), type: "alert", author: reqMeta.submitter, toDept: dept && dept.id, text: summary, photo: photo || null, at: Date.now(), ack: false }],
+    request: reqMeta, createdAt: Date.now(), updatedAt: Date.now(),
+  };
+}
+// routes one drawing request into a task. returns { boardName, attached, title } for the caller's toast/summary.
+function routeDrawingRequest({ kind, project, dwg, due, detail, submitter, sales, photo }) {
+  const reqMeta = { kind, dwgNo: dwg, submitter, salesTeam: sales, at: Date.now() };
+  const summary = [`📐 คำขอเขียนแบบ${kind === "structure" ? "โครงสร้างตู้" : "วงจรไฟฟ้า"}`, `เลข DWG: ${dwg}`, `ผู้ยื่น: ${submitter}${sales ? ` · Sales: ${sales}` : ""}`].concat(detail ? [detail] : []).join("\n");
+
+  if (kind === "structure") {
+    const ws = root.boards.drawing;
+    ws.tasks.push(buildReqTask(ws, project, due, detail, reqMeta, summary, photo));
+    saveState(); renderAll();
+    pushNotify("alert", "📐 คำขอเขียนแบบโครงสร้างใหม่", `${project} · DWG ${dwg}`, "dr-" + Date.now());
+    return { boardName: "เขียนแบบโครงสร้าง", attached: false, title: project };
+  }
+  // circuit — active production board
+  const dept = drawingDeptOf(state);
+  const existing = undrawnJobs().find(t => (t.title || "").trim() === project);
+  if (existing) {
+    if (dept) {
+      const stg = taskStage(existing, dept.id);
+      if (!stg) existing.deptStages.unshift({ deptId: dept.id, due, done: false, fields: {} });
+      else if (!stg.due) stg.due = due;
+    }
+    if (!Array.isArray(existing.comments)) existing.comments = [];
+    existing.comments.push({ id: uid("al"), type: "alert", author: submitter, toDept: dept && dept.id, text: summary, photo: photo || null, at: Date.now(), ack: false });
+    existing.request = reqMeta; existing.updatedAt = Date.now();
+    saveState(); renderAll();
+    pushNotify("alert", "📐 ขอเขียนแบบวงจร", `${existing.title} · DWG ${dwg}`, "dr-" + existing.id);
+    return { boardName: (root.boardMeta.find(b => b.id === root.activeBoard) || {}).name, attached: true, title: existing.title };
+  }
+  state.tasks.push(buildReqTask(state, project, due, detail, reqMeta, summary, photo));
+  saveState(); renderAll();
+  pushNotify("alert", "📐 ขอเขียนแบบวงจร (งานใหม่)", `${project} · DWG ${dwg}`, "dr-" + Date.now());
+  return { boardName: (root.boardMeta.find(b => b.id === root.activeBoard) || {}).name, attached: false, title: project };
+}
+
+/* ---------- Import requests submitted through the public online form (Supabase) ----------
+   The public form (request.html) writes rows to Supabase table drawing_requests with status='pending'.
+   This app has no login yet, so importing is a manual, reviewable step: fetch pending rows, show them
+   in a popup, let a person route each one in (or reject it) — never auto-imports silently. */
+async function fetchPendingDrawingRequests() {
+  const sb = getSupabase();
+  if (!sb) { toast("โหลด Supabase ไม่สำเร็จ — เช็คอินเทอร์เน็ต/การตั้งค่า"); return null; }
+  const { data, error } = await sb.from("drawing_requests").select("*").eq("status", "pending").order("created_at", { ascending: true });
+  if (error) { toast("ดึงคำขอไม่สำเร็จ: " + error.message); return null; }
+  return data || [];
+}
+// refresh the sidebar badge with the current pending count (fire-and-forget; safe to call anytime)
+async function refreshImportBadge() {
+  const badge = document.getElementById("importReqBadge");
+  if (!badge) return;
+  const rows = await fetchPendingDrawingRequests();
+  if (rows === null) return;   // network/config error — leave badge as-is rather than flashing "0"
+  if (rows.length) { badge.textContent = rows.length > 99 ? "99+" : rows.length; badge.hidden = false; }
+  else { badge.hidden = true; }
+}
+async function openImportRequestsModal() {
+  const overlay = document.createElement("div");
+  overlay.className = "overlay alert-overlay";
+  overlay.innerHTML = `
+    <div class="modal alert-modal" role="dialog" aria-modal="true">
+      <div class="modal-head">
+        <h3>📥 คำขอจากฟอร์มออนไลน์ <span data-count>…</span></h3>
+        <button class="btn btn-ghost" data-act="close" title="ปิด">✕</button>
+      </div>
+      <div class="alert-list" data-list><div class="dr-import-loading">กำลังโหลด...</div></div>
+    </div>`;
+  document.body.appendChild(overlay);
+  const listEl = overlay.querySelector("[data-list]");
+  const countEl = overlay.querySelector("[data-count]");
+  function close() { overlay.remove(); document.removeEventListener("keydown", onEsc, true); }
+  function onEsc(e) { if (e.key === "Escape") close(); }
+  overlay.querySelector('[data-act="close"]').addEventListener("click", close);
+  overlay.addEventListener("mousedown", e => { if (e.target === overlay) close(); });
+  document.addEventListener("keydown", onEsc, true);
+
+  const rows = await fetchPendingDrawingRequests();
+  if (rows === null) { listEl.innerHTML = `<div class="dr-import-loading">โหลดไม่สำเร็จ — ลองใหม่อีกครั้ง</div>`; countEl.textContent = "0"; return; }
+  countEl.textContent = rows.length;
+  if (!rows.length) { listEl.innerHTML = `<div class="dr-import-loading">ไม่มีคำขอใหม่ค้างอยู่ 🎉</div>`; return; }
+
+  listEl.innerHTML = "";
+  rows.forEach(row => {
+    const card = document.createElement("div");
+    card.className = "alert-card";
+    const kindLabel = row.kind === "structure" ? "เขียนแบบโครงสร้างตู้" : "เขียนแบบวงจรไฟฟ้า";
+    card.innerHTML = `
+      <div class="alert-card-top">
+        <span class="alert-to">📐 ${escapeHtml(kindLabel)}</span>
+        <span class="alert-from">จาก ${escapeHtml(row.submitter || "—")}${row.sales_team ? " · " + escapeHtml(row.sales_team) : ""}</span>
+        <span class="alert-time">${formatDateTimeTH(new Date(row.created_at).getTime())}</span>
+      </div>
+      <div class="alert-task">${escapeHtml(row.project || "(ไม่มีชื่อ)")} <span class="muted" style="font-weight:400">· DWG ${escapeHtml(row.dwg_no || "-")} · ครบ ${formatDateTH(row.due_date)}</span></div>
+      ${row.detail ? `<div class="alert-text">${escapeHtml(row.detail)}</div>` : ""}
+      ${row.photo_url ? `<img class="alert-photo" src="${row.photo_url}" alt="แนบรูป">` : ""}
+      <div class="alert-card-actions">
+        <button class="btn btn-sm btn-ack" data-import>📥 นำเข้า</button>
+        <button class="btn btn-sm btn-reject" data-reject>✕ ปฏิเสธ</button>
+      </div>`;
+    const ph = card.querySelector(".alert-photo");
+    if (ph) ph.addEventListener("click", () => openPhotoLightbox(row.photo_url));
+    const resolveCard = () => { card.remove(); const left = listEl.querySelectorAll(".alert-card").length; countEl.textContent = left; if (!left) listEl.innerHTML = `<div class="dr-import-loading">ไม่มีคำขอใหม่ค้างอยู่ 🎉</div>`; };
+    card.querySelector("[data-import]").addEventListener("click", async () => {
+      const result = routeDrawingRequest({ kind: row.kind, project: row.project, dwg: row.dwg_no, due: row.due_date, detail: row.detail || "", submitter: row.submitter, sales: row.sales_team || "", photo: row.photo_url || null });
+      const sb = getSupabase();
+      const { error } = await sb.from("drawing_requests").update({ status: "imported", imported_at: new Date().toISOString() }).eq("id", row.id);
+      if (error) toast("นำเข้าในแอปแล้ว แต่อัปเดตสถานะบน Supabase ไม่สำเร็จ: " + error.message);
+      else toast(row.kind === "structure" ? `นำเข้า “${row.project}” เข้า board เขียนแบบโครงสร้างแล้ว` : (result.attached ? `แนบกับ “${result.title}” แล้ว` : `สร้างงานใหม่ “${row.project}” แล้ว`));
+      refreshImportBadge();
+      resolveCard();
+    });
+    card.querySelector("[data-reject]").addEventListener("click", async () => {
+      const reason = await promptDialog({ title: "ปฏิเสธคำขอนี้?", message: `จะบันทึกเป็นปฏิเสธ (ผู้ยื่น: ${row.submitter || "—"})`, placeholder: "เหตุผลที่ปฏิเสธ (ไม่บังคับ)", confirmText: "ปฏิเสธ", danger: true });
+      if (reason === null) return;
+      const sb = getSupabase();
+      const { error } = await sb.from("drawing_requests").update({ status: "rejected", reject_reason: reason || null, imported_at: new Date().toISOString() }).eq("id", row.id);
+      if (error) toast("ปฏิเสธไม่สำเร็จ: " + error.message);
+      else toast(`ปฏิเสธคำขอ “${row.project}” แล้ว`);
+      refreshImportBadge();
+      resolveCard();
+    });
+    listEl.appendChild(card);
+  });
+}
+
+/* ---------- Drawing request form (ยื่นขอแบบ) — in-app modal, uses routeDrawingRequest() above ---------- */
+function openDrawRequestModal() {
+  let kind = "structure";              // structure | circuit
+  let pendingPhoto = null;
+  const overlay = document.createElement("div");
+  overlay.className = "overlay";
+  overlay.innerHTML = `
+    <div class="modal dr-modal" role="dialog" aria-modal="true">
+      <div class="modal-head">
+        <h3>📐 ยื่นขอแบบ</h3>
+        <button class="btn btn-ghost" data-act="close" title="ปิด">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="field">
+          <label>ประเภทแบบ</label>
+          <div class="dr-seg" data-kind>
+            <button type="button" data-k="structure" class="active">เขียนแบบโครงสร้างตู้</button>
+            <button type="button" data-k="circuit">เขียนแบบวงจรไฟฟ้า</button>
+          </div>
+          <span class="settings-toggle-sub" data-kind-hint></span>
+        </div>
+        <div class="field">
+          <label>โครงการ / SO <span class="dr-req">*</span></label>
+          <input type="text" data-f="project" placeholder="พิมพ์ชื่อโครงการ หรือเลือกงานที่มีอยู่ ▾" autocomplete="off" />
+          <span class="dr-attach-hint" data-attach-hint hidden></span>
+        </div>
+        <div class="field-row">
+          <div class="field"><label>เลข DWG <span class="dr-req">*</span></label><input type="text" data-f="dwg" autocomplete="off" /></div>
+          <div class="field"><label>วันที่ต้องการให้จบ <span class="dr-req">*</span></label><div data-df="due"></div><span class="settings-toggle-sub">ไม่ต่ำกว่า 2 วันนับจากวันนี้</span></div>
+        </div>
+        <div class="field"><label>รายละเอียดเกี่ยวกับงาน เช่น จำนวนตู้</label><textarea data-f="detail" placeholder="เช่น 3 ตู้ MDB, ..."></textarea></div>
+        <div class="field-row">
+          <div class="field"><label>ชื่อผู้ยื่น <span class="dr-req">*</span></label><input type="text" data-f="submitter" autocomplete="off" /></div>
+          <div class="field"><label>ทีม Sales</label><input type="text" data-f="sales" autocomplete="off" /></div>
+        </div>
+        <div class="field">
+          <label>แนบรูป <span class="muted" style="font-weight:400">(เฟส 1: รูปเท่านั้น · ไฟล์ DWG/PDF จะเปิดในเฟส 2)</span></label>
+          <div class="row" style="gap:8px;align-items:center">
+            <button type="button" class="btn btn-sm" data-act="attach">📎 แนบ / ถ่ายรูป</button>
+            <div class="ta-photo-preview" data-photo-preview hidden></div>
+          </div>
+          <input type="file" accept="image/*" capture="environment" data-photo-input hidden />
+        </div>
+      </div>
+      <div class="modal-foot">
+        <div style="flex:1"></div>
+        <button class="btn" data-act="close">ยกเลิก</button>
+        <button class="btn btn-primary" data-act="submit">ยื่นคำขอ</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  const modal = overlay.querySelector(".modal");
+  const pf = (n) => modal.querySelector(`[data-f="${n}"]`);
+
+  // due date picker (default = today + 2)
+  const dueField = createDateField({ value: addDaysIso(todayIso(), 2), allowClear: false });
+  modal.querySelector('[data-df="due"]').replaceWith(dueField);
+
+  const kindHint = modal.querySelector("[data-kind-hint]");
+  const attachHint = modal.querySelector("[data-attach-hint]");
+  function refreshKind() {
+    modal.querySelectorAll("[data-kind] button").forEach(b => b.classList.toggle("active", b.dataset.k === kind));
+    if (kind === "structure") {
+      kindHint.textContent = "งานก่อนได้งาน (เก็ง) — จะสร้างใน board “เขียนแบบโครงสร้าง” แยกจากปฏิทินผลิต";
+    } else {
+      kindHint.textContent = "งานที่ได้แล้ว — อยู่ปฏิทินผลิต (board ปัจจุบัน). พิมพ์ชื่อใหม่ = สร้างงานใหม่ · เลือกจากรายการ = แนบกับงานที่ยังไม่เขียนแบบ";
+    }
+    checkAttach();
+  }
+  function checkAttach() {
+    const v = pf("project").value.trim();
+    const match = (kind === "circuit") && undrawnJobs().find(t => (t.title || "").trim() === v);
+    if (match) { attachHint.hidden = false; attachHint.textContent = "↳ จะแนบคำขอกับงานนี้ (เพิ่ม/ตั้งด่านเขียนแบบ)"; }
+    else { attachHint.hidden = true; }
+  }
+  modal.querySelectorAll("[data-kind] button").forEach(b => b.addEventListener("click", () => { kind = b.dataset.k; refreshKind(); }));
+  pf("project").addEventListener("input", checkAttach);
+  refreshKind();
+
+  // styled app dropdowns (replace native datalist)
+  attachAutocomplete(pf("project"), () => kind === "circuit" ? undrawnJobs().map(t => t.title).filter(Boolean) : [], { onPick: checkAttach });
+  attachAutocomplete(pf("submitter"), () => pastRequestValues("submitter"));
+  attachAutocomplete(pf("sales"), () => pastRequestValues("salesTeam"));
+
+  // photo attach (reuse the compress pipeline)
+  const photoInput = modal.querySelector("[data-photo-input]");
+  const photoPreview = modal.querySelector("[data-photo-preview]");
+  function renderPhoto() {
+    if (!pendingPhoto) { photoPreview.hidden = true; photoPreview.innerHTML = ""; return; }
+    photoPreview.hidden = false;
+    photoPreview.innerHTML = `<img src="${pendingPhoto}" alt=""><button type="button" class="ta-photo-rm">✕</button>`;
+    photoPreview.querySelector(".ta-photo-rm").addEventListener("click", () => { pendingPhoto = null; renderPhoto(); });
+  }
+  modal.querySelector('[data-act="attach"]').addEventListener("click", () => photoInput.click());
+  photoInput.addEventListener("change", async () => {
+    const file = photoInput.files && photoInput.files[0]; photoInput.value = "";
+    if (!file) return;
+    try { pendingPhoto = await compressImage(file); renderPhoto(); } catch (e) { toast("อ่านรูปไม่สำเร็จ"); }
+  });
+
+  function close() { overlay.remove(); }
+  overlay.addEventListener("mousedown", (e) => { if (e.target === overlay) close(); });
+  modal.querySelectorAll('[data-act="close"]').forEach(b => b.addEventListener("click", close));
+
+  modal.querySelector('[data-act="submit"]').addEventListener("click", () => {
+    const project = pf("project").value.trim();
+    const dwg = pf("dwg").value.trim();
+    const due = dueField.getValue();
+    const detail = pf("detail").value.trim();
+    const submitter = pf("submitter").value.trim();
+    const sales = pf("sales").value.trim();
+    if (!project) return toast("กรุณาใส่ชื่อโครงการ / SO");
+    if (!dwg) return toast("กรุณาใส่เลข DWG");
+    if (!submitter) return toast("กรุณาใส่ชื่อผู้ยื่น");
+    if (!due) return toast("กรุณาเลือกวันที่ต้องการให้จบ");
+    if (due < addDaysIso(todayIso(), 2)) return toast("วันที่ต้องการให้จบต้องไม่ต่ำกว่า 2 วันจากวันนี้");
+
+    const result = routeDrawingRequest({ kind, project, dwg, due, detail, submitter, sales, photo: pendingPhoto });
+    if (kind === "structure") toast(`ยื่นคำขอเขียนแบบโครงสร้าง “${project}” แล้ว (อยู่ใน board เขียนแบบโครงสร้าง)`);
+    else if (result.attached) toast(`แนบคำขอเขียนแบบวงจรกับ “${result.title}” แล้ว`);
+    else toast(`สร้างงานใหม่ + คำขอเขียนแบบวงจร “${project}” แล้ว`);
+    close();
+  });
+
+  setTimeout(() => pf("project").focus(), 40);
+}
+
 /* ---------- Task modal ---------- */
 function openTaskModal(taskId, defaults={}) {
   const isNew = !taskId;
@@ -3060,12 +3710,13 @@ function openTaskModal(taskId, defaults={}) {
   // snapshot to diff against on save (for the activity log)
   const beforeSnapshot = isNew ? null : JSON.parse(JSON.stringify(task));
 
+  const boardName = (root.boardMeta.find(b => b.id === root.activeBoard) || {}).name || "";
   const overlay = document.createElement("div");
   overlay.className = "overlay";
   overlay.innerHTML = `
     <div class="modal wide task-modal" role="dialog" aria-modal="true">
       <div class="modal-head">
-        <h3>${isNew ? "เพิ่มงานใหม่" : "แก้ไขงาน"}</h3>
+        <h3>${isNew ? "เพิ่มงาน" + escapeHtml(boardName) : "โครงการ"}</h3>
         <div class="row" style="gap:6px">
           ${isNew ? "" : '<button class="btn btn-ghost btn-sm" data-act="dashboard" title="ดูแดชบอร์ดของโปรเจคนี้">📊 แดชบอร์ด</button>'}
           <button class="btn btn-ghost" data-act="close" title="ปิด">✕</button>
@@ -3372,14 +4023,13 @@ function openTaskModal(taskId, defaults={}) {
         ? `<span class="stage-prog${deptDone?' full':''}" title="เสร็จอัตโนมัติเมื่อติ๊ก checklist ของแผนกนี้ครบทุกตู้">${dp.done}/${dp.total} ✓</span>`
         : `<label class="stage-done-toggle" title="ติ๊กเมื่อแผนกนี้ทำงานเสร็จ"><input type="checkbox" ${stg.done ? "checked" : ""} /> เสร็จ</label>`;
       row.innerHTML = `
-        <span class="stage-dept-dot" style="background:${dept.color}"></span>
+        ${deptIco(dept)}
         <select class="stage-dept">${optsHtml}</select>
         <span class="stage-date-mount"></span>
         ${control}
         <button class="subtask-del" title="ลบด่าน">✕</button>
       `;
       const deptSel = row.querySelector(".stage-dept");
-      const dot = row.querySelector(".stage-dept-dot");
       const doneCb = row.querySelector(".stage-done-toggle input");
       const del = row.querySelector(".subtask-del");
       // date field (blocked depts can't be set later than the anchor dept)
@@ -3419,7 +4069,7 @@ function openTaskModal(taskId, defaults={}) {
       if (!stg.fields || typeof stg.fields !== "object") stg.fields = {};
       const card = document.createElement("div");
       card.className = "extra-card";
-      card.innerHTML = `<div class="extra-card-head"><span class="stage-dept-dot" style="background:${dept.color}"></span>ข้อมูลเพิ่มเติม · ${escapeHtml(dept.name)}</div>`;
+      card.innerHTML = `<div class="extra-card-head">${deptIco(dept)}ข้อมูลเพิ่มเติม · ${escapeHtml(dept.name)}</div>`;
       const fieldList = deptFields(stg.deptId);
       const rowsEl = document.createElement("div");
       rowsEl.className = "extra-rows" + (fieldList.length >= 4 ? " cols-2" : "");  // many fields → 2 columns
@@ -3496,8 +4146,10 @@ function openTaskModal(taskId, defaults={}) {
           </div>
           ${c.text ? `<div class="ta-alert-text">${escapeHtml(c.text)}</div>` : ""}
           ${c.photo ? `<img class="ta-photo" src="${c.photo}" alt="แนบรูป">` : ""}
-          ${c.ack ? `<div class="ta-alert-ack">✓ รับทราบแล้วโดย ${escapeHtml(c.ackBy || "—")} · ${formatDateTimeTH(c.ackAt)}</div>` : ""}
-          ${(!c.ack && state.settings.myDept && state.settings.myDept === c.toDept) ? `<button class="btn btn-sm btn-ack ta-alert-ackbtn" data-ackbtn>✓ รับทราบ</button>` : ""}
+          ${c.rejected
+            ? `<div class="ta-alert-ack" style="color:var(--danger)">❌ ปฏิเสธโดย ${escapeHtml(c.rejectedBy || "—")}${c.rejectReason ? " — " + escapeHtml(c.rejectReason) : ""} · ${formatDateTimeTH(c.rejectedAt)}</div>`
+            : (c.ack ? `<div class="ta-alert-ack">✓ รับทราบแล้วโดย ${escapeHtml(c.ackBy || "—")} · ${formatDateTimeTH(c.ackAt)}</div>` : "")}
+          ${(!c.ack && state.settings.myDept && state.settings.myDept === c.toDept) ? `<div class="ta-alert-btns"><button class="btn btn-sm btn-ack ta-alert-ackbtn" data-ackbtn>✓ รับทราบ</button><button class="btn btn-sm btn-reject" data-rejectbtn>✕ ปฏิเสธ</button></div>` : ""}
           <div class="alert-replies" data-replies></div>`;
         al.querySelector(".ta-del").addEventListener("click", () => {
           task.comments = task.comments.filter(x => x.id !== c.id);
@@ -3505,11 +4157,20 @@ function openTaskModal(taskId, defaults={}) {
         });
         const ph = al.querySelector(".ta-photo");
         if (ph) ph.addEventListener("click", () => openPhotoLightbox(c.photo));
-        // ack button — only the targeted department sees it
+        // ack / reject buttons — only the targeted department sees them
         const ackBtn = al.querySelector("[data-ackbtn]");
         if (ackBtn) ackBtn.addEventListener("click", () => {
           c.ack = true; c.ackBy = currentUser(); c.ackAt = Date.now();
           logActivity(task, `รับทราบการแจ้งเตือน (${dept.name})`);
+          persistComments(); renderFeed(); renderBell();
+        });
+        const rejBtn = al.querySelector("[data-rejectbtn]");
+        if (rejBtn) rejBtn.addEventListener("click", async () => {
+          const reason = await promptDialog({ title: "ปฏิเสธคำขอ?", message: `จะแจ้งกลับไปที่ผู้ยื่น (${c.author || "—"})`, placeholder: "เหตุผลที่ปฏิเสธ (ไม่บังคับ)", confirmText: "ปฏิเสธ", danger: true });
+          if (reason === null) return;
+          c.ack = true; c.rejected = true; c.rejectedBy = currentUser(); c.rejectedAt = Date.now(); c.rejectReason = reason;
+          logActivity(task, `❌ ปฏิเสธคำขอ (${dept.name})${reason ? " — " + reason : ""}`);
+          pushNotify("alert", "❌ คำขอถูกปฏิเสธ", `${task.title} · ผู้ยื่น ${c.author || "—"}${reason ? " — " + reason : ""}`, "rej-" + c.id);
           persistComments(); renderFeed(); renderBell();
         });
         // reply thread (c is the modal's comment copy → persistComments syncs to storage)
@@ -3795,10 +4456,7 @@ function formatDateTimeTH(ts) {
 }
 
 /* ---------- Activity logging ---------- */
-// name of the person acting now (placeholder until multi-user login in phase 2)
-function currentUser() {
-  return (state.settings && state.settings.currentUser || "").trim() || "ผู้ใช้";
-}
+// currentUser() is defined earlier, near the Supabase auth block (returns the signed-in profile's name)
 // append a system activity entry to a task's feed (records who did it)
 function logActivity(task, text) {
   if (!task) return;
@@ -4128,7 +4786,7 @@ function renderTodayPanelDept(deptIds, today, pass) {
       const d = getDept(deptId) || {};
       const h = document.createElement("div");
       h.className = "tp-dept-head";
-      h.innerHTML = `<span class="tp-dept-head-dot" style="background:${d.color || '#888'}"></span>${escapeHtml(d.name || deptId)}`;
+      h.innerHTML = `${deptIco(d)}${escapeHtml(d.name || deptId)}`;
       body.appendChild(h);
     }
     if (r.overdueGroups.length) {
@@ -4155,6 +4813,7 @@ function renderTodayPanelDept(deptIds, today, pass) {
 /* ---------- Settings modal (single entry point for all settings) ----------
    Sections are modular — add a new nav button + build<X>Panel() to extend. */
 function openSettingsModal(initialTab = "statuses") {
+  if (!isAdmin()) { toast("หน้าตั้งค่าเปิดได้เฉพาะผู้ดูแลระบบ (admin) เท่านั้น"); return; }   // defense-in-depth; the ⚙ button already gates this
   const overlay = document.createElement("div");
   overlay.className = "overlay";
   overlay.innerHTML = `
@@ -4206,26 +4865,65 @@ function buildUserPanel(container) {
     <h4 class="settings-h">ผู้ใช้ปัจจุบัน</h4>
     <p class="settings-desc">ชื่อนี้จะถูกบันทึกเป็น “ผู้ทำ” ในทุกความเคลื่อนไหว (เปลี่ยนสถานะ / ติ๊กแผนกเสร็จ / คอมเมนต์) เพื่อให้ดูย้อนหลังได้ว่าใครทำอะไร</p>
     <div class="field">
-      <label>ชื่อของฉัน</label>
-      <input type="text" data-f="username" placeholder="เช่น Mr.Natchaphon" autocomplete="off" />
+      <label>บัญชีที่ล็อกอิน</label>
+      <div class="settings-desc" style="margin:0"><b>${escapeHtml(currentProfile ? currentProfile.display_name : "-")}</b> · ${escapeHtml(currentProfile ? currentProfile.email : "-")} · <span style="text-transform:uppercase">${isAdmin() ? "admin" : "member"}</span></div>
     </div>
     <div class="field">
       <label>แผนกของฉัน</label>
       <select data-f="mydept"></select>
-      <span class="settings-toggle-sub" style="margin-top:2px">ในป๊อบอัพแก้ไขงาน เช็คลิสต์ของแต่ละตู้จะแสดงเฉพาะของแผนกนี้ — ถ้าไม่ระบุ จะใช้แผนกที่กำลังดูอยู่ (หรือแสดงทุกแผนก)</span>
+      <span class="settings-toggle-sub" style="margin-top:2px">ในป๊อบอัพโครงการ เช็คลิสต์ของแต่ละตู้จะแสดงเฉพาะของแผนกนี้ — ถ้าไม่ระบุ จะใช้แผนกที่กำลังดูอยู่ (หรือแสดงทุกแผนก)</span>
     </div>
-    <p class="settings-desc" style="margin-top:4px">🔒 เฟส 2 (multi-user) จะเปลี่ยนเป็นระบบ login — ชื่อ + แผนกจะมาจากบัญชีที่เข้าสู่ระบบโดยอัตโนมัติ</p>
+    <p class="settings-desc" style="margin-top:4px">🔒 ชื่อ/อีเมล/สิทธิ์มาจากบัญชีที่ล็อกอินอัตโนมัติ (เปลี่ยนชื่อที่แสดง หรือเพิ่มผู้ใช้/admin ให้ทำใน Supabase → ตาราง <code>profiles</code>) — แผนกยังเลือกเองตรงนี้เหมือนเดิม เพราะบางคนใช้คนละแผนกต่าง board</p>
   `;
   container.appendChild(sec);
-  const input = sec.querySelector('[data-f="username"]');
-  input.value = state.settings.currentUser || "";
-  input.addEventListener("input", () => { state.settings.currentUser = input.value; saveState(); });
   const deptSel = sec.querySelector('[data-f="mydept"]');
   deptSel.innerHTML = `<option value="">— ไม่ระบุ —</option>` +
     (state.departments || []).map(d => `<option value="${d.id}">${escapeHtml(d.name)}</option>`).join("");
   deptSel.value = state.settings.myDept || "";
-  deptSel.addEventListener("change", () => { state.settings.myDept = deptSel.value; saveState(); renderAll(); checkAlerts(); });
-  setTimeout(() => input.focus(), 30);
+  deptSel.addEventListener("change", () => {
+    state.settings.myDept = deptSel.value;
+    // changing your department switches the calendar/today view to it
+    if (deptSel.value && getDept(deptSel.value)) state.settings.viewDepts = [deptSel.value];
+    saveState(); renderAll(); checkAlerts();
+  });
+
+  // ★ pending-approval list (admin only — this whole tab already requires admin to open).
+  // Magic link accepts any email, so new sign-ins land here "unapproved" until let in explicitly.
+  const pendSec = document.createElement("div");
+  pendSec.className = "settings-section";
+  pendSec.innerHTML = `
+    <h4 class="settings-h">👥 ผู้ใช้รออนุมัติ</h4>
+    <p class="settings-desc">ใครก็ล็อกอินด้วยอีเมลอะไรก็ได้ (magic link ไม่จำกัดโดเมน) — คนใหม่จะเห็นข้อมูลไม่ได้จนกว่าจะอนุมัติที่นี่</p>
+    <div data-pending-list><div class="cf-empty">กำลังโหลด...</div></div>
+  `;
+  container.appendChild(pendSec);
+  const pendList = pendSec.querySelector("[data-pending-list]");
+  (async () => {
+    const sb = getSupabase();
+    if (!sb) { pendList.innerHTML = `<div class="cf-empty">โหลดไม่สำเร็จ — เช็คอินเทอร์เน็ต</div>`; return; }
+    const { data, error } = await sb.from("profiles").select("*").eq("approved", false).order("created_at", { ascending: false });
+    if (error) { pendList.innerHTML = `<div class="cf-empty">โหลดไม่สำเร็จ: ${escapeHtml(error.message)}</div>`; return; }
+    if (!data || !data.length) { pendList.innerHTML = `<div class="cf-empty">ไม่มีคนรออนุมัติตอนนี้</div>`; return; }
+    pendList.innerHTML = "";
+    data.forEach(p => {
+      const row = document.createElement("div");
+      row.className = "default-stage-row";
+      row.style.justifyContent = "space-between";
+      row.innerHTML = `
+        <span class="default-stage-name"><b>${escapeHtml(p.display_name || "")}</b> · ${escapeHtml(p.email || "")}</span>
+        <button class="btn btn-sm btn-primary" data-approve>✓ อนุมัติ</button>
+      `;
+      row.querySelector("[data-approve]").addEventListener("click", async (e) => {
+        e.target.disabled = true; e.target.textContent = "กำลังอนุมัติ...";
+        const { error: upErr } = await sb.from("profiles").update({ approved: true }).eq("id", p.id);
+        if (upErr) { toast("อนุมัติไม่สำเร็จ: " + upErr.message); e.target.disabled = false; e.target.textContent = "✓ อนุมัติ"; return; }
+        toast(`อนุมัติ ${p.display_name || p.email} แล้ว`);
+        row.remove();
+        if (!pendList.children.length) pendList.innerHTML = `<div class="cf-empty">ไม่มีคนรออนุมัติตอนนี้</div>`;
+      });
+      pendList.appendChild(row);
+    });
+  })();
 }
 
 /* Settings → สถานะงาน (live editing, applies immediately) */
@@ -4359,7 +5057,7 @@ function buildDeptsPanel(container) {
       row.className = "default-stage-row";
       row.innerHTML = `
         <input type="checkbox" ${blocked.has(d.id) ? "checked" : ""} />
-        <span class="stage-dept-dot" style="background:${d.color}"></span>
+        ${deptIco(d)}
         <span class="default-stage-name">${escapeHtml(d.name)}</span>
       `;
       row.querySelector("input").addEventListener("change", (e) => {
@@ -4393,7 +5091,7 @@ function buildDeptsPanel(container) {
       row.className = "default-stage-row";
       row.innerHTML = `
         <input type="checkbox" ${chosen.has(dpt.id) ? "checked" : ""} />
-        <span class="stage-dept-dot" style="background:${dpt.color}"></span>
+        ${deptIco(dpt)}
         <span class="default-stage-name">${escapeHtml(dpt.name)}</span>
       `;
       const cb = row.querySelector("input");
@@ -4413,17 +5111,14 @@ function buildDeptsPanel(container) {
       const row = document.createElement("div");
       row.className = "status-edit-row";
       row.innerHTML = `
-        <label class="color-swatch" style="background:${dpt.color}">
-          <input type="color" value="${dpt.color}" />
-        </label>
+        <input type="text" class="dept-ico-input" value="${escapeHtml(dpt.icon || "🏷️")}" title="อีโมจิของแผนก (กด Win + . หรือ Ctrl/Cmd + Ctrl + Space เพื่อเลือก)" />
         <input type="text" value="${escapeHtml(dpt.name)}" placeholder="ชื่อแผนก" />
         <button class="btn btn-ghost btn-sm" data-act="up" title="ขึ้น">↑</button>
         <button class="btn btn-ghost btn-sm" data-act="down" title="ลง">↓</button>
         <button class="btn btn-ghost btn-sm btn-danger" data-act="del" title="ลบ">✕</button>
       `;
-      const [swatch, nameInput, upBtn, downBtn, delBtn] = row.children;
-      const colorInput = swatch.querySelector("input");
-      colorInput.addEventListener("input", () => { dpt.color = colorInput.value; swatch.style.background = colorInput.value; saveState(); renderDefaults(); renderAll(); });
+      const [icoInput, nameInput, upBtn, downBtn, delBtn] = row.children;
+      icoInput.addEventListener("input", () => { dpt.icon = icoInput.value.trim() || "🏷️"; saveState(); renderDefaults(); renderAll(); });
       nameInput.addEventListener("input", () => { dpt.name = nameInput.value; saveState(); renderDefaults(); renderAll(); });
       upBtn.addEventListener("click", () => { if (i>0){ [state.departments[i-1],state.departments[i]]=[state.departments[i],state.departments[i-1]]; saveState(); renderRows(); renderDefaults(); renderAll(); } });
       downBtn.addEventListener("click", () => { if (i<state.departments.length-1){ [state.departments[i+1],state.departments[i]]=[state.departments[i],state.departments[i+1]]; saveState(); renderRows(); renderDefaults(); renderAll(); } });
@@ -4452,7 +5147,7 @@ function buildDeptsPanel(container) {
   renderRows();
   renderDefaults();
   sec.querySelector('[data-act="add"]').addEventListener("click", () => {
-    state.departments.push({ id: uid("d"), name: "แผนกใหม่", color: "#7b68ee" });
+    state.departments.push({ id: uid("d"), name: "แผนกใหม่", color: "#7b68ee", icon: "🏷️", checklist: [], fields: [] });
     saveState(); renderRows(); renderDefaults(); renderAll();
   });
 }
@@ -4871,7 +5566,7 @@ function renderDashboard() {
     <div class="dash-filter">
       <span class="dash-filter-lbl">กรองแผนก:</span>
       <button class="dept-chip${!dep ? ' active' : ''}" data-df="">ทุกแผนก</button>
-      ${(state.departments || []).map(d => `<button class="dept-chip${dep === d.id ? ' active' : ''}" data-df="${d.id}"><span class="dept-chip-dot" style="background:${d.color}"></span>${escapeHtml(d.name)}</button>`).join("")}
+      ${(state.departments || []).map(d => `<button class="dept-chip${dep === d.id ? ' active' : ''}" data-df="${d.id}">${deptIco(d)}${escapeHtml(d.name)}</button>`).join("")}
       <button class="btn btn-sm dash-print-hide" data-act="print" title="พิมพ์ / บันทึกเป็น PDF" style="margin-left:auto">🖨️ พิมพ์ / PDF</button>
     </div>`;
 
@@ -4900,7 +5595,7 @@ function renderDashboard() {
     <div class="dash-deptlist">
       ${deptRows.map(r => `
         <div class="dash-deptrow">
-          <span class="dash-deptdot" style="background:${r.d.color}"></span>
+          ${deptIco(r.d)}
           <span class="dash-deptname">${escapeHtml(r.d.name)}</span>
           ${dashBar(r.total ? r.pct : Math.round(r.projDone / r.using * 100), r.d.color)}
           <span class="dash-deptval">${r.total ? `${r.done}/${r.total} (${r.pct}%) · ` : ""}เสร็จ ${r.projDone}/${r.using}${r.projOverdue ? ` <span class="dash-dept-od">เลย ${r.projOverdue}</span>` : ""}</span>
@@ -4916,7 +5611,7 @@ function renderDashboard() {
         const due = dueOf(t);
         const od2 = due && due < today && !comp;
         const dotStages = dep ? (t.deptStages || []).filter(s => s.deptId === dep) : (t.deptStages || []);
-        const dots = dotStages.map(s => { const d = getDept(s.deptId) || {}; const dn = isDeptComplete(t, s.deptId); return `<span class="dash-dot${dn ? ' done' : ''}" style="background:${d.color || '#888'}" title="${escapeHtml(d.name || '')}: ${dn ? 'เสร็จ' : 'ยังไม่เสร็จ'}"></span>`; }).join("");
+        const dots = dotStages.map(s => { const d = getDept(s.deptId) || {}; const dn = isDeptComplete(t, s.deptId); return `<span class="dash-dept-ic${dn ? ' done' : ''}" title="${escapeHtml(d.name || '')}: ${dn ? 'เสร็จ' : 'ยังไม่เสร็จ'}">${deptIco(d)}${dn ? '<span class="dash-ic-check">✓</span>' : ''}</span>`; }).join("");
         return `
           <div class="dash-card${comp ? ' complete' : ''}" data-id="${t.id}">
             <div class="dash-card-head">
@@ -4959,7 +5654,7 @@ function openProjectDashboard(t) {
     const val = `${uses ? `${dp.done}/${dp.total}` : (done ? "เสร็จ" : "—")}${stg.due ? ` · ${sod ? "เลย " : ""}${formatDateTH(stg.due)}` : ""}`;
     return `
       <div class="dash-pd-cab${done ? ' done' : ''}">
-        <span class="dash-pd-dot" style="background:${d.color}"></span>
+        ${deptIco(d)}
         <span class="dash-pd-name">${escapeHtml(d.name)}${done ? ' ✓' : ''}</span>
         ${dashBar(pc, done ? '#10b981' : d.color)}
         <span class="dash-pd-val"${sod ? ' style="color:var(--danger);font-weight:700"' : ''}>${val}</span>
@@ -5051,7 +5746,7 @@ function buildWorkOrderSheet(deptId, day) {
   });
   if (!entries.length) return "";
   // group by the first field's chosen value (unspecified bucket sorts last)
-  const UNSET = " ";
+  const UNSET = " ";
   const groups = new Map();
   entries.forEach(e => {
     const key = groupField ? (stageFieldLabel(groupField, e.stg) || UNSET) : "all";
@@ -5096,7 +5791,7 @@ function buildWorkOrderSheet(deptId, day) {
       html += `</div>`;
     });
   });
-  html += `<div class="wo-foot"><span>ผู้รับงาน / ผู้ขับ: ____________________</span><span>ลงชื่อ: ____________________  วันที่ ____ / ____ / ______</span></div></div>`;
+  html += `<div class="wo-foot"><span>ผู้รับงาน: ____________________</span><span>ลงชื่อ: ____________________  วันที่ ____ / ____ / ______</span></div></div>`;
   return html;
 }
 function openWorkOrderPrint() {
@@ -5254,17 +5949,18 @@ function taskRelevantToMe(t) {
   return (t.deptStages || []).some(s => s.deptId === my);
 }
 // fire a desktop notification (no-op if the type is off / permission not granted)
+// renotify:true (needs a tag) makes a repeat change on the same task re-alert instead of silently replacing
 function pushNotify(type, title, body, tag) {
   if (!canNotify(type)) return;
-  try { new Notification(title, { body: body || "", tag: tag || undefined }); } catch (e) { /* some engines need a ServiceWorker; ignore */ }
+  try { new Notification(title, { body: body || "", tag: tag || undefined, renotify: !!tag }); } catch (e) { /* some engines need a ServiceWorker; ignore */ }
 }
 // status / done changes on a task (or one of its cabinets)
 function notifyStatusChange(t, sub, oldId, newId) {
   if (oldId === newId || !taskRelevantToMe(t)) return;
   const ns = getStatus(newId), os = getStatus(oldId);
-  const what = sub ? `ตู้ “${sub.text || "-"}”` : "งาน";
-  if (ns.isDone && !os.isDone) pushNotify("done", "✅ เสร็จแล้ว", `${t.title} · ${what}`, "dn-" + (sub ? sub.id : t.id));
-  else pushNotify("status", "🔁 เปลี่ยนสถานะ", `${t.title} · ${what} → ${ns.name}`, "st-" + (sub ? sub.id : t.id));
+  const what = sub ? ` · ตู้ “${sub.text || "-"}”` : "";   // task level = just the title; cabinet adds its name
+  if (ns.isDone && !os.isDone) pushNotify("done", "✅ เสร็จแล้ว", `${t.title}${what}`, "dn-" + (sub ? sub.id : t.id));
+  else pushNotify("status", "🔁 เปลี่ยนสถานะ", `${t.title}${what} → ${ns.name}`, "st-" + (sub ? sub.id : t.id));
 }
 // fire status/done notifications for everything that changed between a modal's before/after snapshot
 function notifyTaskDiff(before, after) {
@@ -5406,18 +6102,27 @@ function openAlertPopup(list) {
       <div class="alert-replies" data-replies></div>
       <div class="alert-card-actions">
         <button class="btn btn-sm btn-ack" data-ack>✓ รับทราบ</button>
+        <button class="btn btn-sm btn-reject" data-reject>✕ ปฏิเสธ</button>
         <button class="btn btn-sm" data-open2>เปิดงาน</button>
       </div>`;
     // reply thread (c is the real stored comment here → saveState persists)
     buildAlertReplies(card.querySelector("[data-replies]"), task, c, () => { saveState(); renderAll(); });
+    const resolveCard = () => { card.remove(); const left = listEl.querySelectorAll(".alert-card").length; countEl.textContent = left; if (!left) close(); };
     card.querySelector("[data-ack]").addEventListener("click", () => {
       c.ack = true; c.ackBy = currentUser(); c.ackAt = Date.now();
       logActivity(task, `รับทราบการแจ้งเตือน (${dept.name})`);
       task.updatedAt = Date.now(); saveState(); renderAll();
-      card.remove();
-      const left = listEl.querySelectorAll(".alert-card").length;
-      countEl.textContent = left;
-      if (!left) close();
+      resolveCard();
+    });
+    card.querySelector("[data-reject]").addEventListener("click", async () => {
+      const reason = await promptDialog({ title: "ปฏิเสธคำขอ?", message: `จะแจ้งกลับไปที่ผู้ยื่น (${c.author || "—"})`, placeholder: "เหตุผลที่ปฏิเสธ (ไม่บังคับ)", confirmText: "ปฏิเสธ", danger: true });
+      if (reason === null) return;   // cancelled
+      c.ack = true; c.rejected = true; c.rejectedBy = currentUser(); c.rejectedAt = Date.now(); c.rejectReason = reason;
+      logActivity(task, `❌ ปฏิเสธคำขอ (${dept.name})${reason ? " — " + reason : ""}`);
+      // notify the submitter (the alert's author) — browser notification + visible in Activity
+      pushNotify("alert", "❌ คำขอถูกปฏิเสธ", `${task.title} · ผู้ยื่น ${c.author || "—"}${reason ? " — " + reason : ""}`, "rej-" + c.id);
+      task.updatedAt = Date.now(); saveState(); renderAll();
+      resolveCard();
     });
     const open = () => { close(); openTaskModal(task.id); };
     card.querySelector("[data-open]").addEventListener("click", open);
@@ -5544,7 +6249,14 @@ function renderAll() {
   renderBell();
 }
 
-document.getElementById("btnSettings").addEventListener("click", () => openSettingsModal());
+document.getElementById("btnSettings").addEventListener("click", () => {
+  if (!isAdmin()) { toast("หน้าตั้งค่าเปิดได้เฉพาะผู้ดูแลระบบ (admin) เท่านั้น"); return; }
+  openSettingsModal();
+});
+document.getElementById("btnLogout").addEventListener("click", async () => {
+  const ok = await confirmDialog({ title: "ออกจากระบบ?", message: `ออกจากระบบบัญชี ${currentProfile ? currentProfile.email : ""}`, confirmText: "ออกจากระบบ", danger: false, icon: "🚪" });
+  if (ok) signOutUser();
+});
 document.getElementById("btnBell").addEventListener("click", () => {
   const list = pendingAlerts();
   if (list.length) openAlertPopup(list);
@@ -5587,6 +6299,8 @@ document.getElementById("tpNextDay").addEventListener("click", () => { tpDayOffs
 document.getElementById("tpDayBtn").addEventListener("click", () => { if (tpDayOffset !== 0) { tpDayOffset = 0; renderTodayPanel(); } });
 document.getElementById("tpPrint").addEventListener("click", openWorkOrderPrint);
 document.getElementById("btnQuickAdd").addEventListener("click", () => openTaskModal(null));
+document.getElementById("btnDrawReq").addEventListener("click", openDrawRequestModal);
+document.getElementById("btnImportReq").addEventListener("click", openImportRequestsModal);
 (() => {
   const searchEl = document.getElementById("searchInput");
   const searchWrap = searchEl.closest(".toolbar-search");
@@ -5732,10 +6446,18 @@ if (state.tasks.length === 0 && !localStorage.getItem(STORAGE_KEY)) {
   saveState();
 }
 
-renderAll();
-// on app open: urgent department alerts take precedence over the routine status report
-if (pendingAlerts().length) openAlertPopup();
-else if (state.tasks.length) openStatusReport();
+// starts the actual app — called once by onSignedIn() after auth resolves (see initAuth() above)
+async function startApp() {
+  renderUserBadge();
+  await syncRootFromCloud();   // first login ever seeds the cloud from local data; every login after that pulls the cloud copy
+  applyMyDeptDefaultView();   // open on the user's own department by default
+  renderAll();
+  // on app open: urgent department alerts take precedence over the routine status report
+  if (pendingAlerts().length) openAlertPopup();
+  else if (state.tasks.length) openStatusReport();
+  refreshImportBadge();   // fire-and-forget: check for pending online drawing requests (Supabase)
+}
+initAuth();
 </script>
 </body>
 </html>
