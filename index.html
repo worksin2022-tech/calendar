@@ -60,7 +60,7 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
 .login-screen.hidden { display: none !important; }
 .login-card { width: 92%; max-width: 360px; background: #fff; border: 1px solid var(--border); border-radius: 16px; padding: 28px 26px; box-shadow: 0 4px 24px rgba(16,24,40,.08); text-align: center; }
 .login-logo { display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 20px; font-weight: 700; margin-bottom: 6px; }
-.login-logo .logo { width: 30px; height: 30px; }
+.login-logo .logo { width: 30px; height: 30px; object-fit: contain; border-radius: 6px; }
 .login-sub { font-size: 13px; color: var(--text-dim); margin: 0 0 20px; }
 .login-card .field { text-align: left; margin-bottom: 14px; }
 .login-card input { width: 100%; padding: 11px 12px; border: 1px solid var(--border-strong); border-radius: 9px; font-size: 15px; box-sizing: border-box; }
@@ -88,11 +88,10 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
 .board-seg-btn.active { background: var(--accent); color: #fff; }
 .sidebar h1 .logo {
   width: 28px; height: 28px;
-  background: var(--accent);
-  color: #fff;
   border-radius: 6px;
-  display: flex; align-items: center; justify-content: center;
-  font-weight: 700;
+  display: block;
+  object-fit: contain;
+  flex: 0 0 auto;
 }
 .sidebar h2 {
   font-size: 11px;
@@ -1677,7 +1676,7 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
      signed in; the app underneath doesn't render/start until auth is resolved (see startApp()). -->
 <div class="login-screen" id="loginScreen">
   <div class="login-card">
-    <div class="login-logo"><span class="logo">A</span> Avatar Planning</div>
+    <div class="login-logo"><img class="logo" src="Logo Avatar เล็ก.png" alt="" /> Avatar Planning</div>
     <p class="login-sub">เข้าสู่ระบบด้วยอีเมลบริษัท — ไม่ต้องใช้รหัสผ่าน</p>
     <div class="field" id="loginEmailField">
       <label>อีเมล</label>
@@ -1708,7 +1707,7 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
 <div class="app hidden" id="appRoot">
   <aside class="sidebar">
     <div class="sb-brand">
-      <h1><span class="logo">A</span> Avatar Planning</h1>
+      <h1><img class="logo" src="Logo Avatar เล็ก.png" alt="" /> Avatar Planning</h1>
       <div class="sb-brand-actions">
         <button class="btn btn-settings btn-sm" id="btnSettings" title="ตั้งค่า">⚙</button>
         <button class="btn btn-settings btn-sm" id="btnLogout" title="ออกจากระบบ">🚪</button>
