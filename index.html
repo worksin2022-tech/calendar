@@ -2296,12 +2296,21 @@ function scheduleCloudSave() {
   clearTimeout(_cloudSaveTimer);
   _cloudSaveTimer = setTimeout(pushAllBoardsToCloud, 900);   // debounce: collapse rapid edits into one write
 }
+// board id -> JSON we last confirmed pushed. Every saveState() pushes ALL boards (see above), but
+// slice 3 has every device listening for changes on every board row — pushing a board whose content
+// didn't actually change would spam other devices' realtime handlers for nothing, so skip those.
+const _lastPushedJson = {};
 async function pushAllBoardsToCloud() {
   const sb = getSupabase();
   if (!sb || !currentProfile) return;
-  const rows = (root.boardMeta || []).map(b => ({
+  const rows = (root.boardMeta || []).filter(b => {
+    const json = JSON.stringify(root.boards[b.id]);
+    if (_lastPushedJson[b.id] === json) return false;
+    _lastPushedJson[b.id] = json;
+    return true;
+  }).map(b => ({
     id: b.id, name: b.name, data: root.boards[b.id],
-    updated_at: new Date().toISOString(), updated_by: currentProfile.display_name,
+    updated_at: new Date().toISOString(), updated_by: currentProfile.display_name, updated_by_client: _clientId,
   }));
   if (!rows.length) return;
   const { error } = await sb.from("boards").upsert(rows);
@@ -2329,6 +2338,71 @@ async function syncRootFromCloud() {
   if (!root.boards[root.activeBoard]) root.activeBoard = (boardMeta[0] || {}).id || "factory";
   state = root.boards[root.activeBoard];
   localStorage.setItem(STORAGE_KEY, JSON.stringify(root));   // refresh the local cache to match the cloud
+  Object.keys(boards).forEach(id => { _lastPushedJson[id] = JSON.stringify(boards[id]); });   // this IS the cloud's current content — don't re-push it unchanged
+}
+
+/* ----- Phase 2, slice 3: realtime sync across devices (Supabase Realtime on public.boards) -----
+   Slice 2b keeps the cloud in sync, but only pulls on login/board-switch — a change on device A is
+   invisible on device B until it manually refreshes. This subscribes to live changes on the boards
+   table so device B updates immediately, and fires the same desktop notification a local edit would
+   (new department alert / status change) even though the edit never touched this browser. */
+const _clientId = uid("client");   // tags our own writes so the echo of our own realtime event is ignored, not reprocessed as "remote"
+let _realtimeChannel = null;
+function startRealtimeSync() {
+  const sb = getSupabase();
+  if (!sb || _realtimeChannel) return;
+  _realtimeChannel = sb.channel("boards-sync")
+    .on("postgres_changes", { event: "*", schema: "public", table: "boards" }, handleRealtimeBoardChange)
+    .subscribe();
+}
+function getStatusIn(ws, id) { return (ws.statuses || []).find(s => s.id === id) || (ws.statuses || [])[0]; }
+function getDeptIn(ws, id) { return (ws.departments || []).find(d => d.id === id) || null; }
+// same notification rules as pushNotify()/canNotify()/taskRelevantToMe() further down, but reading the
+// REMOTE board's own settings — the board that just changed isn't necessarily the one on screen here.
+function notifyRemoteBoardChange(ws, newTasks, oldTasksById) {
+  const notify = ws.settings && ws.settings.notify;
+  if (!(typeof window !== "undefined" && "Notification" in window) || !notify || !notify.enabled || Notification.permission !== "granted") return;
+  const myDept = ws.settings.myDept;
+  const relevant = t => !notify.onlyMyDept || !myDept || !getDeptIn(ws, myDept) || (t.deptStages || []).some(s => s.deptId === myDept);
+  const fire = (type, title, body, tag) => { if (notify[type]) { try { new Notification(title, { body: body || "", tag, renotify: true }); } catch (e) {} } };
+  newTasks.forEach(t => {
+    const before = oldTasksById[t.id];
+    if (!before || !relevant(t)) return;   // brand-new task (no prior snapshot) or not my department — nothing to diff/notify
+    const oldComments = {}; (before.comments || []).forEach(c => oldComments[c.id] = c);
+    (t.comments || []).forEach(c => {
+      if (c.type === "alert" && !c.ack && !oldComments[c.id] && (!myDept || c.toDept === myDept)) {
+        fire("alert", "🔔 การแจ้งเตือนใหม่", `${t.title}${c.text ? " · " + c.text : ""}`, "rt-alert-" + c.id);
+      }
+    });
+    if (before.statusId !== t.statusId) {
+      const ns = getStatusIn(ws, t.statusId), os = getStatusIn(ws, before.statusId);
+      if (ns && os) {
+        const done = ns.isDone && !os.isDone;
+        fire(done ? "done" : "status", done ? "✅ เสร็จแล้ว" : "🔁 เปลี่ยนสถานะ", `${t.title} → ${ns.name}`, "rt-st-" + t.id);
+      }
+    }
+  });
+}
+function handleRealtimeBoardChange(payload) {
+  const row = payload.new;
+  if (!row || !row.id || row.updated_by_client === _clientId) return;   // no row (delete) or our own write echoing back — already applied locally
+  const oldWs = root.boards[row.id];
+  const newWs = row.data;
+  migrateState(newWs);
+  if (oldWs) {
+    const oldTasksById = {}; (oldWs.tasks || []).forEach(t => oldTasksById[t.id] = t);
+    notifyRemoteBoardChange(newWs, newWs.tasks || [], oldTasksById);
+  }
+  // don't clobber an edit in progress on THIS board on THIS device — our own debounced push wins
+  // shortly after anyway (last-write-wins, same rule slice 2b already established)
+  if (_cloudSaveTimer && root.activeBoard === row.id) return;
+  const isNewBoard = !root.boards[row.id];
+  root.boards[row.id] = newWs;
+  _lastPushedJson[row.id] = JSON.stringify(newWs);
+  if (isNewBoard && !root.boardMeta.some(b => b.id === row.id)) root.boardMeta.push({ id: row.id, name: row.name });
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(root));
+  if (row.id === root.activeBoard) { state = root.boards[root.activeBoard]; renderAll(); if (pendingAlerts().length) openAlertPopup(); }
+  else renderBoardSwitcher();   // new/renamed board from another device shows up in the sidebar right away
 }
 function uid(prefix = "id") {
   return prefix + "_" + Math.random().toString(36).slice(2, 9) + Date.now().toString(36).slice(-4);
@@ -6449,6 +6523,7 @@ if (state.tasks.length === 0 && !localStorage.getItem(STORAGE_KEY)) {
 async function startApp() {
   renderUserBadge();
   await syncRootFromCloud();   // first login ever seeds the cloud from local data; every login after that pulls the cloud copy
+  startRealtimeSync();   // slice 3: start listening for changes other devices push from this point on
   applyMyDeptDefaultView();   // open on the user's own department by default
   renderAll();
   // on app open: urgent department alerts take precedence over the routine status report
