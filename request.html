@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ยื่นขอแบบ — Avatar Electric</title>
+<style>
+  :root {
+    --accent: #2563eb; --danger: #f04438; --border: #e4e7ec; --border-strong: #d0d5dd;
+    --text: #1d2939; --text-dim: #475467; --text-faint: #98a2b3; --panel: #f9fafb;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: "Segoe UI", "Sarabun", system-ui, sans-serif;
+    background: var(--panel); color: var(--text); padding: 20px 14px 60px;
+  }
+  .wrap { max-width: 480px; margin: 0 auto; }
+  .brand { text-align: center; margin-bottom: 18px; }
+  .brand h1 { font-size: 19px; margin: 0 0 2px; }
+  .brand p { font-size: 12px; color: var(--text-dim); margin: 0; }
+  .card { background: #fff; border: 1px solid var(--border); border-radius: 14px; padding: 18px 16px; box-shadow: 0 1px 3px rgba(16,24,40,.06); }
+  .field { margin-bottom: 16px; }
+  .field label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+  .req { color: var(--danger); }
+  .hint { font-size: 11.5px; color: var(--text-faint); margin-top: 4px; display: block; }
+  input[type=text], input[type=date], textarea {
+    width: 100%; padding: 11px 12px; border: 1px solid var(--border-strong); border-radius: 9px;
+    font-size: 15px; font-family: inherit; background: #fff; color: var(--text);
+  }
+  textarea { resize: vertical; min-height: 70px; }
+  input:focus, textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .seg { display: flex; border: 1px solid var(--border-strong); border-radius: 10px; overflow: hidden; }
+  .seg button { flex: 1; border: none; background: #fff; padding: 12px 6px; font-size: 13.5px; font-weight: 600; color: var(--text-dim); cursor: pointer; }
+  .seg button + button { border-left: 1px solid var(--border-strong); }
+  .seg button.active { background: var(--accent); color: #fff; }
+  .field-row { display: flex; gap: 10px; }
+  .field-row .field { flex: 1; min-width: 0; }
+  .photo-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .photo-btn { padding: 10px 14px; border-radius: 9px; border: 1px solid var(--border-strong); background: #fff; font-size: 13.5px; cursor: pointer; }
+  .photo-preview { position: relative; display: none; }
+  .photo-preview img { max-height: 64px; border-radius: 8px; border: 1px solid var(--border); display: block; }
+  .photo-preview.show { display: inline-block; }
+  .photo-rm { position: absolute; top: -7px; right: -7px; width: 20px; height: 20px; border-radius: 50%; background: var(--danger); color: #fff; border: 2px solid #fff; font-size: 11px; cursor: pointer; }
+  .submit-btn { width: 100%; padding: 14px; border: none; border-radius: 10px; background: var(--accent); color: #fff; font-size: 15px; font-weight: 700; cursor: pointer; margin-top: 6px; }
+  .submit-btn:disabled { opacity: .55; cursor: default; }
+  .err { color: var(--danger); font-size: 12.5px; margin-top: 10px; min-height: 1em; }
+  .success { text-align: center; padding: 30px 10px; }
+  .success .ico { font-size: 44px; margin-bottom: 10px; }
+  .success h2 { font-size: 17px; margin: 0 0 8px; }
+  .success p { font-size: 13.5px; color: var(--text-dim); margin: 0 0 20px; }
+  .again-btn { padding: 10px 18px; border-radius: 9px; border: 1px solid var(--border-strong); background: #fff; font-size: 13.5px; cursor: pointer; }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand">
+    <h1>📐 ยื่นขอแบบ</h1>
+    <p>Avatar Electric — กรอกแล้วส่งได้เลย ไม่ต้องเข้าแอป ทีมเขียนแบบจะได้รับแจ้งเตือนทันที</p>
+  </div>
+
+  <div class="card" id="formCard">
+    <div class="field">
+      <label>ประเภทแบบ</label>
+      <div class="seg" id="kindSeg">
+        <button type="button" data-k="structure" class="active">เขียนแบบโครงสร้างตู้</button>
+        <button type="button" data-k="circuit">เขียนแบบวงจรไฟฟ้า</button>
+      </div>
+      <span class="hint" id="kindHint">งานก่อนได้งาน (เก็ง) — จะเข้าคิวเขียนแบบโครงสร้างของทีม</span>
+    </div>
+    <div class="field">
+      <label>โครงการ / SO <span class="req">*</span></label>
+      <input type="text" id="fProject" placeholder="เช่น SO-1234 ตู้ MDB ลูกค้า A" autocomplete="off" />
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>เลข DWG <span class="req">*</span></label>
+        <input type="text" id="fDwg" autocomplete="off" />
+      </div>
+      <div class="field">
+        <label>วันที่ต้องการให้จบ <span class="req">*</span></label>
+        <input type="date" id="fDue" />
+        <span class="hint">ไม่ต่ำกว่า 2 วันจากวันนี้</span>
+      </div>
+    </div>
+    <div class="field">
+      <label>รายละเอียดเกี่ยวกับงาน เช่น จำนวนตู้</label>
+      <textarea id="fDetail" placeholder="เช่น 3 ตู้ MDB, ..."></textarea>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>ชื่อผู้ยื่น <span class="req">*</span></label>
+        <input type="text" id="fSubmitter" autocomplete="off" />
+      </div>
+      <div class="field">
+        <label>ทีม Sales</label>
+        <input type="text" id="fSales" autocomplete="off" />
+      </div>
+    </div>
+    <div class="field">
+      <label>แนบรูป (ถ้ามี)</label>
+      <div class="photo-row">
+        <button type="button" class="photo-btn" id="btnAttach">📎 แนบ / ถ่ายรูป</button>
+        <div class="photo-preview" id="photoPreview"><img id="photoImg" /><button type="button" class="photo-rm" id="photoRm">✕</button></div>
+      </div>
+      <input type="file" accept="image/*" capture="environment" id="fPhoto" class="hidden" />
+    </div>
+    <button type="button" class="submit-btn" id="btnSubmit">ส่งคำขอ</button>
+    <div class="err" id="errMsg"></div>
+  </div>
+
+  <div class="card success hidden" id="successCard">
+    <div class="ico">✅</div>
+    <h2>ส่งคำขอเรียบร้อยแล้ว</h2>
+    <p>ทีมเขียนแบบจะได้รับแจ้งเตือน และจะติดต่อกลับหากต้องการข้อมูลเพิ่มเติม</p>
+    <button type="button" class="again-btn" id="btnAgain">ยื่นคำขออีกรายการ</button>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script>
+// Same Supabase project as the main QC Calendar app — see supabase-schema.sql for the table this writes to.
+const SUPABASE_URL = "https://mirkqbmiuhiyuhiktuko.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1pcmtxYm1pdWhpeXVoaWt0dWtvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU4OTYwMjIsImV4cCI6MjEwMTQ3MjAyMn0.BaWomG3CTP99rAuV-ENXVMs3vybzlfbTPrqgGdbtX0c";
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let kind = "structure";
+let pendingFile = null;
+
+const $ = (id) => document.getElementById(id);
+const kindHintText = {
+  structure: "งานก่อนได้งาน (เก็ง) — จะเข้าคิวเขียนแบบโครงสร้างของทีม",
+  circuit: "งานที่ได้แล้ว — จะแนบเข้ากับโปรเจคในปฏิทินผลิต",
+};
+
+document.querySelectorAll("#kindSeg button").forEach(b => b.addEventListener("click", () => {
+  kind = b.dataset.k;
+  document.querySelectorAll("#kindSeg button").forEach(x => x.classList.toggle("active", x === b));
+  $("kindHint").textContent = kindHintText[kind];
+}));
+
+// due date default = today + 2, min = today + 2
+function isoDate(d) { return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0"); }
+const today = new Date();
+const minDue = new Date(today); minDue.setDate(minDue.getDate() + 2);
+$("fDue").min = isoDate(minDue);
+$("fDue").value = isoDate(minDue);
+
+// photo: pick + client-side compress (canvas, max ~1000px, jpeg) to keep uploads small
+$("btnAttach").addEventListener("click", () => $("fPhoto").click());
+$("fPhoto").addEventListener("change", () => {
+  const file = $("fPhoto").files && $("fPhoto").files[0];
+  $("fPhoto").value = "";
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    const img = new Image();
+    img.onload = () => {
+      let { width, height } = img;
+      const scale = Math.min(1, 1000 / Math.max(width, height));
+      width = Math.max(1, Math.round(width * scale));
+      height = Math.max(1, Math.round(height * scale));
+      const canvas = document.createElement("canvas");
+      canvas.width = width; canvas.height = height;
+      canvas.getContext("2d").drawImage(img, 0, 0, width, height);
+      canvas.toBlob(blob => {
+        pendingFile = blob;
+        $("photoImg").src = URL.createObjectURL(blob);
+        $("photoPreview").classList.add("show");
+      }, "image/jpeg", 0.6);
+    };
+    img.src = reader.result;
+  };
+  reader.readAsDataURL(file);
+});
+$("photoRm").addEventListener("click", () => {
+  pendingFile = null;
+  $("photoPreview").classList.remove("show");
+});
+
+async function uploadPhoto(blob) {
+  const path = `req-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.jpg`;
+  const { error } = await sb.storage.from("drawing-photos").upload(path, blob, { contentType: "image/jpeg" });
+  if (error) throw error;
+  const { data } = sb.storage.from("drawing-photos").getPublicUrl(path);
+  return data.publicUrl;
+}
+
+$("btnSubmit").addEventListener("click", async () => {
+  const project = $("fProject").value.trim();
+  const dwg = $("fDwg").value.trim();
+  const due = $("fDue").value;
+  const detail = $("fDetail").value.trim();
+  const submitter = $("fSubmitter").value.trim();
+  const sales = $("fSales").value.trim();
+  const errEl = $("errMsg");
+  errEl.textContent = "";
+
+  if (!project) return errEl.textContent = "กรุณาใส่ชื่อโครงการ / SO";
+  if (!dwg) return errEl.textContent = "กรุณาใส่เลข DWG";
+  if (!submitter) return errEl.textContent = "กรุณาใส่ชื่อผู้ยื่น";
+  if (!due) return errEl.textContent = "กรุณาเลือกวันที่ต้องการให้จบ";
+  if (due < isoDate(minDue)) return errEl.textContent = "วันที่ต้องการให้จบต้องไม่ต่ำกว่า 2 วันจากวันนี้";
+
+  const btn = $("btnSubmit");
+  btn.disabled = true; btn.textContent = "กำลังส่ง...";
+  try {
+    let photoUrl = null;
+    if (pendingFile) photoUrl = await uploadPhoto(pendingFile);
+    const { error } = await sb.from("drawing_requests").insert({
+      kind, project, dwg_no: dwg, due_date: due, detail: detail || null,
+      submitter, sales_team: sales || null, photo_url: photoUrl, status: "pending",
+    });
+    if (error) throw error;
+    $("formCard").classList.add("hidden");
+    $("successCard").classList.remove("hidden");
+  } catch (e) {
+    errEl.textContent = "ส่งไม่สำเร็จ: " + (e.message || "เกิดข้อผิดพลาด") + " — ลองใหม่อีกครั้ง";
+  } finally {
+    btn.disabled = false; btn.textContent = "ส่งคำขอ";
+  }
+});
+
+$("btnAgain").addEventListener("click", () => {
+  $("fProject").value = ""; $("fDwg").value = ""; $("fDetail").value = "";
+  $("fSubmitter").value = ""; $("fSales").value = "";
+  $("fDue").value = isoDate(minDue);
+  pendingFile = null; $("photoPreview").classList.remove("show");
+  kind = "structure";
+  document.querySelectorAll("#kindSeg button").forEach(x => x.classList.toggle("active", x.dataset.k === "structure"));
+  $("kindHint").textContent = kindHintText.structure;
+  $("successCard").classList.add("hidden");
+  $("formCard").classList.remove("hidden");
+  $("fProject").focus();
+});
+</script>
+</body>
+</html>
