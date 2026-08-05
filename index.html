@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>QC Calendar</title>
+<title>Avatar Planning</title>
 <style>
 :root {
   --bg: #f7f8fa;
@@ -1677,7 +1677,7 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
      signed in; the app underneath doesn't render/start until auth is resolved (see startApp()). -->
 <div class="login-screen" id="loginScreen">
   <div class="login-card">
-    <div class="login-logo"><span class="logo">Q</span> QC Calendar</div>
+    <div class="login-logo"><span class="logo">A</span> Avatar Planning</div>
     <p class="login-sub">เข้าสู่ระบบด้วยอีเมลบริษัท — ไม่ต้องใช้รหัสผ่าน</p>
     <div class="field" id="loginEmailField">
       <label>อีเมล</label>
@@ -1708,7 +1708,7 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
 <div class="app hidden" id="appRoot">
   <aside class="sidebar">
     <div class="sb-brand">
-      <h1><span class="logo">Q</span> QC Calendar</h1>
+      <h1><span class="logo">A</span> Avatar Planning</h1>
       <div class="sb-brand-actions">
         <button class="btn btn-settings btn-sm" id="btnSettings" title="ตั้งค่า">⚙</button>
         <button class="btn btn-settings btn-sm" id="btnLogout" title="ออกจากระบบ">🚪</button>
@@ -1801,8 +1801,8 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
 
 <script>
 /* ============================================================
-   QC Calendar — single-file app
-   Storage: localStorage key "qc_calendar_v1"
+   Avatar Planning (internal codename/storage: "QC Calendar") — single-file app
+   Storage: localStorage key "qc_calendar_v1" (kept as-is — renaming would lose everyone's saved data)
    ============================================================ */
 
 const STORAGE_KEY = "qc_calendar_v1";
@@ -5416,8 +5416,8 @@ function buildNotifyPanel(container) {
   }));
   sec.querySelector('[data-act="test"]').addEventListener("click", () => {
     if (!NOTIF_SUPPORTED) { toast("เบราว์เซอร์นี้ไม่รองรับการแจ้งเตือน"); return; }
-    if (Notification.permission !== "granted") { Notification.requestPermission().then(() => { renderPerm(); if (Notification.permission === "granted") new Notification("QC Calendar", { body: "ทดสอบการแจ้งเตือน ✓" }); }); return; }
-    new Notification("QC Calendar", { body: "ทดสอบการแจ้งเตือน ✓ ใช้งานได้" });
+    if (Notification.permission !== "granted") { Notification.requestPermission().then(() => { renderPerm(); if (Notification.permission === "granted") new Notification("Avatar Planning", { body: "ทดสอบการแจ้งเตือน ✓" }); }); return; }
+    new Notification("Avatar Planning", { body: "ทดสอบการแจ้งเตือน ✓ ใช้งานได้" });
   });
 }
 
