@@ -50,10 +50,31 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
 .sb-brand { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .sb-brand .btn-settings { padding: 6px 9px; font-size: 15px; line-height: 1; }
 .sb-brand-actions { display: flex; gap: 4px; flex: 0 0 auto; }
-.sb-user-badge { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-dim); padding: 2px 2px 6px; }
+.sb-user-badge { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-dim); padding: 2px 2px 6px; cursor: pointer; border-radius: 8px; }
+.sb-user-badge:hover { background: var(--bg); }
 .sb-user-badge .sbu-role { font-size: 10px; font-weight: 700; padding: 1px 7px; border-radius: 8px; background: #eef4ff; color: #2563eb; }
 .sb-user-badge .sbu-role.admin { background: #fef3f2; color: var(--danger); }
 .sb-user-badge .sbu-name { font-weight: 600; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* avatars — a round photo, or the first letter of the name on a colour derived from the user id */
+.avatar { width: 24px; height: 24px; border-radius: 50%; object-fit: cover; flex: 0 0 auto; display: inline-flex;
+  align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: #fff; background: var(--text-dim); overflow: hidden; }
+.avatar img { width: 100%; height: 100%; object-fit: cover; }
+.avatar.lg { width: 64px; height: 64px; font-size: 26px; }
+.avatar-pick { display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 14px; }
+.avatar-preview { width: 64px; height: 64px; border-radius: 50%; object-fit: cover; background: var(--border); color: var(--text-dim);
+  display: flex; align-items: center; justify-content: center; font-size: 26px; font-weight: 700; overflow: hidden; flex: 0 0 auto; }
+.avatar-preview img { width: 100%; height: 100%; object-fit: cover; }
+
+/* admin user-management table (⚙ ตั้งค่า › จัดการผู้ใช้) */
+.um-row { display: flex; align-items: center; gap: 8px; padding: 8px 6px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+.um-row:last-child { border-bottom: 0; }
+.um-who { display: flex; align-items: center; gap: 8px; min-width: 190px; flex: 1 1 190px; }
+.um-name { font-weight: 600; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.um-mail { font-size: 11px; color: var(--text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.um-row select { font-size: 12px; padding: 4px 6px; border: 1px solid var(--border-strong); border-radius: 7px; background: #fff; }
+.um-me { font-size: 10px; font-weight: 700; padding: 1px 7px; border-radius: 8px; background: #ecfdf3; color: #027a48; }
+.um-count { font-size: 12px; color: var(--text-dim); margin-bottom: 6px; }
 
 /* login screen (Supabase magic-link auth) — full-screen gate shown until signed in */
 .login-screen { position: fixed; inset: 0; z-index: 3000; display: flex; align-items: center; justify-content: center; background: var(--panel); }
@@ -1693,6 +1714,22 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
       <div class="login-sent-ico">☁️</div>
       <p><b>กำลังซิงค์ข้อมูล...</b><br>โหลดข้อมูลล่าสุดจาก cloud</p>
     </div>
+    <!-- first sign-in only: pick a display name + optional picture (profiles.name_set flips to true) -->
+    <div class="login-sent hidden" id="loginSetup">
+      <div class="login-sent-ico">👋</div>
+      <p><b>ยินดีต้อนรับ</b><br>ตั้งชื่อที่จะแสดงให้เพื่อนร่วมงานเห็น (เปลี่ยนทีหลังได้)</p>
+      <div class="avatar-pick">
+        <div class="avatar-preview" id="setupAvatarPreview">?</div>
+        <label class="btn btn-sm">เลือกรูป<input type="file" accept="image/*" id="setupAvatarInput" hidden></label>
+        <button type="button" class="btn btn-sm btn-ghost hidden" id="setupAvatarClear">ลบรูป</button>
+      </div>
+      <div class="field">
+        <label>ชื่อที่แสดง</label>
+        <input type="text" id="setupName" placeholder="เช่น ณัฐพล ใจดี" maxlength="60" />
+      </div>
+      <button type="button" class="btn btn-primary login-btn" id="btnSaveSetup">บันทึกและเริ่มใช้งาน</button>
+      <div class="login-msg" id="setupMsg"></div>
+    </div>
     <div class="login-sent hidden" id="loginPending">
       <div class="login-sent-ico">⏳</div>
       <p><b>รอ Admin อนุมัติ</b><br>บัญชี <span id="loginPendingEmail"></span> เข้าสู่ระบบสำเร็จ แต่ยังไม่มีสิทธิ์เห็นข้อมูล — แจ้ง Admin ให้กดอนุมัติที่ ⚙ ตั้งค่า</p>
@@ -1839,10 +1876,25 @@ function hideLoginScreen() {
   document.getElementById("loginScreen").classList.add("hidden");
   document.getElementById("appRoot").classList.remove("hidden");
 }
+// stable per-person colour for the letter-avatar fallback (same id → same colour everywhere)
+const AVATAR_COLORS = ["#7b68ee", "#2563eb", "#0e9384", "#d97706", "#db2777", "#0891b2", "#65a30d", "#dc2626"];
+function avatarHtml(profile, cls = "") {
+  const name = (profile && (profile.display_name || profile.email)) || "?";
+  const raw = profile && profile.avatar_url;
+  // only ever render the inline images the app itself produces — a row PATCHed straight through the
+  // API could otherwise point every viewer's browser at an arbitrary external host
+  const url = (typeof raw === "string" && raw.startsWith("data:image/")) ? raw : null;
+  if (url) return `<span class="avatar ${cls}"><img src="${escapeHtml(url)}" alt=""></span>`;
+  const id = String((profile && profile.id) || name);
+  let h = 0; for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
+  return `<span class="avatar ${cls}" style="background:${AVATAR_COLORS[h % AVATAR_COLORS.length]}">${escapeHtml(name.trim().charAt(0).toUpperCase() || "?")}</span>`;
+}
 function renderUserBadge() {
   const el = document.getElementById("sbUserBadge");
   if (!el || !currentProfile) return;
-  el.innerHTML = `<span class="sbu-name" title="${escapeHtml(currentProfile.email || "")}">${escapeHtml(currentProfile.display_name || currentProfile.email || "")}</span>` +
+  el.title = "แก้ไขโปรไฟล์ของฉัน";
+  el.innerHTML = avatarHtml(currentProfile) +
+    `<span class="sbu-name" title="${escapeHtml(currentProfile.email || "")}">${escapeHtml(currentProfile.display_name || currentProfile.email || "")}</span>` +
     `<span class="sbu-role${isAdmin() ? " admin" : ""}">${isAdmin() ? "admin" : "member"}</span>`;
 }
 async function loadProfile(userId, email) {
@@ -1889,6 +1941,15 @@ async function initAuth() {
   });
   document.getElementById("loginEmail").addEventListener("keydown", (e) => { if (e.key === "Enter") sendMagicLink(); });
   document.getElementById("btnPendingLogout").addEventListener("click", signOutUser);
+  document.getElementById("btnSaveSetup").addEventListener("click", saveNameSetup);
+  document.getElementById("setupName").addEventListener("keydown", (e) => { if (e.key === "Enter") saveNameSetup(); });
+  document.getElementById("setupName").addEventListener("input", paintSetupAvatar);
+  document.getElementById("setupAvatarClear").addEventListener("click", () => { _setupAvatar = null; paintSetupAvatar(); });
+  document.getElementById("setupAvatarInput").addEventListener("change", async (e) => {
+    const f = e.target.files && e.target.files[0];
+    if (f) { _setupAvatar = await compressImage(f, 256, 0.75); paintSetupAvatar(); }
+    e.target.value = "";
+  });
   document.getElementById("btnCheckApproval").addEventListener("click", async () => {
     const { data } = await sb.auth.getSession();
     if (data && data.session) { document.getElementById("loginPending").classList.add("hidden"); await onSignedIn(data.session); }
@@ -1915,6 +1976,110 @@ async function onSignedIn(session) {
     return;   // stays on the login screen — startApp() never runs until approved
   }
   document.getElementById("loginPending").classList.add("hidden");
+
+  // ★ first sign-in: display_name is still the auto-generated email prefix — let them pick a real
+  // name (and a picture) before entering the app. Only once; editable later via the sidebar badge.
+  if (!currentProfile.name_set) { showNameSetup(); return; }
+
+  document.getElementById("loginSyncing").classList.remove("hidden");
+  await startApp();
+  hideLoginScreen();
+}
+
+/* Edit my own name/picture — opened from the sidebar user badge, so it works for EVERYONE
+   (⚙ ตั้งค่า is admin-only; role/department stay read-only here since only admins may change them). */
+function openMyProfileModal() {
+  if (!currentProfile) return;
+  let avatar = currentProfile.avatar_url || null;
+  const overlay = document.createElement("div");
+  overlay.className = "overlay";
+  overlay.innerHTML = `
+    <div class="modal" role="dialog" aria-modal="true" style="max-width:380px">
+      <div class="modal-head"><h3>👤 โปรไฟล์ของฉัน</h3><button class="btn btn-ghost" data-act="close" title="ปิด">✕</button></div>
+      <div style="padding:16px 18px">
+        <div class="avatar-pick">
+          <div class="avatar-preview" data-preview></div>
+          <label class="btn btn-sm">เลือกรูป<input type="file" accept="image/*" data-file hidden></label>
+          <button type="button" class="btn btn-sm btn-ghost" data-clear>ลบรูป</button>
+        </div>
+        <div class="field"><label>ชื่อที่แสดง</label><input type="text" data-name maxlength="60" placeholder="ชื่อของคุณ"></div>
+        <p class="settings-desc">อีเมล <b>${escapeHtml(currentProfile.email || "")}</b> · สิทธิ์ <b>${isAdmin() ? "admin" : "member"}</b> · แผนก <b data-deptname></b><br>สิทธิ์และแผนกแก้ได้โดยผู้ดูแลระบบ (admin) เท่านั้น</p>
+        <div class="login-msg" data-msg></div>
+      </div>
+      <div class="modal-foot"><button class="btn" data-act="close">ยกเลิก</button><button class="btn btn-primary" data-save>บันทึก</button></div>
+    </div>`;
+  document.body.appendChild(overlay);
+  const q = s => overlay.querySelector(s);
+  const nameInput = q("[data-name]");
+  nameInput.value = currentProfile.display_name || "";
+  const dept = currentProfile.dept_id ? getDept(currentProfile.dept_id) : null;
+  q("[data-deptname]").textContent = dept ? dept.name : (currentProfile.dept_id || "— ไม่ระบุ —");
+  const paint = () => {
+    const nm = (nameInput.value || currentProfile.email || "?").trim();
+    q("[data-preview]").innerHTML = avatar ? `<img src="${escapeHtml(avatar)}" alt="">` : escapeHtml(nm.charAt(0).toUpperCase() || "?");
+    q("[data-clear]").classList.toggle("hidden", !avatar);
+  };
+  paint();
+  nameInput.addEventListener("input", paint);
+  q("[data-clear]").addEventListener("click", () => { avatar = null; paint(); });
+  q("[data-file]").addEventListener("change", async (e) => {
+    const f = e.target.files && e.target.files[0];
+    if (f) { avatar = await compressImage(f, 256, 0.75); paint(); }
+    e.target.value = "";
+  });
+  const close = () => overlay.remove();
+  overlay.addEventListener("click", e => { if (e.target === overlay) close(); });
+  overlay.querySelectorAll('[data-act="close"]').forEach(b => b.addEventListener("click", close));
+  q("[data-save]").addEventListener("click", async () => {
+    const name = nameInput.value.trim();
+    if (name.length < 2) { q("[data-msg]").textContent = "กรุณาใส่ชื่อ (อย่างน้อย 2 ตัวอักษร)"; return; }
+    const btn = q("[data-save]");
+    btn.disabled = true; btn.textContent = "กำลังบันทึก...";
+    const { error } = await getSupabase().from("profiles")
+      .update({ display_name: name, avatar_url: avatar, name_set: true }).eq("id", currentProfile.id);
+    btn.disabled = false; btn.textContent = "บันทึก";
+    if (error) { q("[data-msg]").textContent = "บันทึกไม่สำเร็จ: " + error.message; return; }
+    Object.assign(currentProfile, { display_name: name, avatar_url: avatar, name_set: true });
+    renderUserBadge();
+    toast("บันทึกโปรไฟล์แล้ว");
+    close();
+  });
+  nameInput.focus();
+}
+
+/* ----- first-login profile setup (name + optional avatar) ----- */
+let _setupAvatar = null;   // base64 data URL chosen on the setup screen, or null for "no picture"
+function showNameSetup() {
+  const box = document.getElementById("loginSetup");
+  box.classList.remove("hidden");
+  const nameInput = document.getElementById("setupName");
+  nameInput.value = currentProfile.display_name || "";
+  _setupAvatar = currentProfile.avatar_url || null;
+  paintSetupAvatar();
+  nameInput.focus();
+}
+function paintSetupAvatar() {
+  const prev = document.getElementById("setupAvatarPreview");
+  const clearBtn = document.getElementById("setupAvatarClear");
+  const nm = (document.getElementById("setupName").value || currentProfile.email || "?").trim();
+  prev.innerHTML = _setupAvatar ? `<img src="${escapeHtml(_setupAvatar)}" alt="">` : escapeHtml(nm.charAt(0).toUpperCase() || "?");
+  clearBtn.classList.toggle("hidden", !_setupAvatar);
+}
+async function saveNameSetup() {
+  const nameInput = document.getElementById("setupName");
+  const msg = document.getElementById("setupMsg");
+  const btn = document.getElementById("btnSaveSetup");
+  const name = nameInput.value.trim();
+  msg.textContent = "";
+  if (name.length < 2) { msg.textContent = "กรุณาใส่ชื่อ (อย่างน้อย 2 ตัวอักษร)"; return; }
+  btn.disabled = true; btn.textContent = "กำลังบันทึก...";
+  const sb = getSupabase();
+  const { error } = await sb.from("profiles")
+    .update({ display_name: name, avatar_url: _setupAvatar, name_set: true }).eq("id", currentProfile.id);
+  btn.disabled = false; btn.textContent = "บันทึกและเริ่มใช้งาน";
+  if (error) { msg.textContent = "บันทึกไม่สำเร็จ: " + error.message; return; }
+  Object.assign(currentProfile, { display_name: name, avatar_url: _setupAvatar, name_set: true });
+  document.getElementById("loginSetup").classList.add("hidden");
   document.getElementById("loginSyncing").classList.remove("hidden");
   await startApp();
   hideLoginScreen();
@@ -2019,19 +2184,28 @@ function toast(msg) {
   clearTimeout(toast._t);
   toast._t = setTimeout(() => el.classList.remove("show"), 2800);
 }
+// ★ "my department". The admin-assigned one on the signed-in profile wins (it's per-PERSON and
+// applies to every board); the old per-board setting is the fallback for anyone with none assigned.
+// Returns a valid department id for the ACTIVE board, or "" when there's none.
+function myDeptId() {
+  const fromProfile = currentProfile && currentProfile.dept_id;
+  if (fromProfile && getDept(fromProfile)) return fromProfile;
+  const fromBoard = state.settings && state.settings.myDept;
+  return (fromBoard && getDept(fromBoard)) ? fromBoard : "";
+}
 // the department whose checklist the user should see in the task modal:
-// their own department (settings) → else the department currently being viewed → else null (all)
+// their own department → else the department currently being viewed → else null (all)
 function effectiveUserDept() {
-  const my = state.settings && state.settings.myDept;
-  if (my && getDept(my)) return my;
+  const my = myDeptId();
+  if (my) return my;
   const vs = activeViewDepts();
   return vs.length === 1 ? vs[0] : null;   // a single department in view → use it; else "all"
 }
 // default the department-view to the user's own department when nothing is selected yet
 // (so opening the app / switching board lands on "my department" instead of "all")
 function applyMyDeptDefaultView() {
-  const my = state.settings && state.settings.myDept;
-  if (my && getDept(my) && !((state.settings.viewDepts || []).filter(id => getDept(id)).length)) {
+  const my = myDeptId();
+  if (my && !((state.settings.viewDepts || []).filter(id => getDept(id)).length)) {
     state.settings.viewDepts = [my];
   }
 }
@@ -2362,7 +2536,10 @@ function getDeptIn(ws, id) { return (ws.departments || []).find(d => d.id === id
 function notifyRemoteBoardChange(ws, newTasks, oldTasksById) {
   const notify = ws.settings && ws.settings.notify;
   if (!(typeof window !== "undefined" && "Notification" in window) || !notify || !notify.enabled || Notification.permission !== "granted") return;
-  const myDept = ws.settings.myDept;
+  // my department in the REMOTE board: the profile's admin-assigned one wins (per-person, all boards),
+  // else that board's own setting — same precedence as myDeptId(), which only covers the active board
+  const profDept = currentProfile && currentProfile.dept_id;
+  const myDept = (profDept && getDeptIn(ws, profDept)) ? profDept : ws.settings.myDept;
   const relevant = t => !notify.onlyMyDept || !myDept || !getDeptIn(ws, myDept) || (t.deptStages || []).some(s => s.deptId === myDept);
   const fire = (type, title, body, tag) => { if (notify[type]) { try { new Notification(title, { body: body || "", tag, renotify: true }); } catch (e) {} } };
   newTasks.forEach(t => {
@@ -4222,7 +4399,7 @@ function openTaskModal(taskId, defaults={}) {
           ${c.rejected
             ? `<div class="ta-alert-ack" style="color:var(--danger)">❌ ปฏิเสธโดย ${escapeHtml(c.rejectedBy || "—")}${c.rejectReason ? " — " + escapeHtml(c.rejectReason) : ""} · ${formatDateTimeTH(c.rejectedAt)}</div>`
             : (c.ack ? `<div class="ta-alert-ack">✓ รับทราบแล้วโดย ${escapeHtml(c.ackBy || "—")} · ${formatDateTimeTH(c.ackAt)}</div>` : "")}
-          ${(!c.ack && state.settings.myDept && state.settings.myDept === c.toDept) ? `<div class="ta-alert-btns"><button class="btn btn-sm btn-ack ta-alert-ackbtn" data-ackbtn>✓ รับทราบ</button><button class="btn btn-sm btn-reject" data-rejectbtn>✕ ปฏิเสธ</button></div>` : ""}
+          ${(!c.ack && myDeptId() && myDeptId() === c.toDept) ? `<div class="ta-alert-btns"><button class="btn btn-sm btn-ack ta-alert-ackbtn" data-ackbtn>✓ รับทราบ</button><button class="btn btn-sm btn-reject" data-rejectbtn>✕ ปฏิเสธ</button></div>` : ""}
           <div class="alert-replies" data-replies></div>`;
         al.querySelector(".ta-del").addEventListener("click", () => {
           task.comments = task.comments.filter(x => x.id !== c.id);
@@ -4898,6 +5075,7 @@ function openSettingsModal(initialTab = "statuses") {
       <div class="settings-layout">
         <nav class="settings-nav">
           <button class="settings-nav-item" data-tab="user">👤 ผู้ใช้</button>
+          <button class="settings-nav-item" data-tab="users">👥 จัดการผู้ใช้</button>
           <button class="settings-nav-item" data-tab="statuses">🏷️ สถานะงาน</button>
           <button class="settings-nav-item" data-tab="departments">🏢 แผนก</button>
           <button class="settings-nav-item" data-tab="fields">🧩 ฟิลด์เพิ่มเติม</button>
@@ -4914,7 +5092,7 @@ function openSettingsModal(initialTab = "statuses") {
 
   const content = overlay.querySelector('[data-content]');
   const navBtns = [...overlay.querySelectorAll('.settings-nav-item')];
-  const PANELS = { user: buildUserPanel, statuses: buildStatusesPanel, departments: buildDeptsPanel, fields: buildFieldsPanel, checklist: buildChecklistTemplatePanel, display: buildDisplayPanel, notify: buildNotifyPanel, data: buildDataPanel };
+  const PANELS = { user: buildUserPanel, users: buildUsersAdminPanel, statuses: buildStatusesPanel, departments: buildDeptsPanel, fields: buildFieldsPanel, checklist: buildChecklistTemplatePanel, display: buildDisplayPanel, notify: buildNotifyPanel, data: buildDataPanel };
 
   function showTab(tab) {
     navBtns.forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
@@ -4930,8 +5108,11 @@ function openSettingsModal(initialTab = "statuses") {
   showTab(initialTab);
 }
 
-/* Settings → ผู้ใช้ (current user name; placeholder for multi-user login in phase 2) */
+/* Settings → 👤 ผู้ใช้ — MY own account (name/picture via the profile modal, plus the fallback
+   department picker). Everyone-facing profile editing lives on the sidebar badge, since this whole
+   settings modal is admin-only; managing OTHER people is the separate 👥 จัดการผู้ใช้ tab below. */
 function buildUserPanel(container) {
+  const assigned = currentProfile && currentProfile.dept_id && getDept(currentProfile.dept_id);
   const sec = document.createElement("div");
   sec.className = "settings-section";
   sec.innerHTML = `
@@ -4939,62 +5120,124 @@ function buildUserPanel(container) {
     <p class="settings-desc">ชื่อนี้จะถูกบันทึกเป็น “ผู้ทำ” ในทุกความเคลื่อนไหว (เปลี่ยนสถานะ / ติ๊กแผนกเสร็จ / คอมเมนต์) เพื่อให้ดูย้อนหลังได้ว่าใครทำอะไร</p>
     <div class="field">
       <label>บัญชีที่ล็อกอิน</label>
-      <div class="settings-desc" style="margin:0"><b>${escapeHtml(currentProfile ? currentProfile.display_name : "-")}</b> · ${escapeHtml(currentProfile ? currentProfile.email : "-")} · <span style="text-transform:uppercase">${isAdmin() ? "admin" : "member"}</span></div>
+      <div class="row" style="gap:8px; align-items:center">
+        ${avatarHtml(currentProfile)}
+        <div class="settings-desc" style="margin:0"><b>${escapeHtml(currentProfile ? currentProfile.display_name : "-")}</b> · ${escapeHtml(currentProfile ? currentProfile.email : "-")} · <span style="text-transform:uppercase">${isAdmin() ? "admin" : "member"}</span></div>
+        <button class="btn btn-sm" data-edit-profile>✏️ แก้ไขชื่อ/รูป</button>
+      </div>
     </div>
     <div class="field">
       <label>แผนกของฉัน</label>
-      <select data-f="mydept"></select>
-      <span class="settings-toggle-sub" style="margin-top:2px">ในป๊อบอัพโครงการ เช็คลิสต์ของแต่ละตู้จะแสดงเฉพาะของแผนกนี้ — ถ้าไม่ระบุ จะใช้แผนกที่กำลังดูอยู่ (หรือแสดงทุกแผนก)</span>
+      ${assigned
+        ? `<div class="settings-desc" style="margin:0"><b>${deptIco(assigned)}${escapeHtml(assigned.name)}</b> — ผู้ดูแลระบบกำหนดให้ (ใช้ทุกปฏิทิน)</div>`
+        : `<select data-f="mydept"></select>
+           <span class="settings-toggle-sub" style="margin-top:2px">ในป๊อบอัพโครงการ เช็คลิสต์ของแต่ละตู้จะแสดงเฉพาะของแผนกนี้ — ถ้าไม่ระบุ จะใช้แผนกที่กำลังดูอยู่ (หรือแสดงทุกแผนก)</span>`}
     </div>
-    <p class="settings-desc" style="margin-top:4px">🔒 ชื่อ/อีเมล/สิทธิ์มาจากบัญชีที่ล็อกอินอัตโนมัติ (เปลี่ยนชื่อที่แสดง หรือเพิ่มผู้ใช้/admin ให้ทำใน Supabase → ตาราง <code>profiles</code>) — แผนกยังเลือกเองตรงนี้เหมือนเดิม เพราะบางคนใช้คนละแผนกต่าง board</p>
+    <p class="settings-desc" style="margin-top:4px">🔒 อีเมลและสิทธิ์มาจากบัญชีที่ล็อกอิน — แก้ได้ที่ 👥 จัดการผู้ใช้ (admin เท่านั้น)${assigned ? "" : "<br>ยังไม่ได้ถูกกำหนดแผนกจากหน้าจัดการผู้ใช้ จึงเลือกเองต่อปฏิทินได้ตรงนี้"}</p>
   `;
   container.appendChild(sec);
+  sec.querySelector("[data-edit-profile]").addEventListener("click", openMyProfileModal);
   const deptSel = sec.querySelector('[data-f="mydept"]');
-  deptSel.innerHTML = `<option value="">— ไม่ระบุ —</option>` +
-    (state.departments || []).map(d => `<option value="${d.id}">${escapeHtml(d.name)}</option>`).join("");
-  deptSel.value = state.settings.myDept || "";
-  deptSel.addEventListener("change", () => {
-    state.settings.myDept = deptSel.value;
-    // changing your department switches the calendar/today view to it
-    if (deptSel.value && getDept(deptSel.value)) state.settings.viewDepts = [deptSel.value];
-    saveState(); renderAll(); checkAlerts();
-  });
+  if (deptSel) {
+    deptSel.innerHTML = `<option value="">— ไม่ระบุ —</option>` +
+      (state.departments || []).map(d => `<option value="${d.id}">${escapeHtml(d.name)}</option>`).join("");
+    deptSel.value = state.settings.myDept || "";
+    deptSel.addEventListener("change", () => {
+      state.settings.myDept = deptSel.value;
+      // changing your department switches the calendar/today view to it
+      if (deptSel.value && getDept(deptSel.value)) state.settings.viewDepts = [deptSel.value];
+      saveState(); renderAll(); checkAlerts();
+    });
+  }
+}
 
-  // ★ pending-approval list (admin only — this whole tab already requires admin to open).
-  // Magic link accepts any email, so new sign-ins land here "unapproved" until let in explicitly.
-  const pendSec = document.createElement("div");
-  pendSec.className = "settings-section";
-  pendSec.innerHTML = `
-    <h4 class="settings-h">👥 ผู้ใช้รออนุมัติ</h4>
-    <p class="settings-desc">ใครก็ล็อกอินด้วยอีเมลอะไรก็ได้ (magic link ไม่จำกัดโดเมน) — คนใหม่จะเห็นข้อมูลไม่ได้จนกว่าจะอนุมัติที่นี่</p>
-    <div data-pending-list><div class="cf-empty">กำลังโหลด...</div></div>
+/* Settings → 👥 จัดการผู้ใช้ (admin only) — everyone who has ever signed in: approve newcomers,
+   set role/department, or remove access. Reads/writes public.profiles directly; the SQL trigger
+   guard_profile_privileges() is what actually enforces "only admins may change these columns". */
+function buildUsersAdminPanel(container) {
+  const sec = document.createElement("div");
+  sec.className = "settings-section";
+  sec.innerHTML = `
+    <h4 class="settings-h">จัดการผู้ใช้</h4>
+    <p class="settings-desc">ใครก็ล็อกอินด้วยอีเมลอะไรก็ได้ (magic link ไม่จำกัดโดเมน) — คนใหม่จะเห็นข้อมูลไม่ได้จนกว่าจะกด “อนุมัติ” ที่นี่ · แผนกที่ตั้งให้ใช้กับทุกปฏิทิน</p>
+    <div class="um-count" data-count></div>
+    <div data-list><div class="cf-empty">กำลังโหลด...</div></div>
   `;
-  container.appendChild(pendSec);
-  const pendList = pendSec.querySelector("[data-pending-list]");
+  container.appendChild(sec);
+  const listEl = sec.querySelector("[data-list]");
+  const countEl = sec.querySelector("[data-count]");
+  const deptOptions = `<option value="">— ไม่ระบุแผนก —</option>` +
+    (state.departments || []).map(d => `<option value="${d.id}">${escapeHtml(d.name)}</option>`).join("");
+
   (async () => {
     const sb = getSupabase();
-    if (!sb) { pendList.innerHTML = `<div class="cf-empty">โหลดไม่สำเร็จ — เช็คอินเทอร์เน็ต</div>`; return; }
-    const { data, error } = await sb.from("profiles").select("*").eq("approved", false).order("created_at", { ascending: false });
-    if (error) { pendList.innerHTML = `<div class="cf-empty">โหลดไม่สำเร็จ: ${escapeHtml(error.message)}</div>`; return; }
-    if (!data || !data.length) { pendList.innerHTML = `<div class="cf-empty">ไม่มีคนรออนุมัติตอนนี้</div>`; return; }
-    pendList.innerHTML = "";
-    data.forEach(p => {
+    if (!sb) { listEl.innerHTML = `<div class="cf-empty">โหลดไม่สำเร็จ — เช็คอินเทอร์เน็ต</div>`; return; }
+    const { data, error } = await sb.from("profiles").select("*").order("approved", { ascending: true }).order("created_at", { ascending: true });
+    if (error) { listEl.innerHTML = `<div class="cf-empty">โหลดไม่สำเร็จ: ${escapeHtml(error.message)}</div>`; return; }
+    const users = data || [];
+    const pending = users.filter(u => !u.approved && u.role !== "admin").length;
+    countEl.textContent = `ทั้งหมด ${users.length} คน · admin ${users.filter(u => u.role === "admin").length} · รออนุมัติ ${pending}`;
+    if (!users.length) { listEl.innerHTML = `<div class="cf-empty">ยังไม่มีผู้ใช้</div>`; return; }
+    listEl.innerHTML = "";
+
+    users.forEach(p => {
+      const isMe = currentProfile && p.id === currentProfile.id;
       const row = document.createElement("div");
-      row.className = "default-stage-row";
-      row.style.justifyContent = "space-between";
+      row.className = "um-row";
       row.innerHTML = `
-        <span class="default-stage-name"><b>${escapeHtml(p.display_name || "")}</b> · ${escapeHtml(p.email || "")}</span>
-        <button class="btn btn-sm btn-primary" data-approve>✓ อนุมัติ</button>
+        <div class="um-who">
+          ${avatarHtml(p)}
+          <div style="min-width:0">
+            <div class="um-name">${escapeHtml(p.display_name || "(ไม่มีชื่อ)")} ${isMe ? '<span class="um-me">คุณ</span>' : ""}</div>
+            <div class="um-mail">${escapeHtml(p.email || "")}</div>
+          </div>
+        </div>
+        <select data-role ${isMe ? "disabled" : ""} title="${isMe ? "เปลี่ยนสิทธิ์ตัวเองไม่ได้ (กันล็อกตัวเองออก)" : "สิทธิ์"}">
+          <option value="member">member</option><option value="admin">admin</option>
+        </select>
+        <select data-dept title="แผนก (ใช้ทุกปฏิทิน)">${deptOptions}</select>
+        ${p.approved ? "" : `<button class="btn btn-sm btn-primary" data-approve>✓ อนุมัติ</button>`}
+        <button class="btn btn-ghost btn-sm btn-danger" data-del ${isMe ? "disabled" : ""} title="${isMe ? "ลบตัวเองไม่ได้" : "ถอดสิทธิ์เข้าใช้งาน"}">✕</button>
       `;
-      row.querySelector("[data-approve]").addEventListener("click", async (e) => {
-        e.target.disabled = true; e.target.textContent = "กำลังอนุมัติ...";
-        const { error: upErr } = await sb.from("profiles").update({ approved: true }).eq("id", p.id);
-        if (upErr) { toast("อนุมัติไม่สำเร็จ: " + upErr.message); e.target.disabled = false; e.target.textContent = "✓ อนุมัติ"; return; }
-        toast(`อนุมัติ ${p.display_name || p.email} แล้ว`);
-        row.remove();
-        if (!pendList.children.length) pendList.innerHTML = `<div class="cf-empty">ไม่มีคนรออนุมัติตอนนี้</div>`;
+      row.querySelector("[data-role]").value = p.role || "member";
+      row.querySelector("[data-dept]").value = p.dept_id || "";
+
+      const patch = async (fields, okMsg) => {
+        const { error: e2 } = await sb.from("profiles").update(fields).eq("id", p.id);
+        if (e2) { toast("บันทึกไม่สำเร็จ: " + e2.message); return false; }
+        Object.assign(p, fields);
+        if (isMe) Object.assign(currentProfile, fields);   // keep the live session in sync (myDeptId/isAdmin read from it)
+        if (okMsg) toast(okMsg);
+        return true;
+      };
+      row.querySelector("[data-role]").addEventListener("change", async (e) => {
+        const v = e.target.value;
+        if (!await patch({ role: v }, `ตั้ง ${p.display_name || p.email} เป็น ${v} แล้ว`)) e.target.value = p.role || "member";
       });
-      pendList.appendChild(row);
+      row.querySelector("[data-dept]").addEventListener("change", async (e) => {
+        const v = e.target.value;
+        if (!await patch({ dept_id: v || null }, "บันทึกแผนกแล้ว")) { e.target.value = p.dept_id || ""; return; }
+        if (isMe) { renderAll(); checkAlerts(); }   // my own department changed → views follow it immediately
+      });
+      const approveBtn = row.querySelector("[data-approve]");
+      if (approveBtn) approveBtn.addEventListener("click", async (e) => {
+        e.target.disabled = true; e.target.textContent = "กำลังอนุมัติ...";
+        if (!await patch({ approved: true }, `อนุมัติ ${p.display_name || p.email} แล้ว`)) { e.target.disabled = false; e.target.textContent = "✓ อนุมัติ"; return; }
+        e.target.remove();
+      });
+      row.querySelector("[data-del]").addEventListener("click", async () => {
+        const ok = await confirmDialog({
+          title: "ถอดสิทธิ์ผู้ใช้?",
+          message: `${p.display_name || ""} (${p.email || ""}) จะเข้าใช้งานไม่ได้อีก — ถ้าล็อกอินใหม่จะกลับไปอยู่หน้า “รอ Admin อนุมัติ” และต้องอนุมัติใหม่`,
+          confirmText: "ถอดสิทธิ์", danger: true, icon: "🗑️",
+        });
+        if (!ok) return;
+        const { error: delErr } = await sb.from("profiles").delete().eq("id", p.id);
+        if (delErr) { toast("ลบไม่สำเร็จ: " + delErr.message); return; }
+        toast(`ถอดสิทธิ์ ${p.display_name || p.email} แล้ว`);
+        row.remove();
+      });
+      listEl.appendChild(row);
     });
   })();
 }
@@ -6017,7 +6260,7 @@ function canNotify(type) {
 }
 // is this task relevant to me? (my department is one of its stages — or scope is off / no department set)
 function taskRelevantToMe(t) {
-  const n = state.settings.notify, my = state.settings.myDept;
+  const n = state.settings.notify, my = myDeptId();
   if (!n || !n.onlyMyDept || !my || !getDept(my)) return true;
   return (t.deptStages || []).some(s => s.deptId === my);
 }
@@ -6068,7 +6311,7 @@ function compressImage(file, maxEdge = 1000, quality = 0.6) {
 }
 // unacknowledged alerts targeted at the user's department (no myDept set = see all departments)
 function pendingAlerts() {
-  const my = (state.settings.myDept && getDept(state.settings.myDept)) ? state.settings.myDept : null;
+  const my = myDeptId() || null;
   const out = [];
   (state.tasks || []).forEach(t => (t.comments || []).forEach(c => {
     if (c.type === "alert" && !c.ack && (!my || c.toDept === my)) out.push({ task: t, c });
@@ -6077,12 +6320,12 @@ function pendingAlerts() {
 }
 // does this task have an unacknowledged alert visible to the current user (my department; planner = all)?
 function taskHasAlert(t) {
-  const my = (state.settings.myDept && getDept(state.settings.myDept)) ? state.settings.myDept : null;
+  const my = myDeptId() || null;
   return (t.comments || []).some(c => c.type === "alert" && !c.ack && (!my || c.toDept === my));
 }
 // the task's unacknowledged alerts visible to the current user (for the per-task popup)
 function taskPendingAlerts(t) {
-  const my = (state.settings.myDept && getDept(state.settings.myDept)) ? state.settings.myDept : null;
+  const my = myDeptId() || null;
   return (t.comments || []).filter(c => c.type === "alert" && !c.ack && (!my || c.toDept === my)).map(c => ({ task: t, c }));
 }
 // red shaking bell marker for chips / today-panel rows — click it to open the alert popup
@@ -6213,7 +6456,7 @@ function checkAlerts() {
 }
 
 function openStatusReport() {
-  const deptId = (state.settings.myDept && getDept(state.settings.myDept)) ? state.settings.myDept : null;
+  const deptId = myDeptId() || null;
   const deptName = deptId ? (getDept(deptId).name || "") : null;
   const today = todayIso();
   const boardName = (root.boardMeta.find(b => b.id === root.activeBoard) || {}).name || "";
@@ -6326,6 +6569,7 @@ document.getElementById("btnSettings").addEventListener("click", () => {
   if (!isAdmin()) { toast("หน้าตั้งค่าเปิดได้เฉพาะผู้ดูแลระบบ (admin) เท่านั้น"); return; }
   openSettingsModal();
 });
+document.getElementById("sbUserBadge").addEventListener("click", openMyProfileModal);
 document.getElementById("btnLogout").addEventListener("click", async () => {
   const ok = await confirmDialog({ title: "ออกจากระบบ?", message: `ออกจากระบบบัญชี ${currentProfile ? currentProfile.email : ""}`, confirmText: "ออกจากระบบ", danger: false, icon: "🚪" });
   if (ok) signOutUser();
