@@ -1917,11 +1917,20 @@ function renderUserBadge() {
 async function loadProfile(userId, email) {
   const sb = getSupabase();
   const { data, error } = await sb.from("profiles").select("*").eq("id", userId).single();
-  if (error || !data) {
-    // profiles row not created yet (trigger delay) or table missing — fail CLOSED (unapproved), never open
-    return { id: userId, email, display_name: (email || "").split("@")[0], role: "member", approved: false };
-  }
-  return data;
+  if (!error && data) return data;
+
+  // No row. The DB trigger sometimes misses first sign-ins (documented bug) — the person would then
+  // be stuck on "รอ Admin อนุมัติ" AND invisible in the admin's user list (no row to approve). Create
+  // it ourselves via ensure_my_profile() (server forces member/unapproved — can't self-grant admin),
+  // then re-read so they actually show up for an admin to approve.
+  try {
+    await sb.rpc("ensure_my_profile", { p_email: email, p_name: (email || "").split("@")[0] });
+    const re = await sb.from("profiles").select("*").eq("id", userId).single();
+    if (!re.error && re.data) return re.data;
+  } catch (e) { /* offline, or old SQL without the function — fall through to fail-closed */ }
+
+  // still nothing (offline / table missing) → fail CLOSED (unapproved), never open
+  return { id: userId, email, display_name: (email || "").split("@")[0], role: "member", approved: false };
 }
 async function sendMagicLink() {
   const emailInput = document.getElementById("loginEmail");
