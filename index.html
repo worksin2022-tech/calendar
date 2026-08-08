@@ -81,6 +81,15 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
 .um-blocked-toggle:hover { text-decoration: underline; }
 .um-blocked-list.hidden { display: none; }
 .um-blocked-row { opacity: .85; }
+.um-group-head { display: flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 700; color: var(--text-dim);
+  padding: 9px 2px 4px; margin-top: 6px; border-bottom: 1px solid var(--border); }
+.um-group-head:first-child { margin-top: 0; }
+.um-group-count { font-weight: 600; color: var(--text-faint); }
+.um-perm-sel { font-size: 12px; padding: 4px 6px; border: 1px solid var(--border-strong); border-radius: 7px; background: #fff; color: var(--text); }
+/* permission-gated controls in the task modal */
+.perm-off { opacity: .55; cursor: not-allowed !important; }
+.perm-badge { font-size: 11px; font-weight: 700; padding: 2px 9px; border-radius: 9px; background: #eef4ff; color: #2563eb; margin-left: 8px; white-space: nowrap; }
+.ta-compose.perm-off-note::after { content: "โหมดของคุณคอมเมนต์ไม่ได้"; display: block; font-size: 11px; color: var(--text-dim); padding: 4px 2px; }
 .um-count { font-size: 12px; color: var(--text-dim); margin-bottom: 6px; }
 
 /* login screen (Supabase magic-link auth) — full-screen gate shown until signed in */
@@ -1900,6 +1909,22 @@ function currentUser() {
 }
 function isAdmin() { return !!(currentProfile && currentProfile.role === "admin"); }
 
+/* ----- fine-grained member permission (slice 4b): read < comment < edit < full -----
+   Client-side gating only (board data is one JSON blob — RLS can't police fields). Admins = full.
+   Default "full" so existing members are unchanged until an admin lowers them. */
+const PERM_RANK = { read: 0, comment: 1, edit: 2, full: 3 };
+function myPerm() {
+  if (isAdmin()) return "full";
+  const p = currentProfile && currentProfile.perm;
+  return (p in PERM_RANK) ? p : "full";
+}
+function permRank() { const r = PERM_RANK[myPerm()]; return (r === undefined) ? 3 : r; }
+function canComment() { return permRank() >= 1; }
+function canEdit()    { return permRank() >= 2; }   // dates, statuses, checklists
+function canFull()    { return permRank() >= 3; }   // create/delete tasks, titles, structure
+function permDenied(msg) { toast(msg || "สิทธิ์ของคุณทำรายการนี้ไม่ได้ — ติดต่อผู้ดูแลระบบ"); }
+const PERM_LABEL = { read: "ดูอย่างเดียว", comment: "คอมเมนต์ได้", edit: "แก้วัน/สถานะ", full: "แก้ไขเต็ม" };
+
 function showLoginScreen(msg) {
   document.getElementById("loginScreen").classList.remove("hidden");
   document.getElementById("appRoot").classList.add("hidden");
@@ -2702,15 +2727,19 @@ function notifyRemoteBoardChange(ws, newTasks, oldTasksById) {
   // my department in the REMOTE board: the profile's admin-assigned one wins (per-person, all boards),
   // else that board's own setting — same precedence as myDeptId(), which only covers the active board
   const profDept = currentProfile && currentProfile.dept_id;
-  const myDept = (profDept && getDeptIn(ws, profDept)) ? profDept : ws.settings.myDept;
-  const relevant = t => !notify.onlyMyDept || !myDept || !getDeptIn(ws, myDept) || (t.deptStages || []).some(s => s.deptId === myDept);
+  const myDept = (profDept && getDeptIn(ws, profDept)) ? profDept : (getDeptIn(ws, ws.settings.myDept) ? ws.settings.myDept : "");
+  // ★ no department set = admin/planner mode → receive no cross-device notifications either (matches
+  //   the local rule in taskRelevantToMe/pendingAlerts). Exception: "notify me about everything" mode.
+  if (!myDept && notify.onlyMyDept) return;
+  const relevant = t => !notify.onlyMyDept || (myDept && (t.deptStages || []).some(s => s.deptId === myDept));
   const fire = (type, title, body, tag) => { if (notify[type]) { try { new Notification(title, { body: body || "", tag, renotify: true }); } catch (e) {} } };
   newTasks.forEach(t => {
     const before = oldTasksById[t.id];
     if (!before || !relevant(t)) return;   // brand-new task (no prior snapshot) or not my department — nothing to diff/notify
     const oldComments = {}; (before.comments || []).forEach(c => oldComments[c.id] = c);
     (t.comments || []).forEach(c => {
-      if (c.type === "alert" && !c.ack && !oldComments[c.id] && (!myDept || c.toDept === myDept)) {
+      // alerts are department-targeted → only notify when it's aimed at my department (no dept = none)
+      if (c.type === "alert" && !c.ack && !oldComments[c.id] && myDept && c.toDept === myDept) {
         fire("alert", "🔔 การแจ้งเตือนใหม่", `${t.title}${c.text ? " · " + c.text : ""}`, "rt-alert-" + c.id);
       }
     });
@@ -2970,6 +2999,7 @@ function renderMonth() {
     cell.addEventListener("drop", (e) => {
       e.preventDefault();
       cell.classList.remove("drop-target");
+      if (!canEdit()) { permDenied("สิทธิ์ของคุณเลื่อนวันไม่ได้"); return; }
       // dragging a department stage → move that stage's due date
       if (dragStage) {
         const t = state.tasks.find(x => x.id === dragStage.taskId);
@@ -3048,7 +3078,7 @@ function renderTaskChip(t, position = "single", showLabel = true) {
   if (isStatusDone(st)) chip.classList.add("done");
   chip.style.setProperty("--chip-bg", hexToBgTint(st.color));
   chip.style.setProperty("--chip-color", st.color);
-  chip.draggable = true;
+  chip.draggable = canEdit();
   chip.dataset.id = t.id;
   // breakdown of cabinets (subtasks) by status — numeric badges colored by status
   const counts = subStatusCounts(t);
@@ -3199,7 +3229,7 @@ function renderCabinetChip(t, s) {
   const chip = document.createElement("div");
   chip.className = "cabinet-chip" + (isStatusDone(st) ? " done" : "");
   chip.style.setProperty("--chip-color", st.color);
-  chip.draggable = true;
+  chip.draggable = canEdit();
   chip.dataset.subId = s.id;
   chip.dataset.taskId = t.id;
   chip.title = `[${t.title}] ${s.text || "(ไม่มีชื่อตู้)"}\nสถานะ: ${st.name}\nกำหนด: ${formatDateTH(s.date)}`;
@@ -3263,7 +3293,7 @@ function renderDeptChip(t, stage) {
   chip.className = "task-chip" + (isStatusDone(st) ? " done" : "");
   chip.style.setProperty("--chip-bg", hexToBgTint(st.color));
   chip.style.setProperty("--chip-color", st.color);
-  chip.draggable = true;
+  chip.draggable = canEdit();
   chip.dataset.id = t.id;
   const dept = getDept(deptId);
   // no date of its own → it's shown on (and inherits) the project's due date; say so in the tooltip
@@ -3318,7 +3348,7 @@ function renderDeptCabChip(t, stage, sub) {
   chip.className = "task-chip" + (isStatusDone(cst) ? " done" : "");
   chip.style.setProperty("--chip-bg", hexToBgTint(cst.color));
   chip.style.setProperty("--chip-color", cst.color);
-  chip.draggable = true;
+  chip.draggable = canEdit();
   chip.dataset.id = t.id;
   chip.dataset.subId = sub.id;
   chip.title = `[${dept ? dept.name : ""}] ${t.title} · ${sub.text || "(ไม่มีชื่อตู้)"}\n`
@@ -3378,6 +3408,7 @@ function escapeHtml(s) {
 }
 /* Floating status picker — anchored to an element, calls onChange(newStatusId) */
 function openStatusPopover(anchorEl, currentId, onChange) {
+  if (!canEdit()) { permDenied("สิทธิ์ของคุณเปลี่ยนสถานะไม่ได้"); return; }
   // close any open popover first
   document.querySelectorAll(".status-popover").forEach(n => n.remove());
 
@@ -3434,6 +3465,7 @@ function openStatusPopover(anchorEl, currentId, onChange) {
    onChange() fires after any change so the caller can repaint/save. */
 let _clPopAnchor = null;
 function openChecklistPopover(anchorEl, sub, onChange, opts = {}) {
+  if (!canEdit()) { permDenied("สิทธิ์ของคุณแก้เช็คลิสต์ไม่ได้"); return; }
   // already open on this anchor → keep (prevents hover-flicker)
   if (_clPopAnchor === anchorEl && document.querySelector(".checklist-popover")) return;
   document.querySelectorAll(".checklist-popover").forEach(n => n.remove());
@@ -4261,6 +4293,7 @@ function openTaskModal(taskId, defaults={}) {
     });
   });
   doneQuick.addEventListener('click', () => {
+    if (!canEdit()) { permDenied("สิทธิ์ของคุณเปลี่ยนสถานะไม่ได้"); return; }
     const cur = getStatus(task.statusId);
     if (isStatusDone(cur)) {
       // un-done: revert to first non-done status
@@ -4395,6 +4428,7 @@ function openTaskModal(taskId, defaults={}) {
         if (e.key === "Enter") { e.preventDefault(); addSub(""); setTimeout(() => { subWrap.lastChild?.querySelector('input[type=text]')?.focus(); }, 0); }
       });
       del.addEventListener("click", async () => {
+        if (!canFull()) { permDenied("สิทธิ์ของคุณลบตู้ไม่ได้"); return; }
         const ok = await confirmDialog({
           title: "ลบตู้นี้?",
           message: `“${s.text || "ตู้นี้"}” จะถูกลบ พร้อม checklist ของตู้`,
@@ -4409,6 +4443,7 @@ function openTaskModal(taskId, defaults={}) {
     });
   }
   function addSub(text) {
+    if (!canFull()) { permDenied("สิทธิ์ของคุณเพิ่มตู้ไม่ได้"); return; }
     task.subtasks = task.subtasks || [];
     task.subtasks.push({ id: uid("st"), text, statusId: state.statuses[0]?.id, date: null, checklist: makeCabinetChecklist() });
     renderSubs();
@@ -4460,12 +4495,19 @@ function openTaskModal(taskId, defaults={}) {
       row.querySelector(".stage-date-mount").replaceWith(df);
       // dept change → recompute control (checklist vs manual)
       deptSel.addEventListener("change", () => {
+        if (!canFull()) { permDenied("สิทธิ์ของคุณเปลี่ยนแผนกของด่านไม่ได้"); deptSel.value = stg.deptId; return; }
         stg.deptId = deptSel.value;
         renderStages();
       });
-      // manual department done tick (only for depts without a checklist)
-      if (doneCb) doneCb.addEventListener("change", () => { stg.done = doneCb.checked; row.classList.toggle("done", doneCb.checked); });
-      del.addEventListener("click", () => { task.deptStages.splice(i, 1); renderStages(); });
+      // manual department done tick (only for depts without a checklist) — a status, so edit tier can
+      if (doneCb) doneCb.addEventListener("change", () => {
+        if (!canEdit()) { permDenied("สิทธิ์ของคุณเปลี่ยนสถานะไม่ได้"); doneCb.checked = !!stg.done; return; }
+        stg.done = doneCb.checked; row.classList.toggle("done", doneCb.checked);
+      });
+      del.addEventListener("click", () => {
+        if (!canFull()) { permDenied("สิทธิ์ของคุณลบด่านแผนกไม่ได้"); return; }
+        task.deptStages.splice(i, 1); renderStages();
+      });
       stageWrap.appendChild(row);
     });
     renderExtraFields();   // custom dropdown fields live in their own card, keyed off the current stages
@@ -4502,7 +4544,10 @@ function openTaskModal(taskId, defaults={}) {
         rowEl.innerHTML = `<span class="extra-row-name" title="${escapeHtml(f.name)}">${escapeHtml(f.name || "(ฟิลด์)")}</span><select><option value="">— ไม่ระบุ —</option>${groupsHtml}</select>`;
         const sel = rowEl.querySelector("select");
         sel.value = cur;
-        sel.addEventListener("change", () => { if (sel.value) stg.fields[f.id] = sel.value; else delete stg.fields[f.id]; });
+        sel.addEventListener("change", () => {
+          if (!canFull()) { permDenied("สิทธิ์ของคุณแก้ข้อมูลนี้ไม่ได้"); sel.value = cur; return; }
+          if (sel.value) stg.fields[f.id] = sel.value; else delete stg.fields[f.id];
+        });
         rowsEl.appendChild(rowEl);
       });
       card.appendChild(rowsEl);
@@ -4510,6 +4555,7 @@ function openTaskModal(taskId, defaults={}) {
     });
   }
   function addStage() {
+    if (!canFull()) { permDenied("สิทธิ์ของคุณเพิ่มด่านแผนกไม่ได้"); return; }
     // pick first department not yet used, else the first
     const used = new Set(task.deptStages.map(s => s.deptId));
     const dept = (state.departments || []).find(d => !used.has(d.id)) || (state.departments || [])[0];
@@ -4647,6 +4693,7 @@ function openTaskModal(taskId, defaults={}) {
     } catch (e) { toast("อ่านรูปไม่สำเร็จ ลองใหม่อีกครั้ง"); }
   });
   function postComment() {
+    if (!canComment()) { permDenied("สิทธิ์ของคุณคอมเมนต์ไม่ได้"); return; }
     const text = commentInput.value.trim();
     const toDept = alertSel.value;
     if (!text && !pendingPhoto) return;   // need a message or a photo
@@ -4676,6 +4723,7 @@ function openTaskModal(taskId, defaults={}) {
   modal.querySelectorAll('[data-act="close"]').forEach(b => b.addEventListener("click", close));
   modal.querySelector('[data-act="dashboard"]')?.addEventListener("click", () => openProjectDashboard(task.id));
   modal.querySelector('[data-act="save"]').addEventListener("click", () => {
+    if (!canEdit()) { close(); return; }   // read/comment tiers can't persist task changes
     task.title = modal.querySelector('[data-f="title"]').value.trim();
     task.description = modal.querySelector('[data-f="description"]').value;
     const due = dueField.getValue() || todayIso();
@@ -4703,6 +4751,7 @@ function openTaskModal(taskId, defaults={}) {
   const delBtn = modal.querySelector('[data-act="delete"]');
   if (delBtn) {
     delBtn.addEventListener("click", async () => {
+      if (!canFull()) { permDenied("สิทธิ์ของคุณลบงานไม่ได้"); return; }
       const ok = await confirmDialog({
         title: "ลบงานนี้?",
         message: `“${task.title || "งานนี้"}” จะถูกลบถาวร พร้อมตู้และ checklist ทั้งหมด — ย้อนกลับไม่ได้`,
@@ -4718,6 +4767,7 @@ function openTaskModal(taskId, defaults={}) {
   const dupBtn = modal.querySelector('[data-act="duplicate"]');
   if (dupBtn) {
     dupBtn.addEventListener("click", async () => {
+      if (!canFull()) { permDenied("สิทธิ์ของคุณทำซ้ำงานไม่ได้"); return; }
       const ok = await confirmDialog({
         title: `ทำซ้ำ “${task.title || "งานนี้"}”?`,
         message: "สร้างสำเนาใหม่ (โครงสร้างตู้/ด่านแผนก/วันเดิม) โดยรีเซ็ตความคืบหน้า — สถานะกลับเริ่มต้น, ล้างติ๊ก checklist และ Activity",
@@ -4737,8 +4787,44 @@ function openTaskModal(taskId, defaults={}) {
     });
   }
 
-  // focus title
-  setTimeout(() => modal.querySelector('[data-f="title"]').focus(), 50);
+  // ★ apply the viewer's permission tier (grey out / disable what they can't change). This is the
+  // visual layer; the handlers above are the actual enforcement (robust to any re-render).
+  applyTaskModalPerm(modal);
+
+  // focus title (only if we can actually edit it)
+  if (canFull()) setTimeout(() => modal.querySelector('[data-f="title"]').focus(), 50);
+}
+
+// grey-out controls the current permission tier can't use. read/comment = whole task panel view-only
+// (comment tier keeps the Activity composer); edit = dates/statuses/checklists on, structure off.
+function applyTaskModalPerm(modal) {
+  const full = canFull(), edit = canEdit(), comment = canComment();
+  const off = el => { if (el) { el.disabled = true; el.classList.add("perm-off"); } };
+  const gone = el => { if (el) el.style.display = "none"; };
+  if (!full) { gone(modal.querySelector('[data-act="delete"]')); gone(modal.querySelector('[data-act="duplicate"]')); }
+  if (!edit) {
+    // read-only / comment-only → the whole task panel (left) is view-only
+    modal.querySelectorAll('.modal-body input, .modal-body textarea, .modal-body select, .modal-body button').forEach(off);
+    gone(modal.querySelector('[data-act="save"]'));
+  } else if (!full) {
+    // edit tier → keep dates/status/checklist; disable structural fields only
+    ['[data-f="title"]', 'select[data-priority]', '[data-f="description"]', '[data-act="add-stage"]', '[data-act="add-sub"]']
+      .forEach(sel => modal.querySelectorAll(sel).forEach(off));
+    modal.querySelectorAll('[data-labels] input, [data-labels] .label-chip button, [data-extra-fields] select, [data-subtasks] input[type="text"], [data-subtasks] .subtask-del, [data-stages] .stage-dept, [data-stages] .subtask-del').forEach(off);
+  }
+  if (!comment) {
+    modal.querySelectorAll('[data-comment], [data-act="attach"], [data-alert-dept], [data-act="send-comment"]').forEach(off);
+    const ph = modal.querySelector('.ta-compose'); if (ph) ph.classList.add("perm-off-note");
+  }
+  if (!full) {
+    const head = modal.querySelector('.modal-head h3');
+    if (head && !head.querySelector('.perm-badge')) {
+      const b = document.createElement("span");
+      b.className = "perm-badge";
+      b.textContent = edit ? "🖊️ แก้ได้เฉพาะวัน/สถานะ" : (comment ? "💬 คอมเมนต์ได้อย่างเดียว" : "👁️ ดูอย่างเดียว");
+      head.appendChild(b);
+    }
+  }
 }
 
 /* ---------- Day detail modal (when many tasks) ---------- */
@@ -5328,7 +5414,7 @@ function buildUsersAdminPanel(container) {
   sec.className = "settings-section";
   sec.innerHTML = `
     <h4 class="settings-h">จัดการผู้ใช้</h4>
-    <p class="settings-desc">ใครก็ล็อกอินด้วยอีเมลอะไรก็ได้ (magic link ไม่จำกัดโดเมน) — คนใหม่เห็นข้อมูลไม่ได้จนกว่าจะกด “อนุมัติ” · แผนกที่ตั้งให้ใช้ทุกปฏิทิน<br>ลำดับสถานะ: <b>อนุมัติแล้ว</b> →[ถอดสิทธิ์]→ <b>รออนุมัติ</b> →[🚩 บล็อก]→ <b>ถูกบล็อก</b> →[↩ ปลดบล็อก]→ รออนุมัติ (บล็อกกู้คืนได้เสมอ)</p>
+    <p class="settings-desc">ใครก็ล็อกอินด้วยอีเมลอะไรก็ได้ (magic link ไม่จำกัดโดเมน) — คนใหม่เห็นข้อมูลไม่ได้จนกว่าจะกด “อนุมัติ” · แผนกที่ตั้งให้ใช้ทุกปฏิทิน<br>ลำดับสถานะ: <b>อนุมัติแล้ว</b> →[ถอดสิทธิ์]→ <b>รออนุมัติ</b> →[🚩 บล็อก]→ <b>ถูกบล็อก</b> →[↩ ปลดบล็อก]→ รออนุมัติ (บล็อกกู้คืนได้เสมอ)<br>ระดับสิทธิ์: 👁️ ดูอย่างเดียว · 💬 คอมเมนต์ · 🖊️ แก้วัน/สถานะ · ✅ แก้ไขเต็ม (admin = เต็มเสมอ)</p>
     <div class="um-count" data-count></div>
     <div data-list><div class="cf-empty">กำลังโหลด...</div></div>
   `;
@@ -5364,15 +5450,25 @@ function buildUsersAdminPanel(container) {
     row.querySelector("[data-dept]").value = p.dept_id || "";
     row.querySelector("[data-role]").addEventListener("change", async (e) => {
       const v = e.target.value, who = p.display_name || p.email || "";
-      if (await patch(p.id, { role: v })) { p.role = v; if (isMe) currentProfile.role = v; toast(`ตั้ง ${who} เป็น ${v} แล้ว`); }
+      if (await patch(p.id, { role: v })) { p.role = v; if (isMe) currentProfile.role = v; toast(`ตั้ง ${who} เป็น ${v} แล้ว`); load(); }   // reload → perm dropdown enable-state follows role
       else e.target.value = p.role || "member";
     });
+    const permSel = row.querySelector("[data-perm]");
+    if (permSel) {
+      permSel.value = p.role === "admin" ? "full" : (p.perm || "full");
+      permSel.addEventListener("change", async (e) => {
+        const v = e.target.value;
+        if (await patch(p.id, { perm: v })) { p.perm = v; if (isMe) currentProfile.perm = v; toast(`ตั้งระดับสิทธิ์เป็น “${PERM_LABEL[v] || v}” แล้ว`); if (isMe) renderAll(); }
+        else e.target.value = p.perm || "full";
+      });
+    }
     row.querySelector("[data-dept]").addEventListener("change", async (e) => {
       const v = e.target.value;
       if (await patch(p.id, { dept_id: v || null })) {
         p.dept_id = v || null;
         if (isMe) { currentProfile.dept_id = v || null; renderAll(); checkAlerts(); }   // my own dept changed → views follow immediately
         toast("บันทึกแผนกแล้ว");
+        load();   // re-group: the person moves under their new department's heading
       } else e.target.value = p.dept_id || "";
     });
   }
@@ -5395,6 +5491,12 @@ function buildUsersAdminPanel(container) {
         <option value="member">member</option><option value="admin">admin</option>
       </select>
       <select data-dept title="แผนก (ใช้ทุกปฏิทิน)">${deptOptions}</select>
+      <select data-perm class="um-perm-sel" title="ระดับสิทธิ์การแก้ไข (admin = เต็มเสมอ)" ${p.role === "admin" ? "disabled" : ""}>
+        <option value="read">👁️ ดูอย่างเดียว</option>
+        <option value="comment">💬 คอมเมนต์</option>
+        <option value="edit">🖊️ แก้วัน/สถานะ</option>
+        <option value="full">✅ แก้ไขเต็ม</option>
+      </select>
       ${p.approved
         ? `<button class="btn btn-ghost btn-sm btn-danger" data-revoke ${isMe ? "disabled" : ""} title="${isMe ? "ถอดสิทธิ์ตัวเองไม่ได้" : "ถอดสิทธิ์ — ย้ายกลับไปสถานะรออนุมัติ"}">🚫 ถอดสิทธิ์</button>`
         : `<button class="btn btn-sm btn-primary" data-approve>✓ อนุมัติ</button>
@@ -5454,6 +5556,13 @@ function buildUsersAdminPanel(container) {
     return row;
   }
 
+  const groupHead = (labelHtml, count) => {
+    const h = document.createElement("div");
+    h.className = "um-group-head";
+    h.innerHTML = `${labelHtml} <span class="um-group-count">(${count})</span>`;
+    return h;
+  };
+
   function render(users) {
     const active  = users.filter(u => !u.blocked && u.approved);
     const pending = users.filter(u => !u.blocked && !u.approved);
@@ -5463,8 +5572,32 @@ function buildUsersAdminPanel(container) {
     listEl.innerHTML = "";
     if (!users.length) { listEl.innerHTML = `<div class="cf-empty">ยังไม่มีผู้ใช้</div>`; return; }
 
-    // main list: pending first (need attention), then active
-    [...pending, ...active].forEach(p => listEl.appendChild(makeRow(p)));
+    // 1) "รออนุมัติ" first — the priority action, kept together across all departments
+    if (pending.length) {
+      listEl.appendChild(groupHead("⏳ รออนุมัติ", pending.length));
+      pending.forEach(p => listEl.appendChild(makeRow(p)));
+    }
+
+    // 2) approved users grouped BY DEPARTMENT (department order, then a "no department" group last)
+    const byDept = new Map();
+    active.forEach(u => {
+      const k = (u.dept_id && getDept(u.dept_id)) ? u.dept_id : "";
+      if (!byDept.has(k)) byDept.set(k, []);
+      byDept.get(k).push(u);
+    });
+    (state.departments || []).forEach(d => {
+      const arr = byDept.get(d.id);
+      if (arr && arr.length) {
+        listEl.appendChild(groupHead(`${deptIco(d)}${escapeHtml(d.name)}`, arr.length));
+        arr.forEach(p => listEl.appendChild(makeRow(p)));
+      }
+    });
+    const noDept = byDept.get("");
+    if (noDept && noDept.length) {
+      listEl.appendChild(groupHead("— ไม่ระบุแผนก —", noDept.length));
+      noDept.forEach(p => listEl.appendChild(makeRow(p)));
+    }
+
     if (!pending.length && !active.length) listEl.innerHTML = `<div class="cf-empty">ไม่มีผู้ใช้ที่ใช้งานอยู่ (ดูที่ “ถูกบล็อก” ด้านล่าง)</div>`;
 
     // collapsible "blocked" section — kept out of the way but always recoverable
@@ -6502,10 +6635,13 @@ function canNotify(type) {
   const n = state.settings.notify;
   return NOTIF_SUPPORTED && n && n.enabled && n[type] && Notification.permission === "granted";
 }
-// is this task relevant to me? (my department is one of its stages — or scope is off / no department set)
+// is this task relevant to me for notifications?
+// ★ no department set = admin/planner overview mode → receive NOTHING (owner's request: an admin who
+//   hasn't picked a department shouldn't get work notifications, not even ones they sent themselves).
 function taskRelevantToMe(t) {
   const n = state.settings.notify, my = myDeptId();
-  if (!n || !n.onlyMyDept || !my || !getDept(my)) return true;
+  if (!n || !n.onlyMyDept) return true;   // "notify me about everything" mode → always relevant
+  if (!my) return false;                  // department-scoped but no department = admin mode → nothing
   return (t.deptStages || []).some(s => s.deptId === my);
 }
 // fire a desktop notification (no-op if the type is off / permission not granted)
@@ -6553,24 +6689,29 @@ function compressImage(file, maxEdge = 1000, quality = 0.6) {
     reader.readAsDataURL(file);
   });
 }
-// unacknowledged alerts targeted at the user's department (no myDept set = see all departments)
+// unacknowledged alerts targeted at MY department.
+// ★ no department set = admin/planner mode → receive no alerts at all (not even ones you sent). This is
+//   why the bell/popup/pins all go quiet for an admin who hasn't picked a department.
 function pendingAlerts() {
-  const my = myDeptId() || null;
+  const my = myDeptId();
+  if (!my) return [];
   const out = [];
   (state.tasks || []).forEach(t => (t.comments || []).forEach(c => {
-    if (c.type === "alert" && !c.ack && (!my || c.toDept === my)) out.push({ task: t, c });
+    if (c.type === "alert" && !c.ack && c.toDept === my) out.push({ task: t, c });
   }));
   return out.sort((a, b) => (b.c.at || 0) - (a.c.at || 0));
 }
-// does this task have an unacknowledged alert visible to the current user (my department; planner = all)?
+// does this task have an unacknowledged alert for MY department? (no department = none)
 function taskHasAlert(t) {
-  const my = myDeptId() || null;
-  return (t.comments || []).some(c => c.type === "alert" && !c.ack && (!my || c.toDept === my));
+  const my = myDeptId();
+  if (!my) return false;
+  return (t.comments || []).some(c => c.type === "alert" && !c.ack && c.toDept === my);
 }
-// the task's unacknowledged alerts visible to the current user (for the per-task popup)
+// the task's unacknowledged alerts for MY department (for the per-task popup; no department = none)
 function taskPendingAlerts(t) {
-  const my = myDeptId() || null;
-  return (t.comments || []).filter(c => c.type === "alert" && !c.ack && (!my || c.toDept === my)).map(c => ({ task: t, c }));
+  const my = myDeptId();
+  if (!my) return [];
+  return (t.comments || []).filter(c => c.type === "alert" && !c.ack && c.toDept === my).map(c => ({ task: t, c }));
 }
 // red shaking bell marker for chips / today-panel rows — click it to open the alert popup
 function alertPin(t) {
@@ -6857,6 +6998,15 @@ function renderAll() {
   renderMainView();
   renderTodayPanel();
   renderBell();
+  applySidebarPerm();
+}
+// hide the create/draw/import buttons for members below "full" (they'd only get a permission toast)
+function applySidebarPerm() {
+  const show = canFull();
+  ["btnQuickAdd", "btnDrawReq", "btnImportReq"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = show ? "" : "none";
+  });
 }
 
 document.getElementById("btnSettings").addEventListener("click", () => {
@@ -6910,9 +7060,9 @@ document.getElementById("tpNextDay").addEventListener("click", () => { tpDayOffs
 document.getElementById("tpDayBtn").addEventListener("click", () => { if (tpDayOffset !== 0) { tpDayOffset = 0; renderTodayPanel(); } });
 document.getElementById("tpReport").addEventListener("click", openStatusReport);   // manual open — ignores the auto-show frequency
 document.getElementById("tpPrint").addEventListener("click", openWorkOrderPrint);
-document.getElementById("btnQuickAdd").addEventListener("click", () => openTaskModal(null));
-document.getElementById("btnDrawReq").addEventListener("click", openDrawRequestModal);
-document.getElementById("btnImportReq").addEventListener("click", openImportRequestsModal);
+document.getElementById("btnQuickAdd").addEventListener("click", () => { if (!canFull()) return permDenied("สิทธิ์ของคุณเพิ่มงานใหม่ไม่ได้"); openTaskModal(null); });
+document.getElementById("btnDrawReq").addEventListener("click", () => { if (!canFull()) return permDenied("สิทธิ์ของคุณยื่นขอแบบไม่ได้"); openDrawRequestModal(); });
+document.getElementById("btnImportReq").addEventListener("click", () => { if (!canFull()) return permDenied("สิทธิ์ของคุณดึงคำขอไม่ได้"); openImportRequestsModal(); });
 (() => {
   const searchEl = document.getElementById("searchInput");
   const searchWrap = searchEl.closest(".toolbar-search");
