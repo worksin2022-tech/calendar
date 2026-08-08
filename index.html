@@ -90,7 +90,6 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
 .login-sent { margin-top: 4px; }
 /* one-time code box — wide letter spacing so a 6-digit code is easy to read back from the email */
 .otp-input { text-align: center; font-size: 24px !important; font-weight: 700; letter-spacing: 8px; padding: 10px 12px !important; }
-.otp-input::placeholder { letter-spacing: 8px; color: var(--text-faint); font-weight: 400; }
 .login-sent-ico { font-size: 34px; margin-bottom: 6px; }
 .login-sent p { font-size: 13px; color: var(--text-dim); margin: 0 0 14px; }
 .sidebar h1 {
@@ -959,6 +958,10 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
   display: flex; align-items: center; justify-content: flex-end; gap: 8px;
   background: #fafbfc;
 }
+/* status-report footer: frequency picker on the left, "เริ่มทำงาน" stays on the right */
+.rp-foot { justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+.rp-freq { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-dim); }
+.rp-freq select { font-size: 12px; padding: 4px 6px; border: 1px solid var(--border-strong); border-radius: 7px; background: #fff; color: var(--text); }
 .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
 .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .field label { font-size: 12px; font-weight: 600; color: var(--text-dim); }
@@ -1715,8 +1718,9 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
       <p><b>ส่งรหัสแล้ว</b><br>ใส่รหัสจากอีเมล (หรือกดลิงก์ในอีเมลก็ได้)</p>
       <div class="field">
         <label>รหัสจากอีเมล</label>
+        <!-- no fixed-length placeholder: this project's codes are 8 digits, other projects get 6 -->
         <input type="text" id="loginOtp" class="otp-input" inputmode="numeric" autocomplete="one-time-code"
-               placeholder="000000" maxlength="10" />
+               maxlength="10" />
       </div>
       <button type="button" class="btn btn-primary login-btn" id="btnVerifyOtp">เข้าสู่ระบบ</button>
       <div class="login-msg" id="otpMsg"></div>
@@ -1787,6 +1791,7 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
             <span class="tp-day-date" id="tpDate"></span>
           </button>
           <button class="tp-nav-btn" id="tpNextDay" title="วันถัดไป">›</button>
+          <button class="tp-nav-btn tp-print" id="tpReport" title="รายงานสถานะงาน (งานค้างทั้งหมดของแผนกคุณ)">📋</button>
           <button class="tp-nav-btn tp-print" id="tpPrint" title="พิมพ์ใบสั่งงาน — แผนกที่ดู + วันที่ดู">🖨️</button>
         </div>
       </div>
@@ -1954,7 +1959,7 @@ async function verifyOtpCode() {
   const token = (input.value || "").replace(/\D/g, "");   // tolerate spaces/dashes pasted from the email
   msgEl.textContent = "";
   // don't hardcode 6: Supabase allows 6–10 and some projects are provisioned with 8
-  if (token.length < 6) { msgEl.textContent = "กรุณาใส่รหัสให้ครบ (อย่างน้อย 6 หลัก)"; return; }
+  if (token.length < 6) { msgEl.textContent = "กรุณาใส่รหัสให้ครบตามที่ส่งไปในอีเมล"; return; }
   const email = _otpEmail || (document.getElementById("loginEmail").value || "").trim();
   if (!email) { msgEl.textContent = "ไม่พบอีเมล — กดส่งรหัสใหม่อีกครั้ง"; return; }
   const sb = getSupabase();
@@ -2255,6 +2260,15 @@ function cabinetDeptDue(task, sub, deptId) {
   if (perCab) return perCab;
   const stg = taskStage(task, deptId);
   return (stg && stg.due) || null;
+}
+// ★ the date a department stage/cabinet is SHOWN on. Same chain as cabinetDeptDue(), plus a final
+// fallback to the project's own due date. Without this a task whose department stage has no date of
+// its own (which is what makeDefaultStages() produces for every new task) renders nowhere at all in
+// a department calendar/today-panel view — it just silently vanishes.
+// Deliberately NOT folded into cabinetDeptDue(): dateLimitViolation() uses that one as the ceiling
+// and must keep treating "no date set" as "no ceiling", not as "the project date".
+function deptDueForView(task, sub, deptId) {
+  return cabinetDeptDue(task, sub, deptId) || (task && task.date) || null;
 }
 // is one cabinet finished for this department? checklist depts → all their items ticked;
 // depts without a checklist → fall back to that stage's manual "done" tick
@@ -2575,7 +2589,10 @@ let _cloudSaveTimer = null;
 function scheduleCloudSave() {
   if (!currentProfile) return;   // not signed in yet (e.g. still on the login screen) — nothing to push
   clearTimeout(_cloudSaveTimer);
-  _cloudSaveTimer = setTimeout(pushAllBoardsToCloud, 900);   // debounce: collapse rapid edits into one write
+  // debounce: collapse rapid edits into one write. MUST null the handle when it fires — clearTimeout
+  // alone leaves a stale truthy id behind, and handleRealtimeBoardChange() reads this as "an edit is
+  // still pending here", which would make it skip every incoming update for the active board forever.
+  _cloudSaveTimer = setTimeout(() => { _cloudSaveTimer = null; pushAllBoardsToCloud(); }, 900);
 }
 // board id -> JSON we last confirmed pushed. Every saveState() pushes ALL boards (see above), but
 // slice 3 has every device listening for changes on every board row — pushing a board whose content
@@ -3183,9 +3200,9 @@ function buildDeptItems(tasks, deptIds) {
       if (!stg) return;
       const subs = t.subtasks || [];
       if (byCab && subs.length) {
-        subs.forEach(sub => push(cabinetDeptDue(t, sub, deptId), { kind: "deptcab", task: t, stage: stg, sub }));
+        subs.forEach(sub => push(deptDueForView(t, sub, deptId), { kind: "deptcab", task: t, stage: stg, sub }));
       } else {
-        push(stg.due, { kind: "deptstage", task: t, stage: stg });
+        push(stg.due || t.date, { kind: "deptstage", task: t, stage: stg });
       }
     });
   });
@@ -3210,7 +3227,10 @@ function renderDeptChip(t, stage) {
   chip.draggable = true;
   chip.dataset.id = t.id;
   const dept = getDept(deptId);
-  chip.title = `[${dept ? dept.name : ""}] ${t.title}\nสถานะงาน (รวม): ${st.name}\nแผนกนี้: ${deptDone ? "เสร็จแล้ว ✓" : "ยังไม่เสร็จ"}\nกำหนด: ${formatDateTH(stage.due)}`;
+  // no date of its own → it's shown on (and inherits) the project's due date; say so in the tooltip
+  const shownDue = stage.due || t.date;
+  const dueNote = stage.due ? "" : " (ตามวันของโปรเจค — ยังไม่ได้ตั้งวันของแผนกนี้)";
+  chip.title = `[${dept ? dept.name : ""}] ${t.title}\nสถานะงาน (รวม): ${st.name}\nแผนกนี้: ${deptDone ? "เสร็จแล้ว ✓" : "ยังไม่เสร็จ"}\nกำหนด: ${formatDateTH(shownDue)}${dueNote}`;
   // cabinet-status breakdown — coloured numeric badges (no status-name text), like the all view
   const counts = subStatusCounts(t);
   const breakdown = state.statuses.filter(s => counts[s.id]);
@@ -3252,7 +3272,7 @@ function renderDeptCabChip(t, stage, sub) {
   const p = checklistProgress(sub, deptId);
   const usesChecklist = p.total > 0;
   const done = cabDeptDone(t, sub, deptId);
-  const ed = cabinetDeptDue(t, sub, deptId);
+  const ed = deptDueForView(t, sub, deptId);   // matches the day this chip was placed on by buildDeptItems
 
   const chip = document.createElement("div");
   // same look as the dept / all-departments chip: status colour stays even when done
@@ -4768,12 +4788,15 @@ function openDayModal(dateIso) {
 }
 
 function pad2(n) { return String(n).padStart(2, "0"); }
-// dd/mm/yyyy (ปี พ.ศ.)
+// dd/mm/yyyy (ปี พ.ศ.) — "ไม่ระบุ" for an unset date: a department stage legitimately has no date
+// of its own (it inherits the project's), so this must never throw on null the way fromIso() does
 function formatDateTH(iso) {
+  if (!iso) return "ไม่ระบุ";
   const d = fromIso(iso);
   return `${pad2(d.getDate())}/${pad2(d.getMonth()+1)}/${d.getFullYear()+543}`;
 }
 function formatDateFullTH(iso) {
+  if (!iso) return "ไม่ระบุ";
   const d = fromIso(iso);
   return `วัน${TH_DAYS[d.getDay()]}ที่ ${formatDateTH(iso)}`;
 }
@@ -5117,8 +5140,8 @@ function renderTodayPanelDept(deptIds, today, pass) {
       if (!stg) return;
       const subs = t.subtasks || [];
       const units = subs.length
-        ? subs.map(s => ({ sub: s, ed: cabinetDeptDue(t, s, deptId), done: cabDeptDone(t, s, deptId) }))
-        : [{ sub: null, ed: stg.due || null, done: isDeptComplete(t, deptId) }];
+        ? subs.map(s => ({ sub: s, ed: deptDueForView(t, s, deptId), done: cabDeptDone(t, s, deptId) }))
+        : [{ sub: null, ed: stg.due || t.date || null, done: isDeptComplete(t, deptId) }];
       units.forEach(u => {
         if (!u.ed) return;
         if (u.ed === today) { addTo(todayMap, t, stg, u.sub, u.ed); cabTotal++; if (u.done) cabDone++; }
@@ -6162,8 +6185,8 @@ function buildWorkOrderSheet(deptId, day) {
     const stg = taskStage(t, deptId); if (!stg) return;
     const subs = t.subtasks || [];
     const units = subs.length
-      ? subs.map(s => ({ sub: s, ed: cabinetDeptDue(t, s, deptId) }))
-      : [{ sub: null, ed: stg.due || null }];
+      ? subs.map(s => ({ sub: s, ed: deptDueForView(t, s, deptId) }))
+      : [{ sub: null, ed: stg.due || t.date || null }];
     const due = units.filter(u => u.ed === day);
     if (due.length) entries.push({ task: t, stg, cabs: due });
   });
@@ -6562,6 +6585,40 @@ function checkAlerts() {
   if (list.length) openAlertPopup(list);
 }
 
+/* ---------- how often the status report pops up on app open ----------
+   Kept in localStorage, NOT in state.settings: this is a personal, per-device preference, while
+   state.settings is one shared object synced to every user through the cloud (see slice 2b) —
+   putting it there would let one person's choice change everyone else's. */
+const REPORT_FREQ_KEY = "qc_report_freq";     // "daily" (default) | "always" | "off"
+const REPORT_SEEN_KEY = "qc_report_seen";     // "YYYY-MM-DD|<userId>" of the last auto-show
+function reportFreq() {
+  const v = localStorage.getItem(REPORT_FREQ_KEY);
+  return (v === "always" || v === "off") ? v : "daily";
+}
+function setReportFreq(v) { localStorage.setItem(REPORT_FREQ_KEY, v); }
+// should the report pop up by itself right now? (the manual 📋 button ignores all of this)
+function shouldAutoShowReport() {
+  const freq = reportFreq();
+  if (freq === "off") return false;
+  if (!statusReportHasContent()) return false;   // nothing pending → don't interrupt just to say "ไม่มีงานค้าง"
+  if (freq === "always") return true;
+  const stamp = todayIso() + "|" + ((currentProfile && currentProfile.id) || "-");
+  return localStorage.getItem(REPORT_SEEN_KEY) !== stamp;   // once per day, per person
+}
+function markReportSeen() {
+  localStorage.setItem(REPORT_SEEN_KEY, todayIso() + "|" + ((currentProfile && currentProfile.id) || "-"));
+}
+// is there actually any outstanding work to report? (same scope the report itself uses)
+function statusReportHasContent() {
+  const deptId = myDeptId() || null;
+  const isComplete = t => {
+    if (deptId) return isDeptComplete(t, deptId);
+    const p = (t.subtasks || []).reduce((a, s) => { const x = checklistProgress(s); a.done += x.done; a.total += x.total; return a; }, { done: 0, total: 0 });
+    return p.total > 0 ? p.done === p.total : isStatusDone(getStatus(t.statusId));
+  };
+  return (state.tasks || []).some(t => (deptId ? !!taskStage(t, deptId) : true) && !isComplete(t));
+}
+
 function openStatusReport() {
   const deptId = myDeptId() || null;
   const deptName = deptId ? (getDept(deptId).name || "") : null;
@@ -6642,11 +6699,27 @@ function openStatusReport() {
         ${deptId ? "" : `<div class="rp-note">ยังไม่ได้ตั้ง “แผนกของฉัน” — ตั้งที่ ⚙ ตั้งค่า › ผู้ใช้ เพื่อดูเฉพาะแผนกของคุณ (ตอนนี้แสดงรวมทุกแผนก)</div>`}
         <div class="rp-list">${rowsHtml}</div>
       </div>
-      <div class="modal-foot">
+      <div class="modal-foot rp-foot">
+        <label class="rp-freq">แสดงรายงานนี้
+          <select data-freq>
+            <option value="daily">วันละครั้ง</option>
+            <option value="always">ทุกครั้งที่เปิดแอป</option>
+            <option value="off">ไม่ต้องแสดงอัตโนมัติ</option>
+          </select>
+        </label>
         <button class="btn btn-primary" data-act="close">เริ่มทำงาน</button>
       </div>
     </div>`;
   document.body.appendChild(overlay);
+  // frequency lives here rather than in ⚙ ตั้งค่า — ⚙ is admin-only, and this is a personal choice
+  const freqSel = overlay.querySelector("[data-freq]");
+  freqSel.value = reportFreq();
+  freqSel.addEventListener("change", () => {
+    setReportFreq(freqSel.value);
+    toast(freqSel.value === "off" ? "ปิดการแสดงรายงานอัตโนมัติแล้ว — เปิดดูเองได้ที่ปุ่ม 📋"
+      : freqSel.value === "always" ? "จะแสดงรายงานทุกครั้งที่เปิดแอป"
+      : "จะแสดงรายงานวันละครั้ง (ครั้งแรกที่เปิดแอปของวัน)");
+  });
   const close = () => { overlay.remove(); document.removeEventListener("keydown", onEsc, true); };
   function onEsc(e) { if (e.key === "Escape") close(); }
   overlay.addEventListener("click", e => { if (e.target === overlay) close(); });
@@ -6721,6 +6794,7 @@ document.getElementById("viewToggle").addEventListener("click", (e) => {
 document.getElementById("tpPrevDay").addEventListener("click", () => { tpDayOffset--; renderTodayPanel(); });
 document.getElementById("tpNextDay").addEventListener("click", () => { tpDayOffset++; renderTodayPanel(); });
 document.getElementById("tpDayBtn").addEventListener("click", () => { if (tpDayOffset !== 0) { tpDayOffset = 0; renderTodayPanel(); } });
+document.getElementById("tpReport").addEventListener("click", openStatusReport);   // manual open — ignores the auto-show frequency
 document.getElementById("tpPrint").addEventListener("click", openWorkOrderPrint);
 document.getElementById("btnQuickAdd").addEventListener("click", () => openTaskModal(null));
 document.getElementById("btnDrawReq").addEventListener("click", openDrawRequestModal);
@@ -6877,9 +6951,11 @@ async function startApp() {
   startRealtimeSync();   // slice 3: start listening for changes other devices push from this point on
   applyMyDeptDefaultView();   // open on the user's own department by default
   renderAll();
-  // on app open: urgent department alerts take precedence over the routine status report
+  // on app open: urgent department alerts take precedence over the routine status report.
+  // The report is rate-limited (default: once a day, and only when something is actually pending) —
+  // it used to fire on every single open, which people found too noisy. 📋 opens it on demand.
   if (pendingAlerts().length) openAlertPopup();
-  else if (state.tasks.length) openStatusReport();
+  else if (shouldAutoShowReport()) { markReportSeen(); openStatusReport(); }
   refreshImportBadge();   // fire-and-forget: check for pending online drawing requests (Supabase)
 }
 initAuth();
