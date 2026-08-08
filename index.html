@@ -74,6 +74,13 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
 .um-mail { font-size: 11px; color: var(--text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .um-row select { font-size: 12px; padding: 4px 6px; border: 1px solid var(--border-strong); border-radius: 7px; background: #fff; }
 .um-me { font-size: 10px; font-weight: 700; padding: 1px 7px; border-radius: 8px; background: #ecfdf3; color: #027a48; }
+.um-pending { font-size: 10px; font-weight: 700; padding: 1px 7px; border-radius: 8px; background: #fef0c7; color: #b54708; }
+.um-blocked-badge { font-size: 10px; font-weight: 700; padding: 1px 7px; border-radius: 8px; background: #fee4e2; color: #b42318; }
+.um-blocked-wrap { margin-top: 10px; border-top: 1px solid var(--border); padding-top: 8px; }
+.um-blocked-toggle { background: none; border: 0; cursor: pointer; font-size: 12.5px; font-weight: 700; color: #b42318; padding: 4px 2px; }
+.um-blocked-toggle:hover { text-decoration: underline; }
+.um-blocked-list.hidden { display: none; }
+.um-blocked-row { opacity: .85; }
 .um-count { font-size: 12px; color: var(--text-dim); margin-bottom: 6px; }
 
 /* login screen (Supabase magic-link auth) — full-screen gate shown until signed in */
@@ -1754,6 +1761,15 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
         <button type="button" class="btn btn-sm" id="btnPendingLogout">ออกจากระบบ</button>
       </div>
     </div>
+    <!-- blocked (red-flagged) account: an admin can unblock any time, so "ตรวจสอบอีกครั้ง" is offered -->
+    <div class="login-sent hidden" id="loginBlocked">
+      <div class="login-sent-ico">🚫</div>
+      <p><b>บัญชีถูกระงับการใช้งาน</b><br>บัญชี <span id="loginBlockedEmail"></span> ถูก Admin ระงับไว้ — ถ้าคิดว่าผิดพลาด ติดต่อ Admin ให้ปลดบล็อก</p>
+      <div class="row" style="gap:8px; justify-content:center">
+        <button type="button" class="btn btn-sm" id="btnCheckBlocked">ตรวจสอบอีกครั้ง</button>
+        <button type="button" class="btn btn-sm" id="btnBlockedLogout">ออกจากระบบ</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -2031,6 +2047,11 @@ async function initAuth() {
     const { data } = await sb.auth.getSession();
     if (data && data.session) { document.getElementById("loginPending").classList.add("hidden"); await onSignedIn(data.session); }
   });
+  document.getElementById("btnBlockedLogout").addEventListener("click", signOutUser);
+  document.getElementById("btnCheckBlocked").addEventListener("click", async () => {
+    const { data } = await sb.auth.getSession();
+    if (data && data.session) { document.getElementById("loginBlocked").classList.add("hidden"); await onSignedIn(data.session); }
+  });
 
   sb.auth.onAuthStateChange((event, session) => {
     if (event === "SIGNED_IN" && session) onSignedIn(session);
@@ -2087,6 +2108,15 @@ async function onSignedInInner(session) {
   currentProfile = await loadProfile(session.user.id, session.user.email);
   ["loginEmailField", "loginSent"].forEach(id => document.getElementById(id).classList.add("hidden"));
   document.getElementById("btnSendMagicLink").classList.add("hidden");
+
+  // ★ blocked (red-flagged) accounts never get in — checked before approval since blocked overrides
+  // everything (even a still-approved/admin row). Reversible: an admin can unblock at ⚙ จัดการผู้ใช้.
+  if (currentProfile.blocked) {
+    document.getElementById("loginBlockedEmail").textContent = currentProfile.email || "";
+    document.getElementById("loginBlocked").classList.remove("hidden");
+    return;
+  }
+  document.getElementById("loginBlocked").classList.add("hidden");
 
   // ★ approval gate: magic link accepts any email — block access to real data until an admin approves
   if (!currentProfile.approved && currentProfile.role !== "admin") {
@@ -5298,7 +5328,7 @@ function buildUsersAdminPanel(container) {
   sec.className = "settings-section";
   sec.innerHTML = `
     <h4 class="settings-h">จัดการผู้ใช้</h4>
-    <p class="settings-desc">ใครก็ล็อกอินด้วยอีเมลอะไรก็ได้ (magic link ไม่จำกัดโดเมน) — คนใหม่จะเห็นข้อมูลไม่ได้จนกว่าจะกด “อนุมัติ” ที่นี่ · แผนกที่ตั้งให้ใช้กับทุกปฏิทิน</p>
+    <p class="settings-desc">ใครก็ล็อกอินด้วยอีเมลอะไรก็ได้ (magic link ไม่จำกัดโดเมน) — คนใหม่เห็นข้อมูลไม่ได้จนกว่าจะกด “อนุมัติ” · แผนกที่ตั้งให้ใช้ทุกปฏิทิน<br>ลำดับสถานะ: <b>อนุมัติแล้ว</b> →[ถอดสิทธิ์]→ <b>รออนุมัติ</b> →[🚩 บล็อก]→ <b>ถูกบล็อก</b> →[↩ ปลดบล็อก]→ รออนุมัติ (บล็อกกู้คืนได้เสมอ)</p>
     <div class="um-count" data-count></div>
     <div data-list><div class="cf-empty">กำลังโหลด...</div></div>
   `;
@@ -5307,78 +5337,153 @@ function buildUsersAdminPanel(container) {
   const countEl = sec.querySelector("[data-count]");
   const deptOptions = `<option value="">— ไม่ระบุแผนก —</option>` +
     (state.departments || []).map(d => `<option value="${d.id}">${escapeHtml(d.name)}</option>`).join("");
+  const sb = getSupabase();
 
-  (async () => {
-    const sb = getSupabase();
+  // update one profile and CONFIRM a row actually changed. `.select()` returns the affected rows —
+  // if RLS silently blocks the write (or the row is gone) it returns [] with no error, which the old
+  // code mistook for success (that's why "ถอดสิทธิ์" looked like it worked but didn't). Surface it.
+  const patch = async (id, fields) => {
+    if (!sb) { toast("ไม่มีอินเทอร์เน็ต — ลองใหม่"); return false; }
+    const { data, error } = await sb.from("profiles").update(fields).eq("id", id).select();
+    if (error) { toast("บันทึกไม่สำเร็จ: " + error.message); return false; }
+    if (!data || !data.length) { toast("ทำรายการไม่สำเร็จ — อาจไม่มีสิทธิ์ หรือผู้ใช้ถูกลบไปแล้ว (ลองรีเฟรช)"); return false; }
+    return true;
+  };
+
+  async function load() {
+    listEl.innerHTML = `<div class="cf-empty">กำลังโหลด...</div>`;
     if (!sb) { listEl.innerHTML = `<div class="cf-empty">โหลดไม่สำเร็จ — เช็คอินเทอร์เน็ต</div>`; return; }
     const { data, error } = await sb.from("profiles").select("*").order("approved", { ascending: true }).order("created_at", { ascending: true });
     if (error) { listEl.innerHTML = `<div class="cf-empty">โหลดไม่สำเร็จ: ${escapeHtml(error.message)}</div>`; return; }
-    const users = data || [];
-    const pending = users.filter(u => !u.approved && u.role !== "admin").length;
-    countEl.textContent = `ทั้งหมด ${users.length} คน · admin ${users.filter(u => u.role === "admin").length} · รออนุมัติ ${pending}`;
-    if (!users.length) { listEl.innerHTML = `<div class="cf-empty">ยังไม่มีผู้ใช้</div>`; return; }
-    listEl.innerHTML = "";
+    render(data || []);
+  }
 
-    users.forEach(p => {
-      const isMe = currentProfile && p.id === currentProfile.id;
-      const row = document.createElement("div");
-      row.className = "um-row";
-      row.innerHTML = `
-        <div class="um-who">
-          ${avatarHtml(p)}
-          <div style="min-width:0">
-            <div class="um-name">${escapeHtml(p.display_name || "(ไม่มีชื่อ)")} ${isMe ? '<span class="um-me">คุณ</span>' : ""}</div>
-            <div class="um-mail">${escapeHtml(p.email || "")}</div>
-          </div>
-        </div>
-        <select data-role ${isMe ? "disabled" : ""} title="${isMe ? "เปลี่ยนสิทธิ์ตัวเองไม่ได้ (กันล็อกตัวเองออก)" : "สิทธิ์"}">
-          <option value="member">member</option><option value="admin">admin</option>
-        </select>
-        <select data-dept title="แผนก (ใช้ทุกปฏิทิน)">${deptOptions}</select>
-        ${p.approved ? "" : `<button class="btn btn-sm btn-primary" data-approve>✓ อนุมัติ</button>`}
-        <button class="btn btn-ghost btn-sm btn-danger" data-del ${isMe ? "disabled" : ""} title="${isMe ? "ลบตัวเองไม่ได้" : "ถอดสิทธิ์เข้าใช้งาน"}">✕</button>
-      `;
-      row.querySelector("[data-role]").value = p.role || "member";
-      row.querySelector("[data-dept]").value = p.dept_id || "";
-
-      const patch = async (fields, okMsg) => {
-        const { error: e2 } = await sb.from("profiles").update(fields).eq("id", p.id);
-        if (e2) { toast("บันทึกไม่สำเร็จ: " + e2.message); return false; }
-        Object.assign(p, fields);
-        if (isMe) Object.assign(currentProfile, fields);   // keep the live session in sync (myDeptId/isAdmin read from it)
-        if (okMsg) toast(okMsg);
-        return true;
-      };
-      row.querySelector("[data-role]").addEventListener("change", async (e) => {
-        const v = e.target.value;
-        if (!await patch({ role: v }, `ตั้ง ${p.display_name || p.email} เป็น ${v} แล้ว`)) e.target.value = p.role || "member";
-      });
-      row.querySelector("[data-dept]").addEventListener("change", async (e) => {
-        const v = e.target.value;
-        if (!await patch({ dept_id: v || null }, "บันทึกแผนกแล้ว")) { e.target.value = p.dept_id || ""; return; }
-        if (isMe) { renderAll(); checkAlerts(); }   // my own department changed → views follow it immediately
-      });
-      const approveBtn = row.querySelector("[data-approve]");
-      if (approveBtn) approveBtn.addEventListener("click", async (e) => {
-        e.target.disabled = true; e.target.textContent = "กำลังอนุมัติ...";
-        if (!await patch({ approved: true }, `อนุมัติ ${p.display_name || p.email} แล้ว`)) { e.target.disabled = false; e.target.textContent = "✓ อนุมัติ"; return; }
-        e.target.remove();
-      });
-      row.querySelector("[data-del]").addEventListener("click", async () => {
-        const ok = await confirmDialog({
-          title: "ถอดสิทธิ์ผู้ใช้?",
-          message: `${p.display_name || ""} (${p.email || ""}) จะเข้าใช้งานไม่ได้อีก — ถ้าล็อกอินใหม่จะกลับไปอยู่หน้า “รอ Admin อนุมัติ” และต้องอนุมัติใหม่`,
-          confirmText: "ถอดสิทธิ์", danger: true, icon: "🗑️",
-        });
-        if (!ok) return;
-        const { error: delErr } = await sb.from("profiles").delete().eq("id", p.id);
-        if (delErr) { toast("ลบไม่สำเร็จ: " + delErr.message); return; }
-        toast(`ถอดสิทธิ์ ${p.display_name || p.email} แล้ว`);
-        row.remove();
-      });
-      listEl.appendChild(row);
+  // shared role/dept dropdown handlers (active + pending rows have them; blocked rows don't)
+  function wireRoleDept(row, p, isMe) {
+    row.querySelector("[data-role]").value = p.role || "member";
+    row.querySelector("[data-dept]").value = p.dept_id || "";
+    row.querySelector("[data-role]").addEventListener("change", async (e) => {
+      const v = e.target.value, who = p.display_name || p.email || "";
+      if (await patch(p.id, { role: v })) { p.role = v; if (isMe) currentProfile.role = v; toast(`ตั้ง ${who} เป็น ${v} แล้ว`); }
+      else e.target.value = p.role || "member";
     });
-  })();
+    row.querySelector("[data-dept]").addEventListener("change", async (e) => {
+      const v = e.target.value;
+      if (await patch(p.id, { dept_id: v || null })) {
+        p.dept_id = v || null;
+        if (isMe) { currentProfile.dept_id = v || null; renderAll(); checkAlerts(); }   // my own dept changed → views follow immediately
+        toast("บันทึกแผนกแล้ว");
+      } else e.target.value = p.dept_id || "";
+    });
+  }
+
+  // an active/pending user row. Lifecycle: approved →[ถอดสิทธิ์]→ pending →[🚩 บล็อก]→ blocked.
+  function makeRow(p) {
+    const isMe = currentProfile && p.id === currentProfile.id;
+    const who = p.display_name || p.email || "";
+    const row = document.createElement("div");
+    row.className = "um-row";
+    row.innerHTML = `
+      <div class="um-who">
+        ${avatarHtml(p)}
+        <div style="min-width:0">
+          <div class="um-name">${escapeHtml(p.display_name || "(ไม่มีชื่อ)")} ${isMe ? '<span class="um-me">คุณ</span>' : ""}${p.approved ? "" : ' <span class="um-pending">รออนุมัติ</span>'}</div>
+          <div class="um-mail">${escapeHtml(p.email || "")}</div>
+        </div>
+      </div>
+      <select data-role ${isMe ? "disabled" : ""} title="${isMe ? "เปลี่ยนสิทธิ์ตัวเองไม่ได้ (กันล็อกตัวเองออก)" : "สิทธิ์"}">
+        <option value="member">member</option><option value="admin">admin</option>
+      </select>
+      <select data-dept title="แผนก (ใช้ทุกปฏิทิน)">${deptOptions}</select>
+      ${p.approved
+        ? `<button class="btn btn-ghost btn-sm btn-danger" data-revoke ${isMe ? "disabled" : ""} title="${isMe ? "ถอดสิทธิ์ตัวเองไม่ได้" : "ถอดสิทธิ์ — ย้ายกลับไปสถานะรออนุมัติ"}">🚫 ถอดสิทธิ์</button>`
+        : `<button class="btn btn-sm btn-primary" data-approve>✓ อนุมัติ</button>
+           <button class="btn btn-ghost btn-sm btn-danger" data-block ${isMe ? "disabled" : ""} title="${isMe ? "บล็อกตัวเองไม่ได้" : "ติดธงแดง (บล็อก) — ซ่อนออกจากลิสต์ เข้าไม่ได้ · ปลดบล็อกภายหลังได้"}">🚩</button>`}
+    `;
+    wireRoleDept(row, p, isMe);
+    const approveBtn = row.querySelector("[data-approve]");
+    if (approveBtn) approveBtn.addEventListener("click", async (e) => {
+      e.target.disabled = true; e.target.textContent = "กำลังอนุมัติ...";
+      if (await patch(p.id, { approved: true })) { toast(`อนุมัติ ${who} แล้ว`); load(); }
+      else { e.target.disabled = false; e.target.textContent = "✓ อนุมัติ"; }
+    });
+    // ถอดสิทธิ์ = revoke to pending (NOT delete). approved=false is durable — self-heal's
+    // "on conflict do nothing" won't re-approve, and the person is bounced to the pending screen.
+    const revokeBtn = row.querySelector("[data-revoke]");
+    if (revokeBtn) revokeBtn.addEventListener("click", async () => {
+      const ok = await confirmDialog({
+        title: "ถอดสิทธิ์ผู้ใช้?",
+        message: `${who} (${p.email || ""}) จะย้ายไปสถานะ “รออนุมัติ” — เข้าใช้งานไม่ได้จนกว่าจะกดอนุมัติอีกครั้ง (จากตรงนั้นจะกดบล็อกต่อก็ได้)`,
+        confirmText: "ถอดสิทธิ์", danger: true, icon: "🚫",
+      });
+      if (!ok) return;
+      if (await patch(p.id, { approved: false, role: "member" })) { toast(`ถอดสิทธิ์ ${who} แล้ว`); load(); }
+    });
+    // 🚩 block = hide from the list + can never sign in. Fully reversible (blocked=false → back to pending).
+    const blockBtn = row.querySelector("[data-block]");
+    if (blockBtn) blockBtn.addEventListener("click", async () => {
+      const ok = await confirmDialog({
+        title: "บล็อกผู้ใช้ (ติดธงแดง)?",
+        message: `${who} (${p.email || ""}) จะถูกซ่อนออกจากลิสต์และเข้าใช้งานไม่ได้เลย — ปลดบล็อกภายหลังได้ที่ส่วน “🚩 ถูกบล็อก”`,
+        confirmText: "บล็อก", danger: true, icon: "🚩",
+      });
+      if (!ok) return;
+      if (await patch(p.id, { blocked: true })) { toast(`บล็อก ${who} แล้ว`); load(); }
+    });
+    return row;
+  }
+
+  // a blocked-user row (in the collapsible section) — one action: unblock back to pending.
+  function makeBlockedRow(p) {
+    const who = p.display_name || p.email || "";
+    const row = document.createElement("div");
+    row.className = "um-row um-blocked-row";
+    row.innerHTML = `
+      <div class="um-who">
+        ${avatarHtml(p)}
+        <div style="min-width:0">
+          <div class="um-name">${escapeHtml(p.display_name || "(ไม่มีชื่อ)")} <span class="um-blocked-badge">🚩 ถูกบล็อก</span></div>
+          <div class="um-mail">${escapeHtml(p.email || "")}</div>
+        </div>
+      </div>
+      <button class="btn btn-sm" data-unblock>↩ ปลดบล็อก</button>
+    `;
+    row.querySelector("[data-unblock]").addEventListener("click", async () => {
+      if (await patch(p.id, { blocked: false })) { toast(`ปลดบล็อก ${who} แล้ว — กลับไปสถานะรออนุมัติ`); load(); }
+    });
+    return row;
+  }
+
+  function render(users) {
+    const active  = users.filter(u => !u.blocked && u.approved);
+    const pending = users.filter(u => !u.blocked && !u.approved);
+    const blocked = users.filter(u => u.blocked);
+    const adminCount = users.filter(u => !u.blocked && u.role === "admin").length;
+    countEl.textContent = `ทั้งหมด ${users.length} คน · admin ${adminCount} · รออนุมัติ ${pending.length}` + (blocked.length ? ` · ถูกบล็อก ${blocked.length}` : "");
+    listEl.innerHTML = "";
+    if (!users.length) { listEl.innerHTML = `<div class="cf-empty">ยังไม่มีผู้ใช้</div>`; return; }
+
+    // main list: pending first (need attention), then active
+    [...pending, ...active].forEach(p => listEl.appendChild(makeRow(p)));
+    if (!pending.length && !active.length) listEl.innerHTML = `<div class="cf-empty">ไม่มีผู้ใช้ที่ใช้งานอยู่ (ดูที่ “ถูกบล็อก” ด้านล่าง)</div>`;
+
+    // collapsible "blocked" section — kept out of the way but always recoverable
+    if (blocked.length) {
+      const wrap = document.createElement("div");
+      wrap.className = "um-blocked-wrap";
+      wrap.innerHTML = `<button class="um-blocked-toggle" data-toggle>🚩 ถูกบล็อก (${blocked.length}) ▾</button><div class="um-blocked-list hidden" data-blocked></div>`;
+      const bl = wrap.querySelector("[data-blocked]");
+      blocked.forEach(p => bl.appendChild(makeBlockedRow(p)));
+      const tgl = wrap.querySelector("[data-toggle]");
+      tgl.addEventListener("click", () => {
+        const open = !bl.classList.toggle("hidden");
+        tgl.textContent = `🚩 ถูกบล็อก (${blocked.length}) ${open ? "▴" : "▾"}`;
+      });
+      listEl.appendChild(wrap);
+    }
+  }
+
+  load();
 }
 
 /* Settings → สถานะงาน (live editing, applies immediately) */
