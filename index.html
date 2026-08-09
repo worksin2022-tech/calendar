@@ -4836,6 +4836,15 @@ function openTaskModal(taskId, defaults={}) {
     });
   }
 
+  // ★ hide the project-level dates (วันเริ่ม/วันครบกำหนด) for anyone who HAS a department — they manage
+  // only their own department's date in the stages section below, so the project rollup date up top
+  // would just be confusing. Planners (no department) still see & set it. Hidden ≠ cleared: the field
+  // keeps its value, so saving leaves task.date/startDate untouched.
+  if (myDeptId()) {
+    const dateRow = modal.querySelector('[data-df="date"]')?.closest(".field-row");
+    if (dateRow) dateRow.style.display = "none";
+  }
+
   // ★ apply the viewer's permission tier (grey out / disable what they can't change). This is the
   // visual layer; the handlers above are the actual enforcement (robust to any re-render).
   applyTaskModalPerm(modal);
