@@ -86,6 +86,9 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
 .um-group-head:first-child { margin-top: 0; }
 .um-group-count { font-weight: 600; color: var(--text-faint); }
 .um-perm-sel { font-size: 12px; padding: 4px 6px; border: 1px solid var(--border-strong); border-radius: 7px; background: #fff; color: var(--text); }
+.perm-dept-list { display: flex; flex-direction: column; gap: 4px; }
+.perm-dept-row { display: flex; align-items: center; gap: 7px; font-size: 13px; padding: 5px 6px; border: 1px solid var(--border); border-radius: 8px; cursor: pointer; }
+.perm-dept-row:hover { background: var(--bg); }
 /* permission-gated controls in the task modal */
 .perm-off { opacity: .55; cursor: not-allowed !important; }
 .perm-badge { font-size: 11px; font-weight: 700; padding: 2px 9px; border-radius: 9px; background: #eef4ff; color: #2563eb; margin-left: 8px; white-space: nowrap; }
@@ -2560,6 +2563,9 @@ function migrateState(s) {
     s.settings.viewDepts = (old && old !== "all") ? [old] : [];
   }
   delete s.settings.viewDept;
+  // which departments may see the "ดึงคำขอจากฟอร์ม" / "ยื่นขอแบบ" buttons ([] = everyone with full edit rights)
+  if (!Array.isArray(s.settings.importReqDepts)) s.settings.importReqDepts = [];
+  if (!Array.isArray(s.settings.drawReqDepts)) s.settings.drawReqDepts = [];
   if (typeof s.settings.currentUser !== "string") s.settings.currentUser = "";
   if (typeof s.settings.myDept !== "string") s.settings.myDept = "";
   // default department stages for new tasks; seed with all current departments, drop any removed ones
@@ -2862,6 +2868,10 @@ function renderDeptSwitcher() {
   const el = document.getElementById("deptSwitcher");
   if (!el) return;
   if (!Array.isArray(state.settings.viewDepts)) state.settings.viewDepts = [];
+  // ★ accounts that HAVE a department only ever see their own department — there's nothing to switch,
+  // so hide the switcher entirely. Only planners/admins with no department set get the picker.
+  if (myDeptId()) { el.innerHTML = ""; el.style.display = "none"; return; }
+  el.style.display = "";
   el.innerHTML = `
     <button type="button" class="dept-dd-btn" aria-haspopup="true">
       <span class="dept-dd-label">${escapeHtml(deptViewLabel())}</span>
@@ -6042,6 +6052,12 @@ function buildDisplayPanel(container) {
         <span class="settings-toggle-sub">เมื่อดูปฏิทินแบบรายแผนก ให้แสดงแยกเป็นตู้ตามวันของแต่ละแผนก (ลากเลื่อนเปลี่ยนวันได้) — ปิด = 1 ป้าย/โปรเจค ที่วันของแผนก</span>
       </span>
     </label>
+    <h4 class="settings-h" style="margin-top:14px">ปุ่ม “📐 ยื่นขอแบบ” แสดงกับแผนก</h4>
+    <p class="settings-desc">ติ๊กแผนกที่จะเห็นปุ่มยื่นขอแบบ — <b>ไม่ติ๊กเลย = ทุกคนที่แก้ไขเต็มเห็น</b>. ผู้ดูแลระบบ (admin) เห็นเสมอ</p>
+    <div class="perm-dept-list" data-draw-depts></div>
+    <h4 class="settings-h" style="margin-top:14px">ปุ่ม “📥 ดึงคำขอจากฟอร์ม” แสดงกับแผนก</h4>
+    <p class="settings-desc">ติ๊กแผนกที่จะเห็นปุ่มดึงคำขอ (เช่น เขียนแบบ/ออกแบบ) — <b>ไม่ติ๊กเลย = ทุกคนที่แก้ไขเต็มเห็น</b>. ผู้ดูแลระบบ (admin) เห็นเสมอ</p>
+    <div class="perm-dept-list" data-import-depts></div>
   `;
   container.appendChild(sec);
   sec.querySelector('[data-f="cabchips"]').addEventListener("change", (e) => {
@@ -6052,6 +6068,23 @@ function buildDisplayPanel(container) {
     state.settings.deptCalByCabinet = e.target.checked;
     saveState(); renderMainView();
   });
+  // department checkbox list bound to a settings array (which depts may see a given action button)
+  const wireDeptButtonList = (wrapSel, settingKey) => {
+    const wrap = sec.querySelector(wrapSel);
+    if (!wrap) return;
+    if (!Array.isArray(state.settings[settingKey])) state.settings[settingKey] = [];
+    wrap.innerHTML = (state.departments || []).map(d =>
+      `<label class="perm-dept-row"><input type="checkbox" value="${d.id}" ${state.settings[settingKey].includes(d.id) ? "checked" : ""}> ${deptIco(d)}${escapeHtml(d.name)}</label>`).join("")
+      || `<span class="settings-toggle-sub">ยังไม่มีแผนก</span>`;
+    wrap.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.addEventListener("change", () => {
+      const set = new Set(state.settings[settingKey]);
+      if (cb.checked) set.add(cb.value); else set.delete(cb.value);
+      state.settings[settingKey] = [...set];
+      saveState(); applySidebarPerm();
+    }));
+  };
+  wireDeptButtonList("[data-draw-depts]", "drawReqDepts");
+  wireDeptButtonList("[data-import-depts]", "importReqDepts");
 }
 
 /* Settings → 🔔 การแจ้งเตือน (browser notification preferences) */
@@ -7002,12 +7035,25 @@ function renderAll() {
 }
 // hide the create/draw/import buttons for members below "full" (they'd only get a permission toast)
 function applySidebarPerm() {
-  const show = canFull();
-  ["btnQuickAdd", "btnDrawReq", "btnImportReq"].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.style.display = show ? "" : "none";
-  });
+  const full = canFull();
+  const set = (id, show) => { const el = document.getElementById(id); if (el) el.style.display = show ? "" : "none"; };
+  set("btnQuickAdd", full);
+  set("btnDrawReq", canSeeDeptButton("drawReqDepts"));
+  set("btnImportReq", canSeeDeptButton("importReqDepts"));
 }
+// may the current user see a department-restricted action button (settings key = an array of dept ids)?
+// Needs full rights, and — if the admin restricted it to specific departments — the user's department
+// must be one of them. Empty list = no restriction. Admins always keep it (a config can't lock them out).
+function canSeeDeptButton(settingKey) {
+  if (!canFull()) return false;
+  const allow = (state.settings && state.settings[settingKey]) || [];
+  if (!allow.length) return true;
+  if (isAdmin()) return true;
+  const my = myDeptId();
+  return !!my && allow.includes(my);
+}
+function canSeeImportReq() { return canSeeDeptButton("importReqDepts"); }
+function canSeeDrawReq() { return canSeeDeptButton("drawReqDepts"); }
 
 document.getElementById("btnSettings").addEventListener("click", () => {
   if (!isAdmin()) { toast("หน้าตั้งค่าเปิดได้เฉพาะผู้ดูแลระบบ (admin) เท่านั้น"); return; }
@@ -7061,8 +7107,8 @@ document.getElementById("tpDayBtn").addEventListener("click", () => { if (tpDayO
 document.getElementById("tpReport").addEventListener("click", openStatusReport);   // manual open — ignores the auto-show frequency
 document.getElementById("tpPrint").addEventListener("click", openWorkOrderPrint);
 document.getElementById("btnQuickAdd").addEventListener("click", () => { if (!canFull()) return permDenied("สิทธิ์ของคุณเพิ่มงานใหม่ไม่ได้"); openTaskModal(null); });
-document.getElementById("btnDrawReq").addEventListener("click", () => { if (!canFull()) return permDenied("สิทธิ์ของคุณยื่นขอแบบไม่ได้"); openDrawRequestModal(); });
-document.getElementById("btnImportReq").addEventListener("click", () => { if (!canFull()) return permDenied("สิทธิ์ของคุณดึงคำขอไม่ได้"); openImportRequestsModal(); });
+document.getElementById("btnDrawReq").addEventListener("click", () => { if (!canSeeDrawReq()) return permDenied("สิทธิ์ของคุณยื่นขอแบบไม่ได้ (จำกัดเฉพาะบางแผนก)"); openDrawRequestModal(); });
+document.getElementById("btnImportReq").addEventListener("click", () => { if (!canSeeImportReq()) return permDenied("สิทธิ์ของคุณดึงคำขอไม่ได้ (จำกัดเฉพาะบางแผนก)"); openImportRequestsModal(); });
 (() => {
   const searchEl = document.getElementById("searchInput");
   const searchWrap = searchEl.closest(".toolbar-search");
