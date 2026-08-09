@@ -122,7 +122,12 @@
 // Same Supabase project as the main QC Calendar app — see supabase-schema.sql for the table this writes to.
 const SUPABASE_URL = "https://mirkqbmiuhiyuhiktuko.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1pcmtxYm1pdWhpeXVoaWt0dWtvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU4OTYwMjIsImV4cCI6MjEwMTQ3MjAyMn0.BaWomG3CTP99rAuV-ENXVMs3vybzlfbTPrqgGdbtX0c";
-const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// ★ this public form must always act as ANON. It shares an origin with the main app, so with default
+// options its client would inherit a logged-in app session (role = authenticated) and could be
+// rejected by RLS. Disabling session persistence/detection keeps it a clean anonymous submitter.
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
+});
 
 let kind = "structure";
 let pendingFile = null;
