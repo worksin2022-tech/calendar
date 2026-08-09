@@ -55,6 +55,8 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
 .sb-user-badge .sbu-role { font-size: 10px; font-weight: 700; padding: 1px 7px; border-radius: 8px; background: #eef4ff; color: #2563eb; }
 .sb-user-badge .sbu-role.admin { background: #fef3f2; color: var(--danger); }
 .sb-user-badge .sbu-name { font-weight: 600; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sb-user-badge .sbu-dept { font-size: 10px; font-weight: 700; padding: 1px 8px; border-radius: 8px; background: #eef4ff; color: #2563eb; white-space: nowrap; flex: 0 0 auto; }
+.sb-user-badge .sbu-dept.none { background: #f2f4f7; color: var(--text-dim); font-weight: 600; }
 
 /* avatars — a round photo, or the first letter of the name on a colour derived from the user id */
 .avatar { width: 24px; height: 24px; border-radius: 50%; object-fit: cover; flex: 0 0 auto; display: inline-flex;
@@ -541,6 +543,14 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
 
 /* ===== Alert system (department alerts + photos in chat) ===== */
 .tb-bell { position: relative; padding: 6px 9px; }
+/* circular "+" add button in the toolbar — slides open to the full label on hover */
+.tb-add { display: inline-flex; align-items: center; height: 32px; border: none; border-radius: 16px;
+  background: var(--accent); color: #fff; cursor: pointer; padding: 0; overflow: hidden; flex: 0 0 auto; }
+.tb-add:hover { background: var(--accent-hover); }
+.tb-add .tb-add-icon { width: 32px; height: 32px; display: grid; place-items: center; font-size: 21px; line-height: 1; flex: 0 0 auto; }
+.tb-add .tb-add-text { max-width: 0; opacity: 0; overflow: hidden; white-space: nowrap; font-weight: 600; font-size: 13px;
+  transition: max-width .25s ease, opacity .2s ease, padding .25s ease; }
+.tb-add:hover .tb-add-text, .tb-add:focus-visible .tb-add-text { max-width: 140px; opacity: 1; padding-right: 14px; }
 .tb-bell-badge {
   position: absolute; top: -5px; right: -5px;
   min-width: 17px; height: 17px; padding: 0 4px;
@@ -1799,8 +1809,7 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
     <div class="board-seg" id="boardSwitcher" title="สลับปฏิทิน"></div>
 
     <div class="sb-section">
-      <button class="btn btn-primary" id="btnQuickAdd">+ เพิ่มงานใหม่</button>
-      <button class="btn" id="btnDrawReq" style="margin-top:6px">📐 ยื่นขอแบบ</button>
+      <button class="btn" id="btnDrawReq">📐 ยื่นขอแบบ</button>
       <button class="btn dr-import-btn" id="btnImportReq" style="margin-top:6px">📥 ดึงคำขอจากฟอร์ม<span class="tb-bell-badge" id="importReqBadge" hidden>0</span></button>
     </div>
 
@@ -1858,6 +1867,9 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
       <div class="spacer"></div>
       <div class="legend" id="legend"></div>
       <button class="btn btn-sm tb-bell" id="btnBell" title="การแจ้งเตือนของแผนกฉัน">🔔<span class="tb-bell-badge" id="bellBadge" hidden>0</span></button>
+      <button class="tb-add" id="btnQuickAdd" title="เพิ่มงานใหม่" aria-label="เพิ่มงานใหม่">
+        <span class="tb-add-icon">+</span><span class="tb-add-text">เพิ่มงานใหม่</span>
+      </button>
     </div>
 
     <div class="calendar">
@@ -1954,9 +1966,10 @@ function renderUserBadge() {
   const el = document.getElementById("sbUserBadge");
   if (!el || !currentProfile) return;
   el.title = "แก้ไขโปรไฟล์ของฉัน";
+  const dept = getDept(myDeptId());   // show the DEPARTMENT next to the name (name only, no icon)
   el.innerHTML = avatarHtml(currentProfile) +
     `<span class="sbu-name" title="${escapeHtml(currentProfile.email || "")}">${escapeHtml(currentProfile.display_name || currentProfile.email || "")}</span>` +
-    `<span class="sbu-role${isAdmin() ? " admin" : ""}">${isAdmin() ? "admin" : "member"}</span>`;
+    `<span class="sbu-dept${dept ? "" : " none"}">${dept ? escapeHtml(dept.name) : "ไม่ระบุแผนก"}</span>`;
 }
 async function loadProfile(userId, email) {
   const sb = getSupabase();
@@ -2389,16 +2402,17 @@ function effectiveUserDept() {
   const vs = activeViewDepts();
   return vs.length === 1 ? vs[0] : null;   // a single department in view → use it; else "all"
 }
-// default the department-view to the user's own department when nothing is selected yet
-// (so opening the app / switching board lands on "my department" instead of "all")
-function applyMyDeptDefaultView() {
-  const my = myDeptId();
-  if (my && !((state.settings.viewDepts || []).filter(id => getDept(id)).length)) {
-    state.settings.viewDepts = [my];
-  }
-}
-// the currently-selected view departments (valid ids); empty = "ทุกแผนก"
+// No-op kept for its call sites. The department view is now derived per-user in activeViewDepts()
+// (a user with an assigned department always views their own), so we must NOT write to the SHARED,
+// cloud-synced viewDepts here — doing that let one member's department leak into everyone else's view.
+function applyMyDeptDefaultView() { /* handled at render time by activeViewDepts() */ }
+// the departments the calendar/today-panel should show.
+// ★ a user WITH an assigned department always views ONLY their own — never the shared viewDepts
+// setting (which is board-wide and synced; a stale value there used to force e.g. a QC member to see
+// the first department's dates). Planners (no department) fall back to the multi-select viewDepts.
 function activeViewDepts() {
+  const my = myDeptId();
+  if (my) return [my];
   return ((state.settings && state.settings.viewDepts) || []).filter(id => getDept(id));
 }
 // count subtasks (cabinets) per status within a task (project)
@@ -2867,11 +2881,12 @@ function deptViewLabel() {
 function renderDeptSwitcher() {
   const el = document.getElementById("deptSwitcher");
   if (!el) return;
+  const section = el.closest(".sb-dept");   // the whole block incl. the "มุมมอง" label
   if (!Array.isArray(state.settings.viewDepts)) state.settings.viewDepts = [];
   // ★ accounts that HAVE a department only ever see their own department — there's nothing to switch,
-  // so hide the switcher entirely. Only planners/admins with no department set get the picker.
-  if (myDeptId()) { el.innerHTML = ""; el.style.display = "none"; return; }
-  el.style.display = "";
+  // so hide the whole section (label included). Only planners/admins with no department get the picker.
+  if (myDeptId()) { el.innerHTML = ""; if (section) section.style.display = "none"; return; }
+  if (section) section.style.display = "";
   el.innerHTML = `
     <button type="button" class="dept-dd-btn" aria-haspopup="true">
       <span class="dept-dd-label">${escapeHtml(deptViewLabel())}</span>
@@ -7032,6 +7047,7 @@ function renderAll() {
   renderTodayPanel();
   renderBell();
   applySidebarPerm();
+  renderUserBadge();   // keep the department chip in sync when it changes
 }
 // hide the create/draw/import buttons for members below "full" (they'd only get a permission toast)
 function applySidebarPerm() {
