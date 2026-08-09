@@ -345,11 +345,23 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
 .toolbar-search.has-text .ts-clear { display: inline-flex; }
 .toolbar .spacer { flex: 1; }
 .legend {
-  display: flex; gap: 6px; align-items: center;
+  display: flex; gap: 4px; align-items: center;
   flex-wrap: nowrap; flex: 0 0 auto;
 }
-.legend-item { display: flex; align-items: center; cursor: default; }
-.legend .status-dot { width: 11px; height: 11px; box-shadow: 0 0 0 1px rgba(0,0,0,.04); }
+/* each status = a small dot that expands into a coloured pill with its name on hover */
+.legend-item {
+  display: inline-flex; align-items: center; height: 22px; border-radius: 11px;
+  overflow: hidden; cursor: default; padding: 0; transition: background .2s ease;
+}
+.legend .status-dot { width: 11px; height: 11px; box-shadow: 0 0 0 1px rgba(0,0,0,.04); margin: 0 5px; flex: 0 0 auto; transition: margin-left .25s ease; }
+.legend-item .legend-name {
+  max-width: 0; opacity: 0; overflow: hidden; white-space: nowrap;
+  font-size: 12px; font-weight: 600; color: var(--text);
+  transition: max-width .28s ease, opacity .18s ease, padding .28s ease;
+}
+.legend-item:hover { background: color-mix(in srgb, var(--st-color) 18%, transparent); }
+.legend-item:hover .status-dot { margin-left: 8px; }
+.legend-item:hover .legend-name { max-width: 140px; opacity: 1; padding-right: 11px; }
 .btn-settings { flex: 0 0 auto; font-weight: 600; }
 .btn-settings:hover { background: #eef0ff; border-color: var(--accent); color: var(--accent); }
 
@@ -2865,8 +2877,8 @@ function renderLegend() {
   state.statuses.forEach(s => {
     const d = document.createElement("div");
     d.className = "legend-item";
-    d.title = s.name; // hover to see the status name (compact dots keep the toolbar slim)
-    d.innerHTML = `<span class="status-dot" style="background:${s.color}"></span>`;
+    d.style.setProperty("--st-color", s.color);   // used for the hover pill tint
+    d.innerHTML = `<span class="status-dot" style="background:${s.color}"></span><span class="legend-name">${escapeHtml(s.name)}</span>`;
     el.appendChild(d);
   });
 }
@@ -4485,7 +4497,17 @@ function openTaskModal(taskId, defaults={}) {
       stageWrap.innerHTML = `<div class="muted" style="font-size:12px">ยังไม่มีแผนก — เพิ่มได้ที่ ⚙ ตั้งค่า › แผนก</div>`;
       return;
     }
-    task.deptStages.forEach((stg, i) => {
+    // ★ show only the user's OWN department here — except full/admin, who see every stage. (Non-full
+    // members with no assigned department fall back to seeing all, since there's nothing to scope to.)
+    const visibleStages = (canFull() || !modalDept)
+      ? task.deptStages
+      : task.deptStages.filter(s => s.deptId === modalDept);
+    if (!visibleStages.length && task.deptStages.length) {
+      stageWrap.innerHTML = `<div class="muted" style="font-size:12px">งานนี้ไม่มีด่านของแผนกคุณ</div>`;
+      renderExtraFields();
+      return;
+    }
+    visibleStages.forEach((stg) => {
       const dept = getDept(stg.deptId) || state.departments[0];
       const usesChecklist = deptUsesChecklist(task, stg.deptId);
       const dp = deptProgress(task, stg.deptId);
@@ -4531,7 +4553,9 @@ function openTaskModal(taskId, defaults={}) {
       });
       del.addEventListener("click", () => {
         if (!canFull()) { permDenied("สิทธิ์ของคุณลบด่านแผนกไม่ได้"); return; }
-        task.deptStages.splice(i, 1); renderStages();
+        const idx = task.deptStages.indexOf(stg);   // indexOf, not the loop index — the list may be filtered
+        if (idx >= 0) task.deptStages.splice(idx, 1);
+        renderStages();
       });
       stageWrap.appendChild(row);
     });
