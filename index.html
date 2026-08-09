@@ -6053,10 +6053,10 @@ function buildDisplayPanel(container) {
       </span>
     </label>
     <h4 class="settings-h" style="margin-top:14px">ปุ่ม “📐 ยื่นขอแบบ” แสดงกับแผนก</h4>
-    <p class="settings-desc">ติ๊กแผนกที่จะเห็นปุ่มยื่นขอแบบ — <b>ไม่ติ๊กเลย = ทุกคนที่แก้ไขเต็มเห็น</b>. ผู้ดูแลระบบ (admin) เห็นเสมอ</p>
+    <p class="settings-desc">ติ๊กแผนกที่จะเห็นปุ่มยื่นขอแบบ (ต้องสิทธิ์แก้ไขเต็มด้วย) — <b>ไม่ติ๊กเลย = เห็นเฉพาะผู้ดูแลระบบ (admin)</b></p>
     <div class="perm-dept-list" data-draw-depts></div>
     <h4 class="settings-h" style="margin-top:14px">ปุ่ม “📥 ดึงคำขอจากฟอร์ม” แสดงกับแผนก</h4>
-    <p class="settings-desc">ติ๊กแผนกที่จะเห็นปุ่มดึงคำขอ (เช่น เขียนแบบ/ออกแบบ) — <b>ไม่ติ๊กเลย = ทุกคนที่แก้ไขเต็มเห็น</b>. ผู้ดูแลระบบ (admin) เห็นเสมอ</p>
+    <p class="settings-desc">ติ๊กแผนกที่จะเห็นปุ่มดึงคำขอ เช่น เขียนแบบ/ออกแบบ (ต้องสิทธิ์แก้ไขเต็มด้วย) — <b>ไม่ติ๊กเลย = เห็นเฉพาะผู้ดูแลระบบ (admin)</b></p>
     <div class="perm-dept-list" data-import-depts></div>
   `;
   container.appendChild(sec);
@@ -7042,14 +7042,13 @@ function applySidebarPerm() {
   set("btnImportReq", canSeeDeptButton("importReqDepts"));
 }
 // may the current user see a department-restricted action button (settings key = an array of dept ids)?
-// Needs full rights, and — if the admin restricted it to specific departments — the user's department
-// must be one of them. Empty list = no restriction. Admins always keep it (a config can't lock them out).
+// Admins always see it. Everyone else must (a) have full rights AND (b) belong to a department the
+// admin explicitly TICKED. Nothing ticked = only admins see it (even full members don't).
 function canSeeDeptButton(settingKey) {
-  if (!canFull()) return false;
-  const allow = (state.settings && state.settings[settingKey]) || [];
-  if (!allow.length) return true;
   if (isAdmin()) return true;
+  if (!canFull()) return false;
   const my = myDeptId();
+  const allow = (state.settings && state.settings[settingKey]) || [];
   return !!my && allow.includes(my);
 }
 function canSeeImportReq() { return canSeeDeptButton("importReqDepts"); }
