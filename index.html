@@ -57,6 +57,41 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
 .sb-user-badge .sbu-name { font-weight: 600; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sb-user-badge .sbu-dept { font-size: 10px; font-weight: 700; padding: 1px 8px; border-radius: 8px; background: #eef4ff; color: #2563eb; white-space: nowrap; flex: 0 0 auto; }
 .sb-user-badge .sbu-dept.none { background: #f2f4f7; color: var(--text-dim); font-weight: 600; }
+/* assignees: avatar stack on chips + picker in the task modal */
+.avatar.xs { width: 18px; height: 18px; font-size: 9px; box-shadow: 0 0 0 1.5px #fff; }
+.as-stack { display: inline-flex; align-items: center; flex: 0 0 auto; }
+.as-stack .avatar + .avatar, .as-stack .as-more { margin-left: -5px; }
+.as-more { display: inline-flex; align-items: center; height: 18px; padding: 0 4px; border-radius: 9px; background: #eef0f3; color: var(--text-dim); font-size: 9px; font-weight: 700; box-shadow: 0 0 0 1.5px #fff; }
+.asg-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.asg-chip { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; padding: 3px 6px 3px 3px; border: 1px solid var(--border); border-radius: 999px; background: #fff; font-size: 12.5px; }
+.asg-chip .avatar { width: 22px; height: 22px; font-size: 11px; }
+.asg-chip-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.asg-chip button { padding: 0 2px; border: 0; background: none; color: var(--text-faint); font-size: 12px; cursor: pointer; }
+.asg-chip button:hover { color: var(--danger); }
+.asg-add { padding: 4px 11px; border: 1px dashed var(--border-strong); border-radius: 999px; background: #fff; color: var(--accent); font: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer; }
+.asg-add:hover { border-color: var(--accent); background: #f5f6ff; }
+.asg-none { color: var(--text-faint); font-size: 12.5px; }
+.asg-pop { position: fixed; z-index: 1250; width: 290px; max-height: 380px; display: flex; flex-direction: column; overflow: hidden; border: 1px solid var(--border); border-radius: 10px; background: #fff; box-shadow: var(--shadow-lg); }
+.asg-search { margin: 8px; padding: 7px 10px; border: 1px solid var(--border-strong); border-radius: 7px; font: inherit; font-size: 13px; }
+.asg-list { overflow-y: auto; padding: 0 4px 6px; }
+.asg-group { padding: 8px 8px 3px; color: var(--text-dim); font-size: 11px; font-weight: 700; }
+.asg-item { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 7px; font-size: 13px; cursor: pointer; }
+.asg-item:hover { background: #f5f6ff; }
+.asg-item input { margin: 0; flex: 0 0 auto; }
+.asg-item .avatar { width: 24px; height: 24px; font-size: 11px; }
+.asg-item-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.asg-me { color: var(--text-faint); font-size: 11px; }
+.asg-empty { padding: 14px; color: var(--text-faint); font-size: 13px; text-align: center; }
+/* account card: [avatar | name + department] [ออกจากระบบ] — the card opens the profile, the button signs out */
+.sb-user-badge.sbu-card { gap: 8px; margin: 2px 0 8px; padding: 7px 7px 7px 8px; border: 1px solid var(--border); border-radius: 10px; background: #fafbfc; }
+.sb-user-badge.sbu-card:hover { background: #f5f6ff; border-color: #d5d9ff; }
+.sb-user-badge.sbu-card .avatar { width: 32px; height: 32px; font-size: 14px; }
+.sbu-text { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 3px; }
+.sbu-text .sbu-name { max-width: 100%; font-size: 13px; }
+.sbu-logout { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 5px; padding: 6px 10px; border: 1px solid #fda29b; border-radius: 8px; background: #fff; color: var(--danger); font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+.sbu-logout svg { width: 15px; height: 15px; flex: 0 0 auto; }
+.sbu-logout:hover { background: #fef3f2; border-color: var(--danger); }
+.sbu-logout:active { transform: translateY(1px); }
 
 /* avatars — a round photo, or the first letter of the name on a colour derived from the user id */
 .avatar { width: 24px; height: 24px; border-radius: 50%; object-fit: cover; flex: 0 0 auto; display: inline-flex;
@@ -1869,7 +1904,6 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
       <h1><img class="logo" src="Logo Avatar เล็ก.png" alt="" /> Avatar Planning</h1>
       <div class="sb-brand-actions">
         <button class="btn btn-settings btn-sm" id="btnSettings" title="ตั้งค่า">⚙</button>
-        <button class="btn btn-settings btn-sm" id="btnLogout" title="ออกจากระบบ">🚪</button>
       </div>
     </div>
     <div class="sb-user-badge" id="sbUserBadge"></div>
@@ -2029,6 +2063,102 @@ function hideLoginScreen() {
 }
 // stable per-person colour for the letter-avatar fallback (same id → same colour everywhere)
 const AVATAR_COLORS = ["#7b68ee", "#2563eb", "#0e9384", "#d97706", "#db2777", "#0891b2", "#65a30d", "#dc2626"];
+/* ---------- team directory (for ผู้รับผิดชอบ / assignees) ----------
+   approved, non-blocked profiles — RLS "approved users can read all profiles" already allows members to read it.
+   Loaded after login; not cached in localStorage (avatars are data URLs and the board cache already uses most
+   of the ~5MB quota). */
+let teamProfiles = new Map();
+let _teamLoading = null;
+function loadTeam() {
+  if (_teamLoading) return _teamLoading;
+  const sb = getSupabase();
+  if (!sb) return Promise.resolve();
+  _teamLoading = (async () => {
+    try {
+      const { data, error } = await sb.from("profiles").select("id,email,display_name,avatar_url,dept_id,role,approved,blocked");
+      if (!error && Array.isArray(data)) {
+        teamProfiles = new Map(data.filter(p => p.approved && !p.blocked).map(p => [p.id, p]));
+        renderAll();
+      }
+    } catch (_) { /* offline — chips just show no avatars */ }
+    finally { _teamLoading = null; }
+  })();
+  return _teamLoading;
+}
+function personName(p) { return p ? (p.display_name || p.email || "ผู้ใช้") : "ผู้ใช้"; }
+function isAssignedToMe(t) { return !!(currentProfile && (t.assignees || []).includes(currentProfile.id)); }
+// who may be assigned on the CURRENT board = people who can actually see it (see visibleBoardIds)
+function assignCandidates() {
+  const svc = isServiceBoard();
+  return [...teamProfiles.values()].filter(p => svc ? (p.dept_id === SERVICE_DEPT || p.role === "admin") : p.dept_id !== SERVICE_DEPT);
+}
+// overlapping profile photos for a calendar chip
+function assigneeStack(t, max = 3) {
+  const ids = (t.assignees || []).filter(id => teamProfiles.has(id));
+  if (!ids.length) return "";
+  const names = ids.map(id => personName(teamProfiles.get(id))).join(", ");
+  return `<span class="as-stack" title="ผู้รับผิดชอบ: ${escapeHtml(names)}">`
+    + ids.slice(0, max).map(id => avatarHtml(teamProfiles.get(id), "xs")).join("")
+    + (ids.length > max ? `<span class="as-more">+${ids.length - max}</span>` : "") + `</span>`;
+}
+// searchable, department-grouped picker (tick = assigned). onChange(ids) fires on every tick.
+function openAssignPicker(anchor, selectedIds, onChange) {
+  document.querySelectorAll(".asg-pop").forEach(n => n.remove());
+  const sel = new Set(selectedIds);
+  const pop = document.createElement("div");
+  pop.className = "asg-pop";
+  pop.innerHTML = `<input class="asg-search" type="search" placeholder="ค้นหาชื่อ…" autocomplete="off"><div class="asg-list" data-list></div>`;
+  document.body.appendChild(pop);
+  const r = anchor.getBoundingClientRect();
+  pop.style.left = Math.max(8, Math.min(r.left, innerWidth - 298)) + "px";
+  const below = innerHeight - r.bottom;
+  if (below < 300 && r.top > below) pop.style.bottom = (innerHeight - r.top + 6) + "px";
+  else pop.style.top = (r.bottom + 6) + "px";
+  const listEl = pop.querySelector("[data-list]"), search = pop.querySelector(".asg-search");
+  function render() {
+    const q = search.value.trim().toLowerCase();
+    const people = assignCandidates().filter(p => !q || personName(p).toLowerCase().includes(q) || (p.email || "").toLowerCase().includes(q));
+    if (!teamProfiles.size) { listEl.innerHTML = `<div class="asg-empty">กำลังโหลดรายชื่อ…</div>`; return; }
+    if (!people.length) { listEl.innerHTML = `<div class="asg-empty">ไม่พบรายชื่อ</div>`; return; }
+    // this board's departments first (in board order), then any other department, then "no department"
+    const order = [...(state.departments || []), ...allDepartments().filter(d => !(state.departments || []).some(x => x.id === d.id))];
+    const groups = order.map(d => ({ name: d.name, ppl: people.filter(p => p.dept_id === d.id) }))
+      .concat([{ name: "ไม่ระบุแผนก", ppl: people.filter(p => !p.dept_id || !order.some(d => d.id === p.dept_id)) }])
+      .filter(g => g.ppl.length);
+    const me = currentProfile && currentProfile.id;
+    listEl.innerHTML = groups.map(g => `<div class="asg-group">${escapeHtml(g.name)}</div>` + g.ppl
+      .sort((a, b) => personName(a).localeCompare(personName(b), "th"))
+      .map(p => `<label class="asg-item"><input type="checkbox" data-id="${escapeHtml(p.id)}" ${sel.has(p.id) ? "checked" : ""}>${avatarHtml(p)}<span class="asg-item-name">${escapeHtml(personName(p))}</span>${p.id === me ? `<span class="asg-me">คุณ</span>` : ""}</label>`).join("")).join("");
+    listEl.querySelectorAll("input[data-id]").forEach(cb => cb.addEventListener("change", () => {
+      if (cb.checked) sel.add(cb.dataset.id); else sel.delete(cb.dataset.id);
+      onChange([...sel]);
+    }));
+  }
+  search.addEventListener("input", render);
+  render();
+  loadTeam().then(() => { if (document.body.contains(pop)) render(); });   // refresh the directory
+  const outside = (e) => { if (!pop.contains(e.target) && e.target !== anchor) close(); };
+  const onEsc = (e) => { if (e.key === "Escape") { e.stopPropagation(); close(); } };
+  function close() { pop.remove(); document.removeEventListener("mousedown", outside, true); document.removeEventListener("keydown", onEsc, true); }
+  setTimeout(() => { document.addEventListener("mousedown", outside, true); document.addEventListener("keydown", onEsc, true); }, 0);
+  setTimeout(() => search.focus(), 30);
+}
+// on save: newly assigned people get a personal alert (popup + bell + 🔔 pin on THEIR device, plus a browser
+// notification through realtime) and an Activity line; un-assigning withdraws a not-yet-acknowledged alert
+function notifyAssigneeChanges(before, task) {
+  const prev = new Set((before && before.assignees) || []);
+  const now = task.assignees || [];
+  const me = currentProfile && currentProfile.id;
+  if (!Array.isArray(task.comments)) task.comments = [];
+  now.filter(id => !prev.has(id)).forEach(id => {
+    logActivity(task, `มอบหมายงานให้ ${personName(teamProfiles.get(id))}`);
+    if (id !== me) task.comments.push({ id: uid("al"), type: "alert", author: currentUser(), toUser: id, text: "📌 มอบหมายงานนี้ให้คุณ", at: Date.now(), ack: false });
+  });
+  [...prev].filter(id => !now.includes(id)).forEach(id => {
+    logActivity(task, `ยกเลิกมอบหมาย ${personName(teamProfiles.get(id))}`);
+    task.comments = task.comments.filter(c => !(c.type === "alert" && c.toUser === id && !c.ack));
+  });
+}
 function avatarHtml(profile, cls = "") {
   const name = (profile && (profile.display_name || profile.email)) || "?";
   const raw = profile && profile.avatar_url;
@@ -2044,10 +2174,17 @@ function renderUserBadge() {
   const el = document.getElementById("sbUserBadge");
   if (!el || !currentProfile) return;
   el.title = "แก้ไขโปรไฟล์ของฉัน";
-  const dept = getDept(myDeptId());   // show the DEPARTMENT next to the name (name only, no icon)
+  el.classList.add("sbu-card");
+  const dept = getDept(myDeptId());   // show the DEPARTMENT under the name (name only, no icon)
   el.innerHTML = avatarHtml(currentProfile) +
-    `<span class="sbu-name" title="${escapeHtml(currentProfile.email || "")}">${escapeHtml(currentProfile.display_name || currentProfile.email || "")}</span>` +
-    `<span class="sbu-dept${dept ? "" : " none"}">${dept ? escapeHtml(dept.name) : "ไม่ระบุแผนก"}</span>`;
+    `<span class="sbu-text">` +
+      `<span class="sbu-name" title="${escapeHtml(currentProfile.email || "")}">${escapeHtml(currentProfile.display_name || currentProfile.email || "")}</span>` +
+      `<span class="sbu-dept${dept ? "" : " none"}">${dept ? escapeHtml(dept.name) : "ไม่ระบุแผนก"}</span>` +
+    `</span>` +
+    `<button type="button" class="sbu-logout" id="btnLogout" title="ออกจากระบบบัญชีนี้">` +
+      `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>` +
+      `<span>ออกจากระบบ</span></button>`;
+  el.querySelector("#btnLogout").addEventListener("click", (e) => { e.stopPropagation(); confirmSignOut(); });   // don't also open the profile
 }
 async function loadProfile(userId, email) {
   const sb = getSupabase();
@@ -2123,6 +2260,18 @@ async function verifyOtpCode() {
   // the listener already fired before this point (onSignedIn is safe to run once per resolved session)
   if (data && data.session) { document.getElementById("loginSent").classList.add("hidden"); await onSignedIn(data.session); }
 }
+// every "ออกจากระบบ" button goes through here — always asks first (and warns about unfinished uploads)
+async function confirmSignOut() {
+  const email = (currentProfile && currentProfile.email) || "";
+  const uploading = typeof _upCount === "number" ? _upCount : 0;
+  const ok = await confirmDialog({
+    title: "ออกจากระบบ?",
+    message: (email ? `บัญชี ${email}` : "ออกจากบัญชีนี้")
+      + (uploading ? ` — ⚠️ ยังมีไฟล์กำลังอัปโหลด ${uploading} ไฟล์ ถ้าออกตอนนี้ไฟล์จะไม่ถูกบันทึก` : " — ครั้งหน้าต้องขอรหัสเข้าสู่ระบบทางอีเมลใหม่"),
+    confirmText: "ออกจากระบบ", cancelText: "ยกเลิก", danger: !!uploading, icon: "👋",
+  });
+  if (ok) signOutUser();
+}
 async function signOutUser() {
   const sb = getSupabase();
   if (sb) await sb.auth.signOut();
@@ -2152,7 +2301,7 @@ async function initAuth() {
     const cleaned = otpInput.value.replace(/\D/g, "").slice(0, 10);
     if (cleaned !== otpInput.value) otpInput.value = cleaned;
   });
-  document.getElementById("btnPendingLogout").addEventListener("click", signOutUser);
+  document.getElementById("btnPendingLogout").addEventListener("click", confirmSignOut);
   document.getElementById("btnSaveSetup").addEventListener("click", saveNameSetup);
   document.getElementById("setupName").addEventListener("keydown", (e) => { if (e.key === "Enter") saveNameSetup(); });
   document.getElementById("setupName").addEventListener("input", paintSetupAvatar);
@@ -2166,7 +2315,7 @@ async function initAuth() {
     const { data } = await sb.auth.getSession();
     if (data && data.session) { document.getElementById("loginPending").classList.add("hidden"); await onSignedIn(data.session); }
   });
-  document.getElementById("btnBlockedLogout").addEventListener("click", signOutUser);
+  document.getElementById("btnBlockedLogout").addEventListener("click", confirmSignOut);
   document.getElementById("btnCheckBlocked").addEventListener("click", async () => {
     const { data } = await sb.auth.getSession();
     if (data && data.session) { document.getElementById("loginBlocked").classList.add("hidden"); await onSignedIn(data.session); }
@@ -2886,6 +3035,17 @@ function getDeptIn(ws, id) { return (ws.departments || []).find(d => d.id === id
 function notifyRemoteBoardChange(ws, newTasks, oldTasksById) {
   const notify = ws.settings && ws.settings.notify;
   if (!(typeof window !== "undefined" && "Notification" in window) || !notify || !notify.enabled || Notification.permission !== "granted") return;
+  // personal alerts (assignments) — for me regardless of department, also on brand-new tasks
+  const meId = currentProfile && currentProfile.id;
+  if (meId && notify.alert) newTasks.forEach(t => {
+    const before = oldTasksById[t.id];
+    const oldIds = new Set(((before && before.comments) || []).map(c => c.id));
+    (t.comments || []).forEach(c => {
+      if (c.type === "alert" && !c.ack && c.toUser === meId && !oldIds.has(c.id)) {
+        try { new Notification("📌 มีงานมอบหมายให้คุณ", { body: `${t.title}${c.author ? " · จาก " + c.author : ""}`, tag: "rt-asg-" + c.id, renotify: true }); } catch (e) {}
+      }
+    });
+  });
   // my department in the REMOTE board: the profile's admin-assigned one wins (per-person, all boards),
   // else that board's own setting — same precedence as myDeptId(), which only covers the active board
   const profDept = currentProfile && currentProfile.dept_id;
@@ -2893,7 +3053,7 @@ function notifyRemoteBoardChange(ws, newTasks, oldTasksById) {
   // ★ no department set = admin/planner mode → receive no cross-device notifications either (matches
   //   the local rule in taskRelevantToMe/pendingAlerts). Exception: "notify me about everything" mode.
   if (!myDept && notify.onlyMyDept) return;
-  const relevant = t => !notify.onlyMyDept || (myDept && (t.deptStages || []).some(s => s.deptId === myDept));
+  const relevant = t => !notify.onlyMyDept || (meId && (t.assignees || []).includes(meId)) || (myDept && (t.deptStages || []).some(s => s.deptId === myDept));
   const fire = (type, title, body, tag) => { if (notify[type]) { try { new Notification(title, { body: body || "", tag, renotify: true }); } catch (e) {} } };
   newTasks.forEach(t => {
     const before = oldTasksById[t.id];
@@ -3276,7 +3436,7 @@ function renderTaskChip(t, position = "single", showLabel = true) {
   const fchips = (position === "single") ? taskFieldChips(t) : [];
   const fieldRow = fchips.length ? `<div class="chip-fields">${fchips.map(f =>
     `<span class="chip-field" title="${escapeHtml(f.name)}: ${escapeHtml(f.label)}">${escapeHtml(f.label)}</span>`).join("")}</div>` : "";
-  chip.innerHTML = `<div class="chip-title-row"><span class="task-title">${escapeHtml(t.title)}</span>${alertPin(t)}</div>${badgeRow}${fieldRow}`;
+  chip.innerHTML = `<div class="chip-title-row"><span class="task-title">${escapeHtml(t.title)}</span>${alertPin(t)}${assigneeStack(t)}</div>${badgeRow}${fieldRow}`;
   chip.addEventListener("click", (e) => { e.stopPropagation(); openTaskModal(t.id); });
   chip.addEventListener("dragstart", (e) => {
     dragTaskId = t.id;
@@ -3489,7 +3649,7 @@ function renderDeptChip(t, stage) {
   const fchips = stageFieldChips(t, deptId);
   const fieldRow = fchips.length ? `<div class="chip-fields">${fchips.map(f =>
     `<span class="chip-field" title="${escapeHtml(f.name)}: ${escapeHtml(f.label)}">${escapeHtml(f.label)}</span>`).join("")}</div>` : "";
-  chip.innerHTML = `<div class="chip-title-row">${deptDot}<span class="task-title">${escapeHtml(t.title)}</span>${alertPin(t)}</div>${badgeRow}${fieldRow}`;
+  chip.innerHTML = `<div class="chip-title-row">${deptDot}<span class="task-title">${escapeHtml(t.title)}</span>${alertPin(t)}${assigneeStack(t)}</div>${badgeRow}${fieldRow}`;
   chip.addEventListener("click", (e) => { e.stopPropagation(); openTaskModal(t.id, { focusDept: deptId }); });
   chip.addEventListener("dragstart", (e) => {
     dragStage = { taskId: t.id, deptId };
@@ -3992,6 +4152,7 @@ function duplicateTask(src) {
   c.title = (src.title || "งาน") + " (สำเนา)";
   c.statusId = firstStatus;
   c.comments = [];
+  c.assignees = [];         // a copy is a new job — assign it fresh (and notify) from its own popup
   delete c.driveFolderId;   // a copy has no attachments — never share (and later trash) the original's Drive folder
   c.createdAt = Date.now();
   c.updatedAt = Date.now();
@@ -4382,6 +4543,10 @@ function openTaskModal(taskId, defaults={}) {
             <button type="button" class="status-done-quick" data-status-done title="ทำเครื่องหมายว่าเสร็จ">✓</button>
           </div>
         </div>
+        <div class="field">
+          <label>ผู้รับผิดชอบ <span class="muted" style="font-weight:400">(คนที่ถูกมอบหมายจะได้รับแจ้งเตือนเมื่อกดบันทึก)</span></label>
+          <div class="asg-row" data-assignees></div>
+        </div>
         <div class="field"${isServiceBoard() ? ' style="display:none"' : ""}>
           <label>กำหนดส่งต่อแผนก <span class="muted" style="font-weight:400">(แผนก + วันครบ + ติ๊กเมื่อแผนกนั้นเสร็จ · สถานะงานรวมใช้ช่อง “สถานะ” ด้านบน)</span></label>
           <div class="stage-list" data-stages></div>
@@ -4713,6 +4878,11 @@ function openTaskModal(taskId, defaults={}) {
   const extraWrap = modal.querySelector('[data-extra-fields]');
   function renderExtraFields() {
     extraWrap.innerHTML = "";
+    // Service hides the stages section, but a department's custom fields are stored on its stage → keep a
+    // hidden stage for every department that has fields so "ข้อมูลเพิ่มเติม" still shows (and shows on chips)
+    if (isServiceBoard()) (state.departments || []).forEach(d => {
+      if (deptFields(d.id).length && !task.deptStages.some(st => st.deptId === d.id)) task.deptStages.push({ deptId: d.id, due: null, done: false, fields: {} });
+    });
     const relevant = (task.deptStages || []).filter(stg =>
       (!modalDept || stg.deptId === modalDept) && deptFields(stg.deptId).length > 0);
     if (relevant.length === 0) { extraBlock.style.display = "none"; return; }
@@ -4791,7 +4961,7 @@ function openTaskModal(taskId, defaults={}) {
         return;
       }
       if (c.type === "alert") {
-        const dept = getDept(c.toDept) || { name: c.toDept || "?" };
+        const dept = alertTarget(c);
         const al = document.createElement("div");
         al.className = "ta-alert" + (c.ack ? " acked" : "");
         al.innerHTML = `
@@ -4806,7 +4976,7 @@ function openTaskModal(taskId, defaults={}) {
           ${c.rejected
             ? `<div class="ta-alert-ack" style="color:var(--danger)">❌ ปฏิเสธโดย ${escapeHtml(c.rejectedBy || "—")}${c.rejectReason ? " — " + escapeHtml(c.rejectReason) : ""} · ${formatDateTimeTH(c.rejectedAt)}</div>`
             : (c.ack ? `<div class="ta-alert-ack">✓ รับทราบแล้วโดย ${escapeHtml(c.ackBy || "—")} · ${formatDateTimeTH(c.ackAt)}</div>` : "")}
-          ${(!c.ack && myDeptId() && myDeptId() === c.toDept) ? `<div class="ta-alert-btns"><button class="btn btn-sm btn-ack ta-alert-ackbtn" data-ackbtn>✓ รับทราบ</button><button class="btn btn-sm btn-reject" data-rejectbtn>✕ ปฏิเสธ</button></div>` : ""}
+          ${alertIsForMe(c) ? `<div class="ta-alert-btns"><button class="btn btn-sm btn-ack ta-alert-ackbtn" data-ackbtn>✓ รับทราบ</button><button class="btn btn-sm btn-reject" data-rejectbtn>✕ ปฏิเสธ</button></div>` : ""}
           <div class="alert-replies" data-replies></div>`;
         al.querySelector(".ta-del").addEventListener("click", () => {
           trashAttachments(c);
@@ -4945,6 +5115,7 @@ function openTaskModal(taskId, defaults={}) {
     if (!isNew) syncAttachFromReal(task);   // uploads that finished while this modal was open
     // auto activity log: record what changed
     diffTaskActivity(beforeSnapshot, task).forEach(text => logActivity(task, text));
+    notifyAssigneeChanges(beforeSnapshot, task);
     if (isNew) state.tasks.push(task);
     else {
       const idx = state.tasks.findIndex(t => t.id === task.id);
@@ -4995,6 +5166,26 @@ function openTaskModal(taskId, defaults={}) {
       openTaskModal(copy.id);   // open the new copy for editing right away
     });
   }
+
+  // ----- ผู้รับผิดชอบ (assignees): edited on the modal copy, notified on บันทึก -----
+  if (!Array.isArray(task.assignees)) task.assignees = [];
+  const asgWrap = modal.querySelector("[data-assignees]");
+  function renderAssignees() {
+    const editable = canEdit();
+    asgWrap.innerHTML = task.assignees.map(id => {
+      const p = teamProfiles.get(id) || { id, display_name: "(ผู้ใช้ที่ถูกลบ)" };
+      return `<span class="asg-chip">${avatarHtml(p)}<span class="asg-chip-name">${escapeHtml(personName(p))}</span>${editable ? `<button type="button" data-rm="${escapeHtml(id)}" title="เอาออก">✕</button>` : ""}</span>`;
+    }).join("")
+      + (editable ? `<button type="button" class="asg-add" data-act="assign">＋ มอบหมาย</button>`
+                  : (task.assignees.length ? "" : `<span class="asg-none">— ยังไม่ได้มอบหมาย —</span>`));
+    asgWrap.querySelectorAll("[data-rm]").forEach(b => b.addEventListener("click", () => {
+      task.assignees = task.assignees.filter(x => x !== b.dataset.rm); renderAssignees();
+    }));
+    const addBtn = asgWrap.querySelector('[data-act="assign"]');
+    if (addBtn) addBtn.addEventListener("click", () => openAssignPicker(addBtn, task.assignees, ids => { task.assignees = ids; renderAssignees(); }));
+  }
+  renderAssignees();
+  if (!teamProfiles.size) loadTeam().then(() => { if (document.body.contains(modal)) renderAssignees(); });
 
   // ★ hide the project-level dates (วันเริ่ม/วันครบกำหนด) for anyone who HAS a department — they manage
   // only their own department's date in the stages section below, so the project rollup date up top
@@ -6889,6 +7080,7 @@ function canNotify(type) {
 function taskRelevantToMe(t) {
   const n = state.settings.notify, my = myDeptId();
   if (!n || !n.onlyMyDept) return true;   // "notify me about everything" mode → always relevant
+  if (isAssignedToMe(t)) return true;     // assigned to me → always relevant
   if (!my) return false;                  // department-scoped but no department = admin mode → nothing
   return (t.deptStages || []).some(s => s.deptId === my);
 }
@@ -7506,26 +7698,32 @@ function attImgErr(img) {
 // unacknowledged alerts targeted at MY department.
 // ★ no department set = admin/planner mode → receive no alerts at all (not even ones you sent). This is
 //   why the bell/popup/pins all go quiet for an admin who hasn't picked a department.
-function pendingAlerts() {
+// is this unacknowledged alert aimed at me? personal (toUser = assignment) or my department (toDept)
+function alertIsForMe(c) {
+  if (!c || c.type !== "alert" || c.ack) return false;
+  if (c.toUser) return !!(currentProfile && c.toUser === currentProfile.id);
   const my = myDeptId();
-  if (!my) return [];
+  return !!my && c.toDept === my;
+}
+// "who is this alert for" label — a person (👤 name) or a department
+function alertTarget(c) {
+  if (c.toUser) return { name: "👤 " + personName(teamProfiles.get(c.toUser)) };
+  return getDept(c.toDept) || { name: c.toDept || "?" };
+}
+function pendingAlerts() {
   const out = [];
   (state.tasks || []).forEach(t => (t.comments || []).forEach(c => {
-    if (c.type === "alert" && !c.ack && c.toDept === my) out.push({ task: t, c });
+    if (alertIsForMe(c)) out.push({ task: t, c });
   }));
   return out.sort((a, b) => (b.c.at || 0) - (a.c.at || 0));
 }
 // does this task have an unacknowledged alert for MY department? (no department = none)
 function taskHasAlert(t) {
-  const my = myDeptId();
-  if (!my) return false;
-  return (t.comments || []).some(c => c.type === "alert" && !c.ack && c.toDept === my);
+  return (t.comments || []).some(alertIsForMe);
 }
 // the task's unacknowledged alerts for MY department (for the per-task popup; no department = none)
 function taskPendingAlerts(t) {
-  const my = myDeptId();
-  if (!my) return [];
-  return (t.comments || []).filter(c => c.type === "alert" && !c.ack && c.toDept === my).map(c => ({ task: t, c }));
+  return (t.comments || []).filter(alertIsForMe).map(c => ({ task: t, c }));
 }
 // red shaking bell marker for chips / today-panel rows — click it to open the alert popup
 function alertPin(t) {
@@ -7602,7 +7800,7 @@ function openAlertPopup(list) {
   overlay.addEventListener("mousedown", e => { if (e.target === overlay) close(); });
   document.addEventListener("keydown", onEsc, true);
   list.forEach(({ task, c }) => {
-    const dept = getDept(c.toDept) || { name: c.toDept || "?" };
+    const dept = alertTarget(c);
     const card = document.createElement("div");
     card.className = "alert-card";
     card.innerHTML = `
@@ -7847,10 +8045,6 @@ document.getElementById("btnSettings").addEventListener("click", () => {
   openSettingsModal();
 });
 document.getElementById("sbUserBadge").addEventListener("click", openMyProfileModal);
-document.getElementById("btnLogout").addEventListener("click", async () => {
-  const ok = await confirmDialog({ title: "ออกจากระบบ?", message: `ออกจากระบบบัญชี ${currentProfile ? currentProfile.email : ""}`, confirmText: "ออกจากระบบ", danger: false, icon: "🚪" });
-  if (ok) signOutUser();
-});
 document.getElementById("btnBell").addEventListener("click", () => {
   const list = pendingAlerts();
   if (list.length) openAlertPopup(list);
@@ -8044,6 +8238,7 @@ if (state.tasks.length === 0 && !localStorage.getItem(STORAGE_KEY)) {
 // starts the actual app — called once by onSignedIn() after auth resolves (see initAuth() above)
 async function startApp() {
   renderUserBadge();
+  loadTeam();   // team directory for assignee avatars/picker — renders again when it arrives
   await syncRootFromCloud();   // first login ever seeds the cloud from local data; every login after that pulls the cloud copy
   startRealtimeSync();   // slice 3: start listening for changes other devices push from this point on
   applyMyDeptDefaultView();   // open on the user's own department by default
