@@ -2499,12 +2499,67 @@ function defaultState() {
 // Multiple independent calendars ("boards") in one app — each board is a full workspace
 // (own statuses, departments, checklist templates, settings, tasks). Default: โรงงาน + ออกไซต์.
 const DEFAULT_BOARDS = [{ id: "factory", name: "โรงงาน" }, { id: "onsite", name: "ออกไซต์" }, { id: "drawing", name: "เขียนแบบโครงสร้าง" }];
+
+/* ----- Service calendar: a separate app-within-the-app for the Service department -----
+   Only people whose (admin-assigned) department is SERVICE_DEPT see it — and they see ONLY it.
+   Admins also see it so they can manage its settings. It's a normal board (own statuses/tasks/
+   settings), branded "Avatar Service" while active. */
+const SERVICE_BOARD = "service";
+const SERVICE_DEPT = "d_service";
+function serviceState() {
+  const s = defaultState();
+  s.statuses = [   // independent from the factory flow — edit freely at ⚙ › สถานะงาน while on this board
+    { id: "sv_new",    name: "รับเรื่อง",          color: "#98a2b3", isDone: false },
+    { id: "sv_doing",  name: "กำลังดำเนินการ",     color: "#3b82f6", isDone: false },
+    { id: "sv_wait",   name: "รออะไหล่/รอลูกค้า", color: "#f59e0b", isDone: false },
+    { id: "sv_done",   name: "เสร็จสิ้น",          color: "#10b981", isDone: true  },
+    { id: "sv_cancel", name: "ยกเลิก",             color: "#ef4444", isDone: false },
+  ];
+  s.departments = [{ id: SERVICE_DEPT, name: "Service", color: "#0891b2", icon: "🛠️", checklist: [], fields: [] }];
+  s.settings.defaultStages = [SERVICE_DEPT];
+  s.settings.dateLimit = { enabled: false, anchorDept: SERVICE_DEPT, blockedDepts: [] };
+  return s;
+}
+// make sure the Service board exists in a root (older local data / clouds created before it)
+function ensureServiceBoard(r) {
+  if (!Array.isArray(r.boardMeta)) r.boardMeta = [];
+  if (!r.boardMeta.some(b => b.id === SERVICE_BOARD)) r.boardMeta.push({ id: SERVICE_BOARD, name: "Service" });
+  if (!r.boards[SERVICE_BOARD]) r.boards[SERVICE_BOARD] = serviceState();
+  return r;
+}
+function isServiceUser() { return !!(currentProfile && currentProfile.dept_id === SERVICE_DEPT); }
+// which calendars this user may see: Service people → only Service; admins → all; everyone else → all but Service
+function visibleBoardIds() {
+  const all = (root.boardMeta || []).map(b => b.id).filter(id => root.boards[id]);
+  if (isServiceUser()) return all.filter(id => id === SERVICE_BOARD);
+  if (isAdmin()) return all;
+  return all.filter(id => id !== SERVICE_BOARD);
+}
+// if the active board isn't allowed for this user (e.g. a Service person landing on โรงงาน), move them
+function ensureVisibleBoard() {
+  const vis = visibleBoardIds();
+  if (vis.length && !vis.includes(root.activeBoard)) { root.activeBoard = vis[0]; state = root.boards[vis[0]]; }
+}
+// app name + logo follow the active board ("Avatar Service" on the Service calendar)
+const LOGO_DEFAULT = "Logo Avatar เล็ก.png";
+const LOGO_SERVICE = "AVT Services.png";   // sits next to index.html on GitHub Pages; falls back to the default logo if missing
+function applyBranding() {
+  const svc = root.activeBoard === SERVICE_BOARD;
+  const name = svc ? "Avatar Service" : "Avatar Planning";
+  document.title = name;
+  const h1 = document.querySelector(".sb-brand h1");
+  if (h1 && h1.dataset.brand !== name) {
+    h1.dataset.brand = name;
+    h1.innerHTML = `<img class="logo" src="${svc ? LOGO_SERVICE : LOGO_DEFAULT}" alt="" onerror="this.onerror=null;this.src='${LOGO_DEFAULT}'" /> ${name}`;
+  }
+}
+
 function defaultRoot() {
-  return {
+  return ensureServiceBoard({
     activeBoard: "factory",
     boardMeta: DEFAULT_BOARDS.map(b => ({ ...b })),
     boards: { factory: defaultState(), onsite: defaultState(), drawing: defaultState() },
-  };
+  });
 }
 
 let root = loadRoot();
@@ -2536,6 +2591,7 @@ function loadRoot() {
       if (!Array.isArray(parsed.boardMeta) || !parsed.boardMeta.length) parsed.boardMeta = DEFAULT_BOARDS.map(b => ({ ...b }));
       // ensure the structure-drawing board exists (added for the drawing-request feature)
       if (!parsed.boardMeta.some(b => b.id === "drawing")) parsed.boardMeta.push({ id: "drawing", name: "เขียนแบบโครงสร้าง" });
+      ensureServiceBoard(parsed);   // Service calendar (needs its own departments/statuses, not defaultState)
       parsed.boardMeta.forEach(b => { if (!parsed.boards[b.id]) parsed.boards[b.id] = defaultState(); });
       Object.values(parsed.boards).forEach(ws => migrateState(ws));
       if (!parsed.boards[parsed.activeBoard]) parsed.activeBoard = parsed.boardMeta[0].id;
@@ -2556,6 +2612,7 @@ function loadRoot() {
 // switch the active calendar (board) — repoints `state` and re-renders everything
 function setBoard(id) {
   if (!root.boards[id] || id === root.activeBoard) return;
+  if (!visibleBoardIds().includes(id)) return;   // e.g. non-Service users can't open the Service calendar
   document.querySelectorAll(".overlay, .checklist-popover, #appToast").forEach(n => n.remove());
   root.activeBoard = id;
   state = root.boards[id];
@@ -2697,18 +2754,18 @@ const _lastPushedJson = {};
 async function pushAllBoardsToCloud() {
   const sb = getSupabase();
   if (!sb || !currentProfile) return;
-  const rows = (root.boardMeta || []).filter(b => {
-    const json = JSON.stringify(root.boards[b.id]);
-    if (_lastPushedJson[b.id] === json) return false;
-    _lastPushedJson[b.id] = json;
-    return true;
-  }).map(b => ({
+  const changed = (root.boardMeta || [])
+    .map(b => ({ b, json: JSON.stringify(root.boards[b.id]) }))
+    .filter(x => _lastPushedJson[x.b.id] !== x.json);
+  if (!changed.length) return;
+  const rows = changed.map(({ b }) => ({
     id: b.id, name: b.name, data: root.boards[b.id],
     updated_at: new Date().toISOString(), updated_by: currentProfile.display_name, updated_by_client: _clientId,
   }));
-  if (!rows.length) return;
   const { error } = await sb.from("boards").upsert(rows);
-  if (error) toast("⚠️ บันทึกขึ้น cloud ไม่สำเร็จ (บันทึกในเครื่องไว้แล้ว): " + error.message);
+  if (error) { toast("⚠️ บันทึกขึ้น cloud ไม่สำเร็จ (บันทึกในเครื่องไว้แล้ว): " + error.message); return; }
+  // mark as pushed ONLY after success — marking first meant a failed save was never retried
+  changed.forEach(({ b, json }) => { _lastPushedJson[b.id] = json; });
 }
 // called once from startApp(): first login ever → upload local data as the cloud seed;
 // every login after that → cloud is the source of truth, overwrite in-memory root/state with it.
@@ -2729,10 +2786,14 @@ async function syncRootFromCloud() {
   data.forEach(row => { boards[row.id] = row.data; migrateState(boards[row.id]); });
   root.boardMeta = boardMeta;
   root.boards = boards;
+  Object.keys(boards).forEach(id => { _lastPushedJson[id] = JSON.stringify(boards[id]); });   // this IS the cloud's current content — don't re-push it unchanged
+  // clouds created before the Service calendar existed won't have it yet → add it here and push it up
+  const hadService = !!root.boards[SERVICE_BOARD];
+  ensureServiceBoard(root);
   if (!root.boards[root.activeBoard]) root.activeBoard = (boardMeta[0] || {}).id || "factory";
   state = root.boards[root.activeBoard];
   localStorage.setItem(STORAGE_KEY, JSON.stringify(root));   // refresh the local cache to match the cloud
-  Object.keys(boards).forEach(id => { _lastPushedJson[id] = JSON.stringify(boards[id]); });   // this IS the cloud's current content — don't re-push it unchanged
+  if (!hadService) scheduleCloudSave();
 }
 
 /* ----- Phase 2, slice 3: realtime sync across devices (Supabase Realtime on public.boards) -----
@@ -2829,6 +2890,14 @@ function getPriority(id) {
 }
 function getDept(id) {
   return (state.departments || []).find(d => d.id === id) || null;
+}
+// every department across all calendars, deduped by id (board order) — for cross-board pickers
+function allDepartments() {
+  const seen = new Set(), out = [];
+  (root.boardMeta || []).forEach(b => ((root.boards[b.id] || {}).departments || []).forEach(d => {
+    if (!seen.has(d.id)) { seen.add(d.id); out.push(d); }
+  }));
+  return out;
 }
 // department marker = an emoji (not a colour dot) so it isn't confused with a status colour.
 // accepts a dept object or a dept id.
@@ -5479,8 +5548,11 @@ function buildUsersAdminPanel(container) {
   container.appendChild(sec);
   const listEl = sec.querySelector("[data-list]");
   const countEl = sec.querySelector("[data-count]");
+  // departments from EVERY calendar (deduped) — so e.g. "Service" (only defined on the Service board)
+  // can be assigned while the admin is looking at โรงงาน
+  const allDepts = allDepartments();
   const deptOptions = `<option value="">— ไม่ระบุแผนก —</option>` +
-    (state.departments || []).map(d => `<option value="${d.id}">${escapeHtml(d.name)}</option>`).join("");
+    allDepts.map(d => `<option value="${d.id}">${escapeHtml(d.name)}</option>`).join("");
   const sb = getSupabase();
 
   // update one profile and CONFIRM a row actually changed. `.select()` returns the affected rows —
@@ -5639,11 +5711,11 @@ function buildUsersAdminPanel(container) {
     // 2) approved users grouped BY DEPARTMENT (department order, then a "no department" group last)
     const byDept = new Map();
     active.forEach(u => {
-      const k = (u.dept_id && getDept(u.dept_id)) ? u.dept_id : "";
+      const k = (u.dept_id && allDepts.some(d => d.id === u.dept_id)) ? u.dept_id : "";
       if (!byDept.has(k)) byDept.set(k, []);
       byDept.get(k).push(u);
     });
-    (state.departments || []).forEach(d => {
+    allDepts.forEach(d => {
       const arr = byDept.get(d.id);
       if (arr && arr.length) {
         listEl.appendChild(groupHead(`${deptIco(d)}${escapeHtml(d.name)}`, arr.length));
@@ -6520,803 +6592,4 @@ function buildWorkOrderSheet(deptId, day) {
   });
   if (!entries.length) return "";
   // group by the first field's chosen value (unspecified bucket sorts last)
-  const UNSET = " ";
-  const groups = new Map();
-  entries.forEach(e => {
-    const key = groupField ? (stageFieldLabel(groupField, e.stg) || UNSET) : "all";
-    if (!groups.has(key)) groups.set(key, []);
-    groups.get(key).push(e);
-  });
-  const keys = [...groups.keys()].sort((a, b) => {
-    if (a === UNSET) return 1; if (b === UNSET) return -1;
-    return String(a).localeCompare(String(b), "th");
-  });
-  const boardName = (root.boardMeta.find(b => b.id === root.activeBoard) || {}).name || "";
-  let html = `<div class="wo-sheet">
-    <div class="wo-head">
-      <div class="wo-title">ใบสั่งงาน — ${escapeHtml(dept.name)}</div>
-      <div class="wo-meta">${escapeHtml(boardName)} · ${formatDateFullTH(day)}</div>
-    </div>`;
-  keys.forEach(key => {
-    const list = groups.get(key);
-    if (groupField) {
-      const label = key === UNSET ? `ยังไม่ระบุ${escapeHtml(groupField.name)}` : escapeHtml(key);
-      html += `<div class="wo-group-head">${escapeHtml(groupField.name)}: <b>${label}</b><span class="wo-count">${list.length} โปรเจค</span></div>`;
-    }
-    list.forEach(e => {
-      const t = e.task;
-      const otherVals = otherFields.map(f => { const v = stageFieldLabel(f, e.stg); return v ? `${escapeHtml(f.name)}: ${escapeHtml(v)}` : null; }).filter(Boolean).join(" · ");
-      html += `<div class="wo-proj"><span class="wo-proj-name">${escapeHtml(t.title || "(ไม่มีชื่อ)")}</span>${otherVals ? `<span class="wo-proj-extra">${otherVals}</span>` : ""}</div><div class="wo-rows">`;
-      e.cabs.forEach(({ sub, ed }) => {
-        if (!sub) {
-          html += `<div class="wo-row"><span class="wo-check">☐</span><span class="wo-cab">— ทั้งโปรเจค —</span><span class="wo-status"></span><span class="wo-prog"></span><span class="wo-due">${ed ? formatDateTH(ed) : ""}</span></div>`;
-          return;
-        }
-        const cst = getStatus(sub.statusId);
-        const p = checklistProgress(sub, deptId);
-        html += `<div class="wo-row">
-          <span class="wo-check">☐</span>
-          <span class="wo-cab">${escapeHtml(sub.text || "(ไม่มีชื่อตู้)")}</span>
-          <span class="wo-status"><span class="wo-dot" style="background:${cst.color}"></span>${escapeHtml(cst.name)}</span>
-          <span class="wo-prog">${p.total ? `${p.done}/${p.total}` : ""}</span>
-          <span class="wo-due">${ed ? formatDateTH(ed) : ""}</span>
-        </div>`;
-      });
-      html += `</div>`;
-    });
-  });
-  html += `<div class="wo-foot"><span>ผู้รับงาน: ____________________</span><span>ลงชื่อ: ____________________  วันที่ ____ / ____ / ______</span></div></div>`;
-  return html;
-}
-function openWorkOrderPrint() {
-  const deptIds = activeViewDepts();
-  const list = deptIds.length ? deptIds : (state.departments || []).map(d => d.id);
-  const day = tpRefDay();
-  const sheets = list.map(id => buildWorkOrderSheet(id, day)).filter(Boolean);
-  const overlay = document.createElement("div");
-  overlay.className = "overlay";
-  const body = sheets.length ? sheets.join("") : `<div class="wo-empty">ไม่มีงานของแผนกที่เลือกใน${tpWhen()}</div>`;
-  overlay.innerHTML = `
-    <div class="modal dash-modal wo-modal" role="dialog" aria-modal="true">
-      <div class="modal-head">
-        <h3>🖨️ ใบสั่งงาน · ${escapeHtml(tpWhen())}</h3>
-        <div class="row dash-print-hide" style="gap:6px">
-          ${sheets.length ? '<button class="btn btn-primary btn-sm" data-act="print">🖨️ พิมพ์ / PDF</button>' : ""}
-          <button class="btn btn-ghost" data-act="close" title="ปิด">✕</button>
-        </div>
-      </div>
-      <div class="dash-mbody wo-body">${body}</div>
-    </div>`;
-  document.body.appendChild(overlay);
-  const close = () => { overlay.remove(); document.removeEventListener("keydown", onEsc, true); };
-  function onEsc(e) { if (e.key === "Escape") close(); }
-  overlay.addEventListener("click", e => { if (e.target === overlay) close(); });
-  overlay.querySelectorAll('[data-act="close"]').forEach(b => b.addEventListener("click", close));
-  overlay.querySelector('[data-act="print"]')?.addEventListener("click", () => {
-    overlay.classList.add("print-target");
-    document.body.classList.add("printing-modal");
-    const cleanup = () => { overlay.classList.remove("print-target"); document.body.classList.remove("printing-modal"); window.removeEventListener("afterprint", cleanup); };
-    window.addEventListener("afterprint", cleanup);
-    setTimeout(cleanup, 60000);
-    window.print();
-  });
-  document.addEventListener("keydown", onEsc, true);
-}
-
-/* Gantt / timeline view — one row per project, bar = startDate→due (production span),
-   diamonds = each department's due date, vertical line = today. Uses existing data only. */
-function renderGantt() {
-  const wrap = document.getElementById("ganttWrap");
-  document.getElementById("monthLabel").textContent = `${TH_MONTHS[view.month]} ${view.year + 543}`;
-  const N = new Date(view.year, view.month + 1, 0).getDate();      // days in month
-  const rangeStart = new Date(view.year, view.month, 1);
-  const rsIso = isoDate(rangeStart), reIso = isoDate(new Date(view.year, view.month, N));
-  const todayStr = todayIso();
-  const filter = currentFilter();
-  const DAYW = 38;
-  const dayIdx = iso => Math.round((fromIso(iso) - rangeStart) / 86400000);
-
-  const prRank = { urgent:4, high:3, medium:2, low:1, none:0 };
-  const rows = state.tasks.filter(matchesFilter(filter)).map(t => {
-    const start = (t.startDate && t.startDate < t.date) ? t.startDate : t.date;
-    return { t, start, due: t.date };
-  }).filter(x => x.start <= reIso && x.due >= rsIso)               // intersects this month
-    .sort((a,b) => a.start.localeCompare(b.start)
-      || (prRank[b.t.priority]||0)-(prRank[a.t.priority]||0)
-      || a.t.title.localeCompare(b.t.title, "th"));
-
-  let daysHtml = "", bg = "";
-  for (let i = 0; i < N; i++) {
-    const d = new Date(view.year, view.month, 1 + i);
-    const wknd = ((d.getDay() + 6) % 7) >= 5;
-    const isToday = isoDate(d) === todayStr;
-    daysHtml += `<div class="g-day${wknd?' wknd':''}${isToday?' today':''}"><span>${1 + i}</span></div>`;
-    bg += `<div class="g-cell${wknd?' wknd':''}"></div>`;
-  }
-  const todayLine = (todayStr >= rsIso && todayStr <= reIso)
-    ? `<span class="g-today" style="left:${(dayIdx(todayStr)+0.5)/N*100}%"></span>` : "";
-
-  let rowsHtml = "";
-  if (rows.length === 0) {
-    rowsHtml = `<div class="g-empty">ไม่มีงานในเดือนนี้</div>`;
-  } else rows.forEach(({ t, start, due }) => {
-    const st = getStatus(t.statusId);
-    const pr = getPriority(t.priority);
-    const s = Math.max(0, dayIdx(start));
-    const e = Math.min(N - 1, dayIdx(due));
-    const left = s / N * 100, width = (e - s + 1) / N * 100;
-    const clipL = fromIso(start) < rangeStart;
-    const clipR = dayIdx(due) > N - 1;
-    const startsToday = start === todayStr;
-    // dept-due dots grouped by day; spread same-day dots horizontally so none hides another
-    const byDay = {};
-    (t.deptStages || []).forEach(stg => {
-      if (!stg.due || stg.due < rsIso || stg.due > reIso) return;
-      const di = dayIdx(stg.due);
-      (byDay[di] = byDay[di] || []).push(stg);
-    });
-    let markers = "";
-    const SP = 16, maxX = N * DAYW - 7;
-    Object.keys(byDay).forEach(k => {
-      const di = +k, list = byDay[k], cx = (di + 0.5) * DAYW;
-      list.forEach((stg, i) => {
-        let x = cx + (i - (list.length - 1) / 2) * SP;
-        x = Math.max(7, Math.min(maxX, x));
-        const dept = getDept(stg.deptId), done = isDeptComplete(t, stg.deptId);
-        markers += `<span class="g-marker${done?' done':''}" style="left:${x}px;background:${dept?dept.color:'#888'}" title="${escapeHtml(dept?dept.name:'')} • ${formatDateTH(stg.due)}${done?' ✓':''}"></span>`;
-      });
-    });
-    rowsHtml += `
-      <div class="g-row" data-id="${t.id}">
-        <div class="g-label" title="${escapeHtml(t.title)}">${pr.id!=='none'?priFlag(pr)+' ':''}${escapeHtml(t.title)}</div>
-        <div class="g-track">
-          ${bg}${todayLine}
-          <div class="g-bar${isStatusDone(st)?' done':''}${clipL?' clip-l':''}${clipR?' clip-r':''}${startsToday?' starts-today':''}"
-               style="left:${left}%;width:${width}%;--chip-bg:${hexToBgTint(st.color)};--chip-color:${st.color}"
-               title="${escapeHtml(t.title)}&#10;${formatDateTH(start)} → ${formatDateTH(due)}&#10;สถานะ: ${escapeHtml(st.name)}">
-            <span class="g-bar-label">${escapeHtml(t.title)}</span>
-          </div>
-          ${markers}
-        </div>
-      </div>`;
-  });
-
-  wrap.innerHTML = `
-    <div class="g-scroll">
-      <div class="g-inner" style="--g-dayarea:${N*DAYW}px;--g-label:170px">
-        <div class="g-head"><div class="g-corner">โปรเจค</div><div class="g-days">${daysHtml}</div></div>
-        <div class="g-rows">${rowsHtml}</div>
-      </div>
-    </div>`;
-  wrap.querySelectorAll(".g-row").forEach(row =>
-    row.addEventListener("click", () => openTaskModal(row.dataset.id)));
-}
-
-// render whichever main view is active + sync the toggle + container visibility
-function renderMainView() {
-  const calWrap = document.getElementById("calWrap");
-  const ganttWrap = document.getElementById("ganttWrap");
-  const dashWrap = document.getElementById("dashWrap");
-  document.querySelectorAll('#viewToggle .tb-nav-btn').forEach(b => b.classList.toggle('active', b.dataset.view === viewMode));
-  calWrap.classList.add("hidden"); ganttWrap.classList.add("hidden"); dashWrap.classList.add("hidden");
-  if (viewMode === "gantt") { ganttWrap.classList.remove("hidden"); renderGantt(); }
-  else if (viewMode === "dashboard") { dashWrap.classList.remove("hidden"); renderDashboard(); }
-  else { calWrap.classList.remove("hidden"); renderMonth(); }
-}
-
-/* status report popup shown on app open — own-department progress + remaining checklist per job */
-/* ===== Alert system =====
-   Alerts are stored inside a task's comments as { type:"alert", toDept, photo, ack, ... }.
-   QC (or anyone) sends one from the task's Activity panel → it pops up for the target department. */
-
-/* ----- Browser notifications (Notification API) — configurable per event type in ⚙ การแจ้งเตือน ----- */
-const NOTIF_SUPPORTED = typeof window !== "undefined" && "Notification" in window;
-// may this event type fire a desktop notification right now?
-function canNotify(type) {
-  const n = state.settings.notify;
-  return NOTIF_SUPPORTED && n && n.enabled && n[type] && Notification.permission === "granted";
-}
-// is this task relevant to me for notifications?
-// ★ no department set = admin/planner overview mode → receive NOTHING (owner's request: an admin who
-//   hasn't picked a department shouldn't get work notifications, not even ones they sent themselves).
-function taskRelevantToMe(t) {
-  const n = state.settings.notify, my = myDeptId();
-  if (!n || !n.onlyMyDept) return true;   // "notify me about everything" mode → always relevant
-  if (!my) return false;                  // department-scoped but no department = admin mode → nothing
-  return (t.deptStages || []).some(s => s.deptId === my);
-}
-// fire a desktop notification (no-op if the type is off / permission not granted)
-// renotify:true (needs a tag) makes a repeat change on the same task re-alert instead of silently replacing
-function pushNotify(type, title, body, tag) {
-  if (!canNotify(type)) return;
-  try { new Notification(title, { body: body || "", tag: tag || undefined, renotify: !!tag }); } catch (e) { /* some engines need a ServiceWorker; ignore */ }
-}
-// status / done changes on a task (or one of its cabinets)
-function notifyStatusChange(t, sub, oldId, newId) {
-  if (oldId === newId || !taskRelevantToMe(t)) return;
-  const ns = getStatus(newId), os = getStatus(oldId);
-  const what = sub ? ` · ตู้ “${sub.text || "-"}”` : "";   // task level = just the title; cabinet adds its name
-  if (ns.isDone && !os.isDone) pushNotify("done", "✅ เสร็จแล้ว", `${t.title}${what}`, "dn-" + (sub ? sub.id : t.id));
-  else pushNotify("status", "🔁 เปลี่ยนสถานะ", `${t.title}${what} → ${ns.name}`, "st-" + (sub ? sub.id : t.id));
-}
-// fire status/done notifications for everything that changed between a modal's before/after snapshot
-function notifyTaskDiff(before, after) {
-  if (!before || !taskRelevantToMe(after)) return;
-  if (before.statusId !== after.statusId) notifyStatusChange(after, null, before.statusId, after.statusId);
-  (after.subtasks || []).forEach(s => { const b = (before.subtasks || []).find(x => x.id === s.id); if (b && b.statusId !== s.statusId) notifyStatusChange(after, s, b.statusId, s.statusId); });
-  (after.deptStages || []).forEach(s => { const b = (before.deptStages || []).find(x => x.deptId === s.deptId); if (b && !b.done && s.done) pushNotify("done", "✅ แผนกเสร็จ", `${after.title} · ${(getDept(s.deptId) || {}).name || ""}`, "dd-" + after.id + s.deptId); });
-}
-
-// resize an image File to a JPEG data URL (max ~1000px long edge) to keep localStorage small
-function compressImage(file, maxEdge = 1000, quality = 0.6) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const img = new Image();
-      img.onload = () => {
-        let { width, height } = img;
-        const scale = Math.min(1, maxEdge / Math.max(width, height));
-        width = Math.max(1, Math.round(width * scale));
-        height = Math.max(1, Math.round(height * scale));
-        const canvas = document.createElement("canvas");
-        canvas.width = width; canvas.height = height;
-        canvas.getContext("2d").drawImage(img, 0, 0, width, height);
-        resolve(canvas.toDataURL("image/jpeg", quality));
-      };
-      img.onerror = reject;
-      img.src = reader.result;
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
-// unacknowledged alerts targeted at MY department.
-// ★ no department set = admin/planner mode → receive no alerts at all (not even ones you sent). This is
-//   why the bell/popup/pins all go quiet for an admin who hasn't picked a department.
-function pendingAlerts() {
-  const my = myDeptId();
-  if (!my) return [];
-  const out = [];
-  (state.tasks || []).forEach(t => (t.comments || []).forEach(c => {
-    if (c.type === "alert" && !c.ack && c.toDept === my) out.push({ task: t, c });
-  }));
-  return out.sort((a, b) => (b.c.at || 0) - (a.c.at || 0));
-}
-// does this task have an unacknowledged alert for MY department? (no department = none)
-function taskHasAlert(t) {
-  const my = myDeptId();
-  if (!my) return false;
-  return (t.comments || []).some(c => c.type === "alert" && !c.ack && c.toDept === my);
-}
-// the task's unacknowledged alerts for MY department (for the per-task popup; no department = none)
-function taskPendingAlerts(t) {
-  const my = myDeptId();
-  if (!my) return [];
-  return (t.comments || []).filter(c => c.type === "alert" && !c.ack && c.toDept === my).map(c => ({ task: t, c }));
-}
-// red shaking bell marker for chips / today-panel rows — click it to open the alert popup
-function alertPin(t) {
-  if (!taskHasAlert(t)) return "";
-  return `<span class="alert-pin" data-alert-task="${t.id}" title="มีการแจ้งเตือนที่ยังไม่รับทราบ — คลิกเพื่อดู/รับทราบ">`
-    + `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a1.6 1.6 0 0 1 1.6 1.6v.5a6 6 0 0 1 4.4 5.8v3.2l1.3 2.2a1 1 0 0 1-.85 1.5H5.5a1 1 0 0 1-.85-1.5L6 13.1V9.9a6 6 0 0 1 4.4-5.8v-.5A1.6 1.6 0 0 1 12 2Z"/><path d="M9.5 19.2a2.5 2.5 0 0 0 5 0Z"/></svg>`
-    + `</span>`;
-}
-// toolbar bell badge
-function renderBell() {
-  const btn = document.getElementById("btnBell");
-  const badge = document.getElementById("bellBadge");
-  if (!btn || !badge) return;
-  const n = pendingAlerts().length;
-  if (n > 0) { badge.textContent = n > 99 ? "99+" : n; badge.hidden = false; btn.classList.add("has-alert"); }
-  else { badge.hidden = true; btn.classList.remove("has-alert"); }
-}
-// full-screen image viewer
-function openPhotoLightbox(src) {
-  const lb = document.createElement("div");
-  lb.className = "photo-lightbox";
-  lb.innerHTML = `<img src="${src}" alt="">`;
-  function onEsc(e){ if (e.key === "Escape") closeLb(); }
-  function closeLb(){ lb.remove(); document.removeEventListener("keydown", onEsc, true); }
-  lb.addEventListener("click", closeLb);
-  document.addEventListener("keydown", onEsc, true);
-  document.body.appendChild(lb);
-}
-// reply thread for one alert — reusable in the Activity card and the alert popup.
-// `persist` is called after a reply is added (syncs to storage in each context).
-function buildAlertReplies(container, task, alertComment, persist) {
-  function render() {
-    const reps = Array.isArray(alertComment.replies) ? alertComment.replies : [];
-    container.innerHTML =
-      (reps.length ? `<div class="ar-thread">${reps.map(r =>
-        `<div class="ar-reply"><b>${escapeHtml(r.author || "—")}</b> <span class="ar-text">${escapeHtml(r.text)}</span><span class="ar-time">${formatDateTimeTH(r.at)}</span></div>`).join("")}</div>` : "")
-      + `<div class="ar-compose"><input type="text" class="ar-input" placeholder="ตอบกลับ..." /><button type="button" class="btn btn-sm ar-send">ตอบ</button></div>`;
-    const input = container.querySelector(".ar-input");
-    const send = () => {
-      const v = input.value.trim(); if (!v) return;
-      if (!Array.isArray(alertComment.replies)) alertComment.replies = [];
-      alertComment.replies.push({ id: uid("rp"), author: currentUser(), text: v, at: Date.now() });
-      persist();
-      if (task && taskRelevantToMe(task)) pushNotify("comment", "💬 ตอบกลับ Alert", `${task.title} · ${currentUser()}: ${v}`, "rp-" + alertComment.id);
-      render();
-      container.querySelector(".ar-input").focus();
-    };
-    container.querySelector(".ar-send").addEventListener("click", send);
-    input.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); send(); } });
-  }
-  render();
-}
-
-// prominent alert popup (urgent, on top of everything)
-function openAlertPopup(list) {
-  list = (list || pendingAlerts()).slice();
-  if (!list.length) return;
-  const overlay = document.createElement("div");
-  overlay.className = "overlay alert-overlay";
-  overlay.innerHTML = `
-    <div class="modal alert-modal" role="alertdialog" aria-modal="true">
-      <div class="modal-head">
-        <h3><span class="alert-bell-ico">🔔</span> มีการแจ้งเตือน <span data-count>${list.length}</span></h3>
-        <button class="btn btn-ghost" data-act="close" title="ปิดไว้ดูทีหลังที่กระดิ่ง">✕</button>
-      </div>
-      <div class="alert-list" data-list></div>
-    </div>`;
-  document.body.appendChild(overlay);
-  const listEl = overlay.querySelector("[data-list]");
-  const countEl = overlay.querySelector("[data-count]");
-  function close(){ overlay.remove(); document.removeEventListener("keydown", onEsc, true); }
-  function onEsc(e){ if (e.key === "Escape") close(); }
-  overlay.querySelector('[data-act="close"]').addEventListener("click", close);
-  overlay.addEventListener("mousedown", e => { if (e.target === overlay) close(); });
-  document.addEventListener("keydown", onEsc, true);
-  list.forEach(({ task, c }) => {
-    const dept = getDept(c.toDept) || { name: c.toDept || "?" };
-    const card = document.createElement("div");
-    card.className = "alert-card";
-    card.innerHTML = `
-      <div class="alert-card-top">
-        <span class="alert-to">🔔 ${escapeHtml(dept.name)}</span>
-        <span class="alert-from">จาก ${escapeHtml(c.author || "—")}</span>
-        <span class="alert-time">${formatDateTimeTH(c.at)}</span>
-      </div>
-      <div class="alert-task" data-open>${escapeHtml(task.title || "(ไม่มีชื่องาน)")}</div>
-      ${c.text ? `<div class="alert-text">${escapeHtml(c.text)}</div>` : ""}
-      ${c.photo ? `<img class="alert-photo" src="${c.photo}" alt="แนบรูป">` : ""}
-      <div class="alert-replies" data-replies></div>
-      <div class="alert-card-actions">
-        <button class="btn btn-sm btn-ack" data-ack>✓ รับทราบ</button>
-        <button class="btn btn-sm btn-reject" data-reject>✕ ปฏิเสธ</button>
-        <button class="btn btn-sm" data-open2>เปิดงาน</button>
-      </div>`;
-    // reply thread (c is the real stored comment here → saveState persists)
-    buildAlertReplies(card.querySelector("[data-replies]"), task, c, () => { saveState(); renderAll(); });
-    const resolveCard = () => { card.remove(); const left = listEl.querySelectorAll(".alert-card").length; countEl.textContent = left; if (!left) close(); };
-    card.querySelector("[data-ack]").addEventListener("click", () => {
-      c.ack = true; c.ackBy = currentUser(); c.ackAt = Date.now();
-      logActivity(task, `รับทราบการแจ้งเตือน (${dept.name})`);
-      task.updatedAt = Date.now(); saveState(); renderAll();
-      resolveCard();
-    });
-    card.querySelector("[data-reject]").addEventListener("click", async () => {
-      const reason = await promptDialog({ title: "ปฏิเสธคำขอ?", message: `จะแจ้งกลับไปที่ผู้ยื่น (${c.author || "—"})`, placeholder: "เหตุผลที่ปฏิเสธ (ไม่บังคับ)", confirmText: "ปฏิเสธ", danger: true });
-      if (reason === null) return;   // cancelled
-      c.ack = true; c.rejected = true; c.rejectedBy = currentUser(); c.rejectedAt = Date.now(); c.rejectReason = reason;
-      logActivity(task, `❌ ปฏิเสธคำขอ (${dept.name})${reason ? " — " + reason : ""}`);
-      // notify the submitter (the alert's author) — browser notification + visible in Activity
-      pushNotify("alert", "❌ คำขอถูกปฏิเสธ", `${task.title} · ผู้ยื่น ${c.author || "—"}${reason ? " — " + reason : ""}`, "rej-" + c.id);
-      task.updatedAt = Date.now(); saveState(); renderAll();
-      resolveCard();
-    });
-    const open = () => { close(); openTaskModal(task.id); };
-    card.querySelector("[data-open]").addEventListener("click", open);
-    card.querySelector("[data-open2]").addEventListener("click", open);
-    const ph = card.querySelector(".alert-photo");
-    if (ph) ph.addEventListener("click", () => openPhotoLightbox(c.photo));
-    listEl.appendChild(card);
-  });
-}
-// refresh the bell and pop unacknowledged alerts (called on open / board switch / dept change)
-function checkAlerts() {
-  renderBell();
-  const list = pendingAlerts();
-  if (list.length) openAlertPopup(list);
-}
-
-/* ---------- how often the status report pops up on app open ----------
-   Kept in localStorage, NOT in state.settings: this is a personal, per-device preference, while
-   state.settings is one shared object synced to every user through the cloud (see slice 2b) —
-   putting it there would let one person's choice change everyone else's. */
-const REPORT_FREQ_KEY = "qc_report_freq";     // "daily" (default) | "always" | "off"
-const REPORT_SEEN_KEY = "qc_report_seen";     // "YYYY-MM-DD|<userId>" of the last auto-show
-function reportFreq() {
-  const v = localStorage.getItem(REPORT_FREQ_KEY);
-  return (v === "always" || v === "off") ? v : "daily";
-}
-function setReportFreq(v) { localStorage.setItem(REPORT_FREQ_KEY, v); }
-// should the report pop up by itself right now? (the manual 📋 button ignores all of this)
-function shouldAutoShowReport() {
-  const freq = reportFreq();
-  if (freq === "off") return false;
-  if (!statusReportHasContent()) return false;   // nothing pending → don't interrupt just to say "ไม่มีงานค้าง"
-  if (freq === "always") return true;
-  const stamp = todayIso() + "|" + ((currentProfile && currentProfile.id) || "-");
-  return localStorage.getItem(REPORT_SEEN_KEY) !== stamp;   // once per day, per person
-}
-function markReportSeen() {
-  localStorage.setItem(REPORT_SEEN_KEY, todayIso() + "|" + ((currentProfile && currentProfile.id) || "-"));
-}
-// is there actually any outstanding work to report? (same scope the report itself uses)
-function statusReportHasContent() {
-  const deptId = myDeptId() || null;
-  const isComplete = t => {
-    if (deptId) return isDeptComplete(t, deptId);
-    const p = (t.subtasks || []).reduce((a, s) => { const x = checklistProgress(s); a.done += x.done; a.total += x.total; return a; }, { done: 0, total: 0 });
-    return p.total > 0 ? p.done === p.total : isStatusDone(getStatus(t.statusId));
-  };
-  return (state.tasks || []).some(t => (deptId ? !!taskStage(t, deptId) : true) && !isComplete(t));
-}
-
-function openStatusReport() {
-  const deptId = myDeptId() || null;
-  const deptName = deptId ? (getDept(deptId).name || "") : null;
-  const today = todayIso();
-  const boardName = (root.boardMeta.find(b => b.id === root.activeBoard) || {}).name || "";
-
-  // checklist progress for a task — scoped to my department, or across all depts when none set
-  const prog = t => deptId ? deptProgress(t, deptId)
-    : (t.subtasks || []).reduce((a, s) => { const p = checklistProgress(s); a.done += p.done; a.total += p.total; return a; }, { done: 0, total: 0 });
-  const isComplete = t => {
-    if (deptId) return isDeptComplete(t, deptId);
-    const p = prog(t); return p.total > 0 ? p.done === p.total : isStatusDone(getStatus(t.statusId));
-  };
-  const dueOf = t => deptId ? ((taskStage(t, deptId) || {}).due || t.date) : t.date;
-
-  const scope = state.tasks.filter(t => deptId ? !!taskStage(t, deptId) : true);
-  const pending = scope.filter(t => !isComplete(t));
-  const doneCount = scope.length - pending.length;
-  const prRank = { urgent: 4, high: 3, medium: 2, low: 1, none: 0 };
-  pending.sort((a, b) => (dueOf(a) || "9999").localeCompare(dueOf(b) || "9999")
-    || (prRank[b.priority] || 0) - (prRank[a.priority] || 0) || a.title.localeCompare(b.title, "th"));
-
-  let totDone = 0, totTotal = 0;
-  pending.forEach(t => { const p = prog(t); totDone += p.done; totTotal += p.total; });
-  const pct = totTotal ? Math.round(totDone / totTotal * 100) : 0;
-
-  let rowsHtml;
-  if (pending.length === 0) {
-    rowsHtml = `<div class="rp-empty">🎉<br>ไม่มีงานค้าง${deptName ? ` ของแผนก ${escapeHtml(deptName)}` : ""}</div>`;
-  } else {
-    rowsHtml = pending.map(t => {
-      const p = prog(t), remain = p.total - p.done, pc = p.total ? Math.round(p.done / p.total * 100) : 0;
-      const pr = getPriority(t.priority);
-      const due = dueOf(t), od = due && due < today;
-      const days = od ? Math.round((fromIso(today) - fromIso(due)) / 86400000) : 0;
-      const txt = p.total > 0 ? `ติ๊กแล้ว ${p.done} · เหลือ ${remain} · ${pc}%` : "ยังไม่เสร็จ (ไม่มีเช็คลิสต์)";
-      // per-cabinet (subtask) breakdown — this department's checklist count, done ones marked
-      const subsHtml = (t.subtasks || []).map(s => {
-        const sp = checklistProgress(s, deptId);
-        const sdone = sp.total > 0 ? sp.done === sp.total : isStatusDone(getStatus(s.statusId));
-        const cnt = sp.total > 0 ? `${sp.done}/${sp.total}` : (sdone ? "✓" : "—");
-        return `<div class="rp-sub${sdone ? " done" : ""}">
-            <span class="rp-sub-dot" style="background:${getStatus(s.statusId).color}"></span>
-            <span class="rp-sub-name">${escapeHtml(s.text || "(ไม่มีชื่อตู้)")}</span>
-            <span class="rp-sub-cnt">${cnt}</span>
-          </div>`;
-      }).join("");
-      return `
-        <div class="rp-row">
-          <div class="rp-row-head">
-            <span class="rp-title">${pr.id !== "none" ? priFlag(pr) + " " : ""}${escapeHtml(t.title)}</span>
-            <span class="rp-due${od ? " overdue" : ""}">${due ? (od ? `เลย ${days} วัน` : formatDateTH(due)) : "—"}</span>
-          </div>
-          <div class="rp-prog">
-            <div class="rp-track"><div class="rp-bar" style="width:${pc}%;background:${pc === 100 ? "#10b981" : "var(--accent)"}"></div></div>
-            <span class="rp-prog-text">${txt}</span>
-          </div>
-          ${subsHtml ? `<div class="rp-subs">${subsHtml}</div>` : ""}
-        </div>`;
-    }).join("");
-  }
-
-  const overlay = document.createElement("div");
-  overlay.className = "overlay";
-  overlay.innerHTML = `
-    <div class="modal report-modal" role="dialog" aria-modal="true">
-      <div class="modal-head">
-        <h3>📋 รายงานสถานะงาน${deptName ? ` — ${escapeHtml(deptName)}` : ""}</h3>
-        <button class="btn btn-ghost" data-act="close" title="ปิด">✕</button>
-      </div>
-      <div class="report-body">
-        <div class="rp-summary">
-          <div class="rp-sum-stat"><span class="rp-sum-num">${pending.length}</span><span class="rp-sum-lbl">งานค้าง</span></div>
-          <div class="rp-sum-stat"><span class="rp-sum-num">${doneCount}</span><span class="rp-sum-lbl">เสร็จแล้ว</span></div>
-          ${totTotal ? `<div class="rp-sum-stat"><span class="rp-sum-num">${pct}%</span><span class="rp-sum-lbl">เช็คลิสต์รวม (${totDone}/${totTotal})</span></div>` : ""}
-          <div class="rp-sum-board">📅 ${escapeHtml(boardName)}<br>${formatDateFullTH(today)}</div>
-        </div>
-        ${deptId ? "" : `<div class="rp-note">ยังไม่ได้ตั้ง “แผนกของฉัน” — ตั้งที่ ⚙ ตั้งค่า › ผู้ใช้ เพื่อดูเฉพาะแผนกของคุณ (ตอนนี้แสดงรวมทุกแผนก)</div>`}
-        <div class="rp-list">${rowsHtml}</div>
-      </div>
-      <div class="modal-foot rp-foot">
-        <label class="rp-freq">แสดงรายงานนี้
-          <select data-freq>
-            <option value="daily">วันละครั้ง</option>
-            <option value="always">ทุกครั้งที่เปิดแอป</option>
-            <option value="off">ไม่ต้องแสดงอัตโนมัติ</option>
-          </select>
-        </label>
-        <button class="btn btn-primary" data-act="close">เริ่มทำงาน</button>
-      </div>
-    </div>`;
-  document.body.appendChild(overlay);
-  // frequency lives here rather than in ⚙ ตั้งค่า — ⚙ is admin-only, and this is a personal choice
-  const freqSel = overlay.querySelector("[data-freq]");
-  freqSel.value = reportFreq();
-  freqSel.addEventListener("change", () => {
-    setReportFreq(freqSel.value);
-    toast(freqSel.value === "off" ? "ปิดการแสดงรายงานอัตโนมัติแล้ว — เปิดดูเองได้ที่ปุ่ม 📋"
-      : freqSel.value === "always" ? "จะแสดงรายงานทุกครั้งที่เปิดแอป"
-      : "จะแสดงรายงานวันละครั้ง (ครั้งแรกที่เปิดแอปของวัน)");
-  });
-  const close = () => { overlay.remove(); document.removeEventListener("keydown", onEsc, true); };
-  function onEsc(e) { if (e.key === "Escape") close(); }
-  overlay.addEventListener("click", e => { if (e.target === overlay) close(); });
-  overlay.querySelectorAll('[data-act="close"]').forEach(b => b.addEventListener("click", close));
-  document.addEventListener("keydown", onEsc, true);
-}
-
-function renderBoardSwitcher() {
-  const el = document.getElementById("boardSwitcher");
-  if (!el) return;
-  el.innerHTML = (root.boardMeta || []).map(b =>
-    `<button class="board-seg-btn${b.id===root.activeBoard?' active':''}" data-board="${b.id}">${escapeHtml(b.name)}</button>`).join("");
-  el.querySelectorAll("[data-board]").forEach(btn =>
-    btn.addEventListener("click", () => setBoard(btn.dataset.board)));
-}
-
-function renderAll() {
-  renderBoardSwitcher();
-  renderLegend();
-  renderDeptSwitcher();
-  renderMainView();
-  renderTodayPanel();
-  renderBell();
-  applySidebarPerm();
-  renderUserBadge();   // keep the department chip in sync when it changes
-}
-// hide the create/draw/import buttons for members below "full" (they'd only get a permission toast)
-function applySidebarPerm() {
-  const full = canFull();
-  const set = (id, show) => { const el = document.getElementById(id); if (el) el.style.display = show ? "" : "none"; };
-  set("btnQuickAdd", full);
-  set("btnDrawReq", canSeeDeptButton("drawReqDepts"));
-  set("btnImportReq", canSeeDeptButton("importReqDepts"));
-}
-// may the current user see a department-restricted action button (settings key = an array of dept ids)?
-// Admins always see it. Everyone else must (a) have full rights AND (b) belong to a department the
-// admin explicitly TICKED. Nothing ticked = only admins see it (even full members don't).
-function canSeeDeptButton(settingKey) {
-  if (isAdmin()) return true;
-  if (!canFull()) return false;
-  const my = myDeptId();
-  const allow = (state.settings && state.settings[settingKey]) || [];
-  return !!my && allow.includes(my);
-}
-function canSeeImportReq() { return canSeeDeptButton("importReqDepts"); }
-function canSeeDrawReq() { return canSeeDeptButton("drawReqDepts"); }
-
-document.getElementById("btnSettings").addEventListener("click", () => {
-  if (!isAdmin()) { toast("หน้าตั้งค่าเปิดได้เฉพาะผู้ดูแลระบบ (admin) เท่านั้น"); return; }
-  openSettingsModal();
-});
-document.getElementById("sbUserBadge").addEventListener("click", openMyProfileModal);
-document.getElementById("btnLogout").addEventListener("click", async () => {
-  const ok = await confirmDialog({ title: "ออกจากระบบ?", message: `ออกจากระบบบัญชี ${currentProfile ? currentProfile.email : ""}`, confirmText: "ออกจากระบบ", danger: false, icon: "🚪" });
-  if (ok) signOutUser();
-});
-document.getElementById("btnBell").addEventListener("click", () => {
-  const list = pendingAlerts();
-  if (list.length) openAlertPopup(list);
-  else toast("ไม่มีการแจ้งเตือนค้างของแผนกคุณ");
-});
-// click a 🔔 pin on any chip / today-panel row → open the alert popup for that task (capture: beat the chip's own click)
-document.addEventListener("click", (e) => {
-  const pin = e.target.closest && e.target.closest(".alert-pin");
-  if (!pin) return;
-  e.stopPropagation(); e.preventDefault();
-  const t = state.tasks.find(x => x.id === pin.dataset.alertTask);
-  if (t) openAlertPopup(taskPendingAlerts(t));
-}, true);
-
-document.getElementById("btnPrev").addEventListener("click", () => {
-  view.month--;
-  if (view.month < 0) { view.month = 11; view.year--; }
-  renderMainView();
-});
-document.getElementById("btnNext").addEventListener("click", () => {
-  view.month++;
-  if (view.month > 11) { view.month = 0; view.year++; }
-  renderMainView();
-});
-document.getElementById("btnToday").addEventListener("click", () => {
-  const n = new Date();
-  view = { year: n.getFullYear(), month: n.getMonth() };
-  renderMainView();
-});
-// view switcher (เดือน | ไทม์ไลน์)
-document.getElementById("viewToggle").addEventListener("click", (e) => {
-  const b = e.target.closest("[data-view]");
-  if (!b || b.dataset.view === viewMode) return;
-  viewMode = b.dataset.view;
-  renderMainView();
-});
-// "ต้องเสร็จวันนี้" day stepper
-document.getElementById("tpPrevDay").addEventListener("click", () => { tpDayOffset--; renderTodayPanel(); });
-document.getElementById("tpNextDay").addEventListener("click", () => { tpDayOffset++; renderTodayPanel(); });
-document.getElementById("tpDayBtn").addEventListener("click", () => { if (tpDayOffset !== 0) { tpDayOffset = 0; renderTodayPanel(); } });
-document.getElementById("tpReport").addEventListener("click", openStatusReport);   // manual open — ignores the auto-show frequency
-document.getElementById("tpPrint").addEventListener("click", openWorkOrderPrint);
-document.getElementById("btnQuickAdd").addEventListener("click", () => { if (!canFull()) return permDenied("สิทธิ์ของคุณเพิ่มงานใหม่ไม่ได้"); openTaskModal(null); });
-document.getElementById("btnDrawReq").addEventListener("click", () => { if (!canSeeDrawReq()) return permDenied("สิทธิ์ของคุณยื่นขอแบบไม่ได้ (จำกัดเฉพาะบางแผนก)"); openDrawRequestModal(); });
-document.getElementById("btnImportReq").addEventListener("click", () => { if (!canSeeImportReq()) return permDenied("สิทธิ์ของคุณดึงคำขอไม่ได้ (จำกัดเฉพาะบางแผนก)"); openImportRequestsModal(); });
-(() => {
-  const searchEl = document.getElementById("searchInput");
-  const searchWrap = searchEl.closest(".toolbar-search");
-  const clearBtn = document.getElementById("searchClear");
-  const dropdown = document.getElementById("searchDropdown");
-  let results = [];
-  let activeIndex = -1;
-
-  function matchTasks(q) {
-    q = q.trim().toLowerCase();
-    if (!q) return [];
-    return state.tasks.filter(t => {
-      const hay = (t.title + " " + (t.description || "") + " " + (t.labels || []).join(" ")).toLowerCase();
-      return hay.includes(q);
-    }).sort((a, b) => {
-      // exact title-prefix matches first, then by title
-      const ai = a.title.toLowerCase().indexOf(q), bi = b.title.toLowerCase().indexOf(q);
-      return (ai < 0 ? 99 : ai) - (bi < 0 ? 99 : bi) || a.title.localeCompare(b.title, "th");
-    }).slice(0, 8);
-  }
-  function highlight(text, q) {
-    const i = text.toLowerCase().indexOf(q.trim().toLowerCase());
-    if (i < 0 || !q.trim()) return escapeHtml(text);
-    const n = q.trim().length;
-    return escapeHtml(text.slice(0, i)) + "<mark>" + escapeHtml(text.slice(i, i + n)) + "</mark>" + escapeHtml(text.slice(i + n));
-  }
-  function setActive(i) {
-    activeIndex = i;
-    dropdown.querySelectorAll(".sd-item").forEach((el, idx) => el.classList.toggle("active", idx === i));
-    const el = dropdown.querySelector(".sd-item.active");
-    if (el) el.scrollIntoView({ block: "nearest" });
-  }
-  function closeDropdown() { dropdown.classList.remove("open"); activeIndex = -1; }
-  function openResult(id) {
-    closeDropdown();
-    const t = state.tasks.find(x => x.id === id);
-    if (t && t.date) { const d = fromIso(t.date); view = { year: d.getFullYear(), month: d.getMonth() }; renderMainView(); }
-    openTaskModal(id);
-  }
-  function renderDropdown() {
-    const q = searchEl.value;
-    activeIndex = -1;
-    if (!q.trim()) { closeDropdown(); dropdown.innerHTML = ""; return; }
-    results = matchTasks(q);
-    if (results.length === 0) {
-      dropdown.innerHTML = `<div class="sd-empty">ไม่พบงานที่ตรงกับ “${escapeHtml(q.trim())}”</div>`;
-    } else {
-      dropdown.innerHTML = results.map((t, i) => {
-        const st = getStatus(t.statusId);
-        const pr = getPriority(t.priority);
-        return `<div class="sd-item" data-i="${i}" data-id="${t.id}">
-          <span class="sd-dot" style="background:${st.color}"></span>
-          <span class="sd-title">${pr.id !== "none" ? priFlag(pr) + " " : ""}${highlight(t.title, q)}</span>
-          <span class="sd-meta">${t.date ? formatDateShort(t.date) : ""}</span>
-        </div>`;
-      }).join("");
-      dropdown.querySelectorAll(".sd-item").forEach(el => {
-        el.addEventListener("mousedown", (e) => { e.preventDefault(); openResult(el.dataset.id); });
-        el.addEventListener("mouseenter", () => setActive(+el.dataset.i));
-      });
-    }
-    dropdown.classList.add("open");
-  }
-
-  const applySearch = () => {
-    searchWrap.classList.toggle("has-text", !!searchEl.value);
-    renderMainView();
-    renderTodayPanel();
-    renderDropdown();
-  };
-  searchEl.addEventListener("input", applySearch);
-  searchEl.addEventListener("focus", () => { if (searchEl.value.trim()) renderDropdown(); });
-  searchEl.addEventListener("keydown", (e) => {
-    const open = dropdown.classList.contains("open") && results.length > 0;
-    if (e.key === "ArrowDown" && open) { e.preventDefault(); setActive((activeIndex + 1) % results.length); }
-    else if (e.key === "ArrowUp" && open) { e.preventDefault(); setActive((activeIndex - 1 + results.length) % results.length); }
-    else if (e.key === "Enter" && open) { e.preventDefault(); openResult(results[activeIndex >= 0 ? activeIndex : 0].id); }
-    else if (e.key === "Escape") {
-      if (dropdown.classList.contains("open")) closeDropdown();
-      else { searchEl.value = ""; applySearch(); searchEl.blur(); }
-    }
-  });
-  clearBtn.addEventListener("click", () => { searchEl.value = ""; applySearch(); searchEl.focus(); });
-  document.addEventListener("mousedown", (e) => { if (!searchWrap.contains(e.target)) closeDropdown(); });
-})();
-
-document.getElementById("priorityFilter").addEventListener("click", (e) => {
-  const b = e.target.closest("[data-pri]");
-  if (!b) return;
-  document.querySelectorAll("#priorityFilter [data-pri]").forEach(x => x.classList.remove("active"));
-  b.classList.add("active");
-  state.settings.filterPriority = b.dataset.pri;
-  saveState();
-  renderMainView();
-  renderTodayPanel();
-});
-
-document.getElementById("calGrid").addEventListener("click", (e) => {
-  const add = e.target.closest(".cell-add");
-  if (add) { e.stopPropagation(); openTaskModal(null, { date: add.dataset.date }); return; }
-  // click empty area of a cell -> open day detail
-  const cell = e.target.closest(".cal-cell");
-  if (cell && (e.target === cell || e.target.classList.contains("cell-tasks"))) openDayModal(cell.dataset.date);
-});
-
-// Export/Import are now inside the settings modal; the hidden file input stays global.
-document.getElementById("fileImport").addEventListener("change", (e) => {
-  const f = e.target.files[0];
-  if (f) importJson(f);
-  e.target.value = "";
-});
-
-// keyboard shortcuts
-document.addEventListener("keydown", (e) => {
-  if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") return;
-  if (e.key === "n" || e.key === "N") openTaskModal(null);
-  if (e.key === "t" || e.key === "T") document.getElementById("btnToday").click();
-  if (e.key === "ArrowLeft") document.getElementById("btnPrev").click();
-  if (e.key === "ArrowRight") document.getElementById("btnNext").click();
-});
-
-// seed sample on first run
-if (state.tasks.length === 0 && !localStorage.getItem(STORAGE_KEY)) {
-  const t = new Date();
-  const sampleDate = isoDate(t);
-  state.tasks.push({
-    id: uid("t"),
-    title: "ตัวอย่าง: ตรวจสอบตู้ MDB",
-    description: "นี่คืองานตัวอย่าง คลิกเพื่อแก้ไข หรือคลิก + ที่ช่องวันเพื่อสร้างงานใหม่",
-    date: sampleDate,
-    statusId: "s_doing",
-    priority: "high",
-    labels: ["ตัวอย่าง", "MDB"],
-    subtasks: [
-      { id: uid("st"), text: "ตู้ MDB-01", statusId: "s_doing", date: null, checklist: makeCabinetChecklist() },
-      { id: uid("st"), text: "ตู้ MDB-02", statusId: "s_todo",  date: null, checklist: makeCabinetChecklist() },
-    ],
-    deptStages: [{ deptId: "d_qc", due: sampleDate, done: false }],
-    comments: [],
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
-  });
-  saveState();
-}
-
-// starts the actual app — called once by onSignedIn() after auth resolves (see initAuth() above)
-async function startApp() {
-  renderUserBadge();
-  await syncRootFromCloud();   // first login ever seeds the cloud from local data; every login after that pulls the cloud copy
-  startRealtimeSync();   // slice 3: start listening for changes other devices push from this point on
-  applyMyDeptDefaultView();   // open on the user's own department by default
-  renderAll();
-  // on app open: urgent department alerts take precedence over the routine status report.
-  // The report is rate-limited (default: once a day, and only when something is actually pending) —
-  // it used to fire on every single open, which people found too noisy. 📋 opens it on demand.
-  if (pendingAlerts().length) openAlertPopup();
-  else if (shouldAutoShowReport()) { markReportSeen(); openStatusReport(); }
-  refreshImportBadge();   // fire-and-forget: check for pending online drawing requests (Supabase)
-}
-initAuth();
-</script>
-</body>
-</html>
+  const UNSET = "
