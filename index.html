@@ -4,6 +4,12 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Avatar Planning</title>
+<!-- app icon: "ปฏิทินช่องวัน" gray/orange (source: handoff/icons/icon-7-calendar-grid-gray.svg). Favicon is inlined;
+     iOS home screen needs a PNG (no SVG support) → apple-touch-icon.png next to index.html, full-bleed 180px -->
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='112' fill='%233F444D'/%3E%3Crect x='104' y='132' width='304' height='276' rx='44' fill='%23fff'/%3E%3Cpath d='M104 176a44 44 0 0 1 44-44h216a44 44 0 0 1 44 44v34H104z' fill='%23F47B20'/%3E%3Crect x='168' y='96' width='30' height='76' rx='15' fill='%23fff' stroke='%23F47B20' stroke-width='10'/%3E%3Crect x='314' y='96' width='30' height='76' rx='15' fill='%23fff' stroke='%23F47B20' stroke-width='10'/%3E%3Crect x='144' y='238' width='60' height='52' rx='14' fill='%23E6E8EC'/%3E%3Crect x='226' y='238' width='60' height='52' rx='14' fill='%23E6E8EC'/%3E%3Crect x='308' y='238' width='60' height='52' rx='14' fill='%23E6E8EC'/%3E%3Crect x='144' y='314' width='60' height='52' rx='14' fill='%23E6E8EC'/%3E%3Crect x='226' y='314' width='60' height='52' rx='14' fill='%23E6E8EC'/%3E%3Crect x='308' y='314' width='60' height='52' rx='14' fill='%23F47B20'/%3E%3Cpath d='M322 340l10 10 22-22' fill='none' stroke='%23fff' stroke-width='10' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
+<link rel="apple-touch-icon" href="apple-touch-icon.png" />
+<meta name="apple-mobile-web-app-title" content="Avatar Planning" />
+<meta name="theme-color" content="#3F444D" />
 <style>
 :root {
   --bg: #f7f8fa;
@@ -1071,7 +1077,18 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
 .ta-sys-text { flex: 1; min-width: 0; }
 .ta-sys-author { font-weight: 600; color: var(--text); }
 .ta-sys-time { font-size: 10.5px; color: var(--text-faint); white-space: nowrap; flex: 0 0 auto; }
-.ta-compose { border-top: 1px solid var(--border); padding: 10px 12px; background: #fff; flex: 0 0 auto; }
+.ta-compose { border-top: 1px solid var(--border); padding: 10px 12px; background: #fff; flex: 0 0 auto; position: relative; }
+/* @mention picker (opens above the composer) + highlighted mentions */
+.mention-pop { position: absolute; left: 10px; right: 10px; bottom: calc(100% - 4px); z-index: 30; max-height: 250px; overflow-y: auto; padding: 4px; border: 1px solid var(--border); border-radius: 10px; background: #fff; box-shadow: var(--shadow-lg); }
+.mention-head { padding: 4px 8px 6px; color: var(--text-faint); font-size: 11px; }
+.mention-item { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 7px; font-size: 13px; cursor: pointer; }
+.mention-item.active, .mention-item:hover { background: #eef0ff; }
+.mention-item .avatar { width: 24px; height: 24px; font-size: 11px; }
+.mention-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.mention-dept { flex: 0 0 auto; color: var(--text-faint); font-size: 11px; }
+.mention { padding: 0 3px; border-radius: 4px; background: #eef0ff; color: var(--accent); font-weight: 600; }
+.mention.me { background: #fff1c2; color: #93370d; }
+.ta-mention-ack { display: flex; align-items: center; gap: 8px; margin-top: 6px; color: #93370d; font-size: 12px; font-weight: 600; }
 .ta-input {
   width: 100%; border: 1px solid var(--border-strong); border-radius: 8px;
   padding: 8px 10px; font-size: 13px; resize: none; min-height: 40px; max-height: 120px;
@@ -1096,6 +1113,10 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
 .rp-freq select { font-size: 12px; padding: 4px 6px; border: 1px solid var(--border-strong); border-radius: 7px; background: #fff; color: var(--text); }
 .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
 .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+/* ความสำคัญ (own width) | ผู้รับผิดชอบ (rest) — wraps onto 2 lines when the column is too narrow */
+.field-row.pri-asg { display: flex; flex-wrap: wrap; gap: 12px 18px; }
+.field-row.pri-asg > .field:last-child { flex: 1 1 220px; min-width: 0; }
+.asg-add { white-space: nowrap; }
 .field label { font-size: 12px; font-weight: 600; color: var(--text-dim); }
 .field input[type=text], .field input[type=date], .field select, .field textarea {
   padding: 9px 12px;
@@ -3037,11 +3058,14 @@ function notifyRemoteBoardChange(ws, newTasks, oldTasksById) {
   if (!(typeof window !== "undefined" && "Notification" in window) || !notify || !notify.enabled || Notification.permission !== "granted") return;
   // personal alerts (assignments) — for me regardless of department, also on brand-new tasks
   const meId = currentProfile && currentProfile.id;
-  if (meId && notify.alert) newTasks.forEach(t => {
+  if (meId) newTasks.forEach(t => {
     const before = oldTasksById[t.id];
     const oldIds = new Set(((before && before.comments) || []).map(c => c.id));
     (t.comments || []).forEach(c => {
-      if (c.type === "alert" && !c.ack && c.toUser === meId && !oldIds.has(c.id)) {
+      if (!oldIds.has(c.id) && Array.isArray(c.mentions) && c.mentions.includes(meId) && (notify.comment || notify.alert)) {
+        try { new Notification("💬 มีคนกล่าวถึงคุณ", { body: `${t.title} · ${c.author || ""}: ${c.text || ""}`.slice(0, 180), tag: "rt-men-" + c.id, renotify: true }); } catch (e) {}
+      }
+      if (notify.alert && c.type === "alert" && !c.ack && c.toUser === meId && !oldIds.has(c.id)) {
         try { new Notification("📌 มีงานมอบหมายให้คุณ", { body: `${t.title}${c.author ? " · จาก " + c.author : ""}`, tag: "rt-asg-" + c.id, renotify: true }); } catch (e) {}
       }
     });
@@ -4527,11 +4551,17 @@ function openTaskModal(taskId, defaults={}) {
             <div data-df="date"></div>
           </div>
         </div>
-        <div class="field">
-          <label>ความสำคัญ</label>
-          <select class="pri-select" data-priority>
-            ${PRIORITIES.map(p => `<option value="${p.id}" style="color:${p.color}">${p.id === "none" ? p.label : "⚑ " + p.label}</option>`).join("")}
-          </select>
+        <div class="field-row pri-asg">
+          <div class="field">
+            <label>ความสำคัญ</label>
+            <select class="pri-select" data-priority>
+              ${PRIORITIES.map(p => `<option value="${p.id}" style="color:${p.color}">${p.id === "none" ? p.label : "⚑ " + p.label}</option>`).join("")}
+            </select>
+          </div>
+          <div class="field">
+            <label title="คนที่ถูกมอบหมายจะได้รับแจ้งเตือนเมื่อกดบันทึก">ผู้รับผิดชอบ</label>
+            <div class="asg-row" data-assignees></div>
+          </div>
         </div>
         <div class="field">
           <label>สถานะ</label>
@@ -4542,10 +4572,6 @@ function openTaskModal(taskId, defaults={}) {
             </button>
             <button type="button" class="status-done-quick" data-status-done title="ทำเครื่องหมายว่าเสร็จ">✓</button>
           </div>
-        </div>
-        <div class="field">
-          <label>ผู้รับผิดชอบ <span class="muted" style="font-weight:400">(คนที่ถูกมอบหมายจะได้รับแจ้งเตือนเมื่อกดบันทึก)</span></label>
-          <div class="asg-row" data-assignees></div>
         </div>
         <div class="field"${isServiceBoard() ? ' style="display:none"' : ""}>
           <label>กำหนดส่งต่อแผนก <span class="muted" style="font-weight:400">(แผนก + วันครบ + ติ๊กเมื่อแผนกนั้นเสร็จ · สถานะงานรวมใช้ช่อง “สถานะ” ด้านบน)</span></label>
@@ -4971,7 +4997,7 @@ function openTaskModal(taskId, defaults={}) {
             <span class="ta-alert-time">${formatDateTimeTH(c.at)}</span>
             <button class="ta-del" title="ลบ">✕</button>
           </div>
-          ${c.text ? `<div class="ta-alert-text">${escapeHtml(c.text)}</div>` : ""}
+          ${c.text ? `<div class="ta-alert-text">${mentionTextHtml(c)}</div>` : ""}
           ${attachmentsHtml(c, "ta-photo")}
           ${c.rejected
             ? `<div class="ta-alert-ack" style="color:var(--danger)">❌ ปฏิเสธโดย ${escapeHtml(c.rejectedBy || "—")}${c.rejectReason ? " — " + escapeHtml(c.rejectReason) : ""} · ${formatDateTimeTH(c.rejectedAt)}</div>`
@@ -4988,6 +5014,7 @@ function openTaskModal(taskId, defaults={}) {
         const ackBtn = al.querySelector("[data-ackbtn]");
         if (ackBtn) ackBtn.addEventListener("click", () => {
           c.ack = true; c.ackBy = currentUser(); c.ackAt = Date.now();
+          if (mentionPendingForMe(c)) ackMention(c);
           logActivity(task, `รับทราบการแจ้งเตือน (${dept.name})`);
           persistComments(); renderFeed(); renderBell();
         });
@@ -5016,8 +5043,9 @@ function openTaskModal(taskId, defaults={}) {
             <span class="ta-time">${formatDateTimeTH(c.at)}</span>
             <button class="ta-del" title="ลบ">✕</button>
           </div>
-          ${c.text ? `<div class="ta-text">${escapeHtml(c.text)}</div>` : ""}
+          ${c.text ? `<div class="ta-text">${mentionTextHtml(c)}</div>` : ""}
           ${attachmentsHtml(c, "ta-photo")}
+          ${mentionPendingForMe(c) ? `<div class="ta-mention-ack">💬 มีการกล่าวถึงคุณ <button type="button" class="btn btn-sm btn-ack" data-mack>✓ รับทราบ</button></div>` : ""}
         </div>`;
       item.querySelector(".ta-del").addEventListener("click", () => {
         trashAttachments(c);
@@ -5025,6 +5053,8 @@ function openTaskModal(taskId, defaults={}) {
         persistComments(); renderFeed();
       });
       wireAttachments(item);
+      const mack = item.querySelector("[data-mack]");
+      if (mack) mack.addEventListener("click", () => { ackMention(c); persistComments(); renderFeed(); renderBell(); });
       feedEl.appendChild(item);
     });
     feedEl.scrollTop = feedEl.scrollHeight;
@@ -5063,7 +5093,8 @@ function openTaskModal(taskId, defaults={}) {
     if (files.length) queueUpload(files, task);
   }
   function finishPost(text, toDept, { photo, files }) {
-    const att = files.length ? { files } : {};
+    const mentions = extractMentions(text);
+    const att = Object.assign(files.length ? { files } : {}, mentions.length ? { mentions } : {});
     const lbl = attachLabel(photo, files);
     if (toDept) {
       const dept = getDept(toDept) || { name: toDept };
@@ -5079,6 +5110,7 @@ function openTaskModal(taskId, defaults={}) {
     autoGrow();
     persistComments(); renderFeed(); renderBell();
   }
+  attachMentionPicker(commentInput);   // "@" → list of people (registered first: its Enter beats send)
   commentInput.addEventListener("input", autoGrow);
   commentInput.addEventListener("keydown", (e) => {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); postComment(); }
@@ -7705,25 +7737,125 @@ function alertIsForMe(c) {
   const my = myDeptId();
   return !!my && c.toDept === my;
 }
+// @mentions: comment.mentions = [profileId]; each mentioned person acknowledges separately (mentionAck)
+function mentionPendingForMe(c) {
+  const me = currentProfile && currentProfile.id;
+  return !!me && !!c && Array.isArray(c.mentions) && c.mentions.includes(me) && !(c.mentionAck || []).includes(me);
+}
+function ackMention(c) {
+  const me = currentProfile && currentProfile.id;
+  if (!me) return;
+  if (!Array.isArray(c.mentionAck)) c.mentionAck = [];
+  if (!c.mentionAck.includes(me)) c.mentionAck.push(me);
+}
+// anything waiting for me on a comment: an alert aimed at me, or an unacknowledged @mention of me
+function isPendingForMe(c) { return alertIsForMe(c) || mentionPendingForMe(c); }
+// people named "@ชื่อ" in the text (only those who can see this board; never myself)
+function extractMentions(text) {
+  if (!text || text.indexOf("@") < 0) return [];
+  const me = currentProfile && currentProfile.id;
+  // longest names first + must end at a word boundary + can't overlap an earlier match — so "@สมชาย QC"
+  // doesn't also count a different person called "สมชาย"
+  const cands = assignCandidates().filter(p => p.id !== me)
+    .map(p => ({ id: p.id, tok: "@" + personName(p) })).sort((a, b) => b.tok.length - a.tok.length);
+  const taken = [], ids = [];
+  cands.forEach(({ id, tok }) => {
+    for (let i = text.indexOf(tok); i >= 0; i = text.indexOf(tok, i + tok.length)) {
+      const end = i + tok.length;
+      const boundary = end >= text.length || /[\s.,!?;:)\]]/.test(text[end]);
+      if (boundary && !taken.some(([a, b]) => i < b && end > a)) {
+        taken.push([i, end]);
+        if (!ids.includes(id)) ids.push(id);
+      }
+    }
+  });
+  return ids;
+}
+// comment text as HTML with its @mentions highlighted (mine in yellow)
+function mentionTextHtml(c) {
+  const html = escapeHtml(c.text || "");
+  const ids = Array.isArray(c.mentions) ? c.mentions : [];
+  if (!ids.length) return html;
+  const me = currentProfile && currentProfile.id;
+  const toks = ids.map(id => ({ id, tok: "@" + escapeHtml(personName(teamProfiles.get(id))) }))
+    .sort((a, b) => b.tok.length - a.tok.length);   // longest first so "@สมชาย QC" wins over "@สมชาย"
+  const re = new RegExp(toks.map(t => t.tok.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|"), "g");
+  return html.replace(re, m => { const t = toks.find(x => x.tok === m); return `<span class="mention${t && t.id === me ? " me" : ""}">${m}</span>`; });
+}
+// "@" picker for a textarea: type @ + part of a name → list of people who can see this board
+function attachMentionPicker(input) {
+  const host = input.parentElement;
+  let pop = null, items = [], idx = 0, range = null, suppress = false;
+  function close() { if (pop) { pop.remove(); pop = null; } }
+  function currentQuery() {
+    const pos = input.selectionStart;
+    if (pos == null || pos !== input.selectionEnd) return null;
+    const m = input.value.slice(0, pos).match(/(^|[\s(])@([^@\n]{0,30})$/);
+    return m ? { start: pos - m[2].length - 1, end: pos, q: m[2].toLowerCase() } : null;
+  }
+  function render() {
+    range = currentQuery();
+    if (!range) return close();
+    const me = currentProfile && currentProfile.id;
+    items = assignCandidates().filter(p => p.id !== me &&
+        (personName(p).toLowerCase().includes(range.q) || (p.email || "").toLowerCase().startsWith(range.q)))
+      .sort((a, b) => personName(a).localeCompare(personName(b), "th")).slice(0, 8);
+    if (!items.length) return close();
+    idx = Math.min(idx, items.length - 1);
+    if (!pop) { pop = document.createElement("div"); pop.className = "mention-pop"; host.appendChild(pop); }
+    pop.innerHTML = `<div class="mention-head">กล่าวถึง — ↑↓ เลือก · Enter ใส่ชื่อ · Esc ปิด</div>` + items.map((p, i) =>
+      `<div class="mention-item${i === idx ? " active" : ""}" data-i="${i}">${avatarHtml(p)}<span class="mention-name">${escapeHtml(personName(p))}</span><span class="mention-dept">${escapeHtml((getDept(p.dept_id) || {}).name || "")}</span></div>`).join("");
+    pop.querySelectorAll(".mention-item").forEach(el => el.addEventListener("mousedown", (e) => { e.preventDefault(); pick(+el.dataset.i); }));
+    const act = pop.querySelector(".mention-item.active");
+    if (act) act.scrollIntoView({ block: "nearest" });
+  }
+  function pick(i) {
+    const p = items[i];
+    if (!p || !range) return;
+    const ins = "@" + personName(p) + " ";
+    input.value = input.value.slice(0, range.start) + ins + input.value.slice(range.end);
+    const caret = range.start + ins.length;
+    input.setSelectionRange(caret, caret);
+    close();
+    suppress = true; input.dispatchEvent(new Event("input"));   // let autogrow run, but don't reopen the list
+    input.focus();
+  }
+  input.addEventListener("input", () => {
+    if (suppress) { suppress = false; return; }
+    idx = 0; render();
+    if (pop && !teamProfiles.size) loadTeam().then(render);
+  });
+  // capture: runs before the composer's own Enter-to-send handler on the same element
+  input.addEventListener("keydown", (e) => {
+    if (!pop) return;
+    if (e.key === "ArrowDown") { e.preventDefault(); idx = (idx + 1) % items.length; render(); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); idx = (idx - 1 + items.length) % items.length; render(); }
+    else if (e.key === "Enter" || e.key === "Tab") { e.preventDefault(); e.stopImmediatePropagation(); pick(idx); }
+    else if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); close(); }
+  }, true);
+  input.addEventListener("click", render);
+  input.addEventListener("blur", () => setTimeout(close, 150));
+}
 // "who is this alert for" label — a person (👤 name) or a department
 function alertTarget(c) {
+  if (c.type !== "alert") return { name: "💬 กล่าวถึงคุณ" };
   if (c.toUser) return { name: "👤 " + personName(teamProfiles.get(c.toUser)) };
   return getDept(c.toDept) || { name: c.toDept || "?" };
 }
 function pendingAlerts() {
   const out = [];
   (state.tasks || []).forEach(t => (t.comments || []).forEach(c => {
-    if (alertIsForMe(c)) out.push({ task: t, c });
+    if (isPendingForMe(c)) out.push({ task: t, c });
   }));
   return out.sort((a, b) => (b.c.at || 0) - (a.c.at || 0));
 }
 // does this task have an unacknowledged alert for MY department? (no department = none)
 function taskHasAlert(t) {
-  return (t.comments || []).some(alertIsForMe);
+  return (t.comments || []).some(isPendingForMe);
 }
 // the task's unacknowledged alerts for MY department (for the per-task popup; no department = none)
 function taskPendingAlerts(t) {
-  return (t.comments || []).filter(alertIsForMe).map(c => ({ task: t, c }));
+  return (t.comments || []).filter(isPendingForMe).map(c => ({ task: t, c }));
 }
 // red shaking bell marker for chips / today-panel rows — click it to open the alert popup
 function alertPin(t) {
@@ -7800,34 +7932,37 @@ function openAlertPopup(list) {
   overlay.addEventListener("mousedown", e => { if (e.target === overlay) close(); });
   document.addEventListener("keydown", onEsc, true);
   list.forEach(({ task, c }) => {
-    const dept = alertTarget(c);
+    const isAlert = alertIsForMe(c);   // false = only an @mention of me (no reject / reply thread)
+    const dept = isAlert ? alertTarget(c) : { name: "💬 กล่าวถึงคุณ" };
     const card = document.createElement("div");
     card.className = "alert-card";
     card.innerHTML = `
       <div class="alert-card-top">
-        <span class="alert-to">🔔 ${escapeHtml(dept.name)}</span>
+        <span class="alert-to">${isAlert ? "🔔 " : ""}${escapeHtml(dept.name)}</span>
         <span class="alert-from">จาก ${escapeHtml(c.author || "—")}</span>
         <span class="alert-time">${formatDateTimeTH(c.at)}</span>
       </div>
       <div class="alert-task" data-open>${escapeHtml(task.title || "(ไม่มีชื่องาน)")}</div>
-      ${c.text ? `<div class="alert-text">${escapeHtml(c.text)}</div>` : ""}
+      ${c.text ? `<div class="alert-text">${mentionTextHtml(c)}</div>` : ""}
       ${attachmentsHtml(c, "alert-photo")}
-      <div class="alert-replies" data-replies></div>
+      ${isAlert ? `<div class="alert-replies" data-replies></div>` : ""}
       <div class="alert-card-actions">
         <button class="btn btn-sm btn-ack" data-ack>✓ รับทราบ</button>
-        <button class="btn btn-sm btn-reject" data-reject>✕ ปฏิเสธ</button>
+        ${isAlert ? `<button class="btn btn-sm btn-reject" data-reject>✕ ปฏิเสธ</button>` : ""}
         <button class="btn btn-sm" data-open2>เปิดงาน</button>
       </div>`;
     // reply thread (c is the real stored comment here → saveState persists)
-    buildAlertReplies(card.querySelector("[data-replies]"), task, c, () => { saveState(); renderAll(); });
+    if (isAlert) buildAlertReplies(card.querySelector("[data-replies]"), task, c, () => { saveState(); renderAll(); });
     const resolveCard = () => { card.remove(); const left = listEl.querySelectorAll(".alert-card").length; countEl.textContent = left; if (!left) close(); };
     card.querySelector("[data-ack]").addEventListener("click", () => {
+      if (mentionPendingForMe(c)) ackMention(c);
+      if (!isAlert) { task.updatedAt = Date.now(); saveState(); renderAll(); resolveCard(); return; }
       c.ack = true; c.ackBy = currentUser(); c.ackAt = Date.now();
       logActivity(task, `รับทราบการแจ้งเตือน (${dept.name})`);
       task.updatedAt = Date.now(); saveState(); renderAll();
       resolveCard();
     });
-    card.querySelector("[data-reject]").addEventListener("click", async () => {
+    if (isAlert) card.querySelector("[data-reject]").addEventListener("click", async () => {
       const reason = await promptDialog({ title: "ปฏิเสธคำขอ?", message: `จะแจ้งกลับไปที่ผู้ยื่น (${c.author || "—"})`, placeholder: "เหตุผลที่ปฏิเสธ (ไม่บังคับ)", confirmText: "ปฏิเสธ", danger: true });
       if (reason === null) return;   // cancelled
       c.ack = true; c.rejected = true; c.rejectedBy = currentUser(); c.rejectedAt = Date.now(); c.rejectReason = reason;
