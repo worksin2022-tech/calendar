@@ -711,6 +711,21 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
 .fv-frame { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
 .fv-empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 20px; text-align: center; color: var(--text-dim); font-size: 14px; }
 .fv-empty-ico { font-size: 44px; }
+.fv-pdf { position: relative; flex: 1; overflow: auto; background: #525659; touch-action: pan-x pan-y; -webkit-overflow-scrolling: touch; cursor: grab; }
+.fv-pdf.dragging { cursor: grabbing; user-select: none; }
+.fv-pages { width: max-content; margin: 0 auto; padding: 14px 14px 80px; display: flex; flex-direction: column; gap: 12px; transform-origin: 0 0; }
+.fv-page { position: relative; background: #fff; box-shadow: 0 2px 10px rgba(0,0,0,.35); }
+.fv-page canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.fv-pdf-msg { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 20px; text-align: center; color: #fff; font-size: 14px; }
+.fv-pdf-msg .upload-spin { width: 22px; height: 22px; }
+.fv-tools { position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%); z-index: 2; display: flex; align-items: center; gap: 2px; padding: 5px 8px; border-radius: 999px; background: rgba(29,41,57,.92); color: #fff; font-size: 13px; box-shadow: 0 4px 14px rgba(0,0,0,.35); white-space: nowrap; }
+.fv-tools button { min-width: 38px; height: 34px; padding: 0 9px; border: 0; border-radius: 999px; background: transparent; color: #fff; font-size: 17px; cursor: pointer; }
+.fv-tools button:hover { background: rgba(255,255,255,.14); }
+.fv-tools .fv-fit { font-size: 13px; }
+.fv-tools .fv-zoom-lbl { min-width: 48px; text-align: center; font-variant-numeric: tabular-nums; }
+.fv-tools .fv-sep { width: 1px; height: 20px; margin: 0 6px; background: rgba(255,255,255,.25); }
+.fv-tools .fv-pageno { padding: 0 6px; font-variant-numeric: tabular-nums; }
+.fv-body { position: relative; flex: 1; display: flex; min-height: 0; }
 @media (max-width: 600px) {
   .fv-overlay { padding: 0; }
   .fv-box { height: 100%; border-radius: 0; }
@@ -987,6 +1002,7 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
 .task-split .modal-body { flex: 1; min-width: 0; }
 .task-activity {
   flex: 0 0 320px;
+  min-width: 0;   /* a flex item's auto min-width = its longest unbreakable line (file names) → panel stretched */
   border-left: 1px solid var(--border);
   background: #fafbfc;
   display: flex; flex-direction: column;
@@ -2360,6 +2376,7 @@ function makeCabinetChecklist(departments) {
 }
 // build the default department stages for a NEW task, following workflow (department) order
 function makeDefaultStages() {
+  if (isServiceBoard()) return [];
   const chosen = new Set((state.settings && state.settings.defaultStages) || []);
   return (state.departments || [])
     .filter(d => chosen.has(d.id))
@@ -2468,6 +2485,7 @@ function applyMyDeptDefaultView() { /* handled at render time by activeViewDepts
 // setting (which is board-wide and synced; a stale value there used to force e.g. a QC member to see
 // the first department's dates). Planners (no department) fall back to the multi-select viewDepts.
 function activeViewDepts() {
+  if (isServiceBoard()) return [];   // Service has no department hand-offs → always the project dates
   const my = myDeptId();
   if (my) return [my];
   return ((state.settings && state.settings.viewDepts) || []).filter(id => getDept(id));
@@ -2572,6 +2590,7 @@ function ensureServiceBoard(r) {
   if (!r.boards[SERVICE_BOARD]) r.boards[SERVICE_BOARD] = serviceState();
   return r;
 }
+function isServiceBoard() { return root.activeBoard === SERVICE_BOARD; }
 function isServiceUser() { return !!(currentProfile && currentProfile.dept_id === SERVICE_DEPT); }
 // which calendars this user may see: Service people → only Service; admins → all; everyone else → all but Service
 function visibleBoardIds() {
@@ -3011,7 +3030,7 @@ function renderDeptSwitcher() {
   if (!Array.isArray(state.settings.viewDepts)) state.settings.viewDepts = [];
   // ★ accounts that HAVE a department only ever see their own department — there's nothing to switch,
   // so hide the whole section (label included). Only planners/admins with no department get the picker.
-  if (myDeptId()) { el.innerHTML = ""; if (section) section.style.display = "none"; return; }
+  if (myDeptId() || isServiceBoard()) { el.innerHTML = ""; if (section) section.style.display = "none"; return; }
   if (section) section.style.display = "";
   el.innerHTML = `
     <button type="button" class="dept-dd-btn" aria-haspopup="true">
@@ -4358,7 +4377,7 @@ function openTaskModal(taskId, defaults={}) {
             <button type="button" class="status-done-quick" data-status-done title="ทำเครื่องหมายว่าเสร็จ">✓</button>
           </div>
         </div>
-        <div class="field">
+        <div class="field"${isServiceBoard() ? ' style="display:none"' : ""}>
           <label>กำหนดส่งต่อแผนก <span class="muted" style="font-weight:400">(แผนก + วันครบ + ติ๊กเมื่อแผนกนั้นเสร็จ · สถานะงานรวมใช้ช่อง “สถานะ” ด้านบน)</span></label>
           <div class="stage-list" data-stages></div>
           <button class="add-sub-btn" data-act="add-stage">+ เพิ่มด่านแผนก</button>
@@ -4976,7 +4995,7 @@ function openTaskModal(taskId, defaults={}) {
   // only their own department's date in the stages section below, so the project rollup date up top
   // would just be confusing. Planners (no department) still see & set it. Hidden ≠ cleared: the field
   // keeps its value, so saving leaves task.date/startDate untouched.
-  if (myDeptId()) {
+  if (myDeptId() && !isServiceBoard()) {   // Service has no stages → its people set the project dates directly
     const dateRow = modal.querySelector('[data-df="date"]')?.closest(".field-row");
     if (dateRow) dateRow.style.display = "none";
   }
@@ -7153,10 +7172,12 @@ function wireAttachments(el) {
   }));
   el.querySelectorAll("[data-retry]").forEach(b => b.addEventListener("click", (ev) => { ev.stopPropagation(); retryUpload(b.dataset.retry); }));
 }
-// in-app viewer: Drive's embeddable preview (works without a Google login because every file is link-shared)
+// in-app viewer. PDF → our own PDF.js viewer (zoom buttons, pinch on iPad, ctrl+wheel, drag/scroll to pan);
+// other types (Word/Excel/images) → Drive's embeddable preview. Everything works without a Google login.
 function openFileViewer({ id, name }) {
   const ext = String(name || "").split(".").pop().toLowerCase();
-  const noPreview = ["dwg", "dxf", "zip", "rar", "7z"].includes(ext);   // Drive can't render these
+  const noPreview = ["dwg", "dxf", "zip", "rar", "7z"].includes(ext);   // nothing can render these in a browser
+  const isPdf = ext === "pdf";
   const ov = document.createElement("div");
   ov.className = "fv-overlay";
   ov.innerHTML = `
@@ -7167,17 +7188,243 @@ function openFileViewer({ id, name }) {
         <a class="btn btn-sm" href="${driveViewUrl(id)}" target="_blank" rel="noopener">เปิดใน Drive</a>
         <button class="btn btn-ghost" data-close title="ปิด">✕</button>
       </div>
-      ${noPreview
-        ? `<div class="fv-empty"><div class="fv-empty-ico">${fileIcon(name)}</div><div>ไฟล์ .${escapeHtml(ext)} ดูตัวอย่างในแอปไม่ได้</div><div>กด “⬇ ดาวน์โหลด” เพื่อเปิดด้วยโปรแกรมในเครื่อง</div></div>`
-        : `<div class="fv-frame-wrap"><div class="fv-loading">กำลังโหลดตัวอย่าง…</div><iframe class="fv-frame" src="https://drive.google.com/file/d/${encodeURIComponent(id)}/preview" allow="autoplay" title="ตัวอย่างไฟล์"></iframe></div>`}
+      <div class="fv-body" data-body></div>
     </div>`;
-  function close() { ov.remove(); document.removeEventListener("keydown", onEsc, true); }
+  const body = ov.querySelector("[data-body]");
+  let pdfViewer = null;
+  const showDrivePreview = () => {
+    body.innerHTML = `<div class="fv-frame-wrap"><div class="fv-loading">กำลังโหลดตัวอย่าง…</div><iframe class="fv-frame" src="https://drive.google.com/file/d/${encodeURIComponent(id)}/preview" allow="autoplay" title="ตัวอย่างไฟล์"></iframe></div>`;
+  };
+  if (noPreview) body.innerHTML = `<div class="fv-empty"><div class="fv-empty-ico">${fileIcon(name)}</div><div>ไฟล์ .${escapeHtml(ext)} ดูตัวอย่างในแอปไม่ได้</div><div>กด “⬇ ดาวน์โหลด” เพื่อเปิดด้วยโปรแกรมในเครื่อง</div></div>`;
+  else if (isPdf && driveConfigured()) pdfViewer = mountPdfViewer(body, id, showDrivePreview);
+  else showDrivePreview();
+  function close() {
+    if (pdfViewer) pdfViewer.destroy();
+    ov.remove();
+    document.removeEventListener("keydown", onEsc, true);
+  }
   function onEsc(e) { if (e.key === "Escape") { e.stopPropagation(); close(); } }
   ov.addEventListener("mousedown", e => { if (e.target === ov) close(); });
   ov.querySelector("[data-close]").addEventListener("click", close);
   document.addEventListener("keydown", onEsc, true);
+  // iOS Safari: keep a pinch inside the viewer from zooming the whole app
+  ["gesturestart", "gesturechange"].forEach(t => ov.addEventListener(t, e => e.preventDefault()));
   document.body.appendChild(ov);
 }
+
+/* ---------- PDF.js viewer ----------
+   PDF.js (Mozilla) loaded from cdnjs only when a PDF is opened. The bytes come through the Apps Script
+   ("download" action) because Drive's own download URL can't be read cross-site. Pages are canvases in a
+   scroll box: only pages near the viewport are rendered (big drawing sets + iPad canvas-memory limits),
+   zoom = CSS resize immediately, crisp re-render ~150ms after the gesture ends. */
+const PDFJS_URL = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js";
+const PDFJS_WORKER_URL = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+let _pdfjsLoading = null;
+function loadPdfJs() {
+  if (window.pdfjsLib) return Promise.resolve(window.pdfjsLib);
+  if (_pdfjsLoading) return _pdfjsLoading;
+  _pdfjsLoading = new Promise((resolve, reject) => {
+    const sc = document.createElement("script");
+    sc.src = PDFJS_URL;
+    sc.onload = () => { window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_WORKER_URL; resolve(window.pdfjsLib); };
+    sc.onerror = () => { _pdfjsLoading = null; reject(new Error("โหลดตัวแสดง PDF ไม่สำเร็จ — เช็คอินเทอร์เน็ต")); };
+    document.head.appendChild(sc);
+  });
+  return _pdfjsLoading;
+}
+const _pdfBytesCache = new Map();   // drive id → Uint8Array (this session) — reopening is instant
+async function fetchDriveBytes(id) {
+  if (_pdfBytesCache.has(id)) return _pdfBytesCache.get(id);
+  const r = await attachApi({ action: "download", id });
+  const bin = atob(r.data);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  if (_pdfBytesCache.size > 6) _pdfBytesCache.delete(_pdfBytesCache.keys().next().value);
+  _pdfBytesCache.set(id, bytes);
+  return bytes;
+}
+function mountPdfViewer(body, id, fallback) {
+  body.innerHTML = `
+    <div class="fv-pdf" data-scroll><div class="fv-pages" data-pages></div>
+      <div class="fv-pdf-msg" data-msg><span class="upload-spin"></span><span>กำลังโหลดไฟล์…</span></div></div>
+    <div class="fv-tools" data-tools hidden>
+      <button type="button" data-z="out" title="ซูมออก">−</button>
+      <span class="fv-zoom-lbl" data-zlbl>100%</span>
+      <button type="button" data-z="in" title="ซูมเข้า">+</button>
+      <button type="button" class="fv-fit" data-z="fit" title="พอดีความกว้าง">พอดีจอ</button>
+      <span class="fv-sep"></span>
+      <span class="fv-pageno" data-pno></span>
+    </div>`;
+  const scroller = body.querySelector("[data-scroll]"), pagesEl = body.querySelector("[data-pages]");
+  const msg = body.querySelector("[data-msg]"), tools = body.querySelector("[data-tools]");
+  const zlbl = body.querySelector("[data-zlbl]"), pno = body.querySelector("[data-pno]");
+  let destroyed = false, doc = null, pages = [], zoom = 1, fitScale = 1, io = null, rerenderTimer = null;
+  const visible = new Set();
+  const MIN_Z = 0.4, MAX_Z = 8;
+  const clampZ = z => Math.min(MAX_Z, Math.max(MIN_Z, z));
+  const scale = () => fitScale * zoom;
+
+  function layout() {
+    const sc = scale();
+    pages.forEach(pg => { pg.el.style.width = Math.round(pg.w1 * sc) + "px"; pg.el.style.height = Math.round(pg.h1 * sc) + "px"; });
+    zlbl.textContent = Math.round(zoom * 100) + "%";
+  }
+  function renderPage(pg) {
+    if (destroyed) return;
+    const sc = scale();
+    if (pg.renderedAt === sc) return;
+    if (pg.task) { try { pg.task.cancel(); } catch (_) {} pg.task = null; }
+    let rs = sc * Math.min(window.devicePixelRatio || 1, 2);
+    const maxPx = 10e6;   // per-canvas pixel cap (iPad Safari canvas memory)
+    if (pg.w1 * rs * pg.h1 * rs > maxPx) rs = Math.sqrt(maxPx / (pg.w1 * pg.h1));
+    const vp = pg.page.getViewport({ scale: rs });
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.floor(vp.width); canvas.height = Math.floor(vp.height);
+    const task = pg.page.render({ canvasContext: canvas.getContext("2d"), viewport: vp });
+    pg.task = task;
+    task.promise.then(() => {
+      if (pg.task !== task || destroyed) return;
+      pg.task = null;
+      if (pg.canvas) { pg.canvas.width = 0; pg.canvas.remove(); }
+      pg.canvas = canvas; pg.renderedAt = sc;
+      pg.el.appendChild(canvas);
+    }).catch(() => {});
+  }
+  function releasePage(pg) {
+    if (pg.task) { try { pg.task.cancel(); } catch (_) {} pg.task = null; }
+    if (pg.canvas) { pg.canvas.width = 0; pg.canvas.height = 0; pg.canvas.remove(); pg.canvas = null; }
+    pg.renderedAt = 0;
+  }
+  function rerenderVisibleSoon() {
+    clearTimeout(rerenderTimer);
+    rerenderTimer = setTimeout(() => visible.forEach(pg => renderPage(pg)), 150);
+  }
+  // zoom keeping one point fixed on screen. anchor = {mx,my} in scroller-viewport px (default: centre)
+  function setZoom(z, anchor) {
+    z = clampZ(z);
+    if (!pages.length || Math.abs(z - zoom) < 1e-3) return;
+    const mx = anchor ? anchor.mx : scroller.clientWidth / 2, my = anchor ? anchor.my : scroller.clientHeight / 2;
+    const ox = scroller.scrollLeft + mx - pagesEl.offsetLeft, oy = scroller.scrollTop + my - pagesEl.offsetTop;   // point in pages space
+    const r = z / zoom;
+    zoom = z;
+    layout();
+    scroller.scrollLeft = pagesEl.offsetLeft + ox * r - mx;
+    scroller.scrollTop = pagesEl.offsetTop + oy * r - my;
+    rerenderVisibleSoon();
+  }
+  function fit() {
+    const w1 = Math.max(...pages.map(p => p.w1));
+    fitScale = Math.max(0.1, (scroller.clientWidth - 28) / w1);
+    zoom = 1; layout();
+    scroller.scrollLeft = 0;
+    pages.forEach(pg => { pg.renderedAt = 0; });
+    rerenderVisibleSoon();
+  }
+  function updatePageNo() {
+    if (!pages.length) return;
+    const probe = scroller.scrollTop + scroller.clientHeight / 3;
+    let cur = 1;
+    for (const pg of pages) { if (pg.el.offsetTop + pagesEl.offsetTop <= probe) cur = pg.num; else break; }
+    pno.textContent = `หน้า ${cur} / ${pages.length}`;
+  }
+
+  tools.querySelector('[data-z="in"]').addEventListener("click", () => setZoom(zoom * 1.25));
+  tools.querySelector('[data-z="out"]').addEventListener("click", () => setZoom(zoom / 1.25));
+  tools.querySelector('[data-z="fit"]').addEventListener("click", () => {
+    const top = scroller.scrollTop / Math.max(1, scroller.scrollHeight);
+    setZoom(1, { mx: 0, my: 0 }); scroller.scrollLeft = 0; scroller.scrollTop = top * scroller.scrollHeight;
+  });
+  scroller.addEventListener("scroll", updatePageNo, { passive: true });
+  // desktop: ctrl/⌘ + wheel (and trackpad pinch, which arrives as ctrl+wheel) zooms around the pointer
+  scroller.addEventListener("wheel", (e) => {
+    if (!e.ctrlKey && !e.metaKey) return;
+    e.preventDefault();
+    const rect = scroller.getBoundingClientRect();
+    setZoom(zoom * Math.exp(-e.deltaY * 0.0025), { mx: e.clientX - rect.left, my: e.clientY - rect.top });
+  }, { passive: false });
+  // desktop: drag with the mouse to pan
+  let drag = null;
+  scroller.addEventListener("mousedown", (e) => {
+    if (e.button !== 0) return;
+    drag = { x: e.clientX, y: e.clientY, sl: scroller.scrollLeft, st: scroller.scrollTop };
+    scroller.classList.add("dragging"); e.preventDefault();
+  });
+  const onMove = (e) => { if (!drag) return; scroller.scrollLeft = drag.sl - (e.clientX - drag.x); scroller.scrollTop = drag.st - (e.clientY - drag.y); };
+  const onUp = () => { drag = null; scroller.classList.remove("dragging"); };
+  window.addEventListener("mousemove", onMove);
+  window.addEventListener("mouseup", onUp);
+  // iPad / phone: two-finger pinch. Live preview = CSS transform, real zoom applied when the fingers lift.
+  let pinch = null;
+  const tDist = (t) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+  scroller.addEventListener("touchstart", (e) => {
+    if (e.touches.length !== 2 || !pages.length) return;
+    const rect = scroller.getBoundingClientRect();
+    const mx = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left, my = (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top;
+    pinch = { d: tDist(e.touches), z: zoom, mx, my, r: 1,
+      ox: scroller.scrollLeft + mx - pagesEl.offsetLeft, oy: scroller.scrollTop + my - pagesEl.offsetTop };
+    pagesEl.style.transformOrigin = `${pinch.ox}px ${pinch.oy}px`;
+  }, { passive: true });
+  scroller.addEventListener("touchmove", (e) => {
+    if (!pinch || e.touches.length !== 2) return;
+    e.preventDefault();
+    pinch.r = clampZ(pinch.z * tDist(e.touches) / pinch.d) / pinch.z;
+    pagesEl.style.transform = `scale(${pinch.r})`;
+  }, { passive: false });
+  const endPinch = (e) => {
+    if (!pinch || (e.touches && e.touches.length >= 2)) return;
+    const p = pinch; pinch = null;
+    pagesEl.style.transform = ""; pagesEl.style.transformOrigin = "";
+    setZoom(p.z * p.r, { mx: p.mx, my: p.my });
+  };
+  scroller.addEventListener("touchend", endPinch);
+  scroller.addEventListener("touchcancel", endPinch);
+
+  (async () => {
+    try {
+      const [lib, bytes] = await Promise.all([loadPdfJs(), fetchDriveBytes(id)]);
+      if (destroyed) return;
+      doc = await lib.getDocument({ data: bytes.slice() }).promise;   // copy: PDF.js transfers the buffer to its worker
+      for (let n = 1; n <= doc.numPages; n++) {
+        const page = await doc.getPage(n);
+        if (destroyed) return;
+        const vp = page.getViewport({ scale: 1 });
+        const el = document.createElement("div");
+        el.className = "fv-page"; el.dataset.num = n;
+        pagesEl.appendChild(el);
+        pages.push({ num: n, page, w1: vp.width, h1: vp.height, el, canvas: null, task: null, renderedAt: 0 });
+      }
+      msg.remove(); tools.hidden = false;
+      fit();
+      io = new IntersectionObserver((entries) => {
+        entries.forEach(en => {
+          const pg = pages[+en.target.dataset.num - 1];
+          if (en.isIntersecting) { visible.add(pg); renderPage(pg); }
+          else { visible.delete(pg); releasePage(pg); }
+        });
+      }, { root: scroller, rootMargin: "800px 400px" });
+      pages.forEach(pg => io.observe(pg.el));
+      updatePageNo();
+    } catch (err) {
+      if (destroyed) return;
+      if (/unknown action/.test(err.message || "")) { fallback(); return; }   // Apps Script not updated yet → Drive preview
+      msg.innerHTML = `<span>⚠️ เปิด PDF ไม่สำเร็จ: ${escapeHtml(driveErrMsg(err))}</span><button type="button" class="btn btn-sm">ใช้ตัวดูของ Google Drive แทน</button>`;
+      msg.querySelector("button").addEventListener("click", fallback);
+    }
+  })();
+
+  return {
+    destroy() {
+      destroyed = true;
+      clearTimeout(rerenderTimer);
+      if (io) io.disconnect();
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+      pages.forEach(releasePage);
+      if (doc) doc.destroy();
+    },
+  };
+}
+
 // a brand-new Drive file's thumbnail can 404 for a few seconds → retry, then fall back to a plain link
 function attImgErr(img) {
   const n = +(img.dataset.retry || 0);
