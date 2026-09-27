@@ -1975,7 +1975,12 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 // via a Google Apps Script web app running as the folder owner (handoff/attachments-apps-script.gs) — so nobody
 // needs a Google login. Until ATTACH_SCRIPT_URL is filled in, photos fall back to base64-in-board and files are off.
 const ATTACH_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw54sAbMAxSTbuinin2Zwy8vRZkKld533AZMu8UEiX5CJogXETwaGoegCbkQdAaT_al/exec";
-const MAX_ATTACH_BYTES = 25 * 1024 * 1024;   // Apps Script request limit (~50MB) after base64 (+33%)
+const MAX_ATTACH_BYTES = 25 * 1024 * 1024;
+// Google API key (GCP avatar-qc-forms, same key as qr.html) — lets PDF.js read link-shared files straight from
+// the Drive API with range requests (only the pages being viewed are downloaded). The key must allow
+// "Google Drive API" (API restrictions) and the github.io referrer. If it doesn't, the viewer falls back to the
+// Apps Script download (whole file, slower).
+const GOOGLE_API_KEY = "AIzaSyB2c-4aFxgZ7PaIFF1mnmT8rvt8lTDE0ls";   // Apps Script request limit (~50MB) after base64 (+33%)
 let _supabaseClient = null;
 function getSupabase() {
   if (!_supabaseClient && window.supabase && window.supabase.createClient) {
@@ -7233,15 +7238,42 @@ function loadPdfJs() {
   return _pdfjsLoading;
 }
 const _pdfBytesCache = new Map();   // drive id → Uint8Array (this session) — reopening is instant
-async function fetchDriveBytes(id) {
+// slow path: whole file through the Apps Script (base64 in JSON). onProgress(bytesReceived) while streaming.
+async function fetchDriveBytes(id, onProgress) {
   if (_pdfBytesCache.has(id)) return _pdfBytesCache.get(id);
-  const r = await attachApi({ action: "download", id });
-  const bin = atob(r.data);
+  const sb = getSupabase();
+  const sess = sb ? (await sb.auth.getSession()).data : null;
+  const token = sess && sess.session && sess.session.access_token;
+  if (!token) throw new Error("ยังไม่ได้ล็อกอิน — รีเฟรชหน้าแล้วลองใหม่");
+  const res = await fetch(ATTACH_SCRIPT_URL, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify({ action: "download", id, token }) });
+  if (!res.ok) throw new Error("ที่เก็บไฟล์ตอบกลับ " + res.status);
+  let text;
+  if (res.body && res.body.getReader) {
+    const reader = res.body.getReader(), chunks = [];
+    let got = 0;
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value); got += value.length;
+      if (onProgress) onProgress(got * 0.75);   // base64 → real bytes
+    }
+    const all = new Uint8Array(got);
+    let off = 0;
+    for (const c of chunks) { all.set(c, off); off += c.length; }
+    text = new TextDecoder().decode(all);
+  } else text = await res.text();
+  const j = JSON.parse(text);
+  if (!j.ok) throw new Error(j.error || "โหลดไฟล์ไม่สำเร็จ");
+  const bin = atob(j.data);
   const bytes = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-  if (_pdfBytesCache.size > 6) _pdfBytesCache.delete(_pdfBytesCache.keys().next().value);
+  if (_pdfBytesCache.size > 4) _pdfBytesCache.delete(_pdfBytesCache.keys().next().value);
   _pdfBytesCache.set(id, bytes);
   return bytes;
+}
+let _apiKeyPathBroken = false;   // key not allowed for Drive → stop trying it this session
+function driveMediaUrl(id) {
+  return `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(id)}?alt=media&supportsAllDrives=true&key=${GOOGLE_API_KEY}`;
 }
 function mountPdfViewer(body, id, fallback) {
   body.innerHTML = `
@@ -7258,7 +7290,7 @@ function mountPdfViewer(body, id, fallback) {
   const scroller = body.querySelector("[data-scroll]"), pagesEl = body.querySelector("[data-pages]");
   const msg = body.querySelector("[data-msg]"), tools = body.querySelector("[data-tools]");
   const zlbl = body.querySelector("[data-zlbl]"), pno = body.querySelector("[data-pno]");
-  let destroyed = false, doc = null, pages = [], zoom = 1, fitScale = 1, io = null, rerenderTimer = null;
+  let destroyed = false, doc = null, loadTask = null, pages = [], zoom = 1, fitScale = 1, io = null, rerenderTimer = null;
   const visible = new Set();
   const MIN_Z = 0.4, MAX_Z = 8;
   const clampZ = z => Math.min(MAX_Z, Math.max(MIN_Z, z));
@@ -7271,6 +7303,19 @@ function mountPdfViewer(body, id, fallback) {
   }
   function renderPage(pg) {
     if (destroyed) return;
+    if (!pg.page) {   // pages are fetched lazily (range loading: only what's on screen gets downloaded)
+      if (pg.loading) return;
+      pg.loading = doc.getPage(pg.num).then(page => {
+        pg.page = page; pg.loading = null;
+        const vp = page.getViewport({ scale: 1 });
+        if (Math.abs(vp.width - pg.w1) > 1 || Math.abs(vp.height - pg.h1) > 1) {   // differs from page 1's size
+          pg.w1 = vp.width; pg.h1 = vp.height;
+          pg.el.style.width = Math.round(pg.w1 * scale()) + "px"; pg.el.style.height = Math.round(pg.h1 * scale()) + "px";
+        }
+        if (visible.has(pg)) renderPage(pg);
+      }).catch(() => { pg.loading = null; });
+      return;
+    }
     const sc = scale();
     if (pg.renderedAt === sc) return;
     if (pg.task) { try { pg.task.cancel(); } catch (_) {} pg.task = null; }
@@ -7381,17 +7426,40 @@ function mountPdfViewer(body, id, fallback) {
 
   (async () => {
     try {
-      const [lib, bytes] = await Promise.all([loadPdfJs(), fetchDriveBytes(id)]);
+      const lib = await loadPdfJs();
       if (destroyed) return;
-      doc = await lib.getDocument({ data: bytes.slice() }).promise;   // copy: PDF.js transfers the buffer to its worker
-      for (let n = 1; n <= doc.numPages; n++) {
-        const page = await doc.getPage(n);
+      const msgText = msg.querySelector("span:last-child");
+      const mb = n => (n / 1048576).toFixed(1) + " MB";
+      // 1) fast: Drive API + API key, range requests (PDF.js fetches only the bytes it needs)
+      if (GOOGLE_API_KEY && !_apiKeyPathBroken && !_pdfBytesCache.has(id)) {
+        try {
+          const task = lib.getDocument({ url: driveMediaUrl(id), rangeChunkSize: 512 * 1024, disableAutoFetch: true });
+          loadTask = task;
+          task.onProgress = (p) => { if (p && p.loaded) msgText.textContent = `กำลังโหลดไฟล์… ${mb(p.loaded)}`; };
+          doc = await task.promise;
+        } catch (e) {
+          if (destroyed) return;
+          console.warn("[pdf] API-key path failed → Apps Script", e && e.message);
+          if (e && /40[13]/.test(String(e.status || e.message || ""))) _apiKeyPathBroken = true;
+          doc = null;
+        }
+      }
+      // 2) fallback: whole file through the Apps Script
+      if (!doc) {
+        const bytes = await fetchDriveBytes(id, got => { msgText.textContent = `กำลังโหลดไฟล์… ${mb(got)}`; });
         if (destroyed) return;
-        const vp = page.getViewport({ scale: 1 });
+        doc = await lib.getDocument({ data: bytes.slice() }).promise;   // copy: PDF.js transfers the buffer to its worker
+      }
+      if (destroyed) { doc.destroy(); return; }
+      // placeholders for every page sized like page 1; each page's real size is applied when it's fetched
+      const first = await doc.getPage(1);
+      if (destroyed) return;
+      const vp1 = first.getViewport({ scale: 1 });
+      for (let n = 1; n <= doc.numPages; n++) {
         const el = document.createElement("div");
         el.className = "fv-page"; el.dataset.num = n;
         pagesEl.appendChild(el);
-        pages.push({ num: n, page, w1: vp.width, h1: vp.height, el, canvas: null, task: null, renderedAt: 0 });
+        pages.push({ num: n, page: n === 1 ? first : null, loading: null, w1: vp1.width, h1: vp1.height, el, canvas: null, task: null, renderedAt: 0 });
       }
       msg.remove(); tools.hidden = false;
       fit();
@@ -7420,7 +7488,7 @@ function mountPdfViewer(body, id, fallback) {
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", onUp);
       pages.forEach(releasePage);
-      if (doc) doc.destroy();
+      if (doc) doc.destroy(); else if (loadTask) loadTask.destroy();
     },
   };
 }
