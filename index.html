@@ -690,6 +690,33 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
 .att-file:hover { background: #eef0ff; border-color: var(--accent); }
 .att-fname { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
 .att-fsize { color: var(--text-faint); font-size: 11px; flex-shrink: 0; }
+.att-busy { cursor: default; }
+.att-busy:hover { background: #f9fafb; border-color: var(--border); }
+.att-failed, .att-failed:hover { border-color: #fda29b; background: #fef3f2; }
+.att-failed .att-fsize { color: var(--danger); }
+.att-mini { width: 28px; height: 28px; object-fit: cover; border-radius: 4px; flex-shrink: 0; }
+.att-retry { padding: 2px 8px !important; font-size: 11px !important; flex-shrink: 0; }
+/* background upload indicator */
+.upload-pill { position: fixed; left: 16px; bottom: 16px; z-index: 1400; display: flex; align-items: center; gap: 8px; max-width: calc(100vw - 32px); padding: 9px 14px; border-radius: 999px; background: #1d2939; color: #fff; font-size: 13px; box-shadow: var(--shadow-md); }
+.upload-spin { width: 14px; height: 14px; flex-shrink: 0; border: 2px solid rgba(255,255,255,.35); border-top-color: #fff; border-radius: 50%; animation: upspin .8s linear infinite; }
+@keyframes upspin { to { transform: rotate(360deg); } }
+/* in-app file viewer (Drive preview embed) */
+.fv-overlay { position: fixed; inset: 0; z-index: 1350; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(16,24,40,.72); }
+.fv-box { display: flex; flex-direction: column; width: min(1000px, 100%); height: min(92vh, 100%); overflow: hidden; border-radius: 12px; background: var(--panel); box-shadow: var(--shadow-lg); }
+.fv-head { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-bottom: 1px solid var(--border); }
+.fv-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; }
+.fv-head a.btn { text-decoration: none; }
+.fv-frame-wrap { position: relative; flex: 1; background: #f2f4f7; }
+.fv-loading { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--text-dim); font-size: 13px; }
+.fv-frame { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.fv-empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 20px; text-align: center; color: var(--text-dim); font-size: 14px; }
+.fv-empty-ico { font-size: 44px; }
+@media (max-width: 600px) {
+  .fv-overlay { padding: 0; }
+  .fv-box { height: 100%; border-radius: 0; }
+  .fv-head { flex-wrap: wrap; }
+  .fv-title { flex-basis: calc(100% - 50px); }
+}
 .ta-photo-rm { position: absolute; top: -7px; right: -7px; width: 20px; height: 20px; border-radius: 50%; background: var(--danger); color: #fff; border: 2px solid #fff; font-size: 11px; line-height: 1; cursor: pointer; }
 .ta-alert-dept { font-size: 12px; padding: 4px 6px; border: 1px solid var(--border-strong); border-radius: 6px; background: #fff; max-width: 150px; }
 .ta-alert-dept.armed { border-color: var(--danger); color: var(--danger); font-weight: 700; }
@@ -3941,6 +3968,7 @@ function duplicateTask(src) {
   c.title = (src.title || "งาน") + " (สำเนา)";
   c.statusId = firstStatus;
   c.comments = [];
+  delete c.driveFolderId;   // a copy has no attachments — never share (and later trash) the original's Drive folder
   c.createdAt = Date.now();
   c.updatedAt = Date.now();
   (c.subtasks || []).forEach(s => {
@@ -4244,7 +4272,6 @@ function openDrawRequestModal() {
   overlay.addEventListener("mousedown", (e) => { if (e.target === overlay) close(); });
   modal.querySelectorAll('[data-act="close"]').forEach(b => b.addEventListener("click", close));
 
-  let submitting = false;
   modal.querySelector('[data-act="submit"]').addEventListener("click", () => {
     const project = pf("project").value.trim();
     const dwg = pf("dwg").value.trim();
@@ -4258,26 +4285,15 @@ function openDrawRequestModal() {
     if (!due) return toast("กรุณาเลือกวันที่ต้องการให้จบ");
     if (due < addDaysIso(todayIso(), 2)) return toast("วันที่ต้องการให้จบต้องไม่ต่ำกว่า 2 วันจากวันนี้");
 
-    if (submitting) return;
     const items = attachList.items;
-    const submitBtn = modal.querySelector('[data-act="submit"]'), submitLabel = submitBtn.textContent;
-    submitting = true; submitBtn.disabled = true;
-    (async () => {
-      try {
-        let folderId = null;
-        const up = await uploadAttachments(items, { id: null, name: `คำขอแบบ · ${project}`, set: id => { folderId = id; } },
-          (i, n) => { submitBtn.textContent = `อัปโหลด ${i}/${n}…`; });
-        const result = routeDrawingRequest({ kind, project, dwg, due, detail, submitter, sales, photo: up.photo, files: up.files, driveFolderId: folderId });
-        if (kind === "structure") toast(`ยื่นคำขอเขียนแบบโครงสร้าง “${project}” แล้ว (อยู่ใน board เขียนแบบโครงสร้าง)`);
-        else if (result.attached) toast(`แนบคำขอเขียนแบบวงจรกับ “${result.title}” แล้ว`);
-        else toast(`สร้างงานใหม่ + คำขอเขียนแบบวงจร “${project}” แล้ว`);
-        close();
-      } catch (e) {
-        toast("แนบไฟล์ไม่สำเร็จ: " + driveErrMsg(e));
-      } finally {
-        submitting = false; submitBtn.disabled = false; submitBtn.textContent = submitLabel;
-      }
-    })();
+    const drive = driveConfigured();
+    const files = drive ? pendingEntries(items, `คำขอแบบ · ${project}`) : [];
+    const result = routeDrawingRequest({ kind, project, dwg, due, detail, submitter, sales, photo: drive ? null : legacyPhoto(items), files });
+    if (files.length) queueUpload(files, null);
+    if (kind === "structure") toast(`ยื่นคำขอเขียนแบบโครงสร้าง “${project}” แล้ว (อยู่ใน board เขียนแบบโครงสร้าง)`);
+    else if (result.attached) toast(`แนบคำขอเขียนแบบวงจรกับ “${result.title}” แล้ว`);
+    else toast(`สร้างงานใหม่ + คำขอเขียนแบบวงจร “${project}” แล้ว`);
+    close();
   });
 
   setTimeout(() => pf("project").focus(), 40);
@@ -4827,7 +4843,6 @@ function openTaskModal(taskId, defaults={}) {
   const photoInput = modal.querySelector('[data-photo-input]');
   const fileInput = modal.querySelector('[data-file-input]');
   const attachList = createAttachList(modal.querySelector('[data-photo-preview]'));
-  const sendBtn = modal.querySelector('[data-act="send-comment"]');
   const alertSel = modal.querySelector('[data-alert-dept]');
   alertSel.innerHTML = `<option value="">🔔 ไม่แจ้งเตือน</option>` +
     (state.departments || []).map(d => `<option value="${d.id}">แจ้งเตือน → ${escapeHtml(d.name)}</option>`).join("");
@@ -4841,25 +4856,17 @@ function openTaskModal(taskId, defaults={}) {
     const files = Array.from(inp.files || []); inp.value = "";
     attachList.add(files);
   }));
-  let sending = false;
   function postComment() {
-    if (sending) return;
     if (!canComment()) { permDenied("สิทธิ์ของคุณคอมเมนต์ไม่ได้"); return; }
     const text = commentInput.value.trim();
     const toDept = alertSel.value;
     const items = attachList.items;
     if (!text && !items.length) return;   // need a message or an attachment
-    sending = true; sendBtn.disabled = true;
-    (async () => {
-      try {
-        const up = await uploadAttachments(items, taskFolderCtx(task), (i, n) => { sendBtn.textContent = `อัปโหลด ${i}/${n}…`; });
-        finishPost(text, toDept, up);
-      } catch (e) {
-        toast("แนบไฟล์ไม่สำเร็จ: " + driveErrMsg(e));
-      } finally {
-        sending = false; sendBtn.disabled = false; sendBtn.textContent = "ส่ง";
-      }
-    })();
+    if (!driveConfigured()) { finishPost(text, toDept, { photo: legacyPhoto(items), files: [] }); return; }
+    // the comment appears right away; files show "กำลังอัปโหลด" and are filled in by the background queue
+    const files = pendingEntries(items, taskFolderName(task));
+    finishPost(text, toDept, { photo: null, files });
+    if (files.length) queueUpload(files, task);
   }
   function finishPost(text, toDept, { photo, files }) {
     const att = files.length ? { files } : {};
@@ -4873,7 +4880,7 @@ function openTaskModal(taskId, defaults={}) {
       task.comments.push({ id: uid("cm"), author: currentUser(), text, photo: photo || null, ...att, at: Date.now() });
       if (taskRelevantToMe(task)) pushNotify("comment", "💬 คอมเมนต์ใหม่", `${task.title} · ${currentUser()}: ${text || lbl}`, "cm-" + task.id);
     }
-    if (commentInput.value.trim() === text) commentInput.value = "";   // keep anything typed while uploading
+    commentInput.value = "";
     attachList.clear(); alertSel.value = ""; alertSel.classList.remove("armed");
     autoGrow();
     persistComments(); renderFeed(); renderBell();
@@ -4884,6 +4891,13 @@ function openTaskModal(taskId, defaults={}) {
   });
   modal.querySelector('[data-act="send-comment"]').addEventListener("click", postComment);
   renderFeed();
+  // background uploads finishing → pull the finished entries into this modal copy and redraw the feed
+  const onAttachUpdated = () => {
+    if (!document.body.contains(modal)) { document.removeEventListener("attach-updated", onAttachUpdated); return; }
+    if (!isNew) syncAttachFromReal(task);
+    renderFeed();
+  };
+  document.addEventListener("attach-updated", onAttachUpdated);
 
   // actions
   function close() { overlay.remove(); }
@@ -4904,6 +4918,7 @@ function openTaskModal(taskId, defaults={}) {
     task.startDate = start || null;
     if (!task.title) { alert("กรุณาใส่ชื่องาน"); return; }
     task.updatedAt = Date.now();
+    if (!isNew) syncAttachFromReal(task);   // uploads that finished while this modal was open
     // auto activity log: record what changed
     diffTaskActivity(beforeSnapshot, task).forEach(text => logActivity(task, text));
     if (isNew) state.tasks.push(task);
@@ -4922,10 +4937,12 @@ function openTaskModal(taskId, defaults={}) {
       if (!canFull()) { permDenied("สิทธิ์ของคุณลบงานไม่ได้"); return; }
       const ok = await confirmDialog({
         title: "ลบงานนี้?",
-        message: `“${task.title || "งานนี้"}” จะถูกลบถาวร พร้อมตู้และ checklist ทั้งหมด — ย้อนกลับไม่ได้`,
+        message: `“${task.title || "งานนี้"}” จะถูกลบถาวร พร้อมตู้และ checklist ทั้งหมด — ย้อนกลับไม่ได้`
+          + (driveConfigured() ? " · ไฟล์แนบใน Google Drive จะถูกย้ายไปถังขยะ (กู้คืนได้ใน 30 วัน)" : ""),
         confirmText: "ลบงาน",
       });
       if (!ok) return;
+      trashTaskDrive(state.tasks.find(t => t.id === task.id) || task);
       state.tasks = state.tasks.filter(t => t.id !== task.id);
       saveState();
       close();
@@ -6931,21 +6948,23 @@ function blobToBase64(blob) {
 function trashAttachments(c) {
   const files = (c && Array.isArray(c.files)) ? c.files : [];
   if (!files.length || !driveConfigured()) return;
-  attachApi({ action: "trash", ids: files.map(f => f.id) }).catch(() => {});
+  const ids = files.filter(f => f.id).map(f => f.id);
+  if (ids.length) attachApi({ action: "trash", ids }).catch(() => {});
 }
-// where a task's uploads go: its Drive sub-folder "<board> · <title>" (created by the script on first upload,
-// id then kept on the task → synced to everyone)
-function taskFolderCtx(task) {
+// Drive sub-folder name for a task's uploads: "<board> · <title>" (the script creates it on the first upload;
+// its id is then kept on the task → synced to everyone)
+function taskFolderName(task) {
   const board = (root.boardMeta.find(b => b.id === root.activeBoard) || {}).name || "";
-  return {
-    id: task.driveFolderId || null,
-    name: `${board ? board + " · " : ""}${(task.title || "งานไม่มีชื่อ").trim()}`,
-    set(id) {
-      task.driveFolderId = id;
-      const real = state.tasks.find(t => t.id === task.id);
-      if (real && real !== task) real.driveFolderId = id;
-    },
-  };
+  return `${board ? board + " · " : ""}${(task.title || "งานไม่มีชื่อ").trim()}`;
+}
+// deleting a task → its Drive sub-folder + every attached file go to the Drive trash (recoverable 30 days)
+function trashTaskDrive(task) {
+  if (!driveConfigured() || !task) return;
+  const ids = [];
+  (task.comments || []).forEach(c => (c.files || []).forEach(f => { if (f.id) ids.push(f.id); }));
+  const folderIds = task.driveFolderId ? [task.driveFolderId] : [];
+  if (!ids.length && !folderIds.length) return;
+  attachApi({ action: "trash", ids, folderIds }).catch(() => {});
 }
 function dataUrlToBlob(dataUrl) {
   const [head, b64] = dataUrl.split(",");
@@ -6991,25 +7010,94 @@ function attachStamp() {
   const d = new Date(), p = n => String(n).padStart(2, "0");
   return `IMG_${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}_${++_attachSeq}`;
 }
-// uploads pending items → { photo, files } for a comment. No Drive configured → legacy base64 photo.
-// folder = { id, name, set(id) } — first upload creates the folder (if no id yet), later ones reuse it.
-async function uploadAttachments(items, folder, onProgress) {
-  if (!items.length) return { photo: null, files: [] };
-  if (!driveConfigured()) return { photo: (items.find(x => x.isImage) || {}).preview || null, files: [] };
-  const files = [];
-  for (let i = 0; i < items.length; i++) {
-    if (onProgress) onProgress(i + 1, items.length);
-    const it = items[i];
+/* ---------- background upload queue ----------
+   ส่งแล้วคอมเมนต์ขึ้นทันที — ไฟล์เป็น entry ชั่วคราว {key, up:"pending", name, mime, size, at} (sync ขึ้น cloud ด้วย
+   คนอื่นจะเห็น "กำลังอัปโหลด"). คิวอัปทีละไฟล์เบื้องหลัง (ปิดป๊อปอัป/สลับบอร์ด/ทำงานอื่นได้) → สำเร็จแล้วแทนที่เป็น
+   {id,name,mime,size} ในทุกสำเนา: board ที่บันทึกแล้ว (ค้นด้วย key) + object ตัวจริงในป๊อปอัปงานใหม่ที่ยังไม่บันทึก.
+   ไฟล์ต้นฉบับอยู่ในหน่วยความจำของแท็บนี้เท่านั้น → ปิดแท็บก่อนเสร็จ = ค้าง (แสดง "อัปโหลดไม่เสร็จ" เมื่อเกิน 30 นาที) */
+const _upBlobs = new Map();   // key → { blob, folderName }   (this tab only — also enables "ลองใหม่")
+const _upLive = new Map();    // key → the original entry object (may live only in an unsaved modal copy)
+const _upHost = new Map();    // key → that modal's task copy (so a brand-new task gets its folder id too)
+let _upChain = Promise.resolve(), _upCount = 0, _upWarnedShare = false;
+function legacyPhoto(items) { return (items.find(x => x.isImage) || {}).preview || null; }
+// composer items → pending file entries (+ keep the bytes for the background job)
+function pendingEntries(items, folderName) {
+  return items.map(it => {
+    const key = uid("up");
     const blob = it.isImage ? dataUrlToBlob(it.preview) : it.file;
+    _upBlobs.set(key, { blob, folderName });
+    if (it.isImage) attachPreviewCache.set(key, it.preview);
+    return { key, up: "pending", name: it.name, mime: it.mime, size: blob.size, at: Date.now() };
+  });
+}
+function queueUpload(entries, hostTask) {
+  entries.forEach(e => {
+    _upLive.set(e.key, e);
+    if (hostTask) _upHost.set(e.key, hostTask);
+    _upCount++;
+    _upChain = _upChain.then(() => uploadOne(e.key));   // one at a time → the task folder is created exactly once
+  });
+  renderUploadPill();
+}
+// every copy of one pending entry: saved boards (the task may have been saved/synced meanwhile) + the original object
+function forEachEntry(key, fn) {
+  const seen = new Set();
+  Object.values(root.boards || {}).forEach(ws => (ws.tasks || []).forEach(t => (t.comments || []).forEach(c =>
+    (Array.isArray(c.files) ? c.files : []).forEach(f => { if (f.key === key && !seen.has(f)) { seen.add(f); fn(f, t); } }))));
+  const live = _upLive.get(key);
+  if (live && !seen.has(live)) fn(live, _upHost.get(key) || null);
+}
+async function uploadOne(key) {
+  const src = _upBlobs.get(key), e = _upLive.get(key);
+  try {
+    if (!src || !e) throw new Error("ไม่พบไฟล์ในเครื่อง");
+    const owners = [];
+    forEachEntry(key, (f, t) => { if (t && !owners.includes(t)) owners.push(t); });
+    const folderId = (owners.find(t => t.driveFolderId) || {}).driveFolderId || null;
     const r = await attachApi({
-      action: "upload", name: it.name, mime: it.mime, data: await blobToBase64(blob),
-      folderId: folder.id || undefined, folderName: folder.id ? undefined : folder.name.replace(/[\\/]/g, "-").slice(0, 120),
+      action: "upload", name: e.name, mime: e.mime, data: await blobToBase64(src.blob),
+      folderId: folderId || undefined, folderName: folderId ? undefined : src.folderName.replace(/[\\/]/g, "-").slice(0, 120),
     });
-    if (!folder.id) { folder.id = r.folderId; folder.set(r.folderId); }
-    if (it.isImage) attachPreviewCache.set(r.id, it.preview);   // uploader sees it instantly (Drive thumbnails lag a few seconds)
-    files.push({ id: r.id, name: it.name, mime: it.mime, size: blob.size });
+    if (r.shared === false && !_upWarnedShare) {   // Workspace policy blocked "anyone with the link"
+      _upWarnedShare = true;
+      toast("⚠️ เก็บไฟล์แล้ว แต่ Drive ปลายทางไม่อนุญาตแชร์แบบลิงก์ — คนที่ไม่มีสิทธิ์ในไดรฟ์นั้นจะเปิดดูไฟล์ไม่ได้");
+    }
+    forEachEntry(key, (f, t) => { if (t && !t.driveFolderId) t.driveFolderId = r.folderId; });
+    const prev = attachPreviewCache.get(key);
+    if (prev) attachPreviewCache.set(r.id, prev);   // uploader keeps seeing the local copy (Drive thumbnails lag a few seconds)
+    forEachEntry(key, f => { f.id = r.id; delete f.key; delete f.up; delete f.at; delete f.err; });
+    _upBlobs.delete(key); _upLive.delete(key); _upHost.delete(key);
+  } catch (err) {
+    forEachEntry(key, f => { f.up = "failed"; f.err = driveErrMsg(err); });
+    toast(`อัปโหลด “${e ? e.name : "ไฟล์"}” ไม่สำเร็จ: ${driveErrMsg(err)}`);
   }
-  return { photo: null, files };
+  _upCount--;
+  renderUploadPill();
+  saveState();
+  document.dispatchEvent(new CustomEvent("attach-updated"));
+}
+function retryUpload(key) {
+  if (!_upBlobs.has(key)) return;
+  forEachEntry(key, f => { f.up = "pending"; f.at = Date.now(); delete f.err; });
+  _upCount++;
+  _upChain = _upChain.then(() => uploadOne(key));
+  renderUploadPill(); saveState();
+  document.dispatchEvent(new CustomEvent("attach-updated"));
+}
+function renderUploadPill() {
+  let el = document.getElementById("uploadPill");
+  if (!_upCount) { if (el) el.remove(); return; }
+  if (!el) { el = document.createElement("div"); el.id = "uploadPill"; el.className = "upload-pill"; document.body.appendChild(el); }
+  el.innerHTML = `<span class="upload-spin"></span><span>กำลังอัปโหลด ${_upCount} ไฟล์… ใช้งานต่อได้ แต่อย่าเพิ่งปิดหน้านี้</span>`;
+}
+window.addEventListener("beforeunload", (ev) => { if (_upCount > 0) { ev.preventDefault(); ev.returnValue = ""; } });
+// modal copy ← saved task: pick up file entries finished by the background queue (by comment id) + the folder id
+function syncAttachFromReal(task) {
+  const real = state.tasks.find(t => t.id === task.id);
+  if (!real || real === task) return;
+  const byId = new Map((real.comments || []).map(c => [c.id, c]));
+  (task.comments || []).forEach(c => { const r = byId.get(c.id); if (r && r.files) c.files = JSON.parse(JSON.stringify(r.files)); });
+  if (real.driveFolderId && !task.driveFolderId) task.driveFolderId = real.driveFolderId;
 }
 // short label for notifications: "(แนบรูป)" / "(แนบไฟล์)"
 function attachLabel(photo, files) {
@@ -7030,21 +7118,65 @@ function fileIcon(name) {
   return "📄";
 }
 function fmtBytes(b) { return b >= 1048576 ? (b / 1048576).toFixed(1) + " MB" : Math.max(1, Math.round(b / 1024)) + " KB"; }
-// HTML for a comment's attachments: legacy base64 photo + Drive images (thumbnails) + Drive files (links)
+function driveDownloadUrl(id) { return `https://drive.google.com/uc?export=download&id=${encodeURIComponent(id)}`; }
+// HTML for a comment's attachments: legacy base64 photo + Drive images (thumbnails) + Drive files (open in-app)
+// + entries still uploading / failed
 function attachmentsHtml(c, imgClass) {
   let h = c.photo ? `<img class="${imgClass}" src="${c.photo}" data-full="${c.photo}" alt="แนบรูป">` : "";
   const files = Array.isArray(c.files) ? c.files : [];
-  const imgs = files.filter(f => /^image\//.test(f.mime || "")), docs = files.filter(f => !/^image\//.test(f.mime || ""));
+  const done = files.filter(f => f.id && !f.up), busy = files.filter(f => f.up);
+  const imgs = done.filter(f => /^image\//.test(f.mime || "")), docs = done.filter(f => !/^image\//.test(f.mime || ""));
   if (imgs.length) h += `<div class="att-imgs">${imgs.map(f => {
     const local = attachPreviewCache.get(f.id);
     return `<img class="${imgClass}" src="${local || driveThumb(f.id, 800)}" data-full="${local || driveThumb(f.id, 2000)}" data-drive="${escapeHtml(f.id)}" data-name="${escapeHtml(f.name || "")}" alt="${escapeHtml(f.name || "แนบรูป")}" loading="lazy" onerror="attImgErr(this)">`;
   }).join("")}</div>`;
-  if (docs.length) h += `<div class="att-files">${docs.map(f =>
-    `<a class="att-file" href="${driveViewUrl(f.id)}" target="_blank" rel="noopener" title="เปิดใน Google Drive">${fileIcon(f.name)}<span class="att-fname">${escapeHtml(f.name || "ไฟล์")}</span>${f.size ? `<span class="att-fsize">${fmtBytes(f.size)}</span>` : ""}</a>`).join("")}</div>`;
+  const docHtml = docs.map(f =>
+    `<a class="att-file" href="${driveViewUrl(f.id)}" target="_blank" rel="noopener" data-view="${escapeHtml(f.id)}" data-name="${escapeHtml(f.name || "")}" title="เปิดดูในแอป">${fileIcon(f.name)}<span class="att-fname">${escapeHtml(f.name || "ไฟล์")}</span>${f.size ? `<span class="att-fsize">${fmtBytes(f.size)}</span>` : ""}</a>`).join("");
+  const busyHtml = busy.map(f => {
+    const mine = _upBlobs.has(f.key);
+    const stale = f.up === "pending" && !mine && Date.now() - (f.at || 0) > 30 * 60000;   // sender closed the app mid-upload
+    const failed = f.up === "failed" || stale;
+    const thumb = attachPreviewCache.get(f.key);
+    return `<div class="att-file att-busy${failed ? " att-failed" : ""}">${thumb ? `<img class="att-mini" src="${thumb}" alt="">` : fileIcon(f.name)}<span class="att-fname">${escapeHtml(f.name || "ไฟล์")}</span>`
+      + `<span class="att-fsize">${failed ? (stale ? "⚠️ อัปโหลดไม่เสร็จ" : "⚠️ อัปโหลดไม่สำเร็จ") : "⏳ กำลังอัปโหลด…"}</span>`
+      + `${failed && mine ? `<button type="button" class="btn btn-sm att-retry" data-retry="${escapeHtml(f.key)}">ลองใหม่</button>` : ""}</div>`;
+  }).join("");
+  if (docHtml || busyHtml) h += `<div class="att-files">${docHtml}${busyHtml}</div>`;
   return h;
 }
 function wireAttachments(el) {
   el.querySelectorAll("img[data-full]").forEach(img => img.addEventListener("click", () => openPhotoLightbox(img.dataset.full)));
+  el.querySelectorAll("a[data-view]").forEach(a => a.addEventListener("click", (ev) => {
+    if (ev.ctrlKey || ev.metaKey || ev.shiftKey) return;   // modifier-click still opens Drive in a new tab
+    ev.preventDefault();
+    openFileViewer({ id: a.dataset.view, name: a.dataset.name });
+  }));
+  el.querySelectorAll("[data-retry]").forEach(b => b.addEventListener("click", (ev) => { ev.stopPropagation(); retryUpload(b.dataset.retry); }));
+}
+// in-app viewer: Drive's embeddable preview (works without a Google login because every file is link-shared)
+function openFileViewer({ id, name }) {
+  const ext = String(name || "").split(".").pop().toLowerCase();
+  const noPreview = ["dwg", "dxf", "zip", "rar", "7z"].includes(ext);   // Drive can't render these
+  const ov = document.createElement("div");
+  ov.className = "fv-overlay";
+  ov.innerHTML = `
+    <div class="fv-box" role="dialog" aria-modal="true">
+      <div class="fv-head">
+        <span class="fv-title">${fileIcon(name)} ${escapeHtml(name || "ไฟล์")}</span>
+        <a class="btn btn-sm" href="${driveDownloadUrl(id)}" target="_blank" rel="noopener">⬇ ดาวน์โหลด</a>
+        <a class="btn btn-sm" href="${driveViewUrl(id)}" target="_blank" rel="noopener">เปิดใน Drive</a>
+        <button class="btn btn-ghost" data-close title="ปิด">✕</button>
+      </div>
+      ${noPreview
+        ? `<div class="fv-empty"><div class="fv-empty-ico">${fileIcon(name)}</div><div>ไฟล์ .${escapeHtml(ext)} ดูตัวอย่างในแอปไม่ได้</div><div>กด “⬇ ดาวน์โหลด” เพื่อเปิดด้วยโปรแกรมในเครื่อง</div></div>`
+        : `<div class="fv-frame-wrap"><div class="fv-loading">กำลังโหลดตัวอย่าง…</div><iframe class="fv-frame" src="https://drive.google.com/file/d/${encodeURIComponent(id)}/preview" allow="autoplay" title="ตัวอย่างไฟล์"></iframe></div>`}
+    </div>`;
+  function close() { ov.remove(); document.removeEventListener("keydown", onEsc, true); }
+  function onEsc(e) { if (e.key === "Escape") { e.stopPropagation(); close(); } }
+  ov.addEventListener("mousedown", e => { if (e.target === ov) close(); });
+  ov.querySelector("[data-close]").addEventListener("click", close);
+  document.addEventListener("keydown", onEsc, true);
+  document.body.appendChild(ov);
 }
 // a brand-new Drive file's thumbnail can 404 for a few seconds → retry, then fall back to a plain link
 function attImgErr(img) {
