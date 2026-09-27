@@ -161,16 +161,10 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
   align-items: center;
   gap: 8px;
 }
-/* board switcher (โรงงาน | ออกไซต์) */
-.board-seg { display: flex; flex: 0 0 auto; border: 1px solid var(--border-strong); border-radius: 8px; overflow: hidden; }
-.board-seg-btn {
-  flex: 1; border: none; background: #fff;
-  padding: 8px 6px; font-size: 13px; font-weight: 600; color: var(--text-dim);
-  cursor: pointer; white-space: nowrap;
-}
-.board-seg-btn + .board-seg-btn { border-left: 1px solid var(--border-strong); }
-.board-seg-btn:hover:not(.active) { background: #f3f4f6; }
-.board-seg-btn.active { background: var(--accent); color: #fff; }
+/* board switcher — single-select dropdown (styled like the "มุมมอง" dropdown below it) */
+.board-dd-row { display: flex; margin-bottom: 10px; }
+.board-dd-btn .board-dd-ico { width: 16px; height: 16px; flex: 0 0 auto; color: var(--accent); }
+.board-dd-pop .dept-dd-item .board-dd-tick { width: 16px; flex: 0 0 auto; color: var(--accent); font-weight: 700; }
 .sidebar h1 .logo {
   width: 28px; height: 28px;
   border-radius: 6px;
@@ -1929,7 +1923,10 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
     </div>
     <div class="sb-user-badge" id="sbUserBadge"></div>
 
-    <div class="board-seg" id="boardSwitcher" title="สลับปฏิทิน"></div>
+    <div class="sb-dept board-dd-row" id="boardSwitcherRow">
+      <span class="sb-dept-label">ปฏิทิน</span>
+      <div class="dept-switcher" id="boardSwitcher"></div>
+    </div>
 
     <div class="sb-section">
       <button class="btn" id="btnDrawReq">📐 ยื่นขอแบบ</button>
@@ -8133,12 +8130,39 @@ function renderBoardSwitcher() {
   if (!el) return;
   const vis = new Set(visibleBoardIds());
   const boards = (root.boardMeta || []).filter(b => vis.has(b.id));
-  // only one calendar allowed (e.g. Service people) → nothing to switch, hide the bar
-  el.style.display = boards.length > 1 ? "" : "none";
-  el.innerHTML = boards.map(b =>
-    `<button class="board-seg-btn${b.id===root.activeBoard?' active':''}" data-board="${b.id}">${escapeHtml(b.name)}</button>`).join("");
-  el.querySelectorAll("[data-board]").forEach(btn =>
-    btn.addEventListener("click", () => setBoard(btn.dataset.board)));
+  // only one calendar allowed (e.g. Service people) → nothing to switch, hide the whole row
+  const row = document.getElementById("boardSwitcherRow") || el;
+  row.style.display = boards.length > 1 ? "" : "none";
+  const cur = boards.find(b => b.id === root.activeBoard) || boards[0] || { name: "" };
+  el.innerHTML = `
+    <button type="button" class="dept-dd-btn board-dd-btn" aria-haspopup="listbox" title="สลับปฏิทิน">
+      <svg class="board-dd-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
+      <span class="dept-dd-label">${escapeHtml(cur.name)}</span>
+      <span class="dept-dd-caret">▾</span>
+    </button>`;
+  const btn = el.querySelector(".board-dd-btn");
+  btn.addEventListener("click", (e) => { e.stopPropagation(); openBoardDropdown(btn, boards); });
+}
+// list of calendars the user may open; picking one switches immediately
+function openBoardDropdown(anchor, boards) {
+  if (document.querySelector(".board-dd-pop")) { document.querySelectorAll(".board-dd-pop").forEach(n => n.remove()); return; }   // 2nd click = close
+  const pop = document.createElement("div");
+  pop.className = "dept-dd-pop board-dd-pop";
+  pop.setAttribute("role", "listbox");
+  pop.innerHTML = boards.map(b => `
+    <button type="button" role="option" class="dept-dd-item${b.id === root.activeBoard ? " active" : ""}" data-board="${escapeHtml(b.id)}" aria-selected="${b.id === root.activeBoard}">
+      <span class="board-dd-tick">${b.id === root.activeBoard ? "✓" : ""}</span><span>${escapeHtml(b.name)}</span>
+    </button>`).join("");
+  document.body.appendChild(pop);
+  const r = anchor.getBoundingClientRect();
+  pop.style.top = (r.bottom + window.scrollY + 4) + "px";
+  pop.style.left = (r.left + window.scrollX) + "px";
+  pop.style.minWidth = r.width + "px";
+  function close() { pop.remove(); document.removeEventListener("mousedown", onDoc, true); document.removeEventListener("keydown", onEsc, true); }
+  function onDoc(e) { if (!pop.contains(e.target) && !anchor.contains(e.target)) close(); }
+  function onEsc(e) { if (e.key === "Escape") close(); }
+  pop.querySelectorAll("[data-board]").forEach(it => it.addEventListener("click", () => { close(); setBoard(it.dataset.board); }));
+  setTimeout(() => { document.addEventListener("mousedown", onDoc, true); document.addEventListener("keydown", onEsc, true); }, 0);
 }
 
 function renderAll() {
