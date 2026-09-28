@@ -2577,7 +2577,6 @@ function openMyProfileModal() {
         </div>
         <div class="field"><label>ชื่อที่แสดง</label><input type="text" data-name maxlength="60" placeholder="ชื่อของคุณ"></div>
         <p class="settings-desc">อีเมล <b>${escapeHtml(currentProfile.email || "")}</b> · สิทธิ์ <b>${isAdmin() ? "admin" : "member"}</b> · แผนก <b data-deptname></b><br>สิทธิ์และแผนกแก้ได้โดยผู้ดูแลระบบ (admin) เท่านั้น</p>
-        <div class="push-box" data-push></div>
         <div class="login-msg" data-msg></div>
       </div>
       <div class="modal-foot"><button class="btn" data-act="close">ยกเลิก</button><button class="btn btn-primary" data-save>บันทึก</button></div>
@@ -2588,7 +2587,6 @@ function openMyProfileModal() {
   nameInput.value = currentProfile.display_name || "";
   const dept = currentProfile.dept_id ? getDept(currentProfile.dept_id) : null;
   q("[data-deptname]").textContent = dept ? dept.name : (currentProfile.dept_id || "— ไม่ระบุ —");
-  renderPushControl(q("[data-push]"));
   const paint = () => {
     const nm = (nameInput.value || currentProfile.email || "?").trim();
     q("[data-preview]").innerHTML = avatar ? `<img src="${escapeHtml(avatar)}" alt="">` : escapeHtml(nm.charAt(0).toUpperCase() || "?");
@@ -3306,7 +3304,7 @@ async function pushChangedBoards(sb) {
       const before = root.boards[b.id];
       const oldById = {}; ((before && before.tasks) || []).forEach(t => oldById[t.id] = t);
       migrateState(cloudRow.data);
-      notifyRemoteBoardChange(cloudRow.data, cloudRow.data.tasks || [], oldById);
+      if (!savedByMe(cloudRow)) notifyRemoteBoardChange(cloudRow.data, cloudRow.data.tasks || [], oldById);
       mergeBoardInto(b.id, cloudRow.data, cloudRow.updated_at);
       mergedAny = true;
     }
@@ -3408,18 +3406,18 @@ function getDeptIn(ws, id) { return (ws.departments || []).find(d => d.id === id
 // same notification rules as pushNotify()/canNotify()/taskRelevantToMe() further down, but reading the
 // REMOTE board's own settings — the board that just changed isn't necessarily the one on screen here.
 function notifyRemoteBoardChange(ws, newTasks, oldTasksById) {
-  const notify = ws.settings && ws.settings.notify;
-  if (!(typeof window !== "undefined" && "Notification" in window) || !notify || !notify.enabled || Notification.permission !== "granted") return;
+  const notify = myNotifyPrefs();
+  if (!(typeof window !== "undefined" && "Notification" in window) || !notify.enabled || Notification.permission !== "granted") return;
   // personal alerts (assignments) — for me regardless of department, also on brand-new tasks
   const meId = currentProfile && currentProfile.id;
   if (meId) newTasks.forEach(t => {
     const before = oldTasksById[t.id];
     const oldIds = new Set(((before && before.comments) || []).map(c => c.id));
     (t.comments || []).forEach(c => {
-      if (!oldIds.has(c.id) && Array.isArray(c.mentions) && c.mentions.includes(meId) && (notify.comment || notify.alert)) {
+      if (!oldIds.has(c.id) && Array.isArray(c.mentions) && c.mentions.includes(meId)) {
         try { sysNotify("💬 มีคนกล่าวถึงคุณ", { body: `${t.title} · ${c.author || ""}: ${c.text || ""}`.slice(0, 180), tag: "rt-men-" + c.id, renotify: true }); } catch (e) {}
       }
-      if (notify.alert && c.type === "alert" && !c.ack && c.toUser === meId && !oldIds.has(c.id)) {
+      if (c.type === "alert" && !c.ack && c.toUser === meId && !oldIds.has(c.id)) {
         try { sysNotify("📌 มีงานมอบหมายให้คุณ", { body: `${t.title}${c.author ? " · จาก " + c.author : ""}`, tag: "rt-asg-" + c.id, renotify: true }); } catch (e) {}
       }
     });
@@ -3430,19 +3428,20 @@ function notifyRemoteBoardChange(ws, newTasks, oldTasksById) {
   const myDept = (profDept && getDeptIn(ws, profDept)) ? profDept : (getDeptIn(ws, ws.settings.myDept) ? ws.settings.myDept : "");
   // ★ no department set = admin/planner mode → receive no cross-device notifications either (matches
   //   the local rule in taskRelevantToMe/pendingAlerts). Exception: "notify me about everything" mode.
+  const fire = (type, title, body, tag) => { if (type === "alert" || notify[type]) sysNotify(title, { body: body || "", tag, renotify: true }); };
+  // alerts aimed at my department → always (like assignments / mentions), whatever the other preferences say
+  if (myDept) newTasks.forEach(t => {
+    const before = oldTasksById[t.id];
+    const oldIds = new Set(((before && before.comments) || []).map(c => c.id));
+    (t.comments || []).forEach(c => {
+      if (c.type === "alert" && !c.ack && !oldIds.has(c.id) && c.toDept === myDept) fire("alert", "🔔 การแจ้งเตือนใหม่", `${t.title}${c.text ? " · " + c.text : ""}`, "rt-alert-" + c.id);
+    });
+  });
   if (!myDept && notify.onlyMyDept) return;
   const relevant = t => !notify.onlyMyDept || (meId && (t.assignees || []).includes(meId)) || (myDept && (t.deptStages || []).some(s => s.deptId === myDept));
-  const fire = (type, title, body, tag) => { if (notify[type]) sysNotify(title, { body: body || "", tag, renotify: true }); };
   newTasks.forEach(t => {
     const before = oldTasksById[t.id];
     if (!before || !relevant(t)) return;   // brand-new task (no prior snapshot) or not my department — nothing to diff/notify
-    const oldComments = {}; (before.comments || []).forEach(c => oldComments[c.id] = c);
-    (t.comments || []).forEach(c => {
-      // alerts are department-targeted → only notify when it's aimed at my department (no dept = none)
-      if (c.type === "alert" && !c.ack && !oldComments[c.id] && myDept && c.toDept === myDept) {
-        fire("alert", "🔔 การแจ้งเตือนใหม่", `${t.title}${c.text ? " · " + c.text : ""}`, "rt-alert-" + c.id);
-      }
-    });
     if (before.statusId !== t.statusId) {
       const ns = getStatusIn(ws, t.statusId), os = getStatusIn(ws, before.statusId);
       if (ns && os) {
@@ -3450,6 +3449,31 @@ function notifyRemoteBoardChange(ws, newTasks, oldTasksById) {
         fire(done ? "done" : "status", done ? "✅ เสร็จแล้ว" : "🔁 เปลี่ยนสถานะ", `${t.title} → ${ns.name}`, "rt-st-" + t.id);
       }
     }
+    // cabinets: status / done
+    (t.subtasks || []).forEach(sub => {
+      const b = (before.subtasks || []).find(x => x.id === sub.id);
+      if (!b || b.statusId === sub.statusId) return;
+      const ns = getStatusIn(ws, sub.statusId), os = getStatusIn(ws, b.statusId);
+      if (!ns || !os) return;
+      const done = ns.isDone && !os.isDone;
+      fire(done ? "done" : "status", done ? "✅ ตู้เสร็จ" : "🔁 เปลี่ยนสถานะตู้", `${t.title} · ตู้ “${sub.text || "-"}” → ${ns.name}`, "rt-sub-" + sub.id);
+    });
+    // department finished
+    (t.deptStages || []).forEach(stg => {
+      const b = (before.deptStages || []).find(x => x.deptId === stg.deptId);
+      if (b && !b.done && stg.done) fire("done", "✅ แผนกเสร็จ", `${t.title} · ${(getDeptIn(ws, stg.deptId) || {}).name || ""}`, "rt-dd-" + t.id + stg.deptId);
+    });
+    // new comments / replies from others (mentions + alerts are handled above)
+    const oldC = {}; (before.comments || []).forEach(c => oldC[c.id] = c);
+    (t.comments || []).forEach(c => {
+      if (c.type === "system" || (c.author && currentProfile && c.author === currentProfile.display_name)) return;
+      const mentionsMe = meId && Array.isArray(c.mentions) && c.mentions.includes(meId);
+      if (!oldC[c.id] && c.type !== "alert" && !mentionsMe) fire("comment", "💬 คอมเมนต์ใหม่", `${t.title} · ${c.author || ""}: ${c.text || ""}`.slice(0, 180), "rt-cm-" + c.id);
+      const oldReps = new Set(((oldC[c.id] && oldC[c.id].replies) || []).map(r => r.id));
+      (c.replies || []).forEach(r => {
+        if (!oldReps.has(r.id) && !(currentProfile && r.author === currentProfile.display_name)) fire("comment", "💬 ตอบกลับ", `${t.title} · ${r.author || ""}: ${r.text || ""}`.slice(0, 180), "rt-rp-" + r.id);
+      });
+    });
   });
 }
 function handleRealtimeBoardChange(payload) {
@@ -3458,7 +3482,7 @@ function handleRealtimeBoardChange(payload) {
   const oldWs = root.boards[row.id];
   const newWs = row.data;
   migrateState(newWs);
-  if (oldWs) {
+  if (oldWs && !savedByMe(row)) {
     const oldTasksById = {}; (oldWs.tasks || []).forEach(t => oldTasksById[t.id] = t);
     notifyRemoteBoardChange(newWs, newWs.tasks || [], oldTasksById);
   }
@@ -6288,7 +6312,8 @@ function renderTodayPanelDept(deptIds, today, pass) {
 /* ---------- Settings modal (single entry point for all settings) ----------
    Sections are modular — add a new nav button + build<X>Panel() to extend. */
 function openSettingsModal(initialTab = "statuses") {
-  if (!isAdmin()) { toast("หน้าตั้งค่าเปิดได้เฉพาะผู้ดูแลระบบ (admin) เท่านั้น"); return; }   // defense-in-depth; the ⚙ button already gates this
+  // ★ non-admins get ONE tab: 🔔 การแจ้งเตือน (their own device's push on/off). Everything else stays admin-only.
+  if (!isAdmin()) initialTab = "notify";
   const overlay = document.createElement("div");
   overlay.className = "overlay";
   overlay.innerHTML = `
@@ -6318,9 +6343,11 @@ function openSettingsModal(initialTab = "statuses") {
 
   const content = overlay.querySelector('[data-content]');
   const navBtns = [...overlay.querySelectorAll('.settings-nav-item')];
+  if (!isAdmin()) navBtns.forEach(b => { if (b.dataset.tab !== "notify") b.remove(); });
   const PANELS = { user: buildUserPanel, users: buildUsersAdminPanel, statuses: buildStatusesPanel, departments: buildDeptsPanel, fields: buildFieldsPanel, checklist: buildChecklistTemplatePanel, display: buildDisplayPanel, notify: buildNotifyPanel, history: buildHistoryPanel, data: buildDataPanel };
 
   function showTab(tab) {
+    if (!isAdmin() && tab !== "notify") tab = "notify";
     navBtns.forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
     content.innerHTML = "";
     (PANELS[tab] || PANELS.statuses)(content);
@@ -7055,64 +7082,81 @@ function buildDisplayPanel(container) {
   wireDeptButtonList("[data-import-depts]", "importReqDepts");
 }
 
-/* Settings → 🔔 การแจ้งเตือน (browser notification preferences) */
+/* Settings → 🔔 การแจ้งเตือน — ONE place, per person (everyone can open it): the device switch (in-app
+   notifications + web push when the app is closed) and what to be told about. Owner 2026-09-28: "รวบเป็นอันเดียว". */
 function buildNotifyPanel(container) {
-  const n = state.settings.notify;
   const sec = document.createElement("div");
   sec.className = "settings-section";
-  sec.innerHTML = `
-    <h4 class="settings-h">การแจ้งเตือนทางเบราว์เซอร์</h4>
-    <p class="settings-desc">เด้งแจ้งเตือนระดับเบราว์เซอร์/ระบบ แม้สลับไปแท็บอื่น (ต้องเปิดแอปไว้). 🔒 เฟส 1 เด้งเฉพาะเครื่องที่เปิดแอปอยู่ — เฟส 2 (online) จะ push ข้ามเครื่องได้</p>
-    <div class="notif-perm" data-perm></div>
-    <label class="settings-toggle-row">
-      <input type="checkbox" data-f="enabled" ${n.enabled ? "checked" : ""} />
-      <span class="settings-toggle-text"><span class="settings-toggle-title">เปิดการแจ้งเตือน</span><span class="settings-toggle-sub">สวิตช์หลัก — ปิดแล้วจะไม่เด้งทุกประเภท</span></span>
-    </label>
-    <label class="settings-toggle-row">
-      <input type="checkbox" data-f="onlyMyDept" ${n.onlyMyDept ? "checked" : ""} />
-      <span class="settings-toggle-text"><span class="settings-toggle-title">เฉพาะงานของแผนกฉัน</span><span class="settings-toggle-sub">แจ้งเฉพาะงานที่มีแผนกของฉันเป็นด่าน (ตั้งแผนกที่ ⚙ ผู้ใช้) — ไม่ระบุแผนก = ทุกงาน. *Alert ที่ส่งถึงแผนกจะเด้งเสมอ</span></span>
-    </label>
-    <h4 class="settings-h" style="margin-top:14px">แจ้งเตือนเมื่อ…</h4>
-    <label class="settings-toggle-row"><input type="checkbox" data-f="alert" ${n.alert ? "checked" : ""} /><span class="settings-toggle-text"><span class="settings-toggle-title">🔔 มี Alert ส่งถึงแผนก</span></span></label>
-    <label class="settings-toggle-row"><input type="checkbox" data-f="status" ${n.status ? "checked" : ""} /><span class="settings-toggle-text"><span class="settings-toggle-title">🔁 เปลี่ยนสถานะงาน/ตู้</span></span></label>
-    <label class="settings-toggle-row"><input type="checkbox" data-f="comment" ${n.comment ? "checked" : ""} /><span class="settings-toggle-text"><span class="settings-toggle-title">💬 คอมเมนต์ / ตอบกลับใหม่</span></span></label>
-    <label class="settings-toggle-row"><input type="checkbox" data-f="done" ${n.done ? "checked" : ""} /><span class="settings-toggle-text"><span class="settings-toggle-title">✅ แผนก/ตู้ เสร็จ</span></span></label>
-    <div class="row" style="gap:8px; margin-top:12px">
-      <button class="btn btn-sm" data-act="test">🔔 ทดสอบแจ้งเตือน</button>
-    </div>
-  `;
   container.appendChild(sec);
-  const permEl = sec.querySelector("[data-perm]");
-  function renderPerm() {
-    if (!NOTIF_SUPPORTED) { permEl.innerHTML = `<div class="notif-perm-box err">เบราว์เซอร์นี้ไม่รองรับการแจ้งเตือน</div>`; return; }
-    // notifications require a secure origin — file:// (double-clicking the file) is blocked by Chrome
-    if (location.protocol === "file:") {
-      permEl.innerHTML = `<div class="notif-perm-box err">⚠ ตอนนี้เปิดจากไฟล์ <b>(file://)</b> — เบราว์เซอร์จะไม่อนุญาตการแจ้งเตือน<br>ต้องเปิดผ่านเว็บเซิร์ฟเวอร์ เช่น <b>http://localhost</b> หรือโฮสต์แบบ <b>https</b> ก่อน แล้วค่อยกดอนุญาต</div>`;
+  const paint = async () => {
+    const n = myNotifyPrefs();
+    const inIOSBrowser = isIOS() && !isStandalone();
+    if (!NOTIF_SUPPORTED || inIOSBrowser) {
+      sec.innerHTML = `<h4 class="settings-h">การแจ้งเตือนของฉัน</h4><div class="notif-perm-box warn">${inIOSBrowser
+        ? "บน iPad/iPhone ต้อง <b>ติดตั้งแอปก่อน</b>: เปิดใน Safari → ปุ่มแชร์ <b>⬆︎</b> → <b>เพิ่มไปยังหน้าจอโฮม</b> → เปิดแอปจากไอคอนบนหน้าจอโฮม แล้วกลับมาที่หน้านี้ (iPadOS 16.4 ขึ้นไป)"
+        : "เบราว์เซอร์นี้ไม่รองรับการแจ้งเตือน"}</div>`;
       return;
     }
-    if (!window.isSecureContext) {
-      permEl.innerHTML = `<div class="notif-perm-box err">⚠ ต้องเปิดผ่าน <b>https</b> หรือ <b>http://localhost</b> (secure context) การแจ้งเตือนถึงจะทำงาน — ตอนนี้: ${escapeHtml(location.origin)}</div>`;
-      return;
-    }
-    const p = Notification.permission;
-    if (p === "granted") permEl.innerHTML = `<div class="notif-perm-box ok">✓ เบราว์เซอร์อนุญาตแล้ว</div>`;
-    else if (p === "denied") permEl.innerHTML = `<div class="notif-perm-box err">✕ ถูกบล็อก — กดไอคอน 🔒/ⓘ หน้า URL → Notifications → Allow แล้วรีโหลด (เบราว์เซอร์จำค่าเดิมไว้ กดปุ่มซ้ำไม่ขึ้น prompt)</div>`;
-    else permEl.innerHTML = `<div class="notif-perm-box warn">ยังไม่ได้อนุญาต <button class="btn btn-sm btn-primary" data-act="ask">อนุญาตการแจ้งเตือน</button></div>`;
-    const ask = permEl.querySelector('[data-act="ask"]');
-    if (ask) ask.addEventListener("click", () => {
-      Notification.requestPermission().then(() => { renderPerm(); });
+    if (!window.isSecureContext) { sec.innerHTML = `<h4 class="settings-h">การแจ้งเตือนของฉัน</h4><div class="notif-perm-box err">ต้องเปิดแอปผ่าน https การแจ้งเตือนถึงจะทำงาน</div>`; return; }
+    let sub = null; try { sub = await currentPushSub(); } catch (_) {}
+    const perm = Notification.permission;
+    const on = n.enabled && perm === "granted";
+    const pushOn = on && !!sub;
+    sec.innerHTML = `
+      <h4 class="settings-h">การแจ้งเตือนของฉัน <span class="muted" style="font-weight:400">(ตั้งแยกแต่ละคน แต่ละเครื่อง)</span></h4>
+      <div class="push-box" style="margin-top:0">
+        <span class="push-state${on ? " on" : ""}">${on ? (pushOn || !PUSH_SUPPORTED ? "✓ เปิดอยู่บนเครื่องนี้" : "✓ เปิดอยู่ (เฉพาะตอนเปิดแอป)") : perm === "denied" ? "✕ ถูกบล็อกในเบราว์เซอร์" : "ปิดอยู่"}</span>
+        <p>เปิดแล้วจะเด้งเตือนบนเครื่องนี้ <b>ทั้งตอนเปิดแอปและตอนปิดแอป/ล็อกจอ</b> · สิ่งที่คุณกดเองจะไม่เด้งที่เครื่องคุณ${perm === "denied" ? "<br>⚠ เบราว์เซอร์บล็อกไว้ — กดไอคอน 🔒/ⓘ หน้า URL → Notifications → Allow แล้วรีโหลด" : ""}${on && !pushOn && PUSH_SUPPORTED ? "<br>⚠ ยังไม่ได้ลงทะเบียนแจ้งเตือนตอนปิดแอป — กดปิดแล้วเปิดใหม่อีกครั้ง" : ""}</p>
+        <button type="button" class="btn btn-sm ${on ? "" : "btn-primary"}" data-toggle>${on ? "ปิดการแจ้งเตือนบนเครื่องนี้" : "เปิดการแจ้งเตือนบนเครื่องนี้"}</button>
+        ${pushOn ? `<button type="button" class="btn btn-sm" data-push-test title="ส่งแจ้งเตือนทดสอบมาที่เครื่องนี้ใน 10 วินาที — ปัดปิดแอปก่อนเพื่อลองแบบปิดแอป">📨 ส่งทดสอบมาเครื่องนี้</button>` : on ? `<button type="button" class="btn btn-sm" data-local-test>🔔 ทดสอบ</button>` : ""}
+        <div class="push-result" data-push-result></div>
+      </div>
+      <p class="settings-desc" style="margin:14px 0 8px">📌 <b>มอบหมายงานให้ฉัน</b> · 💬 <b>@กล่าวถึงฉัน</b> · 🔔 <b>แจ้งเตือนถึงแผนกฉัน</b> — เด้งเสมอเมื่อเปิดการแจ้งเตือน</p>
+      <div${on ? "" : ' style="opacity:.5;pointer-events:none"'}>
+        <label class="settings-toggle-row">
+          <input type="checkbox" data-f="onlyMyDept" ${n.onlyMyDept ? "checked" : ""} />
+          <span class="settings-toggle-text"><span class="settings-toggle-title">เฉพาะงานของแผนกฉัน</span><span class="settings-toggle-sub">รายการด้านล่างแจ้งเฉพาะงานที่มีด่านแผนกของฉัน หรือมอบหมายให้ฉัน (ไม่มีแผนก = ไม่แจ้ง) — ไม่ติ๊ก = ทุกงาน</span></span>
+        </label>
+        <h4 class="settings-h" style="margin-top:14px">แจ้งเตือนเพิ่มเมื่อคนอื่น… <span class="muted" style="font-weight:400">(ขณะเปิดแอป)</span></h4>
+        <label class="settings-toggle-row"><input type="checkbox" data-f="status" ${n.status ? "checked" : ""} /><span class="settings-toggle-text"><span class="settings-toggle-title">🔁 เปลี่ยนสถานะงาน/ตู้</span></span></label>
+        <label class="settings-toggle-row"><input type="checkbox" data-f="done" ${n.done ? "checked" : ""} /><span class="settings-toggle-text"><span class="settings-toggle-title">✅ งาน/แผนก/ตู้ เสร็จ</span></span></label>
+        <label class="settings-toggle-row"><input type="checkbox" data-f="comment" ${n.comment ? "checked" : ""} /><span class="settings-toggle-text"><span class="settings-toggle-title">💬 คอมเมนต์ / ตอบกลับใหม่</span></span></label>
+      </div>`;
+    sec.querySelectorAll("input[data-f]").forEach(inp => inp.addEventListener("change", () => setNotifyPref(inp.dataset.f, inp.checked)));
+    sec.querySelector("[data-toggle]").addEventListener("click", async (e) => {
+      const btn = e.currentTarget; btn.disabled = true;
+      try {
+        if (on) {
+          setNotifyPref("enabled", false);
+          try { await disablePush(); } catch (_) {}
+          toast("ปิดการแจ้งเตือนบนเครื่องนี้แล้ว");
+        } else {
+          const r = await Notification.requestPermission();
+          if (r !== "granted") throw new Error("ไม่ได้รับอนุญาตการแจ้งเตือน");
+          setNotifyPref("enabled", true);
+          let pushErr = null;
+          if (PUSH_SUPPORTED) { try { await enablePush(); } catch (err) { pushErr = err; } }
+          toast(pushErr ? "✓ เปิดแล้ว (เฉพาะตอนเปิดแอป — ตอนปิดแอปยังไม่ได้: " + (pushErr.message || pushErr) + ")" : "✓ เปิดการแจ้งเตือนแล้ว");
+        }
+      } catch (err) { toast("ทำไม่สำเร็จ: " + (err.message || err)); }
+      paint();
     });
-  }
-  renderPerm();
-  sec.querySelectorAll("input[data-f]").forEach(inp => inp.addEventListener("change", () => {
-    state.settings.notify[inp.dataset.f] = inp.checked;
-    saveState();
-  }));
-  sec.querySelector('[data-act="test"]').addEventListener("click", () => {
-    if (!NOTIF_SUPPORTED) { toast("เบราว์เซอร์นี้ไม่รองรับการแจ้งเตือน"); return; }
-    if (Notification.permission !== "granted") { Notification.requestPermission().then(() => { renderPerm(); if (Notification.permission === "granted") sysNotify("Avatar Planning", { body: "ทดสอบการแจ้งเตือน ✓" }); }); return; }
-    sysNotify("Avatar Planning", { body: "ทดสอบการแจ้งเตือน ✓ ใช้งานได้" });
-  });
+    const lt = sec.querySelector("[data-local-test]");
+    if (lt) lt.addEventListener("click", () => sysNotify("Avatar Planning", { body: "ทดสอบการแจ้งเตือน ✓ ใช้งานได้" }));
+    const testBtn = sec.querySelector("[data-push-test]");
+    if (testBtn) testBtn.addEventListener("click", async () => {
+      testBtn.disabled = true;
+      await refreshPushSub();
+      const out = sec.querySelector("[data-push-result]");
+      out.textContent = "⏳ จะส่งใน 10 วินาที — ปัดปิดแอปตอนนี้ได้เลย แล้วรอดูแจ้งเตือน (ถ้าปิดแอป ผลจะไม่แสดงในกล่องนี้ = ปกติ)";
+      const { data, error } = await getSupabase().functions.invoke(PUSH_FUNCTION, { body: { test: true, delay: 10, title: "📨 ทดสอบแจ้งเตือน", body: "ถ้าเห็นข้อความนี้ตอนปิดแอป แปลว่าใช้งานได้ ✓", tag: "push-test-" + Date.now() } });
+      testBtn.disabled = false;
+      if (error) { out.textContent = "❌ เรียกระบบส่งไม่สำเร็จ: " + (error.message || error); return; }
+      const fails = (data && data.failures) || [];
+      out.textContent = `ผล: ส่งสำเร็จ ${data.sent || 0} จาก ${data.devices || 0} เครื่อง` + (fails.length ? " · ล้มเหลว: " + fails.map(f => `${f.host} ${f.status || ""} ${f.error}`).join(" | ") : "");
+    });
+  };
+  paint();
 }
 
 /* Settings → ข้อมูล (backup/restore) */
@@ -7402,47 +7446,10 @@ async function disablePush() {
 async function refreshPushSub() {
   try {
     const sub = await currentPushSub();
-    if (!sub || Notification.permission !== "granted") return;
+    if (!sub || Notification.permission !== "granted" || !myNotifyPrefs().enabled) return;
     const j = sub.toJSON();
     await getSupabase().rpc("save_push_subscription", { p_endpoint: j.endpoint, p_p256dh: j.keys.p256dh, p_auth: j.keys.auth, p_ua: navigator.userAgent });
   } catch (_) {}
-}
-function renderPushControl(box) {
-  const paint = async () => {
-    if (!PUSH_SUPPORTED || !("serviceWorker" in navigator)) {
-      box.innerHTML = `<h5>🔔 แจ้งเตือนบนเครื่องนี้ (แม้ปิดแอป)</h5><p>${isIOS() && !isStandalone()
-        ? "บน iPad/iPhone ต้อง <b>ติดตั้งแอปก่อน</b>: เปิดใน Safari → กดปุ่มแชร์ <b>⬆︎</b> → <b>เพิ่มไปยังหน้าจอโฮม</b> แล้วเปิดแอปจากไอคอนบนหน้าจอโฮม จากนั้นกลับมาเปิดที่นี่ (ต้อง iPadOS 16.4 ขึ้นไป)"
-        : "เบราว์เซอร์นี้ไม่รองรับการแจ้งเตือนแบบ push"}</p>`;
-      return;
-    }
-    let sub = null; try { sub = await currentPushSub(); } catch (_) {}
-    const on = !!sub && Notification.permission === "granted";
-    box.innerHTML = `<h5>🔔 แจ้งเตือนบนเครื่องนี้ (แม้ปิดแอป)</h5>
-      <p>เด้งเตือนเมื่อมีคน <b>มอบหมายงาน</b> / <b>@กล่าวถึง</b> คุณ หรือ <b>แจ้งเตือนถึงแผนกคุณ</b> — แม้ปิดแอปหรือล็อกจออยู่ (ตั้งแยกทีละเครื่อง)</p>
-      <span class="push-state${on ? " on" : ""}">${on ? "✓ เปิดอยู่บนเครื่องนี้" : Notification.permission === "denied" ? "✕ ถูกบล็อกในเบราว์เซอร์" : "ปิดอยู่"}</span><br>
-      <button type="button" class="btn btn-sm ${on ? "" : "btn-primary"}" data-push-toggle>${on ? "ปิดการแจ้งเตือนบนเครื่องนี้" : "เปิดการแจ้งเตือนบนเครื่องนี้"}</button>
-      ${on ? `<button type="button" class="btn btn-sm" data-push-test title="ระบบจะส่งแจ้งเตือนทดสอบมาที่เครื่องของคุณใน 10 วินาที — ปัดปิดแอปก่อนเพื่อลองแบบปิดแอป">📨 ส่งทดสอบมาเครื่องนี้</button>` : ""}
-      <div class="push-result" data-push-result></div>`;
-    const testBtn = box.querySelector("[data-push-test]");
-    if (testBtn) testBtn.addEventListener("click", async () => {
-      testBtn.disabled = true;
-      await refreshPushSub();
-      const out = box.querySelector("[data-push-result]");
-      out.textContent = "⏳ จะส่งใน 10 วินาที — ปัดปิดแอปตอนนี้ได้เลย (ปัดขึ้นจากตัวสลับแอป) แล้วรอดูแจ้งเตือน";
-      const { data, error } = await getSupabase().functions.invoke(PUSH_FUNCTION, { body: { test: true, delay: 10, title: "📨 ทดสอบแจ้งเตือน", body: "ถ้าเห็นข้อความนี้ตอนปิดแอป แปลว่าใช้งานได้ ✓", tag: "push-test-" + Date.now() } });
-      testBtn.disabled = false;
-      if (error) { out.textContent = "❌ เรียกระบบส่งไม่สำเร็จ: " + (error.message || error); return; }
-      const fails = (data && data.failures) || [];
-      out.textContent = `ผล: ส่งสำเร็จ ${data.sent || 0} จาก ${data.devices || 0} เครื่อง` + (fails.length ? " · ล้มเหลว: " + fails.map(f => `${f.host} ${f.status || ""} ${f.error}`).join(" | ") : "");
-    });
-    box.querySelector("[data-push-toggle]").addEventListener("click", async (e) => {
-      const btn = e.currentTarget; btn.disabled = true;
-      try { if (on) { await disablePush(); toast("ปิดการแจ้งเตือนบนเครื่องนี้แล้ว"); } else { await enablePush(); toast("✓ เปิดการแจ้งเตือนแล้ว"); } }
-      catch (err) { toast("ทำไม่สำเร็จ: " + (err.message || err)); }
-      paint();
-    });
-  };
-  paint();
 }
 // ask the Edge Function to push to people's devices (fire-and-forget; the in-app bell works regardless)
 function sendPush({ userIds, deptId, boardId, taskId, title, body, tag }) {
@@ -7996,27 +8003,42 @@ function sysNotify(title, opts) {
     new Notification(title, opts);
   } catch (e) { /* ignore */ }
 }
-// may this event type fire a desktop notification right now?
+// ★ notification preferences are PER PERSON (this device, localStorage) since 2026-09-28 — they used to be one
+//   shared state.settings.notify set by an admin for everyone. That board value is left untouched in the data
+//   (never reset — hard rule) and only seeds a person's first defaults.
+const NOTIFY_PREFS_KEY = "qc_notify_prefs";
+function myNotifyPrefs() {
+  let p = null;
+  try { p = JSON.parse(localStorage.getItem(NOTIFY_PREFS_KEY) || "null"); } catch (_) {}
+  if (!p || typeof p !== "object") {
+    const b = (state.settings && state.settings.notify) || {};
+    p = { enabled: true, onlyMyDept: b.onlyMyDept !== false, status: b.status !== false, comment: b.comment !== false, done: b.done !== false };
+  }
+  ["enabled", "onlyMyDept", "status", "comment", "done"].forEach(k => { if (typeof p[k] !== "boolean") p[k] = true; });
+  return p;
+}
+function setNotifyPref(k, v) { const p = myNotifyPrefs(); p[k] = v; try { localStorage.setItem(NOTIFY_PREFS_KEY, JSON.stringify(p)); } catch (_) {} }
+// may this event type fire a notification right now? (assignments / @mentions / alerts to my dept = always)
 function canNotify(type) {
-  const n = state.settings.notify;
-  return NOTIF_SUPPORTED && n && n.enabled && n[type] && Notification.permission === "granted";
+  const n = myNotifyPrefs();
+  return NOTIF_SUPPORTED && n.enabled && (type === "alert" || n[type]) && Notification.permission === "granted";
 }
 // is this task relevant to me for notifications?
 // ★ no department set = admin/planner overview mode → receive NOTHING (owner's request: an admin who
 //   hasn't picked a department shouldn't get work notifications, not even ones they sent themselves).
 function taskRelevantToMe(t) {
-  const n = state.settings.notify, my = myDeptId();
-  if (!n || !n.onlyMyDept) return true;   // "notify me about everything" mode → always relevant
+  const n = myNotifyPrefs(), my = myDeptId();
+  if (!n.onlyMyDept) return true;   // "notify me about everything" mode → always relevant
   if (isAssignedToMe(t)) return true;     // assigned to me → always relevant
   if (!my) return false;                  // department-scoped but no department = admin mode → nothing
   return (t.deptStages || []).some(s => s.deptId === my);
 }
-// fire a desktop notification (no-op if the type is off / permission not granted)
-// renotify:true (needs a tag) makes a repeat change on the same task re-alert instead of silently replacing
-function pushNotify(type, title, body, tag) {
-  if (!canNotify(type)) return;
-  sysNotify(title, { body: body || "", tag: tag || undefined, renotify: !!tag });
-}
+// ★ every pushNotify() call is about something *I* just did on this device — owner (2026-09-28): "ถ้าเราเป็นคนกด
+//   ไม่ต้องแจ้งเตือนที่เครื่องเรา". So it's a no-op now (call sites kept). Other people's changes still notify
+//   through notifyRemoteBoardChange (realtime) and web push, which never include my own actions.
+function pushNotify(type, title, body, tag) { /* own action → no notification on my device */ }
+// did this saved version come from me (my other device / tab)? then nothing in it should notify me
+function savedByMe(row) { return !!(row && currentProfile && row.updated_by && row.updated_by === currentProfile.display_name); }
 // status / done changes on a task (or one of its cabinets)
 function notifyStatusChange(t, sub, oldId, newId) {
   if (oldId === newId || !taskRelevantToMe(t)) return;
@@ -8700,8 +8722,9 @@ function attImgErr(img) {
 // ★ no department set = admin/planner mode → receive no alerts at all (not even ones you sent). This is
 //   why the bell/popup/pins all go quiet for an admin who hasn't picked a department.
 // is this unacknowledged alert aimed at me? personal (toUser = assignment) or my department (toDept)
+const sentByMe = (c) => !!(c && c.author && currentProfile && c.author === currentProfile.display_name);
 function alertIsForMe(c) {
-  if (!c || c.type !== "alert" || c.ack) return false;
+  if (!c || c.type !== "alert" || c.ack || sentByMe(c)) return false;   // an alert I sent myself never waits for me
   if (c.toUser) return !!(currentProfile && c.toUser === currentProfile.id);
   const my = myDeptId();
   return !!my && c.toDept === my;
@@ -8819,7 +8842,7 @@ function myDeptIn(ws) {
   return (bd && getDeptIn(ws, bd)) ? bd : "";
 }
 function alertIsForMeIn(c, ws) {
-  if (!c || c.type !== "alert" || c.ack) return false;
+  if (!c || c.type !== "alert" || c.ack || sentByMe(c)) return false;
   if (c.toUser) return !!(currentProfile && c.toUser === currentProfile.id);
   const my = myDeptIn(ws);
   return !!my && c.toDept === my;
@@ -9199,10 +9222,7 @@ function canSeeDeptButton(settingKey) {
 function canSeeImportReq() { return canSeeDeptButton("importReqDepts"); }
 function canSeeDrawReq() { return canSeeDeptButton("drawReqDepts"); }
 
-document.getElementById("btnSettings").addEventListener("click", () => {
-  if (!isAdmin()) { toast("หน้าตั้งค่าเปิดได้เฉพาะผู้ดูแลระบบ (admin) เท่านั้น"); return; }
-  openSettingsModal();
-});
+document.getElementById("btnSettings").addEventListener("click", () => openSettingsModal(isAdmin() ? "statuses" : "notify"));
 document.getElementById("sbUserBadge").addEventListener("click", openMyProfileModal);
 document.getElementById("btnTrash").addEventListener("click", openTrashModal);
 document.getElementById("btnBell").addEventListener("click", () => {
