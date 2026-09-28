@@ -8,6 +8,12 @@
      iOS home screen needs a PNG (no SVG support) → apple-touch-icon.png next to index.html, full-bleed 180px -->
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='112' fill='%233F444D'/%3E%3Crect x='104' y='132' width='304' height='276' rx='44' fill='%23fff'/%3E%3Cpath d='M104 176a44 44 0 0 1 44-44h216a44 44 0 0 1 44 44v34H104z' fill='%23F47B20'/%3E%3Crect x='168' y='96' width='30' height='76' rx='15' fill='%23fff' stroke='%23F47B20' stroke-width='10'/%3E%3Crect x='314' y='96' width='30' height='76' rx='15' fill='%23fff' stroke='%23F47B20' stroke-width='10'/%3E%3Crect x='144' y='238' width='60' height='52' rx='14' fill='%23E6E8EC'/%3E%3Crect x='226' y='238' width='60' height='52' rx='14' fill='%23E6E8EC'/%3E%3Crect x='308' y='238' width='60' height='52' rx='14' fill='%23E6E8EC'/%3E%3Crect x='144' y='314' width='60' height='52' rx='14' fill='%23E6E8EC'/%3E%3Crect x='226' y='314' width='60' height='52' rx='14' fill='%23E6E8EC'/%3E%3Crect x='308' y='314' width='60' height='52' rx='14' fill='%23F47B20'/%3E%3Cpath d='M322 340l10 10 22-22' fill='none' stroke='%23fff' stroke-width='10' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
 <link rel="apple-touch-icon" href="apple-touch-icon.png" />
+<!-- installable app (PWA): manifest + sw.js sit next to index.html; iPad: Share → Add to Home Screen -->
+<link rel="manifest" href="manifest.webmanifest" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-title" content="Planning" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
 <meta name="apple-mobile-web-app-title" content="Avatar Planning" />
 <meta name="theme-color" content="#3F444D" />
 <style>
@@ -493,6 +499,33 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
 .dash-deptname { width: 120px; flex: 0 0 auto; font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .dash-deptrow .dash-bar { flex: 1; }
 .dash-deptval { flex: 0 0 auto; font-size: 12px; color: var(--text-dim); min-width: 140px; text-align: right; }
+/* dashboard "โปรเจคทั้งหมด" — table (project | assignees | due | status | depts | checklist | cabinets) */
+.dash-table-card { background: #fff; border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--shadow-sm); overflow-x: auto; }
+.dash-table { width: 100%; min-width: 900px; border-collapse: collapse; font-size: 13.5px; }
+.dash-table th { padding: 14px 16px 12px; border-bottom: 1px solid var(--border); color: var(--text-dim); font-size: 12px; font-weight: 700; letter-spacing: .3px; text-align: left; white-space: nowrap; background: #fcfcfd; }
+.dash-table td { padding: 14px 16px; border-bottom: 1px solid #f0f1f4; vertical-align: middle; }
+.dash-table tbody tr { cursor: pointer; transition: background .12s; }
+.dash-table tbody tr:hover { background: #f8f7ff; }
+.dash-table tbody tr:last-child td { border-bottom: 0; }
+.dash-table tr.complete .dt-title { color: var(--text-dim); }
+.dt-title { color: var(--accent); font-size: 14.5px; font-weight: 700; line-height: 1.35; }
+.dt-title .pri-flag { margin-right: 3px; }
+.dt-sub { max-width: 260px; margin-top: 3px; overflow: hidden; color: var(--text-dim); font-size: 12.5px; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.dt-people { display: flex; flex-direction: column; gap: 4px; }
+.dt-person { display: flex; align-items: center; gap: 6px; font-size: 12.5px; white-space: nowrap; }
+.dt-person .avatar { width: 22px; height: 22px; font-size: 10px; }
+.dt-more, .dt-none { color: var(--text-faint); font-size: 12px; }
+.dt-date { white-space: nowrap; font-size: 14px; }
+.dt-left { display: inline-block; margin-top: 5px; padding: 2px 8px; border-radius: 6px; background: #f2f4f7; color: var(--text-dim); font-size: 12px; font-weight: 600; white-space: nowrap; }
+.dt-left.soon { background: #fff4e5; color: #b54708; }
+.dt-left.over { background: #fef3f2; color: var(--danger); }
+.dt-left.done { background: #ecfdf3; color: #027a48; }
+.dt-status { display: inline-block; padding: 4px 11px; border-radius: 999px; font-size: 12.5px; font-weight: 700; white-space: nowrap; }
+.dt-prog { min-width: 130px; }
+.dt-prog .dash-bar { height: 7px; margin: 0; }
+.dt-prog-lbl { margin-top: 5px; color: var(--text-dim); font-size: 11.5px; white-space: nowrap; }
+.dt-icons { display: inline-flex; gap: 2px; margin-left: 4px; vertical-align: middle; }
+.dt-cabs { font-size: 15px; font-weight: 600; text-align: center; }
 .dash-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 12px; }
 .dash-card { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 13px 15px; cursor: pointer; transition: box-shadow .12s, transform .12s; }
 .dash-card:hover { box-shadow: var(--shadow-lg); transform: translateY(-1px); border-color: var(--border-strong); }
@@ -550,7 +583,9 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
   #calWrap, #ganttWrap { display: none !important; }
   .dash-wrap { background: #fff !important; }
   .dash-print-hide { display: none !important; }
-  .dash-card { break-inside: avoid; }
+  .dash-card, .dash-table tr { break-inside: avoid; }
+  .dash-table-card { overflow: visible; box-shadow: none; }
+  .dash-table { min-width: 0; font-size: 11.5px; }
   /* printing a single popup (per-project dashboard): hide the whole app, show only that overlay */
   body.printing-modal .app { display: none !important; }
   body.printing-modal .overlay { display: none !important; }
@@ -999,6 +1034,37 @@ body.chip-dragging .task-chip.span-bar { pointer-events: none; }   /* let the da
   transition: opacity .18s, transform .18s;
 }
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+/* profile modal → "แจ้งเตือนบนเครื่องนี้" (web push) */
+.push-box { margin-top: 12px; padding: 12px; border: 1px solid var(--border); border-radius: 10px; background: #fafafb; }
+.push-box h5 { margin: 0 0 4px; font-size: 13.5px; }
+.push-box p { margin: 0 0 8px; color: var(--text-dim); font-size: 12px; line-height: 1.5; }
+.push-state { display: inline-block; margin-bottom: 8px; padding: 2px 9px; border-radius: 999px; background: #f2f4f7; color: var(--text-dim); font-size: 12px; font-weight: 700; }
+.push-state.on { background: #ecfdf3; color: #027a48; }
+/* toast with an action button ("เลิกทำ") */
+.toast.has-action { pointer-events: auto; display: flex; align-items: center; gap: 12px; text-align: left; }
+.toast-act { flex: 0 0 auto; padding: 4px 12px; border: 1px solid rgba(255,255,255,.35); border-radius: 6px; background: transparent; color: #fff; font: inherit; font-weight: 700; cursor: pointer; }
+.toast-act:hover { background: rgba(255,255,255,.12); }
+/* 🗑️ trash (deleted tasks, 30 days) + 🕘 board history */
+.sb-trash-btn { width: 100%; margin-top: 6px; color: var(--text-dim); font-size: 12.5px; }
+.sb-trash-btn .sb-trash-n { margin-left: 4px; padding: 0 6px; border-radius: 9px; background: #f2f4f7; font-size: 11px; font-weight: 700; }
+.trash-list, .hist-list { display: flex; flex-direction: column; gap: 8px; }
+.trash-row, .hist-row { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; background: #fff; }
+.trash-main, .hist-main { flex: 1; min-width: 0; }
+.trash-title, .hist-title { font-weight: 600; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.trash-meta, .hist-meta { margin-top: 2px; color: var(--text-dim); font-size: 12px; }
+.trash-left { color: #b54708; font-weight: 600; }
+.trash-empty, .hist-empty { padding: 30px 10px; color: var(--text-faint); text-align: center; font-size: 13.5px; }
+.hist-tag { display: inline-block; margin-left: 6px; padding: 1px 7px; border-radius: 6px; background: #f2f4f7; color: var(--text-dim); font-size: 11px; font-weight: 600; }
+.hist-tag.manual { background: #eef0ff; color: var(--accent); }
+.hist-tag.before-restore { background: #fff4e5; color: #b54708; }
+.hist-tag.deleted { background: #fef3f2; color: var(--danger); }
+.hist-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 12px; }
+.hist-bar select { padding: 6px 10px; border: 1px solid var(--border-strong); border-radius: 8px; font: inherit; background: #fff; }
+.restore-opts { display: flex; flex-direction: column; gap: 8px; margin: 4px 0 14px; }
+.restore-opt { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; cursor: pointer; }
+.restore-opt:has(input:checked) { border-color: var(--accent); background: #f8f7ff; }
+.restore-opt b { display: block; font-size: 13.5px; }
+.restore-opt span { color: var(--text-dim); font-size: 12px; }
 /* in-app confirm dialog (replaces browser confirm()) */
 .confirm-overlay { z-index: 200; }
 .confirm-dialog {
@@ -1636,6 +1702,12 @@ body.chip-dragging .task-chip.span-bar { pointer-events: none; }   /* let the da
 }
 .priority-btn:hover { background: #f9fafb; }
 .priority-btn.active { border-color: var(--text); background: #f3f4f6; font-weight: 600; }
+/* "👤 งานของฉัน" toggle (per person, localStorage) */
+.mine-btn { display: inline-flex; align-items: center; gap: 5px; }
+.mine-btn svg { width: 14px; height: 14px; }
+.mine-btn.active { border-color: var(--accent); background: #eef0ff; color: var(--accent); }
+/* alert popup: which calendar an alert comes from (bell covers every board) */
+.alert-board { padding: 1px 8px; border-radius: 6px; background: #eef0ff; color: var(--accent); font-size: 11.5px; font-weight: 700; }
 .priority-flag { font-size: 12px; }
 
 /* status editor modal */
@@ -1977,6 +2049,7 @@ body.chip-dragging .task-chip.span-bar { pointer-events: none; }   /* let the da
     <div class="sb-section">
       <button class="btn" id="btnDrawReq">📐 ยื่นขอแบบ</button>
       <button class="btn dr-import-btn" id="btnImportReq" style="margin-top:6px">📥 ดึงคำขอจากฟอร์ม<span class="tb-bell-badge" id="importReqBadge" hidden>0</span></button>
+      <button class="btn btn-sm btn-ghost sb-trash-btn" id="btnTrash" style="display:none" title="งานที่ลบ — กู้คืนได้ภายใน 30 วัน">🗑️ ถังขยะ<span class="sb-trash-n">0</span></button>
     </div>
 
     <div class="sb-section sb-dept">
@@ -2030,10 +2103,14 @@ body.chip-dragging .task-chip.span-bar { pointer-events: none; }   /* let the da
         <button class="priority-btn" data-pri="urgent"><span class="pri-flag" style="color:#ef4444">⚑</span> ด่วน</button>
         <button class="priority-btn" data-pri="high"><span class="pri-flag" style="color:#f97316">⚑</span> สูง</button>
       </div>
+      <div class="priority-selector">
+        <button class="priority-btn mine-btn" id="btnMine" title="แสดงเฉพาะงานที่มอบหมายให้ฉัน หรือมีคนกล่าวถึง/แจ้งเตือนถึงฉัน">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>งานของฉัน</button>
+      </div>
       <div class="spacer"></div>
       <div class="tb-right">
         <div class="legend" id="legend"></div>
-        <button class="btn btn-sm tb-bell" id="btnBell" title="การแจ้งเตือนของแผนกฉัน">🔔<span class="tb-bell-badge" id="bellBadge" hidden>0</span></button>
+        <button class="btn btn-sm tb-bell" id="btnBell" title="การแจ้งเตือนถึงฉัน/แผนกฉัน — รวมทุกปฏิทิน">🔔<span class="tb-bell-badge" id="bellBadge" hidden>0</span></button>
         <button class="tb-add" id="btnQuickAdd" title="เพิ่มงานใหม่" aria-label="เพิ่มงานใหม่">
           <span class="tb-add-icon">+</span><span class="tb-add-text">เพิ่มงานใหม่</span>
         </button>
@@ -2081,6 +2158,10 @@ const MAX_ATTACH_BYTES = 25 * 1024 * 1024;
 // "Google Drive API" (API restrictions) and the github.io referrer. If it doesn't, the viewer falls back to the
 // Apps Script download (whole file, slower).
 const GOOGLE_API_KEY = "AIzaSyB2c-4aFxgZ7PaIFF1mnmT8rvt8lTDE0ls";   // Apps Script request limit (~50MB) after base64 (+33%)
+// web push (slice 5b): PUBLIC half of the VAPID key pair — the private half lives only in the Supabase
+// Edge Function secrets (handoff\vapid-keys-PRIVATE.txt), never in this file
+const VAPID_PUBLIC_KEY = "BJNM2XJxJcsKmiY3xdAUaY3KGMmM9EHRr9_fU012nnOxnJUvxGMlLwA_XjZ0eNaFpbLvsPc8sFeuGFg9d4v__ys";
+const PUSH_FUNCTION = "send-push";
 let _supabaseClient = null;
 function getSupabase() {
   if (!_supabaseClient && window.supabase && window.supabase.createClient) {
@@ -2218,7 +2299,11 @@ function notifyAssigneeChanges(before, task) {
   if (!Array.isArray(task.comments)) task.comments = [];
   now.filter(id => !prev.has(id)).forEach(id => {
     logActivity(task, `มอบหมายงานให้ ${personName(teamProfiles.get(id))}`);
-    if (id !== me) task.comments.push({ id: uid("al"), type: "alert", author: currentUser(), toUser: id, text: "📌 มอบหมายงานนี้ให้คุณ", at: Date.now(), ack: false });
+    if (id !== me) {
+      const c = { id: uid("al"), type: "alert", author: currentUser(), toUser: id, text: "📌 มอบหมายงานนี้ให้คุณ", at: Date.now(), ack: false };
+      task.comments.push(c);
+      pushForComment(task, c);
+    }
   });
   [...prev].filter(id => !now.includes(id)).forEach(id => {
     logActivity(task, `ยกเลิกมอบหมาย ${personName(teamProfiles.get(id))}`);
@@ -2488,6 +2573,7 @@ function openMyProfileModal() {
         </div>
         <div class="field"><label>ชื่อที่แสดง</label><input type="text" data-name maxlength="60" placeholder="ชื่อของคุณ"></div>
         <p class="settings-desc">อีเมล <b>${escapeHtml(currentProfile.email || "")}</b> · สิทธิ์ <b>${isAdmin() ? "admin" : "member"}</b> · แผนก <b data-deptname></b><br>สิทธิ์และแผนกแก้ได้โดยผู้ดูแลระบบ (admin) เท่านั้น</p>
+        <div class="push-box" data-push></div>
         <div class="login-msg" data-msg></div>
       </div>
       <div class="modal-foot"><button class="btn" data-act="close">ยกเลิก</button><button class="btn btn-primary" data-save>บันทึก</button></div>
@@ -2498,6 +2584,7 @@ function openMyProfileModal() {
   nameInput.value = currentProfile.display_name || "";
   const dept = currentProfile.dept_id ? getDept(currentProfile.dept_id) : null;
   q("[data-deptname]").textContent = dept ? dept.name : (currentProfile.dept_id || "— ไม่ระบุ —");
+  renderPushControl(q("[data-push]"));
   const paint = () => {
     const nm = (nameInput.value || currentProfile.email || "?").trim();
     q("[data-preview]").innerHTML = avatar ? `<img src="${escapeHtml(avatar)}" alt="">` : escapeHtml(nm.charAt(0).toUpperCase() || "?");
@@ -2671,13 +2758,20 @@ function dateLimitMsg(deptId, maxIso) {
   return `แผนก “${dn}” ตั้งวันเกินแผนก “${an}” (${formatDateTH(maxIso)}) ไม่ได้`;
 }
 // transient toast notification (auto-hides)
-function toast(msg) {
+function toast(msg, action) {
   let el = document.getElementById("appToast");
   if (!el) { el = document.createElement("div"); el.id = "appToast"; el.className = "toast"; document.body.appendChild(el); }
   el.textContent = msg;
+  el.classList.toggle("has-action", !!action);
+  if (action) {   // { label, run, ms } — e.g. "เลิกทำ" after deleting a task
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "toast-act"; b.textContent = action.label;
+    b.addEventListener("click", () => { el.classList.remove("show"); action.run(); });
+    el.appendChild(b);
+  }
   el.classList.add("show");
   clearTimeout(toast._t);
-  toast._t = setTimeout(() => el.classList.remove("show"), 2800);
+  toast._t = setTimeout(() => el.classList.remove("show"), action ? (action.ms || 8000) : 2800);
 }
 // ★ "my department". The admin-assigned one on the signed-in profile wins (it's per-PERSON and
 // applies to every board); the old per-board setting is the fallback for anyone with none assigned.
@@ -2903,7 +2997,7 @@ function setBoard(id) {
   applyMyDeptDefaultView();   // each board defaults to its own user's department
   saveState();
   renderAll();
-  checkAlerts();   // pop any unacknowledged alerts for the board we just switched to
+  renderBell();   // the bell/popup already cover every board — no re-pop on each switch
 }
 
 /* Migrate older saved data:
@@ -2986,6 +3080,8 @@ function migrateState(s) {
       ? s.checklistTemplate.slice() : [...DEFAULT_CHECKLIST];
   }
   delete s.checklistTemplate;
+  // 🗑️ deleted tasks wait here 30 days before they're gone for good: [{ id (= task id), task, deletedAt, deletedBy }]
+  if (!Array.isArray(s.trash)) s.trash = [];
   const fallbackDeptId = qcDept ? qcDept.id : (s.departments[0] && s.departments[0].id);
   (s.tasks || []).forEach(t => {
     if (!Array.isArray(t.subtasks)) t.subtasks = [];
@@ -3035,6 +3131,8 @@ let _cloudSaveTimer = null;
 //   Nothing is pushed until `_cloudReady`; a failed load retries in the background.
 let _cloudReady = false, _cloudRetryTimer = null, _offlineEditWarned = false;
 const _boardBaseAt = {};   // board id → cloud updated_at (ms) of the version this device's copy is based on
+const _boardBaseIso = {};  // same, as the exact string the server returned — used for the compare-and-swap update
+function setBoardBase(id, iso) { _boardBaseIso[id] = iso; _boardBaseAt[id] = tsMs(iso); }
 const tsMs = (v) => { const n = Date.parse(v); return isNaN(n) ? 0 : n; };
 function scheduleCloudSave() {
   if (!currentProfile) return;   // not signed in yet (e.g. still on the login screen) — nothing to push
@@ -3052,36 +3150,168 @@ function scheduleCloudSave() {
 // slice 3 has every device listening for changes on every board row — pushing a board whose content
 // didn't actually change would spam other devices' realtime handlers for nothing, so skip those.
 const _lastPushedJson = {};
+
+/* ----- task-level 3-way merge (two people editing the same board at the same time) -----
+   base  = the cloud version this device's copy started from (= _lastPushedJson[id])
+   local = this device's copy · cloud = the newer copy someone else saved meanwhile.
+   Whatever each side changed since `base` is kept. Arrays of objects are matched by `id` (tasks, cabinets,
+   comments, checklist items, statuses, departments, fields...) or `deptId` (department stages), objects
+   key by key, lists of plain values as sets (assignees, mentions...). Only a TRUE conflict — both
+   changed the very same value — is decided, and then this device (the one saving now) wins.
+   Deleting something the other side edited meanwhile keeps their edit (never silently lose work). */
+function deepEq(a, b) {
+  if (a === b) return true;
+  if (a === null || b === null || typeof a !== "object" || typeof b !== "object") return false;
+  if (Array.isArray(a) !== Array.isArray(b)) return false;
+  if (Array.isArray(a)) {
+    if (a.length !== b.length) return false;
+    for (let i = 0; i < a.length; i++) if (!deepEq(a[i], b[i])) return false;
+    return true;
+  }
+  const ka = Object.keys(a).filter(k => a[k] !== undefined), kb = Object.keys(b).filter(k => b[k] !== undefined);
+  if (ka.length !== kb.length) return false;
+  for (const k of ka) if (!deepEq(a[k], b[k])) return false;
+  return true;
+}
+const isPlainObj = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
+function mergeKeyOf(x) {
+  if (!isPlainObj(x)) return undefined;
+  if (typeof x.id === "string" || typeof x.id === "number") return "i:" + x.id;
+  if (typeof x.deptId === "string") return "d:" + x.deptId;
+  return undefined;
+}
+const isKeyedArr = (v) => Array.isArray(v) && v.every(x => mergeKeyOf(x) !== undefined);
+const isPrimArr = (v) => Array.isArray(v) && v.every(x => x === null || typeof x !== "object");
+function merge3(base, local, cloud) {
+  if (deepEq(local, base)) return cloud;                         // I didn't touch it → theirs
+  if (deepEq(cloud, base) || deepEq(local, cloud)) return local;   // they didn't touch it → mine
+  if (Array.isArray(local) && Array.isArray(cloud)) {
+    if (isKeyedArr(local) && isKeyedArr(cloud) && (local.length || cloud.length)) return mergeKeyed(Array.isArray(base) ? base : [], local, cloud);
+    if (isPrimArr(local) && isPrimArr(cloud)) {                  // set semantics: their list − what I removed + what I added
+      const b = isPrimArr(base) ? base : [];
+      const out = cloud.filter(x => !(b.includes(x) && !local.includes(x)));
+      local.forEach(x => { if (!b.includes(x) && !out.includes(x)) out.push(x); });
+      return out;
+    }
+    return local;
+  }
+  if (isPlainObj(local) && isPlainObj(cloud)) {
+    const b = isPlainObj(base) ? base : {};
+    const out = {};
+    new Set([...Object.keys(cloud), ...Object.keys(local)]).forEach(k => {
+      const v = merge3(b[k], local[k], cloud[k]);
+      if (v !== undefined) out[k] = v;
+    });
+    return out;
+  }
+  return local;
+}
+function mergeKeyed(base, local, cloud) {
+  const bMap = new Map(), lMap = new Map(), cKeys = new Set();
+  base.forEach(x => { const k = mergeKeyOf(x); if (k !== undefined) bMap.set(k, x); });
+  local.forEach(x => lMap.set(mergeKeyOf(x), x));
+  cloud.forEach(x => cKeys.add(mergeKeyOf(x)));
+  const out = [];
+  cloud.forEach(c => {
+    const k = mergeKeyOf(c), l = lMap.get(k), b = bMap.get(k);
+    if (l !== undefined) out.push(merge3(b, l, c));
+    else if (b === undefined || !deepEq(c, b)) out.push(c);      // new on their side, or they edited what I deleted → keep
+  });
+  local.forEach((l, i) => {
+    const k = mergeKeyOf(l);
+    if (cKeys.has(k)) return;
+    const b = bMap.get(k);
+    if (b !== undefined && deepEq(l, b)) return;                 // they deleted it and I didn't touch it → stays deleted
+    let pos = out.length;                                        // new on my side → right after its neighbour in my order
+    for (let j = i - 1; j >= 0; j--) {
+      const pk = mergeKeyOf(local[j]); const idx = out.findIndex(o => mergeKeyOf(o) === pk);
+      if (idx >= 0) { pos = idx + 1; break; }
+    }
+    out.splice(pos, 0, l);
+  });
+  return out;
+}
+// fold another device's newer copy of a board into this device's copy (keeps both sides' edits)
+function mergeBoardInto(id, cloudWs, cloudIso) {
+  let base = null;
+  try { base = _lastPushedJson[id] ? JSON.parse(_lastPushedJson[id]) : null; } catch (_) {}
+  const local = root.boards[id];
+  const merged = (base && local) ? merge3(base, local, cloudWs) : cloudWs;
+  // I moved a task to the trash while they were still editing it → their edit keeps it alive (never two copies)
+  if (Array.isArray(merged.trash) && Array.isArray(merged.tasks)) {
+    const live = new Set(merged.tasks.map(t => t.id));
+    merged.trash = merged.trash.filter(x => !live.has(x.id));
+  }
+  migrateState(merged);
+  root.boards[id] = merged;
+  _lastPushedJson[id] = JSON.stringify(cloudWs);   // new base = their version; my part is still "unsent"
+  setBoardBase(id, cloudIso);
+  if (id === root.activeBoard) state = merged;
+  return merged;
+}
+
+// ★ pushes are serialized (one at a time) and every write is a compare-and-swap: UPDATE … WHERE
+//   updated_at = <the version my copy is based on>. 0 rows updated = someone saved in between → fetch
+//   their copy, merge it with mine task by task (merge3), and try again. No more "your last edit
+//   wasn't saved, please redo it", and no window where a stale copy can overwrite a newer one.
+let _pushBusy = false, _pushAgain = false;
 async function pushAllBoardsToCloud() {
   const sb = getSupabase();
   if (!sb || !currentProfile) return;
-  const changed = (root.boardMeta || [])
-    .map(b => ({ b, json: JSON.stringify(root.boards[b.id]) }))
-    .filter(x => _lastPushedJson[x.b.id] !== x.json);
-  if (!changed.length) return;
-  // ★ stale-copy guard: if another device saved a board after the version we're based on (e.g. this iPad
-  //   tab slept and missed realtime updates), DON'T overwrite it — take the newer cloud copy instead.
-  try {
-    const { data: heads, error: headErr } = await sb.from("boards").select("id,updated_at").in("id", changed.map(x => x.b.id));
-    if (!headErr && Array.isArray(heads)) {
-      const newer = heads.filter(h => _boardBaseAt[h.id] && tsMs(h.updated_at) > _boardBaseAt[h.id]).map(h => h.id);
-      if (newer.length) {
-        await adoptCloudBoards(newer);
-        toast("⚠️ มีการแก้ไขบอร์ดนี้จากเครื่องอื่นระหว่างนี้ — โหลดข้อมูลล่าสุดแล้ว การแก้ไขล่าสุดของคุณยังไม่ถูกบันทึก กรุณาทำอีกครั้ง");
-        for (let i = changed.length - 1; i >= 0; i--) if (newer.includes(changed[i].b.id)) changed.splice(i, 1);
-        if (!changed.length) return;
+  if (_pushBusy) { _pushAgain = true; return; }
+  _pushBusy = true;
+  try { await pushChangedBoards(sb); }
+  catch (e) { toast("⚠️ บันทึกขึ้น cloud ไม่สำเร็จ (บันทึกในเครื่องไว้แล้ว): " + (e.message || e)); }
+  finally {
+    _pushBusy = false;
+    if (_pushAgain) { _pushAgain = false; pushAllBoardsToCloud(); }
+  }
+}
+async function pushChangedBoards(sb) {
+  const changed = (root.boardMeta || []).filter(b => root.boards[b.id] && _lastPushedJson[b.id] !== JSON.stringify(root.boards[b.id]));
+  let mergedAny = false;
+  for (const b of changed) {
+    let formatRetry = false;
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const data = root.boards[b.id];
+      const json = JSON.stringify(data);
+      if (_lastPushedJson[b.id] === json) break;   // nothing left to send (e.g. a merge made it equal)
+      const stamp = new Date().toISOString();
+      const row = { name: b.name, data, updated_at: stamp, updated_by: currentProfile.display_name, updated_by_client: _clientId };
+      const baseIso = _boardBaseIso[b.id];
+      let res;
+      if (baseIso && !formatRetry) res = await sb.from("boards").update(row).eq("id", b.id).eq("updated_at", baseIso).select("id");
+      else if (baseIso) res = await sb.from("boards").update(row).eq("id", b.id).select("id");   // see formatRetry below
+      else res = await sb.from("boards").upsert({ id: b.id, ...row }).select("id");             // board not in the cloud yet
+      if (res.error) { toast("⚠️ บันทึกขึ้น cloud ไม่สำเร็จ (บันทึกในเครื่องไว้แล้ว): " + res.error.message); return; }
+      if (Array.isArray(res.data) && res.data.length) {
+        _lastPushedJson[b.id] = json;
+        setBoardBase(b.id, stamp);
+        break;
       }
+      // 0 rows → the cloud row changed since my base (or was removed) → merge and retry
+      const cur = await sb.from("boards").select("*").eq("id", b.id);
+      if (cur.error) { toast("⚠️ บันทึกขึ้น cloud ไม่สำเร็จ: " + cur.error.message); return; }
+      const cloudRow = (cur.data || [])[0];
+      if (!cloudRow) { delete _boardBaseIso[b.id]; continue; }   // row gone → insert it again
+      if (tsMs(cloudRow.updated_at) === tsMs(baseIso)) {
+        // same instant, different spelling of the timestamp → not a real conflict
+        if (_boardBaseIso[b.id] !== cloudRow.updated_at) { _boardBaseIso[b.id] = cloudRow.updated_at; continue; }
+        formatRetry = true; continue;
+      }
+      const before = root.boards[b.id];
+      const oldById = {}; ((before && before.tasks) || []).forEach(t => oldById[t.id] = t);
+      migrateState(cloudRow.data);
+      notifyRemoteBoardChange(cloudRow.data, cloudRow.data.tasks || [], oldById);
+      mergeBoardInto(b.id, cloudRow.data, cloudRow.updated_at);
+      mergedAny = true;
     }
-  } catch (_) { /* check failed (offline?) — the upsert below will fail too and be retried */ }
-  const stamp = new Date().toISOString();
-  const rows = changed.map(({ b }) => ({
-    id: b.id, name: b.name, data: root.boards[b.id],
-    updated_at: stamp, updated_by: currentProfile.display_name, updated_by_client: _clientId,
-  }));
-  const { error } = await sb.from("boards").upsert(rows);
-  if (error) { toast("⚠️ บันทึกขึ้น cloud ไม่สำเร็จ (บันทึกในเครื่องไว้แล้ว): " + error.message); return; }
-  // mark as pushed ONLY after success — marking first meant a failed save was never retried
-  changed.forEach(({ b, json }) => { _lastPushedJson[b.id] = json; _boardBaseAt[b.id] = tsMs(stamp); });
+  }
+  if (mergedAny) {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(root)); } catch (_) {}
+    renderAll();
+    toast("🔀 มีคนแก้บอร์ดนี้พร้อมกัน — รวมการแก้ไขของทั้งสองฝ่ายให้แล้ว");
+  }
 }
 // replace the given boards in memory with the cloud's current copies (after a detected conflict / on resume)
 async function adoptCloudBoards(ids) {
@@ -3093,7 +3323,7 @@ async function adoptCloudBoards(ids) {
     migrateState(row.data);
     root.boards[row.id] = row.data;
     _lastPushedJson[row.id] = JSON.stringify(row.data);
-    _boardBaseAt[row.id] = tsMs(row.updated_at);
+    setBoardBase(row.id, row.updated_at);
     const meta = root.boardMeta.find(b => b.id === row.id);
     if (meta) meta.name = row.name; else root.boardMeta.push({ id: row.id, name: row.name });
   });
@@ -3143,7 +3373,7 @@ async function syncRootFromCloud() {
   root.boardMeta = boardMeta;
   root.boards = boards;
   Object.keys(boards).forEach(id => { _lastPushedJson[id] = JSON.stringify(boards[id]); });   // this IS the cloud's current content — don't re-push it unchanged
-  data.forEach(row => { _boardBaseAt[row.id] = tsMs(row.updated_at); });
+  data.forEach(row => setBoardBase(row.id, row.updated_at));
   _cloudReady = true;
   // clouds created before the Service calendar existed won't have it yet → add it here and push it up
   const hadService = !!root.boards[SERVICE_BOARD];
@@ -3183,10 +3413,10 @@ function notifyRemoteBoardChange(ws, newTasks, oldTasksById) {
     const oldIds = new Set(((before && before.comments) || []).map(c => c.id));
     (t.comments || []).forEach(c => {
       if (!oldIds.has(c.id) && Array.isArray(c.mentions) && c.mentions.includes(meId) && (notify.comment || notify.alert)) {
-        try { new Notification("💬 มีคนกล่าวถึงคุณ", { body: `${t.title} · ${c.author || ""}: ${c.text || ""}`.slice(0, 180), tag: "rt-men-" + c.id, renotify: true }); } catch (e) {}
+        try { sysNotify("💬 มีคนกล่าวถึงคุณ", { body: `${t.title} · ${c.author || ""}: ${c.text || ""}`.slice(0, 180), tag: "rt-men-" + c.id, renotify: true }); } catch (e) {}
       }
       if (notify.alert && c.type === "alert" && !c.ack && c.toUser === meId && !oldIds.has(c.id)) {
-        try { new Notification("📌 มีงานมอบหมายให้คุณ", { body: `${t.title}${c.author ? " · จาก " + c.author : ""}`, tag: "rt-asg-" + c.id, renotify: true }); } catch (e) {}
+        try { sysNotify("📌 มีงานมอบหมายให้คุณ", { body: `${t.title}${c.author ? " · จาก " + c.author : ""}`, tag: "rt-asg-" + c.id, renotify: true }); } catch (e) {}
       }
     });
   });
@@ -3198,7 +3428,7 @@ function notifyRemoteBoardChange(ws, newTasks, oldTasksById) {
   //   the local rule in taskRelevantToMe/pendingAlerts). Exception: "notify me about everything" mode.
   if (!myDept && notify.onlyMyDept) return;
   const relevant = t => !notify.onlyMyDept || (meId && (t.assignees || []).includes(meId)) || (myDept && (t.deptStages || []).some(s => s.deptId === myDept));
-  const fire = (type, title, body, tag) => { if (notify[type]) { try { new Notification(title, { body: body || "", tag, renotify: true }); } catch (e) {} } };
+  const fire = (type, title, body, tag) => { if (notify[type]) sysNotify(title, { body: body || "", tag, renotify: true }); };
   newTasks.forEach(t => {
     const before = oldTasksById[t.id];
     if (!before || !relevant(t)) return;   // brand-new task (no prior snapshot) or not my department — nothing to diff/notify
@@ -3228,17 +3458,23 @@ function handleRealtimeBoardChange(payload) {
     const oldTasksById = {}; (oldWs.tasks || []).forEach(t => oldTasksById[t.id] = t);
     notifyRemoteBoardChange(newWs, newWs.tasks || [], oldTasksById);
   }
-  // don't clobber an edit in progress on THIS board on THIS device — our own debounced push wins
-  // shortly after anyway (last-write-wins, same rule slice 2b already established)
-  if (_cloudSaveTimer && root.activeBoard === row.id) return;
+  // this device has unsent edits on that board → merge (keep both sides) instead of dropping either one;
+  // the pending push then sends the merged copy with the new base
+  const pendBefore = new Set(pendingAlerts().filter(x => x.boardId === row.id).map(x => x.c.id));
   const isNewBoard = !root.boards[row.id];
-  root.boards[row.id] = newWs;
-  _lastPushedJson[row.id] = JSON.stringify(newWs);
-  _boardBaseAt[row.id] = tsMs(row.updated_at);
+  const unsent = !isNewBoard && _lastPushedJson[row.id] !== undefined && _lastPushedJson[row.id] !== JSON.stringify(oldWs);
+  if (unsent) { mergeBoardInto(row.id, newWs, row.updated_at); if (!_cloudSaveTimer) scheduleCloudSave(); }
+  else {
+    root.boards[row.id] = newWs;
+    _lastPushedJson[row.id] = JSON.stringify(newWs);
+    setBoardBase(row.id, row.updated_at);
+  }
   if (isNewBoard && !root.boardMeta.some(b => b.id === row.id)) root.boardMeta.push({ id: row.id, name: row.name });
   localStorage.setItem(STORAGE_KEY, JSON.stringify(root));
-  if (row.id === root.activeBoard) { state = root.boards[root.activeBoard]; renderAll(); if (pendingAlerts().length) openAlertPopup(); }
-  else renderBoardSwitcher();   // new/renamed board from another device shows up in the sidebar right away
+  if (row.id === root.activeBoard) { state = root.boards[root.activeBoard]; renderAll(); }
+  else { renderBoardSwitcher(); renderBell(); }   // new/renamed board from another device shows up in the sidebar right away
+  // something NEW waiting for me (in any calendar) → pop it; already-seen items stay on the bell
+  if (pendingAlerts().some(x => x.boardId === row.id && !pendBefore.has(x.c.id))) openAlertPopup();
 }
 function uid(prefix = "id") {
   return prefix + "_" + Math.random().toString(36).slice(2, 9) + Date.now().toString(36).slice(-4);
@@ -3760,6 +3996,8 @@ function buildDeptItems(tasks, deptIds) {
   const byCab = !!(state.settings && state.settings.deptCalByCabinet);
   const push = (iso, item) => { if (iso) (out[iso] = out[iso] || []).push(item); };
   tasks.forEach(t => {
+    // ★ a task assigned to me shows on my calendar even when it has no stage for my department
+    if (isAssignedToMe(t) && !depts.some(d => taskStage(t, d))) push(t.date, { kind: "project", task: t, position: "single" });
     depts.forEach(deptId => {
       const stg = taskStage(t, deptId);
       if (!stg) return;
@@ -3883,14 +4121,27 @@ function renderDeptCabChip(t, stage, sub) {
   return chip;
 }
 
+// "👤 งานของฉัน" — personal, so it lives in localStorage (state.settings is shared by everyone)
+const MINE_KEY = "qc_filter_mine";
+function mineFilterOn() { try { return localStorage.getItem(MINE_KEY) === "1"; } catch (_) { return false; } }
+function setMineFilter(on) { try { localStorage.setItem(MINE_KEY, on ? "1" : "0"); } catch (_) {} }
+// mine = assigned to me, or any comment that mentions me / is a personal alert to me
+function isMyTask(t) {
+  const me = currentProfile && currentProfile.id;
+  if (!me) return false;
+  if ((t.assignees || []).includes(me)) return true;
+  return (t.comments || []).some(c => (Array.isArray(c.mentions) && c.mentions.includes(me)) || c.toUser === me);
+}
 function currentFilter() {
   return {
     search: (document.getElementById("searchInput").value || "").trim().toLowerCase(),
     priority: state.settings.filterPriority || "all",
+    mine: mineFilterOn(),
   };
 }
 function matchesFilter(filter) {
   return (t) => {
+    if (filter.mine && !isMyTask(t)) return false;
     if (filter.priority && filter.priority !== "all" && t.priority !== filter.priority) return false;
     if (filter.search) {
       const hay = (t.title + " " + (t.description||"") + " " + (t.labels||[]).join(" ")).toLowerCase();
@@ -4430,8 +4681,10 @@ function routeDrawingRequest({ kind, project, dwg, due, detail, submitter, sales
 
   if (kind === "structure") {
     const ws = root.boards.drawing;
-    ws.tasks.push(buildReqTask(ws, project, due, detail, reqMeta, summary, photo, files, driveFolderId));
+    const nt = buildReqTask(ws, project, due, detail, reqMeta, summary, photo, files, driveFolderId);
+    ws.tasks.push(nt);
     saveState(); renderAll();
+    pushForComment(nt, nt.comments[0], "drawing");
     pushNotify("alert", "📐 คำขอเขียนแบบโครงสร้างใหม่", `${project} · DWG ${dwg}`, "dr-" + Date.now());
     return { boardName: "เขียนแบบโครงสร้าง", attached: false, title: project };
   }
@@ -4445,15 +4698,19 @@ function routeDrawingRequest({ kind, project, dwg, due, detail, submitter, sales
       else if (!stg.due) stg.due = due;
     }
     if (!Array.isArray(existing.comments)) existing.comments = [];
-    existing.comments.push({ id: uid("al"), type: "alert", author: submitter, toDept: dept && dept.id, text: summary, photo: photo || null, ...(files && files.length ? { files } : {}), at: Date.now(), ack: false });
+    const ac = { id: uid("al"), type: "alert", author: submitter, toDept: dept && dept.id, text: summary, photo: photo || null, ...(files && files.length ? { files } : {}), at: Date.now(), ack: false };
+    existing.comments.push(ac);
+    pushForComment(existing, ac);
     if (driveFolderId && !existing.driveFolderId) existing.driveFolderId = driveFolderId;
     existing.request = reqMeta; existing.updatedAt = Date.now();
     saveState(); renderAll();
     pushNotify("alert", "📐 ขอเขียนแบบวงจร", `${existing.title} · DWG ${dwg}`, "dr-" + existing.id);
     return { boardName: (root.boardMeta.find(b => b.id === root.activeBoard) || {}).name, attached: true, title: existing.title };
   }
-  state.tasks.push(buildReqTask(state, project, due, detail, reqMeta, summary, photo, files, driveFolderId));
+  const nt = buildReqTask(state, project, due, detail, reqMeta, summary, photo, files, driveFolderId);
+  state.tasks.push(nt);
   saveState(); renderAll();
+  pushForComment(nt, nt.comments[0]);
   pushNotify("alert", "📐 ขอเขียนแบบวงจร (งานใหม่)", `${project} · DWG ${dwg}`, "dr-" + Date.now());
   return { boardName: (root.boardMeta.find(b => b.id === root.activeBoard) || {}).name, attached: false, title: project };
 }
@@ -5271,11 +5528,15 @@ function openTaskModal(taskId, defaults={}) {
     const lbl = attachLabel(photo, files);
     if (toDept) {
       const dept = getDept(toDept) || { name: toDept };
-      task.comments.push({ id: uid("al"), type: "alert", author: currentUser(), toDept, text, photo: photo || null, ...att, at: Date.now(), ack: false });
+      const c = { id: uid("al"), type: "alert", author: currentUser(), toDept, text, photo: photo || null, ...att, at: Date.now(), ack: false };
+      task.comments.push(c);
+      pushForComment(task, c);
       toast(`ส่งแจ้งเตือนไปแผนก “${dept.name}” แล้ว`);
       pushNotify("alert", `🔔 แจ้งเตือนถึงแผนก ${dept.name}`, `${task.title}: ${text || lbl}`, "al-" + task.id);
     } else {
-      task.comments.push({ id: uid("cm"), author: currentUser(), text, photo: photo || null, ...att, at: Date.now() });
+      const c = { id: uid("cm"), author: currentUser(), text, photo: photo || null, ...att, at: Date.now() };
+      task.comments.push(c);
+      pushForComment(task, c);
       if (taskRelevantToMe(task)) pushNotify("comment", "💬 คอมเมนต์ใหม่", `${task.title} · ${currentUser()}: ${text || lbl}`, "cm-" + task.id);
     }
     commentInput.value = "";
@@ -5338,16 +5599,16 @@ function openTaskModal(taskId, defaults={}) {
       if (!canFull()) { permDenied("สิทธิ์ของคุณลบงานไม่ได้"); return; }
       const ok = await confirmDialog({
         title: "ลบงานนี้?",
-        message: `“${task.title || "งานนี้"}” จะถูกลบถาวร พร้อมตู้และ checklist ทั้งหมด — ย้อนกลับไม่ได้`
-          + (driveConfigured() ? " · ไฟล์แนบใน Google Drive จะถูกย้ายไปถังขยะ (กู้คืนได้ใน 30 วัน)" : ""),
+        message: `“${task.title || "งานนี้"}” จะย้ายไปถังขยะ (พร้อมตู้ เช็คลิสต์ และไฟล์แนบ) — กู้คืนได้ภายใน ${TRASH_DAYS} วัน`,
         confirmText: "ลบงาน",
       });
       if (!ok) return;
-      trashTaskDrive(state.tasks.find(t => t.id === task.id) || task);
-      state.tasks = state.tasks.filter(t => t.id !== task.id);
-      saveState();
+      const real = state.tasks.find(t => t.id === task.id);
+      if (!real) { close(); return; }   // brand-new task that was never saved
+      moveTaskToTrash(real);
       close();
       renderAll();
+      toast(`🗑️ ย้าย “${real.title || "งานนี้"}” ไปถังขยะแล้ว`, { label: "เลิกทำ", run: () => restoreFromTrash(real.id) });
     });
   }
   const dupBtn = modal.querySelector('[data-act="duplicate"]');
@@ -5952,6 +6213,7 @@ function openSettingsModal(initialTab = "statuses") {
           <button class="settings-nav-item" data-tab="checklist">🧾 เช็คลิสต์ตู้</button>
           <button class="settings-nav-item" data-tab="display">🖥️ การแสดงผล</button>
           <button class="settings-nav-item" data-tab="notify">🔔 การแจ้งเตือน</button>
+          <button class="settings-nav-item" data-tab="history">🕘 ประวัติ/กู้คืน</button>
           <button class="settings-nav-item" data-tab="data">💾 ข้อมูล</button>
         </nav>
         <div class="settings-content" data-content></div>
@@ -5962,7 +6224,7 @@ function openSettingsModal(initialTab = "statuses") {
 
   const content = overlay.querySelector('[data-content]');
   const navBtns = [...overlay.querySelectorAll('.settings-nav-item')];
-  const PANELS = { user: buildUserPanel, users: buildUsersAdminPanel, statuses: buildStatusesPanel, departments: buildDeptsPanel, fields: buildFieldsPanel, checklist: buildChecklistTemplatePanel, display: buildDisplayPanel, notify: buildNotifyPanel, data: buildDataPanel };
+  const PANELS = { user: buildUserPanel, users: buildUsersAdminPanel, statuses: buildStatusesPanel, departments: buildDeptsPanel, fields: buildFieldsPanel, checklist: buildChecklistTemplatePanel, display: buildDisplayPanel, notify: buildNotifyPanel, history: buildHistoryPanel, data: buildDataPanel };
 
   function showTab(tab) {
     navBtns.forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
@@ -6754,8 +7016,8 @@ function buildNotifyPanel(container) {
   }));
   sec.querySelector('[data-act="test"]').addEventListener("click", () => {
     if (!NOTIF_SUPPORTED) { toast("เบราว์เซอร์นี้ไม่รองรับการแจ้งเตือน"); return; }
-    if (Notification.permission !== "granted") { Notification.requestPermission().then(() => { renderPerm(); if (Notification.permission === "granted") new Notification("Avatar Planning", { body: "ทดสอบการแจ้งเตือน ✓" }); }); return; }
-    new Notification("Avatar Planning", { body: "ทดสอบการแจ้งเตือน ✓ ใช้งานได้" });
+    if (Notification.permission !== "granted") { Notification.requestPermission().then(() => { renderPerm(); if (Notification.permission === "granted") sysNotify("Avatar Planning", { body: "ทดสอบการแจ้งเตือน ✓" }); }); return; }
+    sysNotify("Avatar Planning", { body: "ทดสอบการแจ้งเตือน ✓ ใช้งานได้" });
   });
 }
 
@@ -6771,10 +7033,330 @@ function buildDataPanel(container) {
       <button class="btn" data-act="import">⬆ Import (โหลดไฟล์)</button>
     </div>
     <p class="settings-desc" style="margin-top:10px; color:var(--danger)">⚠ การ Import จะแทนที่ข้อมูลปัจจุบันทั้งหมด</p>
+    <h4 class="settings-h" style="margin-top:18px">ถังขยะ</h4>
+    <p class="settings-desc">งานที่ถูกลบในปฏิทินนี้ (${(state.trash || []).length} งาน) เก็บไว้ ${TRASH_DAYS} วัน กู้คืนได้</p>
+    <button class="btn" data-act="trash">🗑️ เปิดถังขยะ</button>
   `;
   container.appendChild(sec);
   sec.querySelector('[data-act="export"]').addEventListener("click", exportJson);
+  sec.querySelector('[data-act="trash"]').addEventListener("click", openTrashModal);
   sec.querySelector('[data-act="import"]').addEventListener("click", () => document.getElementById("fileImport").click());
+}
+
+/* ---------- 🗑️ trash: deleted tasks are kept 30 days (per board, synced) ---------- */
+const TRASH_DAYS = 30;
+function moveTaskToTrash(t) {
+  if (!Array.isArray(state.trash)) state.trash = [];
+  state.trash = state.trash.filter(x => x.id !== t.id);
+  state.trash.unshift({ id: t.id, task: t, deletedAt: Date.now(), deletedBy: currentUser() });
+  state.tasks = state.tasks.filter(x => x.id !== t.id);
+  saveState();
+}
+function restoreFromTrash(id) {
+  const ent = (state.trash || []).find(x => x.id === id);
+  if (!ent) return;
+  state.trash = state.trash.filter(x => x.id !== id);
+  const t = ent.task;
+  state.tasks = state.tasks.filter(x => x.id !== t.id);   // never two copies
+  state.tasks.push(t);
+  logActivity(t, "กู้คืนงานจากถังขยะ");
+  t.updatedAt = Date.now();
+  migrateState(state);
+  saveState();
+  renderAll();
+  toast(`♻️ กู้คืน “${t.title || "งาน"}” แล้ว`);
+}
+function daysLeftInTrash(ent) { return Math.max(0, TRASH_DAYS - Math.floor((Date.now() - (ent.deletedAt || 0)) / 86400000)); }
+// entries older than 30 days → gone for good (+ their Drive files go to Drive's own trash). Runs after
+// the cloud copy is loaded, only on a device allowed to delete tasks.
+function purgeExpiredTrash() {
+  if (!canFull()) return;
+  let changed = false;
+  Object.values(root.boards || {}).forEach(ws => {
+    if (!Array.isArray(ws.trash)) return;
+    const keep = [];
+    ws.trash.forEach(ent => {
+      if (Date.now() - (ent.deletedAt || 0) > TRASH_DAYS * 86400000) { trashTaskDrive(ent.task); changed = true; }
+      else keep.push(ent);
+    });
+    if (changed) ws.trash = keep;
+  });
+  if (changed) saveState();
+}
+function renderTrashButton() {
+  const btn = document.getElementById("btnTrash");
+  if (!btn) return;
+  const n = (state.trash || []).length;
+  btn.style.display = (n && canFull()) ? "" : "none";
+  btn.querySelector(".sb-trash-n").textContent = n;
+}
+function openTrashModal() {
+  const overlay = document.createElement("div");
+  overlay.className = "overlay";
+  overlay.innerHTML = `
+    <div class="modal wide" role="dialog" aria-modal="true">
+      <div class="modal-head">
+        <h3>🗑️ ถังขยะ <span class="muted" style="font-weight:400">· งานที่ลบในปฏิทินนี้ เก็บไว้ ${TRASH_DAYS} วัน</span></h3>
+        <button class="btn btn-ghost" data-act="close" title="ปิด">✕</button>
+      </div>
+      <div class="modal-body"><div class="trash-list" data-list></div></div>
+    </div>`;
+  const list = overlay.querySelector("[data-list]");
+  function render() {
+    const items = state.trash || [];
+    if (!items.length) { list.innerHTML = `<div class="trash-empty">ถังขยะว่าง</div>`; return; }
+    list.innerHTML = items.map(ent => `
+      <div class="trash-row">
+        <div class="trash-main">
+          <div class="trash-title">${escapeHtml(ent.task.title || "(ไม่มีชื่องาน)")}</div>
+          <div class="trash-meta">ลบโดย ${escapeHtml(ent.deletedBy || "—")} · ${formatDateTimeTH(ent.deletedAt)} · ตู้ ${(ent.task.subtasks || []).length} · <span class="trash-left">ลบถาวรใน ${daysLeftInTrash(ent)} วัน</span></div>
+        </div>
+        <button class="btn btn-sm btn-primary" data-restore="${escapeHtml(ent.id)}">♻️ กู้คืน</button>
+        ${isAdmin() ? `<button class="btn btn-sm btn-danger" data-purge="${escapeHtml(ent.id)}" title="ลบถาวรตอนนี้">ลบถาวร</button>` : ""}
+      </div>`).join("");
+    list.querySelectorAll("[data-restore]").forEach(b => b.addEventListener("click", () => { restoreFromTrash(b.dataset.restore); render(); }));
+    list.querySelectorAll("[data-purge]").forEach(b => b.addEventListener("click", async () => {
+      const ent = state.trash.find(x => x.id === b.dataset.purge);
+      if (!ent) return;
+      const ok = await confirmDialog({ title: "ลบถาวร?", message: `“${ent.task.title || "งานนี้"}” จะหายไปถาวร (ไฟล์แนบใน Google Drive ย้ายไปถังขยะของ Drive)`, confirmText: "ลบถาวร" });
+      if (!ok) return;
+      trashTaskDrive(ent.task);
+      state.trash = state.trash.filter(x => x.id !== ent.id);
+      saveState(); renderAll(); render();
+    }));
+  }
+  render();
+  function close() { overlay.remove(); document.removeEventListener("keydown", onEsc, true); }
+  function onEsc(e) { if (e.key === "Escape" && !document.querySelector(".confirm-overlay")) close(); }
+  overlay.addEventListener("mousedown", e => { if (e.target === overlay) close(); });
+  overlay.querySelector('[data-act="close"]').addEventListener("click", close);
+  document.addEventListener("keydown", onEsc, true);
+  document.body.appendChild(overlay);
+}
+
+/* ---------- 🕘 board history (Supabase boards_history — see supabase-schema.sql slice 5a) ----------
+   The database keeps an automatic copy of each board before it changes (at most one per 20 minutes,
+   30 days) — the safety net for "settings were wiped". Admin → ⚙ → 🕘 ประวัติ/กู้คืน. */
+const HIST_REASON = { auto: "อัตโนมัติ", manual: "สำรองเอง", "before-restore": "ก่อนกู้คืน", deleted: "ก่อนบอร์ดถูกลบ" };
+function buildHistoryPanel(container) {
+  const sec = document.createElement("div");
+  sec.className = "settings-section";
+  const boards = root.boardMeta || [];
+  sec.innerHTML = `
+    <h4 class="settings-h">ประวัติย้อนหลัง / กู้คืน</h4>
+    <p class="settings-desc">ฐานข้อมูลเก็บสำเนาของแต่ละปฏิทินไว้อัตโนมัติ <b>ก่อนมีการแก้ไข</b> (ไม่เกิน 1 ชุดต่อ 20 นาที เก็บ 30 วัน · เกิน 3 วันเหลือวันละ 1 ชุด) — ถ้าการตั้งค่าหรืองานหาย เลือกเวลาก่อนเกิดเหตุแล้วกด "กู้คืน"</p>
+    <div class="hist-bar">
+      <select data-board>${boards.map(b => `<option value="${escapeHtml(b.id)}" ${b.id === root.activeBoard ? "selected" : ""}>${escapeHtml(b.name)}</option>`).join("")}</select>
+      <button class="btn btn-sm" data-act="snap">📸 สำรองตอนนี้</button>
+      <button class="btn btn-sm btn-ghost" data-act="reload">↻ โหลดใหม่</button>
+    </div>
+    <div class="hist-list" data-list><div class="hist-empty">กำลังโหลด…</div></div>`;
+  container.appendChild(sec);
+  const sel = sec.querySelector("[data-board]");
+  const list = sec.querySelector("[data-list]");
+  async function load() {
+    list.innerHTML = `<div class="hist-empty">กำลังโหลด…</div>`;
+    const sb = getSupabase();
+    if (!sb) { list.innerHTML = `<div class="hist-empty">ไม่มีการเชื่อมต่อ</div>`; return; }
+    const { data, error } = await sb.from("boards_history")
+      .select("id,board_id,name,task_count,version_at,version_by,archived_at,reason")
+      .eq("board_id", sel.value).order("archived_at", { ascending: false }).limit(300);
+    if (error) {
+      list.innerHTML = `<div class="hist-empty">โหลดประวัติไม่ได้: ${escapeHtml(error.message)}<br><br>ถ้ายังไม่เคยตั้ง ให้รัน SQL ส่วน <b>slice 5a</b> ใน supabase-schema.sql ก่อน</div>`;
+      return;
+    }
+    if (!data.length) { list.innerHTML = `<div class="hist-empty">ยังไม่มีสำเนา — ระบบจะเริ่มเก็บเมื่อมีการแก้ไขครั้งถัดไป (หรือกด 📸 สำรองตอนนี้)</div>`; return; }
+    list.innerHTML = data.map(h => `
+      <div class="hist-row">
+        <div class="hist-main">
+          <div class="hist-title">${formatDateTimeTH(tsMs(h.version_at || h.archived_at))}<span class="hist-tag ${escapeHtml(h.reason)}">${escapeHtml(HIST_REASON[h.reason] || h.reason)}</span></div>
+          <div class="hist-meta">ฉบับที่บันทึกโดย ${escapeHtml(h.version_by || "—")} · ${h.task_count == null ? "?" : h.task_count} งาน</div>
+        </div>
+        <button class="btn btn-sm" data-restore="${h.id}">กู้คืน…</button>
+      </div>`).join("");
+    list.querySelectorAll("[data-restore]").forEach(b => b.addEventListener("click", () => openRestoreDialog(sel.value, Number(b.dataset.restore)).then(done => { if (done) load(); })));
+  }
+  sel.addEventListener("change", load);
+  sec.querySelector('[data-act="reload"]').addEventListener("click", load);
+  sec.querySelector('[data-act="snap"]').addEventListener("click", async () => {
+    const sb = getSupabase(); if (!sb) return;
+    if (_cloudSaveTimer || _pushBusy) await pushAllBoardsToCloud();
+    const { error } = await sb.rpc("snapshot_board", { p_board_id: sel.value, p_reason: "manual" });
+    if (error) { toast("สำรองไม่สำเร็จ: " + error.message); return; }
+    toast("📸 สำรองแล้ว");
+    load();
+  });
+  load();
+}
+// restore one saved version: the whole board / settings only / tasks that are missing now
+async function openRestoreDialog(boardId, histId) {
+  const sb = getSupabase(); if (!sb) return false;
+  const { data, error } = await sb.from("boards_history").select("data,version_at,archived_at").eq("id", histId);
+  if (error || !data || !data[0]) { toast("โหลดสำเนาไม่ได้: " + ((error && error.message) || "ไม่พบ")); return false; }
+  const snap = data[0].data;
+  migrateState(snap);
+  const cur = root.boards[boardId];
+  if (!cur) { toast("ไม่พบปฏิทินนี้ในเครื่อง — รีโหลดแอปก่อน"); return false; }
+  const curIds = new Set((cur.tasks || []).map(t => t.id));
+  const missing = (snap.tasks || []).filter(t => !curIds.has(t.id));
+  const boardName = (root.boardMeta.find(b => b.id === boardId) || {}).name || boardId;
+  const when = formatDateTimeTH(tsMs(data[0].version_at || data[0].archived_at));
+  return new Promise(resolve => {
+    const overlay = document.createElement("div");
+    overlay.className = "overlay confirm-overlay";
+    overlay.innerHTML = `
+      <div class="confirm-dialog" role="alertdialog" aria-modal="true" style="max-width:520px;text-align:left">
+        <div class="confirm-title">กู้คืน “${escapeHtml(boardName)}” จากฉบับ ${escapeHtml(when)}</div>
+        <div class="confirm-msg" style="margin-bottom:10px">ฉบับนั้นมี ${(snap.tasks || []).length} งาน · ตอนนี้มี ${(cur.tasks || []).length} งาน · งานที่หายไปตอนนี้ ${missing.length} งาน<br>ระบบจะสำรองฉบับปัจจุบันไว้ก่อนเสมอ (ย้อนกลับได้)</div>
+        <div class="restore-opts">
+          <label class="restore-opt"><input type="radio" name="rmode" value="settings" checked><div><b>เฉพาะการตั้งค่า</b><span>สถานะ แผนก เช็คลิสต์ ฟิลด์ และตั้งค่าบอร์ด — งานปัจจุบันไม่เปลี่ยน</span></div></label>
+          <label class="restore-opt"><input type="radio" name="rmode" value="missing" ${missing.length ? "" : "disabled"}><div><b>เพิ่มงานที่หายไป (${missing.length})</b><span>ใส่งานที่มีในฉบับนั้นแต่ไม่มีตอนนี้กลับเข้ามา — งานอื่นไม่เปลี่ยน</span></div></label>
+          <label class="restore-opt"><input type="radio" name="rmode" value="all"><div><b>ทั้งปฏิทิน</b><span>แทนที่ทุกอย่างด้วยฉบับนั้น — งาน/การแก้ไขหลังจากนั้นจะหายไป</span></div></label>
+        </div>
+        <div class="confirm-actions">
+          <button class="btn" data-act="cancel">ยกเลิก</button>
+          <button class="btn btn-primary" data-act="ok">กู้คืน</button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    const close = (v) => { overlay.remove(); resolve(v); };
+    overlay.querySelector('[data-act="cancel"]').addEventListener("click", () => close(false));
+    overlay.addEventListener("mousedown", e => { if (e.target === overlay) close(false); });
+    overlay.querySelector('[data-act="ok"]').addEventListener("click", async () => {
+      const mode = overlay.querySelector('input[name="rmode"]:checked').value;
+      if (_cloudSaveTimer || _pushBusy) await pushAllBoardsToCloud();   // send pending edits first → they're in the pre-restore copy
+      const { error: snapErr } = await sb.rpc("snapshot_board", { p_board_id: boardId, p_reason: "before-restore" });
+      if (snapErr) { toast("สำรองฉบับปัจจุบันไม่สำเร็จ — ยกเลิกการกู้คืน: " + snapErr.message); return; }
+      const ws = root.boards[boardId];
+      let next;
+      if (mode === "all") next = snap;
+      else if (mode === "settings") next = { ...snap, tasks: ws.tasks, trash: ws.trash || [] };
+      else {
+        const have = new Set((ws.tasks || []).map(t => t.id));
+        const add = (snap.tasks || []).filter(t => !have.has(t.id));
+        const addIds = new Set(add.map(t => t.id));
+        next = { ...ws, tasks: [...(ws.tasks || []), ...add], trash: (ws.trash || []).filter(x => !addIds.has(x.id)) };
+      }
+      migrateState(next);
+      root.boards[boardId] = next;
+      if (boardId === root.activeBoard) state = next;
+      saveState();
+      renderAll();
+      toast(mode === "missing" ? "♻️ เพิ่มงานที่หายไปกลับมาแล้ว" : "♻️ กู้คืนแล้ว — ทุกเครื่องจะเห็นภายในไม่กี่วินาที");
+      close(true);
+    });
+  });
+}
+
+/* ---------- 📱 installable app (service worker) + web push (slice 5b) ----------
+   sw.js / manifest.webmanifest / icon-192.png / icon-512.png sit next to index.html on GitHub Pages.
+   Push: this device subscribes (profile modal) → push_subscriptions; whenever the app creates something
+   aimed at people (assignment, @mention, department alert) it asks the Edge Function "send-push" to
+   deliver it to their devices — even when their app is closed. */
+let _swReg = null;
+const PUSH_SUPPORTED = typeof window !== "undefined" && "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+const isStandalone = () => (window.matchMedia && matchMedia("(display-mode: standalone)").matches) || navigator.standalone === true;
+const isIOS = () => /iP(ad|hone|od)/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) {
+  navigator.serviceWorker.register("sw.js").then(r => { _swReg = r; }).catch(() => { /* sw.js not uploaded → app works as before */ });
+  // a tapped notification while the app is already open → jump to that task
+  navigator.serviceWorker.addEventListener("message", (e) => {
+    if (e.data && e.data.type === "open-task") openTaskFromLink(e.data.board, e.data.task);
+  });
+}
+function openTaskFromLink(boardId, taskId) {
+  if (boardId && boardId !== root.activeBoard && root.boards[boardId] && visibleBoardIds().includes(boardId)) setBoard(boardId);
+  if (taskId && state.tasks.some(t => t.id === taskId)) { document.querySelectorAll(".overlay").forEach(n => n.remove()); openTaskModal(taskId); }
+}
+// opened from a notification (./?board=…&task=…) → open that task once the data is loaded, then tidy the URL
+function openTaskFromUrl() {
+  const q = new URLSearchParams(location.search);
+  const b = q.get("board"), t = q.get("task");
+  if (!b && !t) return false;
+  try { history.replaceState(null, "", location.pathname + location.hash); } catch (_) {}
+  openTaskFromLink(b, t);
+  return !!t;
+}
+function b64urlToBytes(b64) {
+  const pad = "=".repeat((4 - b64.length % 4) % 4);
+  const raw = atob((b64 + pad).replace(/-/g, "+").replace(/_/g, "/"));
+  return Uint8Array.from(raw, ch => ch.charCodeAt(0));
+}
+async function currentPushSub() {
+  if (!PUSH_SUPPORTED) return null;
+  const reg = _swReg || await navigator.serviceWorker.getRegistration();
+  return reg ? reg.pushManager.getSubscription() : null;
+}
+async function enablePush() {
+  const reg = _swReg || await navigator.serviceWorker.getRegistration();
+  if (!reg) throw new Error("ยังไม่ได้อัปไฟล์ sw.js ขึ้นเว็บ");
+  const perm = await Notification.requestPermission();
+  if (perm !== "granted") throw new Error("ไม่ได้รับอนุญาตการแจ้งเตือน");
+  let sub = await reg.pushManager.getSubscription();
+  if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64urlToBytes(VAPID_PUBLIC_KEY) });
+  const j = sub.toJSON();
+  const { error } = await getSupabase().rpc("save_push_subscription", { p_endpoint: j.endpoint, p_p256dh: j.keys.p256dh, p_auth: j.keys.auth, p_ua: navigator.userAgent });
+  if (error) throw new Error(error.message);
+}
+async function disablePush() {
+  const sub = await currentPushSub();
+  if (!sub) return;
+  await getSupabase().from("push_subscriptions").delete().eq("endpoint", sub.endpoint);
+  await sub.unsubscribe();
+}
+// keep the server copy fresh (browsers rotate subscriptions now and then)
+async function refreshPushSub() {
+  try {
+    const sub = await currentPushSub();
+    if (!sub || Notification.permission !== "granted") return;
+    const j = sub.toJSON();
+    await getSupabase().rpc("save_push_subscription", { p_endpoint: j.endpoint, p_p256dh: j.keys.p256dh, p_auth: j.keys.auth, p_ua: navigator.userAgent });
+  } catch (_) {}
+}
+function renderPushControl(box) {
+  const paint = async () => {
+    if (!PUSH_SUPPORTED || !("serviceWorker" in navigator)) {
+      box.innerHTML = `<h5>🔔 แจ้งเตือนบนเครื่องนี้ (แม้ปิดแอป)</h5><p>${isIOS() && !isStandalone()
+        ? "บน iPad/iPhone ต้อง <b>ติดตั้งแอปก่อน</b>: เปิดใน Safari → กดปุ่มแชร์ <b>⬆︎</b> → <b>เพิ่มไปยังหน้าจอโฮม</b> แล้วเปิดแอปจากไอคอนบนหน้าจอโฮม จากนั้นกลับมาเปิดที่นี่ (ต้อง iPadOS 16.4 ขึ้นไป)"
+        : "เบราว์เซอร์นี้ไม่รองรับการแจ้งเตือนแบบ push"}</p>`;
+      return;
+    }
+    let sub = null; try { sub = await currentPushSub(); } catch (_) {}
+    const on = !!sub && Notification.permission === "granted";
+    box.innerHTML = `<h5>🔔 แจ้งเตือนบนเครื่องนี้ (แม้ปิดแอป)</h5>
+      <p>เด้งเตือนเมื่อมีคน <b>มอบหมายงาน</b> / <b>@กล่าวถึง</b> คุณ หรือ <b>แจ้งเตือนถึงแผนกคุณ</b> — แม้ปิดแอปหรือล็อกจออยู่ (ตั้งแยกทีละเครื่อง)</p>
+      <span class="push-state${on ? " on" : ""}">${on ? "✓ เปิดอยู่บนเครื่องนี้" : Notification.permission === "denied" ? "✕ ถูกบล็อกในเบราว์เซอร์" : "ปิดอยู่"}</span><br>
+      <button type="button" class="btn btn-sm ${on ? "" : "btn-primary"}" data-push-toggle>${on ? "ปิดการแจ้งเตือนบนเครื่องนี้" : "เปิดการแจ้งเตือนบนเครื่องนี้"}</button>`;
+    box.querySelector("[data-push-toggle]").addEventListener("click", async (e) => {
+      const btn = e.currentTarget; btn.disabled = true;
+      try { if (on) { await disablePush(); toast("ปิดการแจ้งเตือนบนเครื่องนี้แล้ว"); } else { await enablePush(); toast("✓ เปิดการแจ้งเตือนแล้ว"); } }
+      catch (err) { toast("ทำไม่สำเร็จ: " + (err.message || err)); }
+      paint();
+    });
+  };
+  paint();
+}
+// ask the Edge Function to push to people's devices (fire-and-forget; the in-app bell works regardless)
+function sendPush({ userIds, deptId, boardId, taskId, title, body, tag }) {
+  const sb = getSupabase();
+  if (!sb || !currentProfile || !VAPID_PUBLIC_KEY) return;
+  const ids = (userIds || []).filter(id => id && id !== currentProfile.id);
+  if (!ids.length && !deptId) return;
+  sb.functions.invoke(PUSH_FUNCTION, { body: { userIds: ids, deptId: deptId || null, boardId: boardId || root.activeBoard, taskId, title, body: (body || "").slice(0, 280), tag } })
+    .catch(() => {});
+}
+// one new comment → the pushes it implies (personal alert / department alert / @mentions)
+function pushForComment(task, c, boardId) {
+  if (!task || !c) return;
+  const bid = boardId || root.activeBoard;
+  const who = c.author || currentUser();
+  const snippet = (c.text || "").replace(/\s+/g, " ").trim();
+  if (c.type === "alert" && c.toUser) sendPush({ userIds: [c.toUser], boardId: bid, taskId: task.id, title: "📌 มีงานมอบหมายให้คุณ", body: `${task.title} · จาก ${who}`, tag: "rt-asg-" + c.id });
+  else if (c.type === "alert" && c.toDept) {
+    const d = getDeptIn(root.boards[bid] || state, c.toDept);
+    sendPush({ deptId: c.toDept, boardId: bid, taskId: task.id, title: `🔔 แจ้งเตือนถึงแผนก${d ? " " + d.name : ""}`, body: `${task.title}${snippet ? " · " + snippet : ""}`, tag: "rt-alert-" + c.id });
+  }
+  if (Array.isArray(c.mentions) && c.mentions.length) sendPush({ userIds: c.mentions, boardId: bid, taskId: task.id, title: "💬 มีคนกล่าวถึงคุณ", body: `${task.title} · ${who}: ${snippet}`, tag: "rt-men-" + c.id });
 }
 
 /* ---------- Import / Export ---------- */
@@ -6940,36 +7522,59 @@ function renderDashboard() {
         </div>`).join("")}
     </div>` : "";
 
+  // "เหลือ N วัน" / "เลย N วัน" chip under the due date
+  const leftChip = (due, comp) => {
+    if (comp) return `<span class="dt-left done">เสร็จแล้ว</span>`;
+    if (!due) return "";
+    const n = Math.round((fromIso(due) - fromIso(today)) / 86400000);
+    if (n < 0) return `<span class="dt-left over">เลย ${-n} วัน</span>`;
+    if (n === 0) return `<span class="dt-left soon">ครบวันนี้</span>`;
+    return `<span class="dt-left${n <= 7 ? " soon" : ""}">เหลือ ${n} วัน</span>`;
+  };
+  const peopleCell = (t) => {
+    const ids = (t.assignees || []).filter(id => teamProfiles.has(id));
+    if (!ids.length) return `<span class="dt-none">—</span>`;
+    return `<div class="dt-people">${ids.slice(0, 2).map(id => { const p = teamProfiles.get(id); return `<span class="dt-person">${avatarHtml(p)}${escapeHtml(personName(p))}</span>`; }).join("")}${ids.length > 2 ? `<span class="dt-more">+${ids.length - 2} คน</span>` : ""}</div>`;
+  };
   const cardsHtml = sorted.length ? `
     <div class="dash-h">โปรเจค${dep ? "ในแผนกนี้" : "ทั้งหมด"} (${sorted.length})</div>
-    <div class="dash-cards">
-      ${sorted.map(t => {
-        const pr = getPriority(t.priority);
-        const comp = isComp(t);
-        const due = dueOf(t);
-        const od2 = due && due < today && !comp;
-        const dotStages = dep ? (t.deptStages || []).filter(s => s.deptId === dep) : (t.deptStages || []);
-        const dots = dotStages.map(s => { const d = getDept(s.deptId) || {}; const dn = isDeptComplete(t, s.deptId); return `<span class="dash-dept-ic${dn ? ' done' : ''}" title="${escapeHtml(d.name || '')}: ${dn ? 'เสร็จ' : 'ยังไม่เสร็จ'}">${deptIco(d)}${dn ? '<span class="dash-ic-check">✓</span>' : ''}</span>`; }).join("");
-        return `
-          <div class="dash-card${comp ? ' complete' : ''}" data-id="${t.id}">
-            <div class="dash-card-head">
-              <span class="dash-card-title">${pr.id !== 'none' ? priFlag(pr) + ' ' : ''}${escapeHtml(t.title)}</span>
-              <span class="dash-card-due${od2 ? ' overdue' : ''}">${due ? (od2 ? `เลย ${Math.round((fromIso(today) - fromIso(due)) / 86400000)} วัน` : formatDateTH(due)) : '—'}</span>
-            </div>
-            ${dashBar(pctOf(t))}
-            <div class="dash-card-meta">
-              <span class="dash-pct">${pctOf(t)}%</span>
-              <span class="dash-cabs">🗄️ ${(t.subtasks || []).length} ตู้</span>
-              <span class="dash-dots">${dots}</span>
-            </div>
-          </div>`;
-      }).join("")}
+    <div class="dash-table-card">
+      <table class="dash-table">
+        <thead><tr>
+          <th>โปรเจค</th><th>ผู้รับผิดชอบ</th><th>วันครบกำหนด</th><th>สถานะ</th>
+          <th>${dep ? "แผนกนี้" : "แผนก"}</th><th>เช็คลิสต์</th><th style="text-align:center">ตู้</th>
+        </tr></thead>
+        <tbody>
+        ${sorted.map(t => {
+          const pr = getPriority(t.priority);
+          const comp = isComp(t);
+          const due = dueOf(t);
+          const st = getStatus(t.statusId);
+          const sub = (t.description || "").split("\n").map(x => x.trim()).find(Boolean) || "";
+          const stages = dep ? (t.deptStages || []).filter(x => x.deptId === dep) : (t.deptStages || []);
+          const stDone = stages.filter(x => isDeptComplete(t, x.deptId)).length;
+          const stPct = stages.length ? Math.round(stDone / stages.length * 100) : (comp ? 100 : 0);
+          const icons = stages.map(x => { const d = getDept(x.deptId) || {}; const dn = isDeptComplete(t, x.deptId); return `<span class="dash-dept-ic${dn ? ' done' : ''}" title="${escapeHtml(d.name || '')}: ${dn ? 'เสร็จ' : 'ยังไม่เสร็จ'}">${deptIco(d)}${dn ? '<span class="dash-ic-check">✓</span>' : ''}</span>`; }).join("");
+          const cl = prog(t), clPct = pctOf(t);
+          return `
+          <tr class="${comp ? 'complete' : ''}" data-id="${t.id}">
+            <td><div class="dt-title">${pr.id !== 'none' ? priFlag(pr) : ''}${escapeHtml(t.title || "(ไม่มีชื่องาน)")}</div>${sub ? `<div class="dt-sub" title="${escapeHtml(sub)}">${escapeHtml(sub)}</div>` : ""}</td>
+            <td>${peopleCell(t)}</td>
+            <td><div class="dt-date">${due ? formatDateTH(due) : "—"}</div>${leftChip(due, comp)}</td>
+            <td><span class="dt-status" style="background:${hexToBgTint(st.color)};color:${st.color}">${escapeHtml(st.name)}</span></td>
+            <td class="dt-prog">${dashBar(stPct, stPct === 100 ? '#10b981' : '#3b82f6')}<div class="dt-prog-lbl">${stages.length ? `เสร็จ ${stDone}/${stages.length}` : "—"}<span class="dt-icons">${icons}</span></div></td>
+            <td class="dt-prog">${dashBar(clPct, clPct === 100 ? '#10b981' : '#f59e0b')}<div class="dt-prog-lbl">${cl.total ? `${clPct}% · ${cl.done}/${cl.total}` : "—"}</div></td>
+            <td class="dt-cabs">${(t.subtasks || []).length}</td>
+          </tr>`;
+        }).join("")}
+        </tbody>
+      </table>
     </div>` : `<div class="dash-empty">ไม่มีโปรเจค${dep ? "ในแผนกนี้" : "ในปฏิทินนี้"}</div>`;
 
   wrap.innerHTML = `<div class="dash-inner">${filterHtml}${statHtml}${workloadHtml}${deptHtml}${cardsHtml}</div>`;
   wrap.querySelectorAll("[data-df]").forEach(b => b.addEventListener("click", () => { dashDept = b.dataset.df || null; renderDashboard(); }));
   wrap.querySelector('[data-act="print"]')?.addEventListener("click", () => window.print());
-  wrap.querySelectorAll(".dash-card").forEach(c => c.addEventListener("click", () => openProjectDashboard(c.dataset.id)));
+  wrap.querySelectorAll(".dash-table tbody tr[data-id]").forEach(c => c.addEventListener("click", () => openProjectDashboard(c.dataset.id)));
 }
 
 // single-project dashboard popup
@@ -7275,6 +7880,13 @@ function renderMainView() {
 
 /* ----- Browser notifications (Notification API) — configurable per event type in ⚙ การแจ้งเตือน ----- */
 const NOTIF_SUPPORTED = typeof window !== "undefined" && "Notification" in window;
+// iPad home-screen apps (and Android) don't support `new Notification()` — show it through the service worker
+function sysNotify(title, opts) {
+  try {
+    if (_swReg && _swReg.showNotification) { _swReg.showNotification(title, { icon: "icon-192.png", ...opts }).catch(() => {}); return; }
+    new Notification(title, opts);
+  } catch (e) { /* ignore */ }
+}
 // may this event type fire a desktop notification right now?
 function canNotify(type) {
   const n = state.settings.notify;
@@ -7294,7 +7906,7 @@ function taskRelevantToMe(t) {
 // renotify:true (needs a tag) makes a repeat change on the same task re-alert instead of silently replacing
 function pushNotify(type, title, body, tag) {
   if (!canNotify(type)) return;
-  try { new Notification(title, { body: body || "", tag: tag || undefined, renotify: !!tag }); } catch (e) { /* some engines need a ServiceWorker; ignore */ }
+  sysNotify(title, { body: body || "", tag: tag || undefined, renotify: !!tag });
 }
 // status / done changes on a task (or one of its cabinets)
 function notifyStatusChange(t, sub, oldId, newId) {
@@ -8090,13 +8702,33 @@ function alertTarget(c) {
   if (c.toUser) return { name: "👤 " + personName(teamProfiles.get(c.toUser)) };
   return getDept(c.toDept) || { name: c.toDept || "?" };
 }
+// my department in ANY board (same precedence as myDeptId(), which only covers the active board)
+function myDeptIn(ws) {
+  const pd = currentProfile && currentProfile.dept_id;
+  if (pd && getDeptIn(ws, pd)) return pd;
+  const bd = ws.settings && ws.settings.myDept;
+  return (bd && getDeptIn(ws, bd)) ? bd : "";
+}
+function alertIsForMeIn(c, ws) {
+  if (!c || c.type !== "alert" || c.ack) return false;
+  if (c.toUser) return !!(currentProfile && c.toUser === currentProfile.id);
+  const my = myDeptIn(ws);
+  return !!my && c.toDept === my;
+}
+// ★ everything waiting for me in EVERY calendar I can open (bell + popup) — an assignment on another
+//   board no longer stays invisible until you happen to switch to it. Each entry knows its boardId.
 function pendingAlerts() {
   const out = [];
-  (state.tasks || []).forEach(t => (t.comments || []).forEach(c => {
-    if (isPendingForMe(c)) out.push({ task: t, c });
-  }));
+  visibleBoardIds().forEach(bid => {
+    const ws = root.boards[bid];
+    if (!ws) return;
+    (ws.tasks || []).forEach(t => (t.comments || []).forEach(c => {
+      if (alertIsForMeIn(c, ws) || mentionPendingForMe(c)) out.push({ task: t, c, boardId: bid });
+    }));
+  });
   return out.sort((a, b) => (b.c.at || 0) - (a.c.at || 0));
 }
+const boardNameOf = (id) => ((root.boardMeta || []).find(b => b.id === id) || {}).name || id;
 // does this task have an unacknowledged alert for MY department? (no department = none)
 function taskHasAlert(t) {
   return (t.comments || []).some(isPendingForMe);
@@ -8161,6 +8793,7 @@ function buildAlertReplies(container, task, alertComment, persist) {
 function openAlertPopup(list) {
   list = (list || pendingAlerts()).slice();
   if (!list.length) return;
+  document.querySelectorAll(".alert-overlay").forEach(n => n.remove());   // never two stacked popups
   const overlay = document.createElement("div");
   overlay.className = "overlay alert-overlay";
   overlay.innerHTML = `
@@ -8179,13 +8812,18 @@ function openAlertPopup(list) {
   overlay.querySelector('[data-act="close"]').addEventListener("click", close);
   overlay.addEventListener("mousedown", e => { if (e.target === overlay) close(); });
   document.addEventListener("keydown", onEsc, true);
-  list.forEach(({ task, c }) => {
-    const isAlert = alertIsForMe(c);   // false = only an @mention of me (no reject / reply thread)
-    const dept = isAlert ? alertTarget(c) : { name: "💬 กล่าวถึงคุณ" };
+  list.forEach(({ task, c, boardId }) => {
+    const bid = boardId || root.activeBoard;
+    const ws = root.boards[bid] || state;
+    const isAlert = alertIsForMeIn(c, ws);   // false = only an @mention of me (no reject / reply thread)
+    const dept = !isAlert ? { name: "💬 กล่าวถึงคุณ" }
+      : c.toUser ? { name: "👤 " + personName(teamProfiles.get(c.toUser)) }
+      : (getDeptIn(ws, c.toDept) || { name: c.toDept || "?" });
     const card = document.createElement("div");
     card.className = "alert-card";
     card.innerHTML = `
       <div class="alert-card-top">
+        ${bid !== root.activeBoard ? `<span class="alert-board" title="อยู่ในปฏิทินนี้">📅 ${escapeHtml(boardNameOf(bid))}</span>` : ""}
         <span class="alert-to">${isAlert ? "🔔 " : ""}${escapeHtml(dept.name)}</span>
         <span class="alert-from">จาก ${escapeHtml(c.author || "—")}</span>
         <span class="alert-time">${formatDateTimeTH(c.at)}</span>
@@ -8220,7 +8858,7 @@ function openAlertPopup(list) {
       task.updatedAt = Date.now(); saveState(); renderAll();
       resolveCard();
     });
-    const open = () => { close(); openTaskModal(task.id); };
+    const open = () => { close(); if (bid !== root.activeBoard) setBoard(bid); openTaskModal(task.id); };
     card.querySelector("[data-open]").addEventListener("click", open);
     card.querySelector("[data-open2]").addEventListener("click", open);
     wireAttachments(card);
@@ -8425,6 +9063,7 @@ function renderAll() {
   renderMainView();
   renderTodayPanel();
   renderBell();
+  renderTrashButton();
   applySidebarPerm();
   renderUserBadge();   // keep the department chip in sync when it changes
 }
@@ -8455,10 +9094,11 @@ document.getElementById("btnSettings").addEventListener("click", () => {
   openSettingsModal();
 });
 document.getElementById("sbUserBadge").addEventListener("click", openMyProfileModal);
+document.getElementById("btnTrash").addEventListener("click", openTrashModal);
 document.getElementById("btnBell").addEventListener("click", () => {
   const list = pendingAlerts();
   if (list.length) openAlertPopup(list);
-  else toast("ไม่มีการแจ้งเตือนค้างของแผนกคุณ");
+  else toast("ไม่มีการแจ้งเตือนค้าง (ทุกปฏิทิน)");
 });
 // click a 🔔 pin on any chip / today-panel row → open the alert popup for that task (capture: beat the chip's own click)
 document.addEventListener("click", (e) => {
@@ -8597,6 +9237,16 @@ document.getElementById("priorityFilter").addEventListener("click", (e) => {
   renderTodayPanel();
 });
 
+function paintMineBtn() { const b = document.getElementById("btnMine"); if (b) b.classList.toggle("active", mineFilterOn()); }
+document.getElementById("btnMine").addEventListener("click", () => {
+  setMineFilter(!mineFilterOn());
+  paintMineBtn();
+  renderMainView();
+  renderTodayPanel();
+  if (mineFilterOn()) toast("👤 แสดงเฉพาะงานของฉัน (มอบหมาย / กล่าวถึงฉัน) — กดอีกครั้งเพื่อดูทั้งหมด");
+});
+paintMineBtn();
+
 document.getElementById("calGrid").addEventListener("click", (e) => {
   const add = e.target.closest(".cell-add");
   if (add) { e.stopPropagation(); openTaskModal(null, { date: add.dataset.date }); return; }
@@ -8652,13 +9302,16 @@ async function startApp() {
   loadTeam();   // team directory for assignee avatars/picker — renders again when it arrives
   await syncRootFromCloud();   // first login ever seeds the cloud from local data; every login after that pulls the cloud copy
   startRealtimeSync();   // slice 3: start listening for changes other devices push from this point on
+  if (_cloudReady) purgeExpiredTrash();   // 🗑️ entries past 30 days
   applyMyDeptDefaultView();   // open on the user's own department by default
   renderAll();
   // on app open: urgent department alerts take precedence over the routine status report.
   // The report is rate-limited (default: once a day, and only when something is actually pending) —
   // it used to fire on every single open, which people found too noisy. 📋 opens it on demand.
-  if (pendingAlerts().length) openAlertPopup();
+  if (openTaskFromUrl()) { /* opened from a notification → straight to that task */ }
+  else if (pendingAlerts().length) openAlertPopup();
   else if (shouldAutoShowReport()) { markReportSeen(); openStatusReport(); }
+  refreshPushSub();
   refreshImportBadge();   // fire-and-forget: check for pending online drawing requests (Supabase)
 }
 initAuth();
