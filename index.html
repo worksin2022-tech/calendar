@@ -807,7 +807,7 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
 
 .cal-head {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  grid-template-columns: repeat(7, minmax(0, 1fr));   /* must match .cal-grid */
   background: #fff;
   border-bottom: 1px solid var(--border);
   position: sticky; top: 0; z-index: 5;   /* weekday header stays visible while scrolling */
@@ -822,7 +822,7 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
 }
 .cal-grid {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  grid-template-columns: repeat(7, minmax(0, 1fr));   /* always 7 equal days — a wide multi-day bar must not widen its column */
   grid-auto-rows: minmax(110px, auto); /* rows grow with content (busy days); .cal-scroll handles scrolling */
   background: var(--border);
   gap: 1px;
@@ -881,6 +881,12 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
 }
 .chip-title-row { display: flex; align-items: center; gap: 5px; min-width: 0; }
 .task-chip:hover { filter: brightness(.96); }
+/* left-edge status control: hover widens the status-coloured edge, click = change status right there */
+.task-chip, .cabinet-chip { position: relative; }
+.chip-status-edge { position: absolute; left: -3px; top: 0; bottom: 0; width: 12px; z-index: 2; cursor: pointer; }
+.chip-status-edge::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; border-radius: 4px 0 0 4px; background: var(--chip-color, #98a2b3); transition: width .12s ease, box-shadow .12s ease; }
+.chip-status-edge:hover::before, .chip-status-edge.open::before { width: 8px; box-shadow: 1px 0 3px rgba(16,24,40,.25); }
+@media (hover: none) { .chip-status-edge { width: 18px; } }   /* iPad: bigger tap target (no hover to reveal it) */
 .task-chip.dragging { opacity: .4; }
 .task-chip.done .task-title { text-decoration: line-through; color: var(--text-faint); }
 /* cabinet chip — a subtask with its own date, shown on the calendar */
@@ -937,6 +943,11 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
   box-sizing: border-box;
   overflow: hidden;
 }
+/* continuous multi-day bar (one element across the week row) — above the neighbouring cells it covers */
+.task-chip.span-bar { position: relative; z-index: 3; border-radius: 4px; padding-right: 7px; }
+.task-chip.span-bar.bar-cont-left { border-top-left-radius: 0; border-bottom-left-radius: 0; }
+.task-chip.span-bar.bar-cont-right { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+body.chip-dragging .task-chip.span-bar { pointer-events: none; }   /* let the day under the pointer receive the drop */
 .task-chip.span-start .task-substatus,
 .task-chip.span-mid .task-substatus,
 .task-chip.span-end .task-substatus { flex-wrap: nowrap; }
@@ -3438,13 +3449,21 @@ function renderMonth() {
       const maxLane = spans.reduce((m, it) => Math.max(m, it.lane || 0), 0);
       const laneArr = new Array(maxLane + 1).fill(null);
       spans.forEach(it => { laneArr[it.lane || 0] = it; });
+      // ONE continuous bar per week row: drawn in the cell where it starts (or on Monday when it wraps
+      // from the week before) and stretched over the following days of that row; the other days only
+      // keep the lane open with an invisible spacer. (Every cell = 6px padding + 1px grid gap → 13px
+      // between one cell's content box and the next.)
       laneArr.forEach(it => {
-        if (it) {
-          const showLabel = it.position === "start" || isFirstOfRow; // re-label on Mon week-wrap
-          taskWrap.appendChild(renderTaskChip(it.task, it.position, showLabel));
-        } else {
-          taskWrap.appendChild(makeSpanGap());
-        }
+        const segStart = it && (it.position === "start" || isFirstOfRow);
+        if (!segStart) { taskWrap.appendChild(makeSpanGap()); return; }
+        const daysLeft = Math.round((fromIso(it.task.date) - fromIso(iso)) / 86400000) + 1;
+        const n = Math.max(1, Math.min(daysLeft, 7 - (i % 7)));
+        const chip = renderTaskChip(it.task, it.position === "start" ? "start" : "mid", true);
+        chip.classList.add("span-bar");
+        if (it.position !== "start") chip.classList.add("bar-cont-left");   // continues from last week
+        if (daysLeft > n) chip.classList.add("bar-cont-right");              // continues next week
+        chip.style.width = `calc(${n} * 100% + ${(n - 1) * 13}px)`;
+        taskWrap.appendChild(chip);
       });
     }
     rest.forEach(item => {
@@ -3570,6 +3589,7 @@ function renderTaskChip(t, position = "single", showLabel = true) {
   const fieldRow = fchips.length ? `<div class="chip-fields">${fchips.map(f =>
     `<span class="chip-field" title="${escapeHtml(f.name)}: ${escapeHtml(f.label)}">${escapeHtml(f.label)}</span>`).join("")}</div>` : "";
   chip.innerHTML = `<div class="chip-title-row"><span class="task-title">${escapeHtml(t.title)}</span>${alertPin(t)}${assigneeStack(t)}</div>${badgeRow}${fieldRow}`;
+  if (position === "single" || position === "start") addStatusEdge(chip, t);   // mid/end pieces have no left edge
   chip.addEventListener("click", (e) => { e.stopPropagation(); openTaskModal(t.id); });
   chip.addEventListener("dragstart", (e) => {
     dragTaskId = t.id;
@@ -3647,6 +3667,9 @@ function assignSpanLanes(tasks) {
   return laneOf;
 }
 // empty fixed-height filler for a lane with no bar in this cell (keeps lower bars aligned)
+document.addEventListener("dragstart", () => document.body.classList.add("chip-dragging"));
+document.addEventListener("dragend", () => document.body.classList.remove("chip-dragging"));
+document.addEventListener("drop", () => document.body.classList.remove("chip-dragging"));
 function makeSpanGap() {
   const g = document.createElement("div");
   g.className = "span-gap";
@@ -3706,6 +3729,7 @@ function renderCabinetChip(t, s) {
     <span class="cab-name">${escapeHtml(s.text || "(ไม่มีชื่อตู้)")}</span>
     ${alertPin(t)}
   `;
+  addStatusEdge(chip, t, s);
   chip.addEventListener("click", (e) => { e.stopPropagation(); openTaskModal(t.id); });
   chip.addEventListener("dragstart", (e) => {
     dragSub = { taskId: t.id, subId: s.id };
@@ -3783,6 +3807,7 @@ function renderDeptChip(t, stage) {
   const fieldRow = fchips.length ? `<div class="chip-fields">${fchips.map(f =>
     `<span class="chip-field" title="${escapeHtml(f.name)}: ${escapeHtml(f.label)}">${escapeHtml(f.label)}</span>`).join("")}</div>` : "";
   chip.innerHTML = `<div class="chip-title-row">${deptDot}<span class="task-title">${escapeHtml(t.title)}</span>${alertPin(t)}${assigneeStack(t)}</div>${badgeRow}${fieldRow}`;
+  addStatusEdge(chip, t);
   chip.addEventListener("click", (e) => { e.stopPropagation(); openTaskModal(t.id, { focusDept: deptId }); });
   chip.addEventListener("dragstart", (e) => {
     dragStage = { taskId: t.id, deptId };
@@ -3838,6 +3863,7 @@ function renderDeptCabChip(t, stage, sub) {
       ${doneBadge}
     </div>
   `;
+  addStatusEdge(chip, t, sub);
   chip.addEventListener("click", (e) => { e.stopPropagation(); openTaskModal(t.id, { focusDept: deptId }); });
   chip.addEventListener("dragstart", (e) => {
     dragDeptCab = { taskId: t.id, subId: sub.id, deptId };
@@ -3875,6 +3901,36 @@ function escapeHtml(s) {
   return String(s||"").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
 }
 /* Floating status picker — anchored to an element, calls onChange(newStatusId) */
+// change a task's (or a cabinet's) status — same rules as the Today panel: log + notify + save
+function applyStatusChange(t, sub, id) {
+  const oldId = sub ? sub.statusId : t.statusId;
+  if (oldId === id) return;
+  if (sub) sub.statusId = id; else t.statusId = id;
+  const ns = getStatus(id);
+  if (sub) logActivity(t, (isStatusDone(ns) && !isStatusDone(getStatus(oldId))) ? `ตู้ “${sub.text || "(ไม่มีชื่อ)"}” เสร็จ` : `ตู้ “${sub.text || "(ไม่มีชื่อ)"}” → ${ns.name}`);
+  else logActivity(t, `เปลี่ยนสถานะ: ${getStatus(oldId).name} → ${ns.name}`);
+  notifyStatusChange(t, sub || null, oldId, id);
+  t.updatedAt = Date.now(); saveState(); renderAll();
+}
+// clickable left edge on a calendar chip (only for people who may change status)
+function addStatusEdge(chip, t, sub) {
+  if (!canEdit()) return;
+  const edge = document.createElement("span");
+  edge.className = "chip-status-edge";
+  edge.title = sub ? "คลิกเพื่อเปลี่ยนสถานะตู้" : "คลิกเพื่อเปลี่ยนสถานะ";
+  edge.addEventListener("click", (e) => {
+    e.stopPropagation(); e.preventDefault();
+    edge.classList.add("open");
+    openStatusPopover(edge, sub ? sub.statusId : t.statusId, (id) => applyStatusChange(t, sub, id));
+    // keep the edge widened while its menu is open
+    const done = () => { if (!document.querySelector(".status-popover")) { edge.classList.remove("open"); document.removeEventListener("mousedown", later, true); } };
+    const later = () => setTimeout(done, 0);
+    document.addEventListener("mousedown", later, true);
+  });
+  edge.addEventListener("mousedown", (e) => e.stopPropagation());   // don't start a chip drag from the edge
+  edge.draggable = false;
+  chip.prepend(edge);
+}
 function openStatusPopover(anchorEl, currentId, onChange) {
   if (!canEdit()) { permDenied("สิทธิ์ของคุณเปลี่ยนสถานะไม่ได้"); return; }
   // close any open popover first
