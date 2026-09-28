@@ -1040,6 +1040,10 @@ body.chip-dragging .task-chip.span-bar { pointer-events: none; }   /* let the da
 .push-box p { margin: 0 0 8px; color: var(--text-dim); font-size: 12px; line-height: 1.5; }
 .push-state { display: inline-block; margin-bottom: 8px; padding: 2px 9px; border-radius: 999px; background: #f2f4f7; color: var(--text-dim); font-size: 12px; font-weight: 700; }
 .push-state.on { background: #ecfdf3; color: #027a48; }
+.push-result { margin-top: 8px; color: var(--text-dim); font-size: 12px; line-height: 1.5; word-break: break-word; }
+.push-result:empty { display: none; }
+/* task popup footer: autosave status (no บันทึก/ยกเลิก buttons) */
+.autosave-note { color: var(--text-faint); font-size: 12px; white-space: nowrap; }
 /* toast with an action button ("เลิกทำ") */
 .toast.has-action { pointer-events: auto; display: flex; align-items: center; gap: 12px; text-align: left; }
 .toast-act { flex: 0 0 auto; padding: 4px 12px; border: 1px solid rgba(255,255,255,.35); border-radius: 6px; background: transparent; color: #fff; font: inherit; font-weight: 700; cursor: pointer; }
@@ -4947,8 +4951,12 @@ function openTaskModal(taskId, defaults={}) {
     : JSON.parse(JSON.stringify(state.tasks.find(t => t.id === taskId)));
 
   if (!task) return;
-  // snapshot to diff against on save (for the activity log)
-  const beforeSnapshot = isNew ? null : JSON.parse(JSON.stringify(task));
+  // ★ AUTOSAVE (no บันทึก/ยกเลิก buttons): every edit is written straight away, merged field-by-field into the
+  //   CURRENT saved task (merge3) — so someone who had this popup open on old data can never put the old data
+  //   back. `base` = the saved version this popup's copy is based on; updates from others flow into the popup live.
+  let base = isNew ? null : JSON.parse(JSON.stringify(task));
+  let created = !isNew;          // a new task is created by the first edit once it has a title
+  let commitTimer = null;
 
   const boardName = (root.boardMeta.find(b => b.id === root.activeBoard) || {}).name || "";
   const overlay = document.createElement("div");
@@ -4985,7 +4993,7 @@ function openTaskModal(taskId, defaults={}) {
             </select>
           </div>
           <div class="field">
-            <label title="คนที่ถูกมอบหมายจะได้รับแจ้งเตือนเมื่อกดบันทึก">ผู้รับผิดชอบ</label>
+            <label title="คนที่ถูกมอบหมายจะได้รับแจ้งเตือนทันที">ผู้รับผิดชอบ</label>
             <div class="asg-row" data-assignees></div>
           </div>
         </div>
@@ -5045,8 +5053,8 @@ function openTaskModal(taskId, defaults={}) {
         ${isNew ? "" : `<button class="btn btn-danger" data-act="delete">ลบงาน</button>`}
         ${isNew ? "" : `<button class="btn" data-act="duplicate" title="สร้างสำเนาโปรเจคนี้ (รีเซ็ตความคืบหน้า เก็บโครงสร้าง+วัน)">⧉ ทำซ้ำ</button>`}
         <div style="flex:1"></div>
-        <button class="btn" data-act="close">ยกเลิก</button>
-        <button class="btn btn-primary" data-act="save">บันทึก</button>
+        <span class="autosave-note" data-saved>${isNew ? "ใส่ชื่องานแล้วระบบจะบันทึกให้อัตโนมัติ" : "✓ บันทึกอัตโนมัติ"}</span>
+        <button class="btn" data-act="close">ปิด</button>
       </div>
     </div>
   `;
@@ -5058,9 +5066,16 @@ function openTaskModal(taskId, defaults={}) {
 
   // custom dd/mm/yyyy date fields
   const startField = createDateField({ value: task.startDate, allowClear: true, extraClass: "datefield-block",
-    onChange: (iso) => { task.startDate = iso; } });
+    onChange: (iso) => {
+      if (iso && task.date && iso > task.date) { toast("วันเริ่มต้องไม่หลังวันครบกำหนด"); startField.setValue(task.startDate || null); return; }
+      task.startDate = iso || null; scheduleCommit(0);
+    } });
   const dueField = createDateField({ value: task.date, allowClear: false, extraClass: "datefield-block",
-    onChange: (iso) => { if (iso) task.date = iso; } });
+    onChange: (iso) => {
+      if (!iso) return;
+      if (task.startDate && task.startDate > iso) { toast("วันครบกำหนดต้องไม่ก่อนวันเริ่ม"); dueField.setValue(task.date); return; }
+      task.date = iso; scheduleCommit(0);
+    } });
   modal.querySelector('[data-df="startDate"]').appendChild(startField);
   modal.querySelector('[data-df="date"]').appendChild(dueField);
 
@@ -5071,7 +5086,7 @@ function openTaskModal(taskId, defaults={}) {
     prioritySel.value = task.priority || "none";
     const paintPri = () => { prioritySel.style.color = getPriority(prioritySel.value).color; };
     paintPri();
-    prioritySel.addEventListener("change", () => { task.priority = prioritySel.value; paintPri(); });
+    prioritySel.addEventListener("change", () => { task.priority = prioritySel.value; paintPri(); scheduleCommit(0); });
   }
 
   // status pill + quick-done
@@ -5090,6 +5105,7 @@ function openTaskModal(taskId, defaults={}) {
     openStatusPopover(statusBtn, task.statusId, (newId) => {
       task.statusId = newId;
       paintStatus();
+      scheduleCommit(0);
     });
   });
   doneQuick.addEventListener('click', () => {
@@ -5106,6 +5122,7 @@ function openTaskModal(taskId, defaults={}) {
       else alert("ยังไม่มีสถานะที่ตั้งเป็น 'เสร็จ' — กด ⚙ แก้ไข เพื่อกำหนด");
     }
     paintStatus();
+    scheduleCommit(0);
   });
   paintStatus();
 
@@ -5119,7 +5136,7 @@ function openTaskModal(taskId, defaults={}) {
       chip.innerHTML = `${escapeHtml(lab)} <button data-i="${i}">✕</button>`;
       chip.querySelector("button").addEventListener("click", () => {
         task.labels.splice(i, 1);
-        renderLabels();
+        renderLabels(); scheduleCommit(0);
       });
       labelsArea.insertBefore(chip, labelsArea.querySelector("input"));
     });
@@ -5133,12 +5150,12 @@ function openTaskModal(taskId, defaults={}) {
       if (v && !(task.labels||[]).includes(v)) {
         task.labels = task.labels || [];
         task.labels.push(v);
-        renderLabels();
+        renderLabels(); scheduleCommit(0);
       }
       labelInput.value = "";
     } else if (e.key === "Backspace" && !labelInput.value && (task.labels||[]).length) {
       task.labels.pop();
-      renderLabels();
+      renderLabels(); scheduleCommit(0);
     }
   });
 
@@ -5164,6 +5181,7 @@ function openTaskModal(taskId, defaults={}) {
       const prog = checklistProgress(s);
       const row = document.createElement("div");
       row.className = "subtask-row" + (isStatusDone(cur) ? " done" : "");
+      row.dataset.sid = s.id;
       row.innerHTML = `
         <div class="subtask-main">
           <button type="button" class="subtask-dot" aria-label="เปลี่ยนสถานะ"></button>
@@ -5195,6 +5213,7 @@ function openTaskModal(taskId, defaults={}) {
           } else {
             s.date = iso || null;
           }
+          scheduleCommit(0);
         }
       });
       dateField.title = modalDept
@@ -5218,12 +5237,13 @@ function openTaskModal(taskId, defaults={}) {
           const ns = getStatus(newId);
           paintDot(dotBtn, ns);
           row.classList.toggle("done", isStatusDone(ns));
+          scheduleCommit(0);
         });
       });
-      const openCl = () => openChecklistPopover(clBtn, s, paintProg, { task, deptId: modalDept });
+      const openCl = () => openChecklistPopover(clBtn, s, () => { paintProg(); scheduleCommit(600); }, { task, deptId: modalDept });
       clBtn.addEventListener("click", (e) => { e.stopPropagation(); openCl(); });
       clBtn.addEventListener("mouseenter", openCl);
-      txt.addEventListener("input", () => { s.text = txt.value; });
+      txt.addEventListener("input", () => { s.text = txt.value; scheduleCommit(800); });
       txt.addEventListener("keydown", (e) => {
         if (e.key === "Enter") { e.preventDefault(); addSub(""); setTimeout(() => { subWrap.lastChild?.querySelector('input[type=text]')?.focus(); }, 0); }
       });
@@ -5237,7 +5257,7 @@ function openTaskModal(taskId, defaults={}) {
         if (!ok) return;
         const idx = task.subtasks.indexOf(s);
         if (idx >= 0) task.subtasks.splice(idx, 1);
-        renderSubs();
+        renderSubs(); scheduleCommit(0);
       });
       subWrap.appendChild(row);
     });
@@ -5246,7 +5266,7 @@ function openTaskModal(taskId, defaults={}) {
     if (!canFull()) { permDenied("สิทธิ์ของคุณเพิ่มตู้ไม่ได้"); return; }
     task.subtasks = task.subtasks || [];
     task.subtasks.push({ id: uid("st"), text, statusId: state.statuses[0]?.id, date: null, checklist: makeCabinetChecklist() });
-    renderSubs();
+    renderSubs(); scheduleCommit(1500);
   }
   renderSubs();
   modal.querySelector('[data-act="add-sub"]').addEventListener("click", () => { addSub(""); subWrap.lastChild?.querySelector('input[type=text]')?.focus(); });
@@ -5301,24 +5321,25 @@ function openTaskModal(taskId, defaults={}) {
             if (max) { toast(dateLimitMsg(stg.deptId, max)); df.setValue(stg.due || null); return; }
           }
           stg.due = iso || null;
+          scheduleCommit(0);
         } });
       row.querySelector(".stage-date-mount").replaceWith(df);
       // dept change → recompute control (checklist vs manual)
       deptSel.addEventListener("change", () => {
         if (!canFull()) { permDenied("สิทธิ์ของคุณเปลี่ยนแผนกของด่านไม่ได้"); deptSel.value = stg.deptId; return; }
         stg.deptId = deptSel.value;
-        renderStages();
+        renderStages(); scheduleCommit(0);
       });
       // manual department done tick (only for depts without a checklist) — a status, so edit tier can
       if (doneCb) doneCb.addEventListener("change", () => {
         if (!canEdit()) { permDenied("สิทธิ์ของคุณเปลี่ยนสถานะไม่ได้"); doneCb.checked = !!stg.done; return; }
-        stg.done = doneCb.checked; row.classList.toggle("done", doneCb.checked);
+        stg.done = doneCb.checked; row.classList.toggle("done", doneCb.checked); scheduleCommit(0);
       });
       del.addEventListener("click", () => {
         if (!canFull()) { permDenied("สิทธิ์ของคุณลบด่านแผนกไม่ได้"); return; }
         const idx = task.deptStages.indexOf(stg);   // indexOf, not the loop index — the list may be filtered
         if (idx >= 0) task.deptStages.splice(idx, 1);
-        renderStages();
+        renderStages(); scheduleCommit(0);
       });
       stageWrap.appendChild(row);
     });
@@ -5364,6 +5385,7 @@ function openTaskModal(taskId, defaults={}) {
         sel.addEventListener("change", () => {
           if (!canFull()) { permDenied("สิทธิ์ของคุณแก้ข้อมูลนี้ไม่ได้"); sel.value = cur; return; }
           if (sel.value) stg.fields[f.id] = sel.value; else delete stg.fields[f.id];
+          scheduleCommit(0);
         });
         rowsEl.appendChild(rowEl);
       });
@@ -5378,7 +5400,7 @@ function openTaskModal(taskId, defaults={}) {
     const dept = (state.departments || []).find(d => !used.has(d.id)) || (state.departments || [])[0];
     if (!dept) { alert("ยังไม่มีแผนก — เพิ่มได้ที่ ⚙ ตั้งค่า › แผนก"); return; }
     task.deptStages.push({ deptId: dept.id, due: null, done: false });
-    renderStages();
+    renderStages(); scheduleCommit(0);
   }
   renderStages();
   modal.querySelector('[data-act="add-stage"]').addEventListener("click", addStage);
@@ -5387,13 +5409,8 @@ function openTaskModal(taskId, defaults={}) {
   if (!Array.isArray(task.comments)) task.comments = [];
   const feedEl = modal.querySelector('[data-feed]');
   const commentInput = modal.querySelector('[data-comment]');
-  function persistComments() {
-    // comments persist immediately for existing tasks (independent of Save/Cancel)
-    if (!isNew) {
-      const real = state.tasks.find(t => t.id === task.id);
-      if (real) { real.comments = JSON.parse(JSON.stringify(task.comments)); saveState(); }
-    }
-  }
+  // comments/acks/replies go through the same merge-commit (a comment posted elsewhere meanwhile is kept)
+  function persistComments() { commitNow(); }
   function renderFeed() {
     const attN = collectAttachments(task).length;
     modal.querySelectorAll("[data-att-count]").forEach(el => { el.textContent = attN ? String(attN) : ""; });
@@ -5554,45 +5571,122 @@ function openTaskModal(taskId, defaults={}) {
   // background uploads finishing → pull the finished entries into this modal copy and redraw the feed
   const onAttachUpdated = () => {
     if (!document.body.contains(modal)) { document.removeEventListener("attach-updated", onAttachUpdated); return; }
-    if (!isNew) syncAttachFromReal(task);
-    renderFeed();
+    if (created) refreshFromReal(); else renderFeed();
   };
   document.addEventListener("attach-updated", onAttachUpdated);
 
-  // actions
-  function close() { overlay.remove(); }
+  // actions — closing just flushes the pending autosave (there is nothing to "cancel" any more)
+  let closed = false;
+  function close() {
+    if (closed) return;
+    if (commitTimer) commitNow();
+    closed = true;
+    if (!created && ((task.title || "").trim() === "") && (task.comments.length || (task.subtasks || []).length)) toast("ยังไม่ได้สร้างงาน — ต้องใส่ชื่องานก่อน");
+    overlay.remove();
+    document.removeEventListener("app-rendered", refreshFromReal);
+    document.removeEventListener("attach-updated", onAttachUpdated);
+    document.removeEventListener("visibilitychange", onHide);
+    if (window._taskModalFlush === flushIfPending) window._taskModalFlush = null;
+  }
   overlay.addEventListener("click", (e) => { if (e.target === overlay) close(); });
   modal.querySelectorAll('[data-act="close"]').forEach(b => b.addEventListener("click", close));
   modal.querySelector('[data-act="dashboard"]')?.addEventListener("click", () => openProjectDashboard(task.id));
   modal.querySelectorAll('[data-act="attachments"]').forEach(b => b.addEventListener("click", () => openAttachmentsGallery(task)));
-  modal.querySelector('[data-act="save"]').addEventListener("click", () => {
-    if (!canEdit()) { close(); return; }   // read/comment tiers can't persist task changes
-    task.title = modal.querySelector('[data-f="title"]').value.trim();
-    task.description = modal.querySelector('[data-f="description"]').value;
-    const due = dueField.getValue() || todayIso();
-    const start = startField.getValue();
-    if (start && start > due) {
-      alert("วันเริ่มต้องไม่หลังวันครบกำหนด");
+  modal.querySelector('[data-f="title"]').addEventListener("input", (e) => { task.title = e.target.value; scheduleCommit(created ? 800 : 600); });
+  modal.querySelector('[data-f="description"]').addEventListener("input", (e) => { task.description = e.target.value; scheduleCommit(900); });
+
+  function scheduleCommit(ms = 700) {
+    clearTimeout(commitTimer);
+    commitTimer = setTimeout(commitNow, ms);
+    setSavedNote("กำลังบันทึก…");
+  }
+  function flushIfPending() { if (commitTimer) commitNow(); }
+  const onHide = () => { if (document.visibilityState === "hidden") flushIfPending(); };
+  document.addEventListener("visibilitychange", onHide);
+  window._taskModalFlush = flushIfPending;
+  function setSavedNote(txt) { const el = modal.querySelector("[data-saved]"); if (el) el.textContent = txt; }
+
+  // write this popup's edits into the saved task
+  function commitNow() {
+    clearTimeout(commitTimer); commitTimer = null;
+    if (closed || !canComment()) return;
+    if (!created) {
+      // brand-new task: created by the first edit that has a title
+      if (!canFull() || !(task.title || "").trim()) { setSavedNote("ใส่ชื่องานแล้วระบบจะบันทึกให้อัตโนมัติ"); return; }
+      task.title = task.title.trim();
+      task.updatedAt = Date.now();
+      diffTaskActivity(null, task).forEach(text => logActivity(task, text));
+      notifyAssigneeChanges(null, task);
+      state.tasks.push(JSON.parse(JSON.stringify(task)));
+      base = JSON.parse(JSON.stringify(task));
+      created = true;
+      saveState(); renderAll();
+      setSavedNote("✓ สร้างงานแล้ว · บันทึกอัตโนมัติ");
       return;
     }
-    task.date = due;
-    task.startDate = start || null;
-    if (!task.title) { alert("กรุณาใส่ชื่องาน"); return; }
-    task.updatedAt = Date.now();
-    if (!isNew) syncAttachFromReal(task);   // uploads that finished while this modal was open
-    // auto activity log: record what changed
-    diffTaskActivity(beforeSnapshot, task).forEach(text => logActivity(task, text));
-    notifyAssigneeChanges(beforeSnapshot, task);
-    if (isNew) state.tasks.push(task);
-    else {
-      const idx = state.tasks.findIndex(t => t.id === task.id);
-      if (idx >= 0) state.tasks[idx] = task;
+    const real = state.tasks.find(t => t.id === task.id);
+    if (!real) { goneElsewhere(); return; }
+    // my version of the task: read/comment tiers may only add to the Activity; an emptied title isn't saved
+    let local = task;
+    if (!canEdit()) local = { ...base, comments: task.comments };
+    else if (!(task.title || "").trim()) local = { ...task, title: base.title };
+    if (deepEq(local, base)) { setSavedNote("✓ บันทึกอัตโนมัติ"); return; }
+    if (canEdit()) {
+      diffTaskActivity(base, local).forEach(text => logActivity(local, text));   // only MY changes (base → mine)
+      notifyAssigneeChanges(base, local);
+      notifyTaskDiff(base, local);
     }
+    local.updatedAt = Date.now();
+    const merged = merge3(base, local, real);   // keep whatever others changed on this task meanwhile
+    state.tasks[state.tasks.indexOf(real)] = JSON.parse(JSON.stringify(merged));
+    base = JSON.parse(JSON.stringify(merged));
     saveState();
-    notifyTaskDiff(beforeSnapshot, task);   // browser notifications for status/done changes made in the modal
-    close();
+    if (!deepEq(merged, task)) adoptIntoModal(merged);
     renderAll();
-  });
+    setSavedNote("✓ บันทึกแล้ว " + new Date().toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" }));
+  }
+  // someone else changed / this device changed elsewhere (chip, alert popup, upload finished) → show it here
+  function refreshFromReal() {
+    if (closed || !created || commitTimer) return;   // a pending edit of mine merges first
+    const real = state.tasks.find(t => t.id === task.id);
+    if (!real) { goneElsewhere(); return; }
+    if (deepEq(real, base)) return;
+    const merged = merge3(base, task, real);
+    base = JSON.parse(JSON.stringify(real));
+    if (!deepEq(merged, task)) adoptIntoModal(merged);
+    if (!deepEq(merged, real)) scheduleCommit(0);   // I still had something unsent
+  }
+  function goneElsewhere() {
+    toast("งานนี้ถูกลบ (ย้ายไปถังขยะ) โดยคนอื่นแล้ว");
+    commitTimer = null; closed = true; overlay.remove();
+    document.removeEventListener("app-rendered", refreshFromReal);
+  }
+  // replace the popup's copy with `src` and repaint every section (keeps what's being typed + the caret)
+  function adoptIntoModal(src) {
+    const ae = document.activeElement;
+    const sidFocus = ae && ae.closest && ae.closest(".subtask-row") && modal.contains(ae) ? ae.closest(".subtask-row").dataset.sid : null;
+    const caret = sidFocus && typeof ae.selectionStart === "number" ? ae.selectionStart : null;
+    const fresh = JSON.parse(JSON.stringify(src));
+    Object.keys(task).forEach(k => delete task[k]);
+    Object.assign(task, fresh);
+    if (!Array.isArray(task.comments)) task.comments = [];
+    if (!Array.isArray(task.assignees)) task.assignees = [];
+    if (!Array.isArray(task.deptStages)) task.deptStages = [];
+    const titleEl = modal.querySelector('[data-f="title"]'), descEl = modal.querySelector('[data-f="description"]');
+    if (ae !== titleEl) titleEl.value = task.title || "";
+    if (ae !== descEl) descEl.value = task.description || "";
+    startField.setValue(task.startDate || null);
+    dueField.setValue(task.date || null);
+    if (prioritySel) { prioritySel.value = task.priority || "none"; prioritySel.style.color = getPriority(prioritySel.value).color; }
+    document.querySelectorAll(".checklist-popover").forEach(n => n.remove());
+    paintStatus(); renderLabels(); renderSubs(); renderStages(); renderAssignees(); renderFeed();
+    applyTaskModalPerm(modal);
+    if (sidFocus) {
+      const inp = subWrap.querySelector(`.subtask-row[data-sid="${CSS.escape(sidFocus)}"] input[type=text]`);
+      if (inp) { inp.focus(); if (caret != null) try { inp.setSelectionRange(caret, caret); } catch (_) {} }
+    }
+  }
+  document.addEventListener("app-rendered", refreshFromReal);
   const delBtn = modal.querySelector('[data-act="delete"]');
   if (delBtn) {
     delBtn.addEventListener("click", async () => {
@@ -5623,7 +5717,7 @@ function openTaskModal(taskId, defaults={}) {
         icon: "⧉",
       });
       if (!ok) return;
-      // duplicate from the SAVED task (predictable; ignores unsaved edits in this modal)
+      flushIfPending();
       const src = state.tasks.find(t => t.id === task.id) || task;
       const copy = duplicateTask(src);
       state.tasks.push(copy);
@@ -5634,7 +5728,7 @@ function openTaskModal(taskId, defaults={}) {
     });
   }
 
-  // ----- ผู้รับผิดชอบ (assignees): edited on the modal copy, notified on บันทึก -----
+  // ----- ผู้รับผิดชอบ (assignees): autosaved; the person is notified by the commit (notifyAssigneeChanges) -----
   if (!Array.isArray(task.assignees)) task.assignees = [];
   const asgWrap = modal.querySelector("[data-assignees]");
   function renderAssignees() {
@@ -5646,10 +5740,10 @@ function openTaskModal(taskId, defaults={}) {
       + (editable ? `<button type="button" class="asg-add" data-act="assign">＋ มอบหมาย</button>`
                   : (task.assignees.length ? "" : `<span class="asg-none">— ยังไม่ได้มอบหมาย —</span>`));
     asgWrap.querySelectorAll("[data-rm]").forEach(b => b.addEventListener("click", () => {
-      task.assignees = task.assignees.filter(x => x !== b.dataset.rm); renderAssignees();
+      task.assignees = task.assignees.filter(x => x !== b.dataset.rm); renderAssignees(); scheduleCommit(0);
     }));
     const addBtn = asgWrap.querySelector('[data-act="assign"]');
-    if (addBtn) addBtn.addEventListener("click", () => openAssignPicker(addBtn, task.assignees, ids => { task.assignees = ids; renderAssignees(); }));
+    if (addBtn) addBtn.addEventListener("click", () => openAssignPicker(addBtn, task.assignees, ids => { task.assignees = ids; renderAssignees(); scheduleCommit(600); }));
   }
   renderAssignees();
   if (!teamProfiles.size) loadTeam().then(() => { if (document.body.contains(modal)) renderAssignees(); });
@@ -7326,7 +7420,21 @@ function renderPushControl(box) {
     box.innerHTML = `<h5>🔔 แจ้งเตือนบนเครื่องนี้ (แม้ปิดแอป)</h5>
       <p>เด้งเตือนเมื่อมีคน <b>มอบหมายงาน</b> / <b>@กล่าวถึง</b> คุณ หรือ <b>แจ้งเตือนถึงแผนกคุณ</b> — แม้ปิดแอปหรือล็อกจออยู่ (ตั้งแยกทีละเครื่อง)</p>
       <span class="push-state${on ? " on" : ""}">${on ? "✓ เปิดอยู่บนเครื่องนี้" : Notification.permission === "denied" ? "✕ ถูกบล็อกในเบราว์เซอร์" : "ปิดอยู่"}</span><br>
-      <button type="button" class="btn btn-sm ${on ? "" : "btn-primary"}" data-push-toggle>${on ? "ปิดการแจ้งเตือนบนเครื่องนี้" : "เปิดการแจ้งเตือนบนเครื่องนี้"}</button>`;
+      <button type="button" class="btn btn-sm ${on ? "" : "btn-primary"}" data-push-toggle>${on ? "ปิดการแจ้งเตือนบนเครื่องนี้" : "เปิดการแจ้งเตือนบนเครื่องนี้"}</button>
+      ${on ? `<button type="button" class="btn btn-sm" data-push-test title="ระบบจะส่งแจ้งเตือนทดสอบมาที่เครื่องของคุณใน 10 วินาที — ปัดปิดแอปก่อนเพื่อลองแบบปิดแอป">📨 ส่งทดสอบมาเครื่องนี้</button>` : ""}
+      <div class="push-result" data-push-result></div>`;
+    const testBtn = box.querySelector("[data-push-test]");
+    if (testBtn) testBtn.addEventListener("click", async () => {
+      testBtn.disabled = true;
+      await refreshPushSub();
+      const out = box.querySelector("[data-push-result]");
+      out.textContent = "⏳ จะส่งใน 10 วินาที — ปัดปิดแอปตอนนี้ได้เลย (ปัดขึ้นจากตัวสลับแอป) แล้วรอดูแจ้งเตือน";
+      const { data, error } = await getSupabase().functions.invoke(PUSH_FUNCTION, { body: { test: true, delay: 10, title: "📨 ทดสอบแจ้งเตือน", body: "ถ้าเห็นข้อความนี้ตอนปิดแอป แปลว่าใช้งานได้ ✓", tag: "push-test-" + Date.now() } });
+      testBtn.disabled = false;
+      if (error) { out.textContent = "❌ เรียกระบบส่งไม่สำเร็จ: " + (error.message || error); return; }
+      const fails = (data && data.failures) || [];
+      out.textContent = `ผล: ส่งสำเร็จ ${data.sent || 0} จาก ${data.devices || 0} เครื่อง` + (fails.length ? " · ล้มเหลว: " + fails.map(f => `${f.host} ${f.status || ""} ${f.error}`).join(" | ") : "");
+    });
     box.querySelector("[data-push-toggle]").addEventListener("click", async (e) => {
       const btn = e.currentTarget; btn.disabled = true;
       try { if (on) { await disablePush(); toast("ปิดการแจ้งเตือนบนเครื่องนี้แล้ว"); } else { await enablePush(); toast("✓ เปิดการแจ้งเตือนแล้ว"); } }
@@ -7343,6 +7451,7 @@ function sendPush({ userIds, deptId, boardId, taskId, title, body, tag }) {
   const ids = (userIds || []).filter(id => id && id !== currentProfile.id);
   if (!ids.length && !deptId) return;
   sb.functions.invoke(PUSH_FUNCTION, { body: { userIds: ids, deptId: deptId || null, boardId: boardId || root.activeBoard, taskId, title, body: (body || "").slice(0, 280), tag } })
+    .then(({ data, error }) => { if (error || (data && data.failures && data.failures.length)) console.warn("send-push", error || data); })
     .catch(() => {});
 }
 // one new comment → the pushes it implies (personal alert / department alert / @mentions)
@@ -9066,6 +9175,7 @@ function renderAll() {
   renderTrashButton();
   applySidebarPerm();
   renderUserBadge();   // keep the department chip in sync when it changes
+  document.dispatchEvent(new Event("app-rendered"));   // an open task popup refreshes itself from the saved data
 }
 // hide the create/draw/import buttons for members below "full" (they'd only get a permission toast)
 function applySidebarPerm() {
