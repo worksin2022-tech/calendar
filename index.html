@@ -379,6 +379,8 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
 .ts-clear:hover { color: var(--text); background: #f1f3f5; }
 .toolbar-search.has-text .ts-clear { display: inline-flex; }
 .toolbar .spacer { flex: 1; }
+/* status legend + bell + add: one group pinned right — also when the toolbar wraps onto a 2nd line */
+.tb-right { display: flex; align-items: center; gap: 10px; margin-left: auto; flex-wrap: wrap; justify-content: flex-end; }
 .legend {
   display: flex; gap: 4px; align-items: center;
   flex-wrap: nowrap; flex: 0 0 auto;
@@ -1985,11 +1987,13 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
         <button class="priority-btn" data-pri="high"><span class="pri-flag" style="color:#f97316">⚑</span> สูง</button>
       </div>
       <div class="spacer"></div>
-      <div class="legend" id="legend"></div>
-      <button class="btn btn-sm tb-bell" id="btnBell" title="การแจ้งเตือนของแผนกฉัน">🔔<span class="tb-bell-badge" id="bellBadge" hidden>0</span></button>
-      <button class="tb-add" id="btnQuickAdd" title="เพิ่มงานใหม่" aria-label="เพิ่มงานใหม่">
-        <span class="tb-add-icon">+</span><span class="tb-add-text">เพิ่มงานใหม่</span>
-      </button>
+      <div class="tb-right">
+        <div class="legend" id="legend"></div>
+        <button class="btn btn-sm tb-bell" id="btnBell" title="การแจ้งเตือนของแผนกฉัน">🔔<span class="tb-bell-badge" id="bellBadge" hidden>0</span></button>
+        <button class="tb-add" id="btnQuickAdd" title="เพิ่มงานใหม่" aria-label="เพิ่มงานใหม่">
+          <span class="tb-add-icon">+</span><span class="tb-add-text">เพิ่มงานใหม่</span>
+        </button>
+      </div>
     </div>
 
     <div class="calendar">
@@ -2912,7 +2916,13 @@ function migrateState(s) {
       dl.blockedDepts = Array.isArray(dl.blockedDepts) ? dl.blockedDepts.filter(id => valid.has(id) && id !== dl.anchorDept) : [];
     }
   }
-  // Option A: each department owns a checklist template
+  // Option A: each department owns a checklist template.
+  // ★ seed QC's template ONLY for legacy data that never had per-department checklists (no `checklist`
+  //   property yet). It used to re-seed whenever the list was EMPTY — so a checklist someone cleared on
+  //   purpose came back on every load, and on the Service board (no d_qc) it filled the Service
+  //   department with QC's default items.
+  const qcLegacy = s.departments.find(d => d.id === "d_qc");
+  const seedQcChecklist = !!(qcLegacy && !Array.isArray(qcLegacy.checklist));
   s.departments.forEach(d => { if (!Array.isArray(d.checklist)) d.checklist = []; });
   // department emoji marker (replaces colour dot) — seed defaults / a generic for custom depts
   s.departments.forEach(d => { if (!d.icon) d.icon = DEFAULT_DEPT_ICONS[d.id] || "🏷️"; });
@@ -2926,7 +2936,7 @@ function migrateState(s) {
     });
   });
   const qcDept = s.departments.find(d => d.id === "d_qc") || s.departments[0];
-  if (qcDept && qcDept.checklist.length === 0) {
+  if (seedQcChecklist && qcDept && qcDept.checklist.length === 0) {
     // seed QC's checklist from the old universal template (or default)
     qcDept.checklist = (Array.isArray(s.checklistTemplate) && s.checklistTemplate.length)
       ? s.checklistTemplate.slice() : [...DEFAULT_CHECKLIST];
@@ -2975,8 +2985,19 @@ function saveState() {
    this layer pushes the same data to the cloud so every signed-in device sees it. Whole-board JSON
    blobs, last-write-wins per board — no realtime/merge yet (that's slice 3). */
 let _cloudSaveTimer = null;
+// ★ data-loss guard. `_lastPushedJson` is empty until the cloud copy has been loaded, so a push before that
+//   (an edit while the startup load is still running, or after it FAILED) treated every board as changed and
+//   uploaded this device's old local cache over everyone's newer data — settings "reverted" after a reload.
+//   Nothing is pushed until `_cloudReady`; a failed load retries in the background.
+let _cloudReady = false, _cloudRetryTimer = null, _offlineEditWarned = false;
+const _boardBaseAt = {};   // board id → cloud updated_at (ms) of the version this device's copy is based on
+const tsMs = (v) => { const n = Date.parse(v); return isNaN(n) ? 0 : n; };
 function scheduleCloudSave() {
   if (!currentProfile) return;   // not signed in yet (e.g. still on the login screen) — nothing to push
+  if (!_cloudReady) {
+    if (!_offlineEditWarned) { _offlineEditWarned = true; toast("⚠️ ยังเชื่อมต่อ cloud ไม่ได้ — การแก้ไขตอนนี้ยังไม่ถูกส่งให้คนอื่น (ระบบกำลังลองเชื่อมต่อใหม่)"); }
+    return;
+  }
   clearTimeout(_cloudSaveTimer);
   // debounce: collapse rapid edits into one write. MUST null the handle when it fires — clearTimeout
   // alone leaves a stale truthy id behind, and handleRealtimeBoardChange() reads this as "an edit is
@@ -2994,25 +3015,80 @@ async function pushAllBoardsToCloud() {
     .map(b => ({ b, json: JSON.stringify(root.boards[b.id]) }))
     .filter(x => _lastPushedJson[x.b.id] !== x.json);
   if (!changed.length) return;
+  // ★ stale-copy guard: if another device saved a board after the version we're based on (e.g. this iPad
+  //   tab slept and missed realtime updates), DON'T overwrite it — take the newer cloud copy instead.
+  try {
+    const { data: heads, error: headErr } = await sb.from("boards").select("id,updated_at").in("id", changed.map(x => x.b.id));
+    if (!headErr && Array.isArray(heads)) {
+      const newer = heads.filter(h => _boardBaseAt[h.id] && tsMs(h.updated_at) > _boardBaseAt[h.id]).map(h => h.id);
+      if (newer.length) {
+        await adoptCloudBoards(newer);
+        toast("⚠️ มีการแก้ไขบอร์ดนี้จากเครื่องอื่นระหว่างนี้ — โหลดข้อมูลล่าสุดแล้ว การแก้ไขล่าสุดของคุณยังไม่ถูกบันทึก กรุณาทำอีกครั้ง");
+        for (let i = changed.length - 1; i >= 0; i--) if (newer.includes(changed[i].b.id)) changed.splice(i, 1);
+        if (!changed.length) return;
+      }
+    }
+  } catch (_) { /* check failed (offline?) — the upsert below will fail too and be retried */ }
+  const stamp = new Date().toISOString();
   const rows = changed.map(({ b }) => ({
     id: b.id, name: b.name, data: root.boards[b.id],
-    updated_at: new Date().toISOString(), updated_by: currentProfile.display_name, updated_by_client: _clientId,
+    updated_at: stamp, updated_by: currentProfile.display_name, updated_by_client: _clientId,
   }));
   const { error } = await sb.from("boards").upsert(rows);
   if (error) { toast("⚠️ บันทึกขึ้น cloud ไม่สำเร็จ (บันทึกในเครื่องไว้แล้ว): " + error.message); return; }
   // mark as pushed ONLY after success — marking first meant a failed save was never retried
-  changed.forEach(({ b, json }) => { _lastPushedJson[b.id] = json; });
+  changed.forEach(({ b, json }) => { _lastPushedJson[b.id] = json; _boardBaseAt[b.id] = tsMs(stamp); });
 }
+// replace the given boards in memory with the cloud's current copies (after a detected conflict / on resume)
+async function adoptCloudBoards(ids) {
+  const sb = getSupabase();
+  if (!sb || !ids.length) return;
+  const { data, error } = await sb.from("boards").select("*").in("id", ids);
+  if (error || !Array.isArray(data)) return;
+  data.forEach(row => {
+    migrateState(row.data);
+    root.boards[row.id] = row.data;
+    _lastPushedJson[row.id] = JSON.stringify(row.data);
+    _boardBaseAt[row.id] = tsMs(row.updated_at);
+    const meta = root.boardMeta.find(b => b.id === row.id);
+    if (meta) meta.name = row.name; else root.boardMeta.push({ id: row.id, name: row.name });
+  });
+  state = root.boards[root.activeBoard] || state;
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(root)); } catch (_) {}
+  renderAll();
+}
+// back to the app after a while (iPad tab woke up, network came back) → pull boards that changed meanwhile.
+// Only boards with no unsent local edit are replaced; ones with a pending edit go through the push guard.
+let _lastResumeCheck = 0;
+async function refreshBoardsOnResume() {
+  if (!_cloudReady || !currentProfile || Date.now() - _lastResumeCheck < 10000) return;
+  _lastResumeCheck = Date.now();
+  const sb = getSupabase();
+  if (!sb) return;
+  const { data, error } = await sb.from("boards").select("id,updated_at");
+  if (error || !Array.isArray(data)) return;
+  const stale = data.filter(h => tsMs(h.updated_at) > (_boardBaseAt[h.id] || 0)
+    && (!root.boards[h.id] || _lastPushedJson[h.id] === JSON.stringify(root.boards[h.id]))).map(h => h.id);
+  if (stale.length && !_cloudSaveTimer) await adoptCloudBoards(stale);
+}
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") refreshBoardsOnResume(); });
+window.addEventListener("online", () => { if (_cloudReady) refreshBoardsOnResume(); else syncRootFromCloud(); });
+window.addEventListener("pageshow", (e) => { if (e.persisted) refreshBoardsOnResume(); });
 // called once from startApp(): first login ever → upload local data as the cloud seed;
 // every login after that → cloud is the source of truth, overwrite in-memory root/state with it.
 async function syncRootFromCloud() {
+  clearTimeout(_cloudRetryTimer);
+  const wasRetry = _offlineEditWarned || !!_cloudRetryTimer;
+  const retryLater = () => { _cloudRetryTimer = setTimeout(syncRootFromCloud, 15000); };
   const sb = getSupabase();
-  if (!sb) { toast("⚠️ ไม่มีอินเทอร์เน็ต — ใช้ข้อมูลในเครื่องไปก่อน (จะไม่เห็นการแก้ไขจากเครื่องอื่น)"); return; }
-  const { data, error } = await sb.from("boards").select("*");
-  if (error) { toast("⚠️ โหลดข้อมูลจาก cloud ไม่สำเร็จ — ใช้ข้อมูลในเครื่องไปก่อน: " + error.message); return; }
+  if (!sb) { toast("⚠️ ไม่มีอินเทอร์เน็ต — แสดงข้อมูลในเครื่องไปก่อน (ยังไม่บันทึกขึ้น cloud จนกว่าจะเชื่อมต่อได้)"); retryLater(); return; }
+  let data, error;
+  try { ({ data, error } = await sb.from("boards").select("*")); } catch (e) { error = e; }
+  if (error) { toast("⚠️ โหลดข้อมูลจาก cloud ไม่สำเร็จ — แสดงข้อมูลในเครื่องไปก่อน (ยังไม่บันทึกขึ้น cloud): " + (error.message || error)); retryLater(); return; }
 
   if (!data || !data.length) {
     // first time ever: nothing in the cloud yet — seed it from whatever's currently in this browser
+    _cloudReady = true;
     await pushAllBoardsToCloud();
     return;
   }
@@ -3023,12 +3099,15 @@ async function syncRootFromCloud() {
   root.boardMeta = boardMeta;
   root.boards = boards;
   Object.keys(boards).forEach(id => { _lastPushedJson[id] = JSON.stringify(boards[id]); });   // this IS the cloud's current content — don't re-push it unchanged
+  data.forEach(row => { _boardBaseAt[row.id] = tsMs(row.updated_at); });
+  _cloudReady = true;
   // clouds created before the Service calendar existed won't have it yet → add it here and push it up
   const hadService = !!root.boards[SERVICE_BOARD];
   ensureServiceBoard(root);
   if (!root.boards[root.activeBoard]) root.activeBoard = (boardMeta[0] || {}).id || "factory";
   state = root.boards[root.activeBoard];
   localStorage.setItem(STORAGE_KEY, JSON.stringify(root));   // refresh the local cache to match the cloud
+  if (wasRetry) { _offlineEditWarned = false; renderAll(); toast("✅ เชื่อมต่อ cloud แล้ว — แสดงข้อมูลล่าสุด"); }
   if (!hadService) scheduleCloudSave();
 }
 
@@ -3111,6 +3190,7 @@ function handleRealtimeBoardChange(payload) {
   const isNewBoard = !root.boards[row.id];
   root.boards[row.id] = newWs;
   _lastPushedJson[row.id] = JSON.stringify(newWs);
+  _boardBaseAt[row.id] = tsMs(row.updated_at);
   if (isNewBoard && !root.boardMeta.some(b => b.id === row.id)) root.boardMeta.push({ id: row.id, name: row.name });
   localStorage.setItem(STORAGE_KEY, JSON.stringify(root));
   if (row.id === root.activeBoard) { state = root.boards[root.activeBoard]; renderAll(); if (pendingAlerts().length) openAlertPopup(); }
