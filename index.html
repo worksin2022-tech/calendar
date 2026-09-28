@@ -844,6 +844,7 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
 .cal-cell.today { background: var(--today-bg); }
 .cal-cell.drop-target { background: #e8eaff; outline: 2px dashed var(--accent); outline-offset: -2px; }
 .cell-head { display: flex; align-items: center; justify-content: space-between; }
+.cell-date:hover { background: #eef0ff; color: var(--accent); cursor: pointer; }
 .cell-date {
   font-size: 13px;
   font-weight: 600;
@@ -3435,7 +3436,7 @@ function renderMonth() {
 
     cell.innerHTML = `
       <div class="cell-head">
-        <span class="cell-date">${d.getDate()}</span>
+        <span class="cell-date" title="ดูงานทั้งหมดของวันนี้">${d.getDate()}</span>
         <button class="cell-add" data-date="${iso}" title="เพิ่มงาน">+</button>
       </div>
       <div class="cell-tasks"></div>
@@ -3583,11 +3584,14 @@ function renderTaskChip(t, position = "single", showLabel = true) {
   // identical 2-line card for single-day AND multi-day spans → uniform height,
   // sub-status numbers stay on the 2nd row. Continuation pieces get .span-empty
   // which hides the content (visibility) but keeps the height so the bar stays even.
-  const badgeRow = (badges || flag) ? `<div class="task-substatus">${badges}${flag}</div>` : "";
-  // selected custom-field values flagged to show on chips (only on the full single-day card)
-  const fchips = (position === "single") ? taskFieldChips(t) : [];
-  const fieldRow = fchips.length ? `<div class="chip-fields">${fchips.map(f =>
-    `<span class="chip-field" title="${escapeHtml(f.name)}: ${escapeHtml(f.label)}">${escapeHtml(f.label)}</span>`).join("")}</div>` : "";
+  // selected custom-field values flagged to show on chips. Single-day card: own row below. Multi-day bar
+  // (fixed lane height): same line as the status badges — the bar is wide enough, and a 3rd row would be clipped.
+  const fchips = showLabel ? taskFieldChips(t) : [];
+  const fieldHtml = fchips.map(f =>
+    `<span class="chip-field" title="${escapeHtml(f.name)}: ${escapeHtml(f.label)}">${escapeHtml(f.label)}</span>`).join("");
+  const inlineFields = position !== "single" && fchips.length ? fieldHtml : "";
+  const badgeRow = (badges || flag || inlineFields) ? `<div class="task-substatus">${badges}${flag}${inlineFields}</div>` : "";
+  const fieldRow = (position === "single" && fchips.length) ? `<div class="chip-fields">${fieldHtml}</div>` : "";
   chip.innerHTML = `<div class="chip-title-row"><span class="task-title">${escapeHtml(t.title)}</span>${alertPin(t)}${assigneeStack(t)}</div>${badgeRow}${fieldRow}`;
   if (position === "single" || position === "start") addStatusEdge(chip, t);   // mid/end pieces have no left edge
   chip.addEventListener("click", (e) => { e.stopPropagation(); openTaskModal(t.id); });
@@ -8596,9 +8600,10 @@ document.getElementById("priorityFilter").addEventListener("click", (e) => {
 document.getElementById("calGrid").addEventListener("click", (e) => {
   const add = e.target.closest(".cell-add");
   if (add) { e.stopPropagation(); openTaskModal(null, { date: add.dataset.date }); return; }
-  // click empty area of a cell -> open day detail
-  const cell = e.target.closest(".cal-cell");
-  if (cell && (e.target === cell || e.target.classList.contains("cell-tasks"))) openDayModal(cell.dataset.date);
+  // ★ clicking EMPTY space does nothing (people click the calendar to close menus/popups) —
+  //   the day summary opens only from the date number
+  const dateNum = e.target.closest(".cell-date");
+  if (dateNum) { const cell = dateNum.closest(".cal-cell"); if (cell) openDayModal(cell.dataset.date); }
 });
 
 // Export/Import are now inside the settings modal; the hidden file input stays global.
