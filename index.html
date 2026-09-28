@@ -727,6 +727,34 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
 .att-file:hover { background: #eef0ff; border-color: var(--accent); }
 .att-fname { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
 .att-fsize { color: var(--text-faint); font-size: 11px; flex-shrink: 0; }
+/* task popup: "📎 ไฟล์แนบ" button + all-attachments window */
+.att-count:empty { display: none; }
+/* "ไฟล์แนบ N" in the Activity header — accent pill when the task has attachments, muted when it has none */
+.att-open-btn { display: inline-flex; align-items: center; gap: 6px; padding: 6px 8px 6px 12px; border: 1.5px solid var(--accent); border-radius: 999px; background: #f1efff; color: var(--accent); font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+.att-open-btn:hover { background: var(--accent); color: #fff; }
+.att-open-btn .att-count { min-width: 20px; padding: 1px 7px; border-radius: 999px; background: var(--accent); color: #fff; font-size: 12px; font-weight: 700; text-align: center; }
+.att-open-btn:hover .att-count { background: #fff; color: var(--accent); }
+.att-open-btn.empty { padding-right: 12px; border-color: var(--border-strong); background: #fff; color: var(--text-dim); font-weight: 600; }
+.att-open-btn.empty:hover { background: #f9fafb; color: var(--text); }
+.att-open-ico { width: 15px; height: 15px; flex: 0 0 auto; }
+.ta-head .att-open-btn { padding: 4px 6px 4px 10px; font-size: 12.5px; gap: 5px; }
+.ta-head .att-open-btn.empty { padding-right: 10px; }
+.attg-modal { max-width: 880px; }
+.attg-filter { display: flex; gap: 4px; flex-wrap: wrap; }
+.attg-filter button { padding: 5px 11px; border: 1px solid var(--border-strong); border-radius: 999px; background: #fff; color: var(--text-dim); font: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer; }
+.attg-filter button.active { border-color: var(--accent); background: #eef0ff; color: var(--accent); }
+.attg-body { padding: 16px 20px 20px; overflow-y: auto; }
+.attg-sec-h { margin: 2px 0 8px; color: var(--text-dim); font-size: 12px; font-weight: 700; }
+.attg-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; margin-bottom: 18px; }
+.attg-img { margin: 0; min-width: 0; cursor: zoom-in; }
+.attg-img img { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border: 1px solid var(--border); border-radius: 8px; background: #f2f4f7; }
+.attg-img .att-file { aspect-ratio: 4 / 3; justify-content: center; }
+.attg-meta { margin-top: 4px; overflow: hidden; color: var(--text-faint); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.attg-files { display: flex; flex-direction: column; gap: 6px; }
+.attg-row { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.attg-row > .att-file { flex: 1; min-width: 0; }
+.attg-row .attg-meta { flex: 0 0 auto; max-width: 38%; margin: 0; }
+.attg-empty { padding: 40px 10px; color: var(--text-faint); font-size: 14px; text-align: center; }
 .att-busy { cursor: default; }
 .att-busy:hover { background: #f9fafb; border-color: var(--border); }
 .att-failed, .att-failed:hover { border-color: #fda29b; background: #fef3f2; }
@@ -1046,6 +1074,7 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
   min-height: 0;
 }
 .ta-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
   padding: 12px 16px; font-size: 13px; font-weight: 700;
   border-bottom: 1px solid var(--border);
   flex: 0 0 auto;
@@ -1097,6 +1126,9 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
   width: 30px; height: 28px; cursor: pointer; font-size: 14px;
 }
 .ta-attach:hover { background: #f3f4f6; }
+.ta-attach { display: inline-flex; align-items: center; justify-content: center; color: var(--text-dim); }
+.ta-attach svg { width: 16px; height: 16px; }
+.ta-attach:hover svg { color: var(--accent); }
 .modal-foot {
   padding: 12px 20px;
   border-top: 1px solid var(--border);
@@ -4675,14 +4707,14 @@ function openTaskModal(taskId, defaults={}) {
         </div>
       </div>
       <aside class="task-activity">
-        <div class="ta-head">Activity</div>
+        <div class="ta-head"><span>Activity</span><button type="button" class="att-open-btn empty" data-act="attachments" title="ดูรูปและไฟล์แนบทั้งหมดของงานนี้"><svg class="att-open-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>ไฟล์แนบ<span class="att-count" data-att-count></span></button></div>
         <div class="ta-feed" data-feed></div>
         <div class="ta-compose">
           <textarea class="ta-input" data-comment placeholder="เขียนอัพเดต / ความคิดเห็น...  (Enter ส่ง, Shift+Enter ขึ้นบรรทัด)"></textarea>
           <div class="ta-photo-preview" data-photo-preview hidden></div>
           <div class="ta-compose-actions">
-            <button type="button" class="ta-attach" data-act="attach" title="ถ่ายรูป / แนบรูป">📷</button>
-            <button type="button" class="ta-attach" data-act="attach-file" title="แนบไฟล์ (PDF, DWG, Excel ฯลฯ) — เก็บใน Google Drive">📎</button>
+            <button type="button" class="ta-attach" data-act="attach" title="ถ่ายรูป / แนบรูป" aria-label="ถ่ายรูป / แนบรูป"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 4h-5L7.5 6.5H5A2 2 0 0 0 3 8.5v9a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2h-2.5z"/><circle cx="12" cy="12.5" r="3.5"/></svg></button>
+            <button type="button" class="ta-attach" data-act="attach-file" title="แนบไฟล์ (PDF, DWG, Excel ฯลฯ) — เก็บใน Google Drive" aria-label="แนบไฟล์"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg></button>
             <select class="ta-alert-dept" data-alert-dept title="ส่งเป็นการแจ้งเตือนไปแผนก (เด้ง popup)"></select>
             <div style="flex:1"></div>
             <button type="button" class="btn btn-primary btn-sm" data-act="send-comment">ส่ง</button>
@@ -5046,6 +5078,10 @@ function openTaskModal(taskId, defaults={}) {
     }
   }
   function renderFeed() {
+    const attN = collectAttachments(task).length;
+    modal.querySelectorAll("[data-att-count]").forEach(el => { el.textContent = attN ? String(attN) : ""; });
+    const attBtn = modal.querySelector(".att-open-btn");
+    if (attBtn) attBtn.classList.toggle("empty", !attN);
     if (!task.comments.length) {
       feedEl.innerHTML = `<div class="ta-empty">ยังไม่มีความเคลื่อนไหว<br>เขียนอัพเดต หรือเปลี่ยนสถานะ/ติ๊กเสร็จ<br>แล้วระบบจะบันทึกให้ดูย้อนหลัง</div>`;
       return;
@@ -5207,6 +5243,7 @@ function openTaskModal(taskId, defaults={}) {
   overlay.addEventListener("click", (e) => { if (e.target === overlay) close(); });
   modal.querySelectorAll('[data-act="close"]').forEach(b => b.addEventListener("click", close));
   modal.querySelector('[data-act="dashboard"]')?.addEventListener("click", () => openProjectDashboard(task.id));
+  modal.querySelectorAll('[data-act="attachments"]').forEach(b => b.addEventListener("click", () => openAttachmentsGallery(task)));
   modal.querySelector('[data-act="save"]').addEventListener("click", () => {
     if (!canEdit()) { close(); return; }   // read/comment tiers can't persist task changes
     task.title = modal.querySelector('[data-f="title"]').value.trim();
@@ -7468,6 +7505,80 @@ function attachmentsHtml(c, imgClass) {
   }).join("");
   if (docHtml || busyHtml) h += `<div class="att-files">${docHtml}${busyHtml}</div>`;
   return h;
+}
+// every attachment on a task (newest first): legacy base64 photos, Drive images/files, and ones still uploading
+function collectAttachments(task) {
+  const out = [];
+  (task.comments || []).forEach(c => {
+    const meta = { author: c.author || "", at: c.at || 0 };
+    if (c.photo) out.push({ ...meta, kind: "image", src: c.photo, full: c.photo, name: "รูปแนบ" });
+    (Array.isArray(c.files) ? c.files : []).forEach(f => {
+      const isImg = /^image\//.test(f.mime || "");
+      if (f.up) out.push({ ...meta, kind: "busy", f, isImg });
+      else if (f.id && isImg) {
+        const local = attachPreviewCache.get(f.id);
+        out.push({ ...meta, kind: "image", id: f.id, name: f.name, src: local || driveThumb(f.id, 400), full: local || driveThumb(f.id, 2000) });
+      } else if (f.id) out.push({ ...meta, kind: "file", id: f.id, name: f.name, size: f.size });
+    });
+  });
+  return out.sort((a, b) => b.at - a.at);
+}
+// "📎 ไฟล์แนบ" in the task popup — all of the task's photos (grid) + files (list), filterable
+function openAttachmentsGallery(task) {
+  const items = collectAttachments(task);
+  const nImg = items.filter(x => x.kind === "image" || (x.kind === "busy" && x.isImg)).length;
+  const nFile = items.length - nImg;
+  const overlay = document.createElement("div");
+  overlay.className = "overlay";
+  overlay.innerHTML = `
+    <div class="modal wide attg-modal" role="dialog" aria-modal="true">
+      <div class="modal-head">
+        <h3>📎 ไฟล์แนบทั้งหมด <span class="muted" style="font-weight:400">· ${escapeHtml(task.title || "งานนี้")}</span></h3>
+        <div class="row" style="gap:8px">
+          <div class="attg-filter" data-filter>
+            <button type="button" class="active" data-f="all">ทั้งหมด ${items.length}</button>
+            <button type="button" data-f="image">รูป ${nImg}</button>
+            <button type="button" data-f="file">ไฟล์ ${nFile}</button>
+          </div>
+          <button class="btn btn-ghost" data-act="close" title="ปิด">✕</button>
+        </div>
+      </div>
+      <div class="attg-body" data-body></div>
+    </div>`;
+  const body = overlay.querySelector("[data-body]");
+  const metaTxt = (x) => `${x.author ? escapeHtml(x.author) + " · " : ""}${formatDateTimeTH(x.at)}`;
+  function render(filter) {
+    const imgs = items.filter(x => x.kind === "image" || (x.kind === "busy" && x.isImg));
+    const files = items.filter(x => !(x.kind === "image" || (x.kind === "busy" && x.isImg)));
+    const showImg = filter !== "file" && imgs.length, showFile = filter !== "image" && files.length;
+    if (!showImg && !showFile) {
+      body.innerHTML = `<div class="attg-empty">${items.length ? "ไม่มีไฟล์ประเภทนี้" : "ยังไม่มีไฟล์แนบในงานนี้<br>แนบรูป/ไฟล์ได้ที่ช่อง Activity (📷 / 📎)"}</div>`;
+      return;
+    }
+    let h = "";
+    if (showImg) h += `<div class="attg-sec-h">รูป (${imgs.length})</div><div class="attg-grid">` + imgs.map(x => x.kind === "busy"
+      ? `<figure class="attg-img">${attachmentsHtml({ files: [x.f] }, "")}<div class="attg-meta">${metaTxt(x)}</div></figure>`
+      : `<figure class="attg-img"><img src="${x.src}" data-full="${x.full}" ${x.id ? `data-drive="${escapeHtml(x.id)}" onerror="attImgErr(this)"` : ""} data-name="${escapeHtml(x.name || "")}" alt="${escapeHtml(x.name || "รูปแนบ")}" loading="lazy"><div class="attg-meta" title="${escapeHtml(x.name || "")}">${metaTxt(x)}</div></figure>`).join("") + `</div>`;
+    if (showFile) h += `<div class="attg-sec-h">ไฟล์ (${files.length})</div><div class="attg-files">` + files.map(x => x.kind === "busy"
+      ? `<div class="attg-row">${attachmentsHtml({ files: [x.f] }, "").replace(/^<div class="att-files">|<\/div>$/g, "")}<span class="attg-meta">${metaTxt(x)}</span></div>`
+      : `<div class="attg-row"><a class="att-file" href="${driveViewUrl(x.id)}" target="_blank" rel="noopener" data-view="${escapeHtml(x.id)}" data-name="${escapeHtml(x.name || "")}" title="เปิดดูในแอป">${fileIcon(x.name)}<span class="att-fname">${escapeHtml(x.name || "ไฟล์")}</span>${x.size ? `<span class="att-fsize">${fmtBytes(x.size)}</span>` : ""}</a><a class="btn btn-sm" href="${driveDownloadUrl(x.id)}" target="_blank" rel="noopener" title="ดาวน์โหลด">⬇</a><span class="attg-meta">${metaTxt(x)}</span></div>`).join("") + `</div>`;
+    body.innerHTML = h;
+    wireAttachments(body);   // images → lightbox, files → in-app viewer, ลองใหม่ → retry
+  }
+  render("all");
+  overlay.querySelectorAll("[data-f]").forEach(b => b.addEventListener("click", () => {
+    overlay.querySelectorAll("[data-f]").forEach(x => x.classList.toggle("active", x === b));
+    render(b.dataset.f);
+  }));
+  function close() { overlay.remove(); document.removeEventListener("keydown", onEsc, true); }
+  function onEsc(e) {
+    if (e.key !== "Escape" || document.querySelector(".fv-overlay, .photo-lightbox")) return;   // those close themselves first
+    e.stopPropagation(); close();
+  }
+  overlay.addEventListener("mousedown", e => { if (e.target === overlay) close(); });
+  overlay.querySelector('[data-act="close"]').addEventListener("click", close);
+  document.addEventListener("keydown", onEsc, true);
+  document.body.appendChild(overlay);
 }
 function wireAttachments(el) {
   el.querySelectorAll("img[data-full]").forEach(img => img.addEventListener("click", () => openPhotoLightbox(img.dataset.full)));
