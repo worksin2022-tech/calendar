@@ -143,6 +143,15 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
 .perm-badge { font-size: 11px; font-weight: 700; padding: 2px 9px; border-radius: 9px; background: #eef4ff; color: #2563eb; margin-left: 8px; white-space: nowrap; }
 .ta-compose.perm-off-note::after { content: "โหมดของคุณคอมเมนต์ไม่ได้"; display: block; font-size: 11px; color: var(--text-dim); padding: 4px 2px; }
 .um-count { font-size: 12px; color: var(--text-dim); margin-bottom: 6px; }
+/* per-person calendar access (slice 6) — second line of each user row */
+.um-boards { flex-basis: 100%; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding-left: 38px; font-size: 12px; color: var(--text-dim); }
+.um-boards-lbl { font-weight: 700; }
+.um-board { display: inline-flex; align-items: center; gap: 4px; padding: 2px 9px 2px 6px; border: 1px solid var(--border-strong); border-radius: 999px; background: #fff; color: var(--text); cursor: pointer; user-select: none; }
+.um-board:has(input:checked) { border-color: var(--accent); background: #eef0ff; color: var(--accent); font-weight: 600; }
+.um-board input { margin: 0; accent-color: var(--accent); }
+.um-board.locked { cursor: default; opacity: .7; }
+.um-boards-note { color: var(--text-faint); }
+.um-owner { font-size: 10px; font-weight: 700; padding: 1px 7px; border-radius: 8px; background: #fff4e5; color: #b54708; }
 
 /* login screen (Supabase magic-link auth) — full-screen gate shown until signed in */
 .login-screen { position: fixed; inset: 0; z-index: 3000; display: flex; align-items: center; justify-content: center; background: var(--panel); }
@@ -2226,7 +2235,7 @@ function loadTeam() {
   if (!sb) return Promise.resolve();
   _teamLoading = (async () => {
     try {
-      const { data, error } = await sb.from("profiles").select("id,email,display_name,avatar_url,dept_id,role,approved,blocked");
+      const { data, error } = await sb.from("profiles").select("*");
       if (!error && Array.isArray(data)) {
         teamProfiles = new Map(data.filter(p => p.approved && !p.blocked).map(p => [p.id, p]));
         renderAll();
@@ -2909,11 +2918,24 @@ function ensureServiceBoard(r) {
 function isServiceBoard() { return root.activeBoard === SERVICE_BOARD; }
 function isServiceUser() { return !!(currentProfile && currentProfile.dept_id === SERVICE_DEPT); }
 // which calendars this user may see: Service people → only Service; admins → all; everyone else → all but Service
+// ★ per-person calendar access (slice 6 — enforced by RLS can_see_board() in the database; this mirrors it)
+//   board_ids: undefined/null = existed before slice 6 → every calendar except Service (as before)
+//              []             = new person → department default · otherwise exactly the ticked calendars
+const deptDefaultBoards = (dept) => dept === "d_design" ? ["drawing", "factory"] : ["factory"];
+function allowedBoardIdsFor(p, allIds) {
+  if (!p) return [];
+  if (p.is_owner) return allIds;
+  if (p.dept_id === SERVICE_DEPT) return allIds.filter(id => id === SERVICE_BOARD);
+  const admin = p.role === "admin";
+  const nonSvc = allIds.filter(id => id !== SERVICE_BOARD);
+  if (!Array.isArray(p.board_ids)) return admin ? allIds : nonSvc;            // as before slice 6
+  if (!p.board_ids.length) return nonSvc.filter(id => deptDefaultBoards(p.dept_id).includes(id));
+  return (admin ? allIds : nonSvc).filter(id => p.board_ids.includes(id));    // admins may tick Service too
+}
+function isOwner() { return !!(currentProfile && currentProfile.is_owner); }
 function visibleBoardIds() {
   const all = (root.boardMeta || []).map(b => b.id).filter(id => root.boards[id]);
-  if (isServiceUser()) return all.filter(id => id === SERVICE_BOARD);
-  if (isAdmin()) return all;
-  return all.filter(id => id !== SERVICE_BOARD);
+  return allowedBoardIdsFor(currentProfile, all);
 }
 // if the active board isn't allowed for this user (e.g. a Service person landing on โรงงาน), move them
 function ensureVisibleBoard() {
@@ -3379,12 +3401,14 @@ async function syncRootFromCloud() {
   _cloudReady = true;
   // clouds created before the Service calendar existed won't have it yet → add it here and push it up
   const hadService = !!root.boards[SERVICE_BOARD];
-  ensureServiceBoard(root);
+  // only someone allowed to see Service may seed it (with slice 6 RLS, others just don't receive it)
+  const mayService = allowedBoardIdsFor(currentProfile, [SERVICE_BOARD]).length > 0;
+  if (mayService) ensureServiceBoard(root);
   if (!root.boards[root.activeBoard]) root.activeBoard = (boardMeta[0] || {}).id || "factory";
   state = root.boards[root.activeBoard];
   localStorage.setItem(STORAGE_KEY, JSON.stringify(root));   // refresh the local cache to match the cloud
   if (wasRetry) { _offlineEditWarned = false; renderAll(); toast("✅ เชื่อมต่อ cloud แล้ว — แสดงข้อมูลล่าสุด"); }
-  if (!hadService) scheduleCloudSave();
+  if (!hadService && mayService) scheduleCloudSave();
 }
 
 /* ----- Phase 2, slice 3: realtime sync across devices (Supabase Realtime on public.boards) -----
@@ -4709,6 +4733,7 @@ function routeDrawingRequest({ kind, project, dwg, due, detail, submitter, sales
 
   if (kind === "structure") {
     const ws = root.boards.drawing;
+    if (!ws) { toast("คุณไม่มีสิทธิ์เข้าปฏิทิน “เขียนแบบโครงสร้าง” — ให้ admin ติ๊กสิทธิ์ให้ก่อน"); return { boardName: "เขียนแบบโครงสร้าง", attached: false, title: project, denied: true }; }
     const nt = buildReqTask(ws, project, due, detail, reqMeta, summary, photo, files, driveFolderId);
     ws.tasks.push(nt);
     saveState(); renderAll();
@@ -4811,6 +4836,7 @@ async function openImportRequestsModal() {
     const resolveCard = () => { card.remove(); const left = listEl.querySelectorAll(".alert-card").length; countEl.textContent = left; if (!left) listEl.innerHTML = `<div class="dr-import-loading">ไม่มีคำขอใหม่ค้างอยู่ 🎉</div>`; };
     card.querySelector("[data-import]").addEventListener("click", async () => {
       const result = routeDrawingRequest({ kind: row.kind, project: row.project, dwg: row.dwg_no, due: row.due_date, detail: row.detail || "", submitter: row.submitter, sales: row.sales_team || "", photo: row.photo_url || null });
+      if (result.denied) return;   // no access to the structure calendar → leave the request pending
       const sb = getSupabase();
       const { error } = await sb.from("drawing_requests").update({ status: "imported", imported_at: new Date().toISOString() }).eq("id", row.id);
       if (error) toast("นำเข้าในแอปแล้ว แต่อัปเดตสถานะบน Supabase ไม่สำเร็จ: " + error.message);
@@ -4952,6 +4978,7 @@ function openDrawRequestModal() {
     const drive = driveConfigured();
     const files = drive ? pendingEntries(items, `คำขอแบบ · ${project}`) : [];
     const result = routeDrawingRequest({ kind, project, dwg, due, detail, submitter, sales, photo: drive ? null : legacyPhoto(items), files });
+    if (result.denied) return;
     if (files.length) queueUpload(files, null);
     if (kind === "structure") toast(`ยื่นคำขอเขียนแบบโครงสร้าง “${project}” แล้ว (อยู่ใน board เขียนแบบโครงสร้าง)`);
     else if (result.attached) toast(`แนบคำขอเขียนแบบวงจรกับ “${result.title}” แล้ว`);
@@ -6412,7 +6439,7 @@ function buildUsersAdminPanel(container) {
   sec.className = "settings-section";
   sec.innerHTML = `
     <h4 class="settings-h">จัดการผู้ใช้</h4>
-    <p class="settings-desc">ใครก็ล็อกอินด้วยอีเมลอะไรก็ได้ (magic link ไม่จำกัดโดเมน) — คนใหม่เห็นข้อมูลไม่ได้จนกว่าจะกด “อนุมัติ” · แผนกที่ตั้งให้ใช้ทุกปฏิทิน<br>ลำดับสถานะ: <b>อนุมัติแล้ว</b> →[ถอดสิทธิ์]→ <b>รออนุมัติ</b> →[🚩 บล็อก]→ <b>ถูกบล็อก</b> →[↩ ปลดบล็อก]→ รออนุมัติ (บล็อกกู้คืนได้เสมอ)<br>ระดับสิทธิ์: 👁️ ดูอย่างเดียว · 💬 คอมเมนต์ · 🖊️ แก้วัน/สถานะ · ✅ แก้ไขเต็ม (admin = เต็มเสมอ)</p>
+    <p class="settings-desc">ใครก็ล็อกอินด้วยอีเมลอะไรก็ได้ (magic link ไม่จำกัดโดเมน) — คนใหม่เห็นข้อมูลไม่ได้จนกว่าจะกด “อนุมัติ” · แผนกที่ตั้งให้ใช้ทุกปฏิทิน<br>ลำดับสถานะ: <b>อนุมัติแล้ว</b> →[ถอดสิทธิ์]→ <b>รออนุมัติ</b> →[🚩 บล็อก]→ <b>ถูกบล็อก</b> →[↩ ปลดบล็อก]→ รออนุมัติ (บล็อกกู้คืนได้เสมอ)<br>ระดับสิทธิ์: 👁️ ดูอย่างเดียว · 💬 คอมเมนต์ · 🖊️ แก้วัน/สถานะ · ✅ แก้ไขเต็ม (admin = เต็มเสมอ)<br>ปฏิทิน: ติ๊กว่าแต่ละคนเปิดปฏิทินไหนได้ (ไม่ได้ติ๊ก = ข้อมูลปฏิทินนั้นไม่ถูกส่งไปที่เครื่องเขาเลย) — admin ก็เห็นเฉพาะที่ติ๊ก แต่ติ๊กของตัวเองได้ · คนใหม่ = ตามแผนก (ออกแบบ → เขียนแบบโครงสร้าง + โรงงาน, อื่น ๆ → โรงงาน) · Service เห็นเฉพาะ Service เสมอ<br>👑 Owner เท่านั้นที่แต่งตั้ง/ถอด admin และจัดการ admin คนอื่นได้</p>
     <div class="um-count" data-count></div>
     <div data-list><div class="cf-empty">กำลังโหลด...</div></div>
   `;
@@ -6437,14 +6464,30 @@ function buildUsersAdminPanel(container) {
     const { data, error } = await sb.from("profiles").update(fields).eq("id", id).select();
     if (error) { toast("บันทึกไม่สำเร็จ: " + error.message); return false; }
     if (!data || !data.length) { toast("ทำรายการไม่สำเร็จ — อาจไม่มีสิทธิ์ หรือผู้ใช้ถูกลบไปแล้ว (ลองรีเฟรช)"); return false; }
+    // the database guard silently keeps protected values (Owner / other admins) → tell the person why
+    const kept = Object.keys(fields).some(k => JSON.stringify(data[0][k] ?? null) !== JSON.stringify(fields[k] ?? null));
+    if (kept) { toast("ทำไม่ได้ — การจัดการ admin / Owner ทำได้เฉพาะ Owner"); return false; }
     return true;
   };
 
+  // every calendar (incl. ones this admin can't open right now) — names only, via list_board_names()
+  let allBoardNames = (root.boardMeta || []).map(b => ({ id: b.id, name: b.name }));
+  async function loadBoardNames() {
+    try {
+      const { data, error } = await sb.rpc("list_board_names");
+      if (!error && Array.isArray(data) && data.length) {
+        const order = new Map((root.boardMeta || []).map((b, i) => [b.id, i]));
+        allBoardNames = data.slice().sort((a, b) => (order.has(a.id) ? order.get(a.id) : 99) - (order.has(b.id) ? order.get(b.id) : 99));
+      }
+    } catch (_) { /* SQL not run yet → the calendars this device has */ }
+  }
   async function load() {
     listEl.innerHTML = `<div class="cf-empty">กำลังโหลด...</div>`;
     if (!sb) { listEl.innerHTML = `<div class="cf-empty">โหลดไม่สำเร็จ — เช็คอินเทอร์เน็ต</div>`; return; }
+    await loadBoardNames();
     const { data, error } = await sb.from("profiles").select("*").order("approved", { ascending: true }).order("created_at", { ascending: true });
     if (error) { listEl.innerHTML = `<div class="cf-empty">โหลดไม่สำเร็จ: ${escapeHtml(error.message)}</div>`; return; }
+    (data || []).forEach(p => { if (p.is_owner) p.role = "admin"; });
     render(data || []);
   }
 
@@ -6481,32 +6524,36 @@ function buildUsersAdminPanel(container) {
   function makeRow(p) {
     const isMe = currentProfile && p.id === currentProfile.id;
     const who = p.display_name || p.email || "";
+    // ★ Owner rules (slice 6): only the Owner makes/unmakes admins and manages other admins; nobody manages the Owner
+    const locked = !isMe && (p.is_owner || (p.role === "admin" && !isOwner()));
+    const roleLocked = isMe || p.is_owner || !isOwner();
     const row = document.createElement("div");
     row.className = "um-row";
     row.innerHTML = `
       <div class="um-who">
         ${avatarHtml(p)}
         <div style="min-width:0">
-          <div class="um-name">${escapeHtml(p.display_name || "(ไม่มีชื่อ)")} ${isMe ? '<span class="um-me">คุณ</span>' : ""}${p.approved ? "" : ' <span class="um-pending">รออนุมัติ</span>'}</div>
+          <div class="um-name">${escapeHtml(p.display_name || "(ไม่มีชื่อ)")} ${p.is_owner ? '<span class="um-owner" title="เจ้าของระบบ — แต่งตั้ง/ถอด admin ได้คนเดียว">👑 Owner</span> ' : ""}${isMe ? '<span class="um-me">คุณ</span>' : ""}${p.approved ? "" : ' <span class="um-pending">รออนุมัติ</span>'}</div>
           <div class="um-mail">${escapeHtml(p.email || "")}</div>
         </div>
       </div>
-      <select data-role ${isMe ? "disabled" : ""} title="${isMe ? "เปลี่ยนสิทธิ์ตัวเองไม่ได้ (กันล็อกตัวเองออก)" : "สิทธิ์"}">
+      <select data-role ${roleLocked ? "disabled" : ""} title="${isMe ? "เปลี่ยนสิทธิ์ตัวเองไม่ได้ (กันล็อกตัวเองออก)" : roleLocked ? "แต่งตั้ง/ถอด admin ได้เฉพาะ Owner" : "สิทธิ์"}">
         <option value="member">member</option><option value="admin">admin</option>
       </select>
-      <select data-dept title="แผนก (ใช้ทุกปฏิทิน)">${deptOptions}</select>
-      <select data-perm class="um-perm-sel" title="ระดับสิทธิ์การแก้ไข (admin = เต็มเสมอ)" ${p.role === "admin" ? "disabled" : ""}>
+      <select data-dept title="${locked ? "จัดการ admin ได้เฉพาะ Owner" : "แผนก (ใช้ทุกปฏิทิน)"}" ${locked ? "disabled" : ""}>${deptOptions}</select>
+      <select data-perm class="um-perm-sel" title="ระดับสิทธิ์การแก้ไข (admin = เต็มเสมอ)" ${p.role === "admin" || locked ? "disabled" : ""}>
         <option value="read">👁️ ดูอย่างเดียว</option>
         <option value="comment">💬 คอมเมนต์</option>
         <option value="edit">🖊️ แก้วัน/สถานะ</option>
         <option value="full">✅ แก้ไขเต็ม</option>
       </select>
       ${p.approved
-        ? `<button class="btn btn-ghost btn-sm btn-danger" data-revoke ${isMe ? "disabled" : ""} title="${isMe ? "ถอดสิทธิ์ตัวเองไม่ได้" : "ถอดสิทธิ์ — ย้ายกลับไปสถานะรออนุมัติ"}">🚫 ถอดสิทธิ์</button>`
+        ? `<button class="btn btn-ghost btn-sm btn-danger" data-revoke ${isMe || locked ? "disabled" : ""} title="${isMe ? "ถอดสิทธิ์ตัวเองไม่ได้" : locked ? "จัดการ admin ได้เฉพาะ Owner" : "ถอดสิทธิ์ — ย้ายกลับไปสถานะรออนุมัติ"}">🚫 ถอดสิทธิ์</button>`
         : `<button class="btn btn-sm btn-primary" data-approve>✓ อนุมัติ</button>
            <button class="btn btn-ghost btn-sm btn-danger" data-block ${isMe ? "disabled" : ""} title="${isMe ? "บล็อกตัวเองไม่ได้" : "ติดธงแดง (บล็อก) — ซ่อนออกจากลิสต์ เข้าไม่ได้ · ปลดบล็อกภายหลังได้"}">🚩</button>`}
     `;
     wireRoleDept(row, p, isMe);
+    if (p.approved || !p.blocked) row.appendChild(boardTicks(p, locked));
     const approveBtn = row.querySelector("[data-approve]");
     if (approveBtn) approveBtn.addEventListener("click", async (e) => {
       e.target.disabled = true; e.target.textContent = "กำลังอนุมัติ...";
@@ -6537,6 +6584,33 @@ function buildUsersAdminPanel(container) {
       if (await patch(p.id, { blocked: true })) { toast(`บล็อก ${who} แล้ว`); load(); }
     });
     return row;
+  }
+
+  // "ปฏิทิน:" ☑ โรงงาน ☑ ออกไซต์ ☐ เขียนแบบ… — which calendars this person may open (saved to profiles.board_ids)
+  function boardTicks(p, locked) {
+    const wrap = document.createElement("div");
+    wrap.className = "um-boards";
+    // admins may also be given Service; members never (Service people are a separate group)
+    const boards = allBoardNames.filter(b => b.id !== SERVICE_BOARD || p.role === "admin");
+    if (p.is_owner) { wrap.innerHTML = `<span class="um-boards-lbl">ปฏิทิน:</span><span class="um-boards-note">ทุกปฏิทิน (Owner)</span>`; return wrap; }
+    if (p.dept_id === SERVICE_DEPT) { wrap.innerHTML = `<span class="um-boards-lbl">ปฏิทิน:</span><span class="um-boards-note">เฉพาะ Service</span>`; return wrap; }
+    const allow = allowedBoardIdsFor(p, boards.map(b => b.id));
+    const note = !Array.isArray(p.board_ids) ? "เหมือนเดิม (ยังไม่ได้ตั้ง)" : !p.board_ids.length ? "ค่าเริ่มต้นตามแผนก" : "";
+    wrap.innerHTML = `<span class="um-boards-lbl">ปฏิทิน:</span>` + boards.map(b => `
+      <label class="um-board${locked ? " locked" : ""}"><input type="checkbox" value="${escapeHtml(b.id)}" ${allow.includes(b.id) ? "checked" : ""} ${locked ? "disabled" : ""}>${escapeHtml(b.name)}</label>`).join("")
+      + (note ? `<span class="um-boards-note">· ${note}</span>` : "");
+    wrap.querySelectorAll("input").forEach(cb => cb.addEventListener("change", async () => {
+      const ids = [...wrap.querySelectorAll("input:checked")].map(x => x.value);
+      if (!ids.length) { cb.checked = true; toast("ต้องเลือกอย่างน้อย 1 ปฏิทิน"); return; }
+      if (await patch(p.id, { board_ids: ids })) {
+        p.board_ids = ids;
+        const n = wrap.querySelector(".um-boards-note"); if (n) n.remove();
+        const mine = currentProfile && p.id === currentProfile.id;
+        if (mine) currentProfile.board_ids = ids;
+        toast(mine ? "บันทึกแล้ว — รีโหลดแอปเพื่อโหลดปฏิทินที่เพิ่ม/ซ่อนปฏิทินที่เอาออก" : `บันทึกสิทธิ์ปฏิทินของ ${p.display_name || p.email || ""} แล้ว — มีผลเมื่อเขาเปิด/รีโหลดแอป`);
+      } else load();
+    }));
+    return wrap;
   }
 
   // a blocked-user row (in the collapsible section) — one action: unblock back to pending.
