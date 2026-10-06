@@ -588,11 +588,47 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
 .dash-pd-h { font-size: 13px; font-weight: 700; margin: 18px 2px 9px; }
 .dash-pd-cab { display: flex; align-items: center; gap: 10px; padding: 8px 2px; border-bottom: 1px solid var(--border); }
 .dash-pd-cab:last-child { border-bottom: none; }
+.dash-pd-cab[data-tip-dept] { cursor: default; border-radius: 6px; }
+.dash-pd-cab[data-tip-dept]:hover { background: #f8f7ff; }
+.dash-tip { position: fixed; z-index: 1500; background: #fff; border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 10px 30px rgba(16,24,40,.16); padding: 10px 12px; min-width: 230px; max-width: 340px; font-size: 12.5px; pointer-events: none; }
+.dash-tip-h { font-weight: 700; margin-bottom: 6px; }
+.dash-tip-cab { padding: 6px 0; border-top: 1px solid var(--border); }
+.dash-tip-h + .dash-tip-cab { border-top: 0; padding-top: 0; }
+.dash-tip-n { color: var(--text-faint); font-size: 11.5px; }
+.dash-tip-line { display: flex; gap: 8px; margin-top: 2px; }
+.dash-tip-k { flex: 0 0 38px; color: var(--text-dim); }
+.dash-tip-ok { color: #047857; }
+.dash-tip-none { color: var(--text-faint); }
 .dash-pd-dot { width: 9px; height: 9px; border-radius: 50%; flex: 0 0 auto; }
 .dash-pd-name { flex: 0 0 130px; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .dash-pd-cab .dash-bar { flex: 1; }
 .dash-pd-val { flex: 0 0 auto; font-size: 11.5px; color: var(--text-dim); width: 96px; text-align: right; }
 .dash-pd-cab.done .dash-pd-name { text-decoration: line-through; color: var(--text-faint); }
+.dash-cl-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
+.dash-cl-grid.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.dash-cl-block { border: 1px solid var(--border); border-radius: 8px; padding: 7px 9px; break-inside: avoid; }
+.dash-cl-title { display: flex; align-items: center; gap: 6px; font-size: 12.5px; margin-bottom: 4px; }
+.dash-cl-title > span:last-child { margin-left: auto; font-size: 11px; color: var(--text-dim); }
+.dash-cl-table { width: 100%; table-layout: fixed; border-collapse: collapse; font-size: 11.5px; }
+.dash-cl-table th { font-weight: 600; color: var(--text-dim); font-size: 10.5px; text-align: center; padding: 1px 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; border-bottom: 1px solid var(--border); }
+.dash-cl-table th:first-child, .dash-cl-item { width: 38%; text-align: left; }
+.dash-cl-table td { padding: 1.5px 3px; text-align: center; border-bottom: 1px solid #f1f3f5; }
+.dash-cl-table td.dash-cl-item { text-align: left; }
+.dash-cl-item { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); }
+.dash-cl-ok { color: #10b981; font-weight: 700; }
+.dash-cl-sum th:nth-child(1) { width: 26%; } .dash-cl-sum th:nth-child(2) { width: 17%; } .dash-cl-sum th:nth-child(3) { width: 9%; } .dash-cl-sum th:nth-child(4) { text-align: left; }
+.dash-cl-sum td.dash-cl-barcell { padding: 1.5px 6px; }
+.dash-cl-sum td.dash-cl-cnt { color: var(--text-dim); font-size: 11px; }
+.dash-cl-sum td.dash-cl-open { text-align: left; font-size: 11px; color: var(--text-dim); white-space: normal; overflow-wrap: anywhere; }
+.dash-cl-more { color: var(--text-faint); }
+.dash-cab-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 3px 12px; }
+.dash-cab-cell { display: flex; align-items: center; gap: 6px; padding: 3px 4px; border-bottom: 1px solid #f1f3f5; font-size: 12px; min-width: 0; }
+.dash-cab-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dash-cab-pc { flex: 0 0 auto; font-size: 11px; color: var(--text-dim); }
+.dash-cab-cell.done .dash-cab-name { color: var(--text-faint); }
+.dash-cab-cell.done .dash-cab-pc { color: #10b981; font-weight: 700; }
+.dash-cl-no { color: var(--text-faint); }
+.dash-cl-na { color: #d0d5dd; }
 .dash-sbreak { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
 .dash-sb { font-size: 11.5px; font-weight: 700; border-radius: 7px; padding: 2px 9px; }
 /* dashboard dept filter + workload chart */
@@ -628,7 +664,22 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
   body.printing-modal .overlay.print-target .modal-foot,
   body.printing-modal .overlay.print-target [data-act="close"] { display: none !important; }
   body.printing-modal .dash-pd-cab { break-inside: avoid; }
+  /* fixed UI that sits outside .app must not print (the "ปฏิทิน" side tab, toast, hover notes, popovers) */
+  body.printing-modal .board-tab, body.printing-modal .toast, body.printing-modal .dash-tip,
+  body.printing-modal .board-drawer-overlay, body.printing-modal .status-popover, body.printing-modal .checklist-popover { display: none !important; }
+  body.printing-modal .overlay.print-target { page: dashpage; }
+  body.printing-modal .overlay.print-target .modal-head { padding: 4px 0 8px !important; }
+  body.printing-modal .overlay.print-target .dash-mbody { padding: 0 !important; }
+  body.printing-modal .dash-pd-h { margin: 10px 2px 6px; break-after: avoid; }
+  body.printing-modal .dash-cl-block, body.printing-modal .dash-pd-top { break-inside: avoid; }
+  body.printing-modal .dash-cab-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  body.printing-modal .dash-cab-cell, body.printing-modal .dash-cl-table tr { break-inside: avoid; }
+  body.printing-modal .dash-cl-table thead { display: table-header-group; }
+  body.printing-modal .dash-pd-cab { padding: 4px 2px; }
+  body.printing-modal .dash-pd-top { padding: 10px; }
+  body.printing-modal * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
+@page dashpage { size: A4 portrait; margin: 10mm; }
 
 /* work order / delivery sheet (printable, per department) */
 .wo-body { padding: 4px 4px 8px; }
@@ -1327,6 +1378,66 @@ body.chip-dragging .task-chip.span-bar { pointer-events: none; }   /* let the da
 
 /* department stage rows (in task modal) */
 .stage-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 4px; }
+/* ★ redesign: meta row + department chips + collapsible details */
+.tm-meta { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); border: 1px solid var(--border); border-radius: 10px; background: #fafbfc; margin: -2px 0 16px; overflow: hidden; }
+.tm-cell { display: flex; flex-direction: column; gap: 4px; padding: 8px 12px; min-width: 0; }
+.tm-cell:nth-child(even) { border-left: 1px solid var(--border); }
+.tm-cell:nth-child(n+3) { border-top: 1px solid var(--border); }
+.tm-lbl { font-size: 10.5px; font-weight: 700; letter-spacing: .3px; color: var(--text-faint); }
+.tm-meta .status-row { display: flex; align-items: center; gap: 8px; }
+.tm-meta .status-button { padding: 7px 12px 7px 14px; font-size: 13px; border-radius: 7px; max-width: none; }
+.tm-meta .status-done-quick { width: 32px; height: 32px; border-radius: 7px; font-size: 15px; }
+.tm-meta select.pri-select { width: 100%; min-width: 0; height: 32px; padding: 4px 8px; font-size: 13px; border-radius: 7px; }
+.tm-dates { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.tm-arrow { color: var(--text-faint); font-size: 14px; }
+.tm-dgrp { display: inline-flex; align-items: center; gap: 5px; }
+.tm-dl { font-size: 12px; font-weight: 700; color: var(--text-dim); }
+.tm-date { border-radius: 7px; flex: 0 0 auto; }
+.tm-date .datefield-input { width: 88px; padding: 6px 2px 6px 9px; font-size: 13px; font-weight: 500; }
+.tm-date .datefield-cal, .tm-date .datefield-clear { padding: 0 6px; }
+/* cabinet rows: `.subtask-row input[type=text]` (flex:1, borderless) must not stretch/restyle the date input */
+.subtask-row .tm-date .datefield-input { flex: none; width: 88px; padding: 6px 2px 6px 9px; font-size: 13px; color: var(--text-dim); }
+.subtask-row .tm-date.has-date .datefield-input { color: var(--text); }
+.subtask-row .tm-date .datefield-input:focus { background: transparent; border-bottom: 0; }
+.tm-meta .asg-row { min-width: 0; }
+.tm-meta.no-dates .tm-cell-asg { grid-column: 1 / -1; border-left: 0; }
+@media (max-width: 700px) {
+  .tm-meta { grid-template-columns: minmax(0, 1fr); }
+  .tm-cell:nth-child(even) { border-left: 0; }
+  .tm-cell:nth-child(n+2) { border-top: 1px solid var(--border); }
+}
+.tm-count { font-weight: 400; color: var(--text-faint); }
+.stage-flow { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 4px; }
+.stage-flow-arrow { color: var(--text-faint); font-size: 15px; line-height: 1; padding: 0 1px; }
+.stage-chip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border: 1px solid var(--border-strong); border-radius: 8px; background: #fff; color: var(--text); font: inherit; font-size: 12.5px; cursor: pointer; white-space: nowrap; }
+.stage-chip:hover { border-color: var(--accent); background: #f8f7ff; }
+.stage-chip .dept-ico, .stage-chip .ico { flex: 0 0 auto; }
+.stage-chip-name { font-weight: 600; }
+.stage-chip-date { color: var(--text-dim); }
+.stage-chip-date.none { color: var(--text-faint); }
+.stage-chip-date.soon { color: #b45309; font-weight: 600; }
+.stage-chip-date.over { color: #dc2626; font-weight: 700; }
+.stage-chip-prog { font-size: 11px; color: var(--text-dim); background: #f1f3f5; border-radius: 999px; padding: 0 6px; }
+.stage-chip-ok { color: #10b981; font-weight: 700; }
+.stage-chip.done { border-color: #a7e3c9; background: #ecfdf5; }
+.stage-chip.done .stage-chip-name, .stage-chip.done .stage-chip-date { color: #047857; }
+.stage-chip-add { padding: 5px 11px; border-style: dashed; color: var(--accent); font-weight: 700; }
+.stage-chip:disabled { cursor: default; opacity: 1; }
+.stage-pop { position: fixed; z-index: 1300; background: #fff; border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 10px 30px rgba(16,24,40,.16); padding: 10px; display: flex; flex-direction: column; gap: 8px; min-width: 220px; }
+.stage-pop-row { display: flex; align-items: center; gap: 8px; }
+.stage-pop-when { font-size: 12px; color: var(--text-dim); }
+.stage-pop-when.soon { color: #b45309; font-weight: 600; }
+.stage-pop-when.over { color: #dc2626; font-weight: 700; }
+.stage-pop-row .stage-dept { flex: 1; }
+.stage-pop-lbl { font-size: 12px; color: var(--text-dim); min-width: 56px; }
+.stage-pop-del { margin-left: auto; border: 0; background: none; color: var(--text-faint); cursor: pointer; padding: 4px; border-radius: 6px; display: inline-flex; }
+.stage-pop-del:hover { color: var(--danger); background: #fef3f2; }
+.tm-more { border-top: 1px solid var(--border); padding-top: 10px; margin-top: 4px; }
+.tm-more > summary { cursor: pointer; font-size: 12.5px; font-weight: 600; color: var(--text-dim); list-style: none; display: flex; align-items: center; gap: 6px; padding: 2px 0; }
+.tm-more > summary::-webkit-details-marker { display: none; }
+.tm-more > summary::after { content: "▸"; font-size: 11px; transition: transform .15s; }
+.tm-more[open] > summary::after { transform: rotate(90deg); }
+.tm-more[open] > summary { margin-bottom: 10px; }
 .stage-row { display: flex; align-items: center; gap: 8px; }
 .stage-row.done .stage-dept { text-decoration: line-through; color: var(--text-faint); }
 .stage-dept-dot { width: 10px; height: 10px; border-radius: 50%; flex: 0 0 auto; }
@@ -1864,6 +1975,13 @@ body.chip-dragging .task-chip.span-bar { pointer-events: none; }   /* let the da
 .auto-row select { flex: 1 1 110px; min-width: 0; border: 1px solid var(--border-strong); border-radius: 6px; padding: 6px 8px; font-size: 13px; background: #fff; color: var(--text); }
 .auto-row .auto-word { font-size: 12px; color: var(--text-dim); }
 .auto-row.off select, .auto-row.off .auto-word { opacity: .45; }
+.auto-card { background: #fafbfc; border: 1px solid var(--border); border-radius: 8px; padding: 2px 0 6px; margin-bottom: 8px; }
+.auto-card .cl-tpl-row { background: transparent; margin-bottom: 0; }
+.auto-card.off select, .auto-card.off .auto-word { opacity: .45; }
+.auto-sub { display: flex; align-items: center; gap: 8px; padding: 0 8px 4px 34px; }
+.auto-sub select.auto-logic { flex: 0 0 auto; font-weight: 700; color: var(--accent); }
+.auto-add-cond { margin-left: 34px; border: 0; background: none; color: var(--accent); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; padding: 2px 0; }
+.auto-add-cond:hover { text-decoration: underline; }
 
 /* day detail (when more tasks) */
 .day-tasks { display: flex; flex-direction: column; gap: 6px; }
@@ -2763,7 +2881,9 @@ function deptUsesChecklist(task, deptId) {
   return deptProgress(task, deptId).total > 0;
 }
 /* ---------- ⚡ Automation: checklist → status of the TASK or of each CABINET (subtask) ----------
-   rule = { id, on, target:"sub"|"task", when:"all"|"done"|"start", deptId, statusId }
+   rule = { id, on, target:"sub"|"task", when:"all"|"done"|"start"|"subs", deptId, statusId,
+            more:[{ when, deptId }], logic:"and"|"or" }   ← more/logic (2026-10-06) = extra conditions joined by AND/OR;
+   the first condition stays in when/deptId so rules saved before AND/OR existed are read unchanged.
    (no `target` = "task": rules made before cabinets were an option keep working as they were).
    target "sub" checks each cabinet's OWN checklist and sets that cabinet's status.
    A rule fires only on the false→true EDGE of its condition (compare a snapshot taken before the edit),
@@ -2773,7 +2893,14 @@ function automationRules() {
   return ((state.settings && state.settings.automations) || []).filter(r => r && r.on !== false && r.statusId);
 }
 function automationTarget(r) { return r.target === "sub" ? "sub" : "task"; }
+function automationConds(r) { return [{ when: r.when, deptId: r.deptId }].concat(Array.isArray(r.more) ? r.more.filter(Boolean) : []); }
+function automationRuleCond(task, r) { const cs = automationConds(r), f = c => automationCond(task, c); return r.logic === "or" ? cs.some(f) : cs.every(f); }
+function automationRuleSubCond(sub, r) { const cs = automationConds(r), f = c => automationSubCond(sub, c); return r.logic === "or" ? cs.some(f) : cs.every(f); }
+function automationRuleLabel(r) {
+  return automationConds(r).map(c => automationWhenLabel({ ...c, target: r.target })).join(r.logic === "or" ? " หรือ " : " และ ");
+}
 function automationCond(task, r) {
+  if (r.when === "subs") { const subs = task.subtasks || []; return subs.length > 0 && subs.every(subtaskDone); }
   if (r.when === "all") {
     const cl = overallChecklist(task);
     const stages = task.deptStages || [];
@@ -2787,6 +2914,7 @@ function automationCond(task, r) {
 }
 // the same conditions, on one cabinet's own checklist
 function automationSubCond(sub, r) {
+  if (r.when === "subs") return subtaskDone(sub);
   if (r.when === "all") { const p = checklistProgress(sub); return p.total > 0 && p.done === p.total; }
   if (!r.deptId || !getDept(r.deptId)) return false;
   const p = checklistProgress(sub, r.deptId);
@@ -2797,12 +2925,13 @@ function automationSubCond(sub, r) {
 function automationSnapshot(task) {
   const m = {};
   if (task) automationRules().forEach(r => {
-    if (automationTarget(r) === "sub") (task.subtasks || []).forEach(sub => { m[r.id + ":" + sub.id] = automationSubCond(sub, r); });
-    else m[r.id] = automationCond(task, r);
+    if (automationTarget(r) === "sub") (task.subtasks || []).forEach(sub => { m[r.id + ":" + sub.id] = automationRuleSubCond(sub, r); });
+    else m[r.id] = automationRuleCond(task, r);
   });
   return m;
 }
 function automationWhenLabel(r) {
+  if (r.when === "subs") return "ตู้เสร็จครบทุกตู้";
   if (r.when === "all") return automationTarget(r) === "sub" ? "เช็คลิสต์ครบทุกแผนก" : "ทุกแผนกเสร็จ";
   const dn = (getDept(r.deptId) || {}).name || "?";
   return r.when === "start" ? `เริ่มติ๊กเช็คลิสต์ ${dn}` : `เช็คลิสต์ ${dn} ครบ`;
@@ -2816,21 +2945,6 @@ function runAutomations(task, before, manualBase) {
   const validStatus = id => (state.statuses || []).some(x => x.id === id);
   const baseSub = id => manualBase && (manualBase.subtasks || []).find(x => x.id === id);
   let changed = false;
-  // task
-  const taskLocked = manualBase && manualBase.statusId !== task.statusId;
-  const startId = task.statusId;
-  let fired = null;
-  automationRules().forEach(r => {
-    if (automationTarget(r) !== "task" || taskLocked) return;
-    if (before[r.id] || !automationCond(task, r) || !validStatus(r.statusId)) return;
-    fired = r; task.statusId = r.statusId;
-  });
-  if (task.statusId !== startId) {
-    logActivity(task, `⚡ อัตโนมัติ (${automationWhenLabel(fired)}): ${getStatus(startId).name} → ${getStatus(task.statusId).name}`);
-    notifyStatusChange(task, null, startId, task.statusId);
-    toast(`⚡ งาน → “${getStatus(task.statusId).name}”`);
-    changed = true;
-  }
   // cabinets
   (task.subtasks || []).forEach(sub => {
     const b = baseSub(sub.id);
@@ -2839,16 +2953,56 @@ function runAutomations(task, before, manualBase) {
     let subFired = null;
     automationRules().forEach(r => {
       if (automationTarget(r) !== "sub") return;
-      if (before[r.id + ":" + sub.id] || !automationSubCond(sub, r) || !validStatus(r.statusId)) return;
+      if (before[r.id + ":" + sub.id] || !automationRuleSubCond(sub, r) || !validStatus(r.statusId)) return;
+      if (statusBlockReason(task, sub, r.statusId)) return;   // 🔒 a block rule wins over automation
       subFired = r; sub.statusId = r.statusId;
     });
     if (sub.statusId === subStart) return;
-    logActivity(task, `⚡ อัตโนมัติ ตู้ “${sub.text || "(ไม่มีชื่อ)"}” (${automationWhenLabel(subFired)}): ${getStatus(subStart).name} → ${getStatus(sub.statusId).name}`);
+    logActivity(task, `⚡ อัตโนมัติ ตู้ “${sub.text || "(ไม่มีชื่อ)"}” (${automationRuleLabel(subFired)}): ${getStatus(subStart).name} → ${getStatus(sub.statusId).name}`);
     notifyStatusChange(task, sub, subStart, sub.statusId);
     toast(`⚡ ตู้ ${sub.text || ""} → “${getStatus(sub.statusId).name}”`);
     changed = true;
   });
+  // task
+  const taskLocked = manualBase && manualBase.statusId !== task.statusId;
+  const startId = task.statusId;
+  let fired = null;
+  automationRules().forEach(r => {
+    if (automationTarget(r) !== "task" || taskLocked) return;
+    if (before[r.id] || !automationRuleCond(task, r) || !validStatus(r.statusId)) return;
+    if (statusBlockReason(task, null, r.statusId)) return;
+    fired = r; task.statusId = r.statusId;
+  });
+  if (task.statusId !== startId) {
+    logActivity(task, `⚡ อัตโนมัติ (${automationRuleLabel(fired)}): ${getStatus(startId).name} → ${getStatus(task.statusId).name}`);
+    notifyStatusChange(task, null, startId, task.statusId);
+    toast(`⚡ งาน → “${getStatus(task.statusId).name}”`);
+    changed = true;
+  }
   return changed;
+}
+/* ---------- 🔒 Block rules (⚙ อัตโนมัติ): state.settings.blockRules = { subNeedChecklist, taskNeedSubs } ----------
+   subNeedChecklist: a cabinet can't get a "done" status while its checklist (all departments) isn't fully ticked.
+   taskNeedSubs:     a project can't get a "done" status while any of its cabinets isn't done.
+   Returns the reason (Thai) or "" when allowed. Only blocks moving INTO a done status. */
+function statusBlockReason(task, sub, newStatusId) {
+  const br = (state.settings && state.settings.blockRules) || {};
+  const ns = (state.statuses || []).find(x => x.id === newStatusId);
+  if (!ns || !isStatusDone(ns) || !task) return "";
+  if (sub) {
+    if (!br.subNeedChecklist) return "";
+    const p = checklistProgress(sub);
+    return p.total > 0 && p.done < p.total ? `ตู้ “${sub.text || "(ไม่มีชื่อ)"}” ยังติ๊กเช็คลิสต์ไม่ครบ (${p.done}/${p.total})` : "";
+  }
+  if (!br.taskNeedSubs) return "";
+  const subs = task.subtasks || [], left = subs.filter(x => !subtaskDone(x)).length;
+  return left ? `ยังมีตู้ที่ไม่เสร็จ ${left} จาก ${subs.length} ตู้` : "";
+}
+// for status pickers: true (+ toast) when the change is blocked
+function statusBlocked(task, sub, newStatusId) {
+  const why = statusBlockReason(task, sub, newStatusId);
+  if (why) toast(`เปลี่ยนเป็น “${getStatus(newStatusId).name}” ไม่ได้ — ${why}`);
+  return !!why;
 }
 // per-cabinet, per-department due date: a cabinet-specific override, else this department's
 // project stage due. Returns null when neither is set (= cabinet not scheduled for this dept).
@@ -3178,6 +3332,8 @@ function migrateState(s) {
   if (!Array.isArray(s.settings.drawReqDepts)) s.settings.drawReqDepts = [];
   // ⚡ automation rules [{ id, on, target:"sub"|"task", when:"all"|"done"|"start", deptId, statusId }] — board-wide (admin sets)
   if (!Array.isArray(s.settings.automations)) s.settings.automations = [];
+  // 🔒 block rules (off unless an admin turns them on)
+  if (!s.settings.blockRules || typeof s.settings.blockRules !== "object") s.settings.blockRules = { subNeedChecklist: false, taskNeedSubs: false };
   if (typeof s.settings.currentUser !== "string") s.settings.currentUser = "";
   if (typeof s.settings.myDept !== "string") s.settings.myDept = "";
   // default department stages for new tasks; seed with all current departments, drop any removed ones
@@ -4349,6 +4505,7 @@ function escapeHtml(s) {
 function applyStatusChange(t, sub, id) {
   const oldId = sub ? sub.statusId : t.statusId;
   if (oldId === id) return;
+  if (statusBlocked(t, sub, id)) return;
   if (sub) sub.statusId = id; else t.statusId = id;
   const ns = getStatus(id);
   if (sub) logActivity(t, (isStatusDone(ns) && !isStatusDone(getStatus(oldId))) ? `ตู้ “${sub.text || "(ไม่มีชื่อ)"}” เสร็จ` : `ตู้ “${sub.text || "(ไม่มีชื่อ)"}” → ${ns.name}`);
@@ -5164,61 +5321,61 @@ function openTaskModal(taskId, defaults={}) {
         <div class="field">
           <input type="text" class="title-input" data-f="title" placeholder="ชื่องาน เช่น ตรวจ MDB ตู้ A1" />
         </div>
-        <div class="field-row">
-          <div class="field">
-            <label>วันเริ่ม</label>
-            <div data-df="startDate"></div>
+        <div class="tm-meta">
+          <div class="tm-cell tm-cell-status">
+            <span class="tm-lbl">สถานะ</span>
+            <div class="status-row">
+              <button type="button" class="status-button" data-status-btn>
+                <span class="status-label"></span>
+                <span class="caret">▶</span>
+              </button>
+              <button type="button" class="status-done-quick" data-status-done title="ทำเครื่องหมายว่าเสร็จ">✓</button>
+            </div>
           </div>
-          <div class="field">
-            <label>วันครบกำหนด</label>
-            <div data-df="date"></div>
-          </div>
-        </div>
-        <div class="field-row pri-asg">
-          <div class="field">
-            <label>ความสำคัญ</label>
-            <select class="pri-select" data-priority>
-              ${PRIORITIES.map(p => `<option value="${p.id}" style="color:${p.color}">${p.label}</option>`).join("")}
+          <div class="tm-cell tm-cell-pri">
+            <span class="tm-lbl">ความสำคัญ</span>
+            <select class="pri-select tm-pri" data-priority>
+              ${PRIORITIES.map(p => `<option value="${p.id}" style="color:${p.color}">⚑ ${p.label}</option>`).join("")}
             </select>
           </div>
-          <div class="field">
-            <label title="คนที่ถูกมอบหมายจะได้รับแจ้งเตือนทันที">ผู้รับผิดชอบ</label>
+          <div class="tm-cell tm-cell-dates" data-dates>
+            <span class="tm-lbl">กำหนดเวลา</span>
+            <div class="tm-dates">
+              <span class="tm-dgrp"><span class="tm-dl">เริ่ม</span><span data-df="startDate"></span></span>
+              <span class="tm-arrow">→</span>
+              <span class="tm-dgrp"><span class="tm-dl">จบ</span><span data-df="date"></span></span>
+            </div>
+          </div>
+          <div class="tm-cell tm-cell-asg">
+            <span class="tm-lbl">ผู้รับผิดชอบ</span>
             <div class="asg-row" data-assignees></div>
           </div>
         </div>
-        <div class="field">
-          <label>สถานะ</label>
-          <div class="status-row">
-            <button type="button" class="status-button" data-status-btn>
-              <span class="status-label"></span>
-              <span class="caret">▶</span>
-            </button>
-            <button type="button" class="status-done-quick" data-status-done title="ทำเครื่องหมายว่าเสร็จ">✓</button>
-          </div>
-        </div>
         <div class="field"${isServiceBoard() ? ' style="display:none"' : ""}>
-          <label>กำหนดส่งต่อแผนก</label>
-          <div class="stage-list" data-stages></div>
-          <button class="add-sub-btn" data-act="add-stage">+ เพิ่มด่านแผนก</button>
-        </div>
-        <div class="field" data-extra-field-block style="display:none">
-          <div data-extra-fields></div>
+          <label>ส่งต่อแผนก</label>
+          <div class="stage-flow" data-stages></div>
         </div>
         <div class="field">
-          <label>รายละเอียด</label>
-          <textarea data-f="description" placeholder="หมายเหตุ / ขอบเขตงาน..."></textarea>
-        </div>
-        <div class="field">
-          <label>แท็ก / Label</label>
-          <div class="labels-area" data-labels>
-            <input type="text" placeholder="พิมพ์แล้วกด Enter เพื่อเพิ่ม" />
-          </div>
-        </div>
-        <div class="field">
-          <label>ตู้ + Checklist <span class="muted" style="font-weight:400" data-cl-hint></span></label>
+          <label>ตู้ <span class="tm-count" data-sub-count></span> <span class="muted" style="font-weight:400" data-cl-hint></span></label>
           <div class="subtask-list" data-subtasks></div>
           <button class="add-sub-btn" data-act="add-sub">+ เพิ่มตู้</button>
         </div>
+        <details class="tm-more" data-more>
+          <summary>${ico("file-text")} <span data-more-label>รายละเอียด · แท็ก</span></summary>
+          <div class="field" data-extra-field-block style="display:none">
+            <div data-extra-fields></div>
+          </div>
+          <div class="field">
+            <label>รายละเอียด</label>
+            <textarea data-f="description" placeholder="หมายเหตุ / ขอบเขตงาน..."></textarea>
+          </div>
+          <div class="field">
+            <label>แท็ก / Label</label>
+            <div class="labels-area" data-labels>
+              <input type="text" placeholder="พิมพ์แล้วกด Enter เพื่อเพิ่ม" />
+            </div>
+          </div>
+        </details>
       </div>
       <aside class="task-activity">
         <div class="ta-head"><span>Activity</span><button type="button" class="att-open-btn empty" data-act="attachments" title="ดูรูปและไฟล์แนบทั้งหมดของงานนี้"><svg class="att-open-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>ไฟล์แนบ<span class="att-count" data-att-count></span></button></div>
@@ -5254,19 +5411,20 @@ function openTaskModal(taskId, defaults={}) {
   modal.querySelector('[data-f="description"]').value = task.description || "";
 
   // custom dd/mm/yyyy date fields
-  const startField = createDateField({ value: task.startDate, allowClear: true, extraClass: "datefield-block",
+  const startField = createDateField({ value: task.startDate, allowClear: true, extraClass: "tm-date",
     onChange: (iso) => {
       if (iso && task.date && iso > task.date) { toast("วันเริ่มต้องไม่หลังวันครบกำหนด"); startField.setValue(task.startDate || null); return; }
       task.startDate = iso || null; scheduleCommit(0);
     } });
-  const dueField = createDateField({ value: task.date, allowClear: false, extraClass: "datefield-block",
+  const dueField = createDateField({ value: task.date, allowClear: false, extraClass: "tm-date",
     onChange: (iso) => {
       if (!iso) return;
       if (task.startDate && task.startDate > iso) { toast("วันครบกำหนดต้องไม่ก่อนวันเริ่ม"); dueField.setValue(task.date); return; }
       task.date = iso; scheduleCommit(0);
     } });
-  modal.querySelector('[data-df="startDate"]').appendChild(startField);
-  modal.querySelector('[data-df="date"]').appendChild(dueField);
+  startField.title = "วันเริ่ม"; dueField.title = "วันครบกำหนด";
+  modal.querySelector('[data-df="startDate"]').replaceWith(startField);
+  modal.querySelector('[data-df="date"]').replaceWith(dueField);
 
   // priority dropdown — colour the select itself by the chosen level (option colours aren't
   // reliably shown by browsers, but the selected value in the box is)
@@ -5292,6 +5450,7 @@ function openTaskModal(taskId, defaults={}) {
   statusBtn.addEventListener('click', (e) => {
     e.stopPropagation();
     openStatusPopover(statusBtn, task.statusId, (newId) => {
+      if (statusBlocked(task, null, newId)) return;
       task.statusId = newId;
       paintStatus();
       scheduleCommit(0);
@@ -5307,6 +5466,7 @@ function openTaskModal(taskId, defaults={}) {
     } else {
       // mark done: jump to first done-flagged status
       const done = state.statuses.find(s => s.isDone);
+      if (done && statusBlocked(task, null, done.id)) return;
       if (done) task.statusId = done.id;
       else alert("ยังไม่มีสถานะที่ตั้งเป็น 'เสร็จ' — กด ⚙ แก้ไข เพื่อกำหนด");
     }
@@ -5365,6 +5525,8 @@ function openTaskModal(taskId, defaults={}) {
   }
   function renderSubs() {
     subWrap.innerHTML = "";
+    const subCount = modal.querySelector("[data-sub-count]");
+    if (subCount) subCount.textContent = (task.subtasks || []).length ? `(${task.subtasks.length})` : "";
     (task.subtasks||[]).forEach((s, i) => {
       const cur = getStatus(s.statusId);
       const prog = checklistProgress(s);
@@ -5390,7 +5552,7 @@ function openTaskModal(taskId, defaults={}) {
       // (sub.deptDates[dept]); with no dept context it edits the cabinet's overall date (sub.date)
       const dateField = createDateField({
         value: modalDept ? ((s.deptDates && s.deptDates[modalDept]) || null) : (s.date || null),
-        allowClear: true, extraClass: "datefield-sm",
+        allowClear: true, extraClass: "tm-date",
         onChange: (iso) => {
           if (modalDept) {
             if (iso) {
@@ -5422,6 +5584,7 @@ function openTaskModal(taskId, defaults={}) {
       dotBtn.addEventListener("click", (e) => {
         e.stopPropagation();
         openStatusPopover(dotBtn, s.statusId, (newId) => {
+          if (statusBlocked(task, s, newId)) return;
           s.statusId = newId;
           const ns = getStatus(newId);
           paintDot(dotBtn, ns);
@@ -5463,6 +5626,31 @@ function openTaskModal(taskId, defaults={}) {
   // department stages (ด่านส่งต่อแผนก)
   const stageWrap = modal.querySelector('[data-stages]');
   if (!Array.isArray(task.deptStages)) task.deptStages = [];
+  // ★ redesign 2026-10-06: each department stage = one compact chip in workflow order (ออกแบบ → ผลิต → QC → …);
+  //   click a chip → small popover with its date / done tick / department / delete. Same data + permission rules as the old rows.
+  // date on a chip: "วันนี้" / "พรุ่งนี้" / "20 ต.ค." (Thai month, not 20/10) — red when overdue, amber when due within 2 days
+  const TH_MON_SHORT = ["ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.","ก.ค.","ส.ค.","ก.ย.","ต.ค.","พ.ย.","ธ.ค."];
+  function stageDueInfo(iso, done) {
+    if (!iso) return null;
+    const d = fromIso(iso), t0 = fromIso(todayIso());
+    const diff = Math.round((d - t0) / 86400000);
+    let label = `${d.getDate()} ${TH_MON_SHORT[d.getMonth()]}`, cls = "", rel = "";
+    if (diff === 0) { rel = "วันนี้"; if (!done) { label = "วันนี้"; cls = "soon"; } }
+    else if (diff === 1) { rel = "พรุ่งนี้"; if (!done) { label = "พรุ่งนี้"; cls = "soon"; } }
+    else if (diff === 2) { rel = "อีก 2 วัน"; if (!done) cls = "soon"; }
+    else if (diff > 2) rel = `อีก ${diff} วัน`;
+    else { rel = `เกินกำหนด ${-diff} วัน`; if (!done) cls = "over"; }
+    return { label, cls, tip: `${formatDateTH(iso)} (${rel})` };
+  }
+  function stageChipHtml(stg) {
+    const dept = getDept(stg.deptId) || state.departments[0] || { name: "?" };
+    const dp = deptProgress(task, stg.deptId), done = isDeptComplete(task, stg.deptId);
+    const di = stageDueInfo(stg.due, done);
+    const prog = dp.total > 0 ? `<span class="stage-chip-prog">${Math.round(dp.done / dp.total * 100)}%</span>` : "";
+    return `${deptIco(dept)}<span class="stage-chip-name">${escapeHtml(dept.name)}</span>`
+      + (di ? `<span class="stage-chip-date ${di.cls}">${di.label}</span>` : `<span class="stage-chip-date none">—</span>`)
+      + (done ? `<span class="stage-chip-ok">✓</span>` : prog);
+  }
   function renderStages() {
     stageWrap.innerHTML = "";
     if ((state.departments || []).length === 0) {
@@ -5479,60 +5667,137 @@ function openTaskModal(taskId, defaults={}) {
       renderExtraFields();
       return;
     }
-    visibleStages.forEach((stg) => {
-      const dept = getDept(stg.deptId) || state.departments[0];
+    visibleStages.forEach((stg, i) => {
+      if (i > 0) stageWrap.insertAdjacentHTML("beforeend", `<span class="stage-flow-arrow">›</span>`);
+      const chip = document.createElement("button");
+      chip.type = "button";
+      chip.className = "stage-chip" + (isDeptComplete(task, stg.deptId) ? " done" : "") + (stg.due ? "" : " no-date");
+      chip.dataset.deptId = stg.deptId;
+      chip.innerHTML = stageChipHtml(stg);
+      chip.addEventListener("click", (e) => { e.stopPropagation(); openStagePop(stg, chip); });
+      // hover opens the same popup (after a short delay so sweeping across chips doesn't flicker); touch screens just tap
+      let hoverTimer = null;
+      chip.addEventListener("mouseenter", () => { clearTimeout(hoverTimer); hoverTimer = setTimeout(() => openStagePop(stg, chip), 160); });
+      chip.addEventListener("mouseleave", () => clearTimeout(hoverTimer));
+      stageWrap.appendChild(chip);
+    });
+    const add = document.createElement("button");
+    add.type = "button";
+    add.className = "stage-chip stage-chip-add";
+    add.dataset.act = "add-stage";
+    add.title = "เพิ่มด่านแผนก";
+    add.textContent = "+";
+    add.addEventListener("click", addStage);
+    stageWrap.appendChild(add);
+    if (!canFull()) add.style.display = "none";
+    renderExtraFields();   // custom dropdown fields live in their own card, keyed off the current stages
+  }
+  // popover for one stage chip
+  let closeStagePop = null;
+  function openStagePop(stg, chip) {
+    if (closeStagePop) { if (closeStagePop.chip === chip && document.querySelector(".stage-pop")) return; closeStagePop(); }
+    document.querySelectorAll(".stage-pop").forEach(n => n.remove());
+    const pop = document.createElement("div");
+    pop.className = "stage-pop";
+    const full = canFull(), edit = canEdit();
+    function render() {
       const usesChecklist = deptUsesChecklist(task, stg.deptId);
       const dp = deptProgress(task, stg.deptId);
       const deptDone = isDeptComplete(task, stg.deptId);
-      const row = document.createElement("div");
-      row.className = "stage-row" + (deptDone ? " done" : "");
       const optsHtml = state.departments.map(d =>
         `<option value="${d.id}" ${d.id===stg.deptId?"selected":""}>${escapeHtml(d.name)}</option>`).join("");
-      // checklist depts: show derived progress (auto-done); others: manual tick
-      const control = usesChecklist
-        ? `<span class="stage-prog${deptDone?' full':''}" title="เสร็จอัตโนมัติเมื่อติ๊ก checklist ของแผนกนี้ครบทุกตู้">${dp.done}/${dp.total} ✓</span>`
-        : `<label class="stage-done-toggle" title="ติ๊กเมื่อแผนกนี้ทำงานเสร็จ"><input type="checkbox" ${stg.done ? "checked" : ""} /> เสร็จ</label>`;
-      row.innerHTML = `
-        ${deptIco(dept)}
-        <select class="stage-dept">${optsHtml}</select>
-        <span class="stage-date-mount"></span>
-        ${control}
-        <button class="subtask-del" title="ลบด่าน">✕</button>
-      `;
-      const deptSel = row.querySelector(".stage-dept");
-      const doneCb = row.querySelector(".stage-done-toggle input");
-      const del = row.querySelector(".subtask-del");
-      // date field (blocked depts can't be set later than the anchor dept)
-      const df = createDateField({ value: stg.due, allowClear: true, extraClass: "datefield-sm",
+      const di = stageDueInfo(stg.due, deptDone);
+      pop.innerHTML = `
+        <div class="stage-pop-row"><select class="stage-dept" ${full ? "" : "disabled"}>${optsHtml}</select></div>
+        ${di ? `<div class="stage-pop-when ${di.cls}">${escapeHtml(di.tip)}</div>` : ""}
+        <div class="stage-pop-row"><span class="stage-pop-lbl">กำหนดส่ง</span><span class="stage-date-mount"></span></div>
+        <div class="stage-pop-row">${usesChecklist
+          ? `<span class="stage-prog${deptDone?' full':''}" title="เสร็จอัตโนมัติเมื่อติ๊ก checklist ของแผนกนี้ครบทุกตู้">Checklist ${dp.done}/${dp.total} (${Math.round(dp.done / dp.total * 100)}%)${deptDone ? " ✓" : ""}</span>`
+          : `<label class="stage-done-toggle"><input type="checkbox" ${stg.done ? "checked" : ""} ${edit ? "" : "disabled"} /> เสร็จแล้ว</label>`}
+          ${full ? `<button type="button" class="stage-pop-del" title="ลบด่าน">${ico("trash")}</button>` : ""}
+        </div>`;
+      const df = createDateField({ value: stg.due, allowClear: true, extraClass: "tm-date",
         onChange: (iso) => {
+          if (!canEdit()) { permDenied("สิทธิ์ของคุณแก้วันไม่ได้"); df.setValue(stg.due || null); return; }
           if (iso) {
             const max = dateLimitViolation(task, stg.deptId, iso, null);
             if (max) { toast(dateLimitMsg(stg.deptId, max)); df.setValue(stg.due || null); return; }
           }
           stg.due = iso || null;
-          scheduleCommit(0);
+          repaintChip(); repaintWhen(); scheduleCommit(0);
         } });
-      row.querySelector(".stage-date-mount").replaceWith(df);
-      // dept change → recompute control (checklist vs manual)
-      deptSel.addEventListener("change", () => {
-        if (!canFull()) { permDenied("สิทธิ์ของคุณเปลี่ยนแผนกของด่านไม่ได้"); deptSel.value = stg.deptId; return; }
-        stg.deptId = deptSel.value;
+      if (!edit) df.querySelectorAll("input,button").forEach(el => el.disabled = true);
+      pop.querySelector(".stage-date-mount").replaceWith(df);
+      pop.querySelector(".stage-dept").addEventListener("change", (e) => {
+        if (!canFull()) { permDenied("สิทธิ์ของคุณเปลี่ยนแผนกของด่านไม่ได้"); e.target.value = stg.deptId; return; }
+        stg.deptId = e.target.value;
         renderStages(); scheduleCommit(0);
+        chip = stageWrap.querySelector(`.stage-chip[data-dept-id="${CSS.escape(stg.deptId)}"]`) || chip;
+        render();
       });
-      // manual department done tick (only for depts without a checklist) — a status, so edit tier can
+      const doneCb = pop.querySelector(".stage-done-toggle input");
       if (doneCb) doneCb.addEventListener("change", () => {
         if (!canEdit()) { permDenied("สิทธิ์ของคุณเปลี่ยนสถานะไม่ได้"); doneCb.checked = !!stg.done; return; }
-        stg.done = doneCb.checked; row.classList.toggle("done", doneCb.checked); scheduleCommit(0);
+        stg.done = doneCb.checked; repaintChip(); repaintWhen(); scheduleCommit(0);
       });
-      del.addEventListener("click", () => {
+      const del = pop.querySelector(".stage-pop-del");
+      if (del) del.addEventListener("click", () => {
         if (!canFull()) { permDenied("สิทธิ์ของคุณลบด่านแผนกไม่ได้"); return; }
-        const idx = task.deptStages.indexOf(stg);   // indexOf, not the loop index — the list may be filtered
+        const idx = task.deptStages.indexOf(stg);
         if (idx >= 0) task.deptStages.splice(idx, 1);
-        renderStages(); scheduleCommit(0);
+        close(); renderStages(); scheduleCommit(0);
       });
-      stageWrap.appendChild(row);
-    });
-    renderExtraFields();   // custom dropdown fields live in their own card, keyed off the current stages
+    }
+    function repaintWhen() {
+      const di = stageDueInfo(stg.due, isDeptComplete(task, stg.deptId));
+      let el = pop.querySelector(".stage-pop-when");
+      if (!di) { if (el) el.remove(); return; }
+      if (!el) { el = document.createElement("div"); pop.querySelector(".stage-pop-row").after(el); }
+      el.className = "stage-pop-when " + di.cls; el.textContent = di.tip;
+    }
+    function repaintChip() {
+      if (!document.body.contains(chip)) return;
+      chip.innerHTML = stageChipHtml(stg);
+      chip.classList.toggle("done", isDeptComplete(task, stg.deptId));
+      chip.classList.toggle("no-date", !stg.due);
+    }
+    render();
+    document.body.appendChild(pop);
+    const r = chip.getBoundingClientRect(), pr = pop.getBoundingClientRect();
+    let top = r.bottom + 6, left = Math.min(r.left, window.innerWidth - pr.width - 8);
+    if (top + pr.height > window.innerHeight - 8) top = r.top - pr.height - 6;
+    pop.style.top = Math.max(8, top) + "px"; pop.style.left = Math.max(8, left) + "px";
+    let leaveTimer = null;
+    function close() {
+      clearTimeout(leaveTimer);
+      pop.remove();
+      document.removeEventListener("mousedown", onDoc, true);
+      document.removeEventListener("keydown", onEsc, true);
+      if (closeStagePop === close) closeStagePop = null;
+    }
+    close.chip = chip; closeStagePop = close;
+    // pointer left both the chip and the popup → close, unless the person is mid-edit (a field/dropdown has focus, or the calendar is open)
+    function scheduleLeave() {
+      clearTimeout(leaveTimer);
+      leaveTimer = setTimeout(() => {
+        if (chip.matches(":hover") || pop.matches(":hover") || document.querySelector(".dp-cal")) return;
+        const ae = document.activeElement;
+        if (ae && pop.contains(ae) && /^(INPUT|SELECT|TEXTAREA)$/.test(ae.tagName) && ae.type !== "checkbox") return;
+        close();
+      }, 280);
+    }
+    [chip, pop].forEach(el => { el.addEventListener("mouseleave", scheduleLeave); el.addEventListener("mouseenter", () => clearTimeout(leaveTimer)); });
+    pop.addEventListener("focusout", () => setTimeout(scheduleLeave, 0));
+    pop.addEventListener("change", (e) => { if (e.target.tagName === "SELECT") e.target.blur(); });
+    function onDoc(e) {
+      if (pop.contains(e.target) || chip.contains(e.target) || e.target.closest(".dp-cal, .confirm-overlay")) return;
+      close();
+    }
+    function onEsc(e) { if (e.key === "Escape" && document.body.contains(pop)) { e.stopPropagation(); close(); } }
+    setTimeout(() => {
+      document.addEventListener("mousedown", onDoc, true);
+      document.addEventListener("keydown", onEsc, true);
+    }, 0);
   }
   // "ข้อมูลเพิ่มเติม" card(s): custom dropdown fields, grouped per department, value stored on stg.fields.
   // Shown only for the user's own department (modalDept); planners (no own dept) see every department that has fields.
@@ -5547,6 +5812,7 @@ function openTaskModal(taskId, defaults={}) {
     });
     const relevant = (task.deptStages || []).filter(stg =>
       (!modalDept || stg.deptId === modalDept) && deptFields(stg.deptId).length > 0);
+    paintMore(relevant.length > 0);
     if (relevant.length === 0) { extraBlock.style.display = "none"; return; }
     extraBlock.style.display = "";
     relevant.forEach(stg => {
@@ -5582,6 +5848,18 @@ function openTaskModal(taskId, defaults={}) {
       extraWrap.appendChild(card);
     });
   }
+  const moreEl = modal.querySelector("[data-more]");
+  let moreTouched = false;
+  moreEl.addEventListener("toggle", () => { moreTouched = true; });
+  function paintMore(hasExtra) {
+    const parts = [];
+    if (hasExtra) parts.push("ข้อมูลเพิ่มเติม");
+    parts.push("รายละเอียด", "แท็ก");
+    modal.querySelector("[data-more-label]").textContent = parts.join(" · ");
+    const filled = !!(task.description || "").trim() || (task.labels || []).length > 0
+      || (task.deptStages || []).some(st => st.fields && Object.keys(st.fields).length && (!modalDept || st.deptId === modalDept));
+    if (!moreTouched && filled) moreEl.open = true;
+  }
   function addStage() {
     if (!canFull()) { permDenied("สิทธิ์ของคุณเพิ่มด่านแผนกไม่ได้"); return; }
     // pick first department not yet used, else the first
@@ -5592,7 +5870,6 @@ function openTaskModal(taskId, defaults={}) {
     renderStages(); scheduleCommit(0);
   }
   renderStages();
-  modal.querySelector('[data-act="add-stage"]').addEventListener("click", addStage);
 
   // ----- Activity / comments panel (right side) -----
   if (!Array.isArray(task.comments)) task.comments = [];
@@ -5869,7 +6146,7 @@ function openTaskModal(taskId, defaults={}) {
     startField.setValue(task.startDate || null);
     dueField.setValue(task.date || null);
     if (prioritySel) { prioritySel.value = task.priority || "none"; prioritySel.style.color = getPriority(prioritySel.value).color; }
-    document.querySelectorAll(".checklist-popover").forEach(n => n.remove());
+    if (closeStagePop) closeStagePop(); document.querySelectorAll(".checklist-popover, .stage-pop").forEach(n => n.remove());
     paintStatus(); renderLabels(); renderSubs(); renderStages(); renderAssignees(); renderFeed();
     applyTaskModalPerm(modal);
     if (sidFocus) {
@@ -5944,8 +6221,9 @@ function openTaskModal(taskId, defaults={}) {
   // would just be confusing. Planners (no department) still see & set it. Hidden ≠ cleared: the field
   // keeps its value, so saving leaves task.date/startDate untouched.
   if (myDeptId() && !isServiceBoard()) {   // Service has no stages → its people set the project dates directly
-    const dateRow = modal.querySelector('[data-df="date"]')?.closest(".field-row");
+    const dateRow = modal.querySelector('[data-dates]');
     if (dateRow) dateRow.style.display = "none";
+    modal.querySelector(".tm-meta").classList.add("no-dates");
   }
 
   // ★ apply the viewer's permission tier (grey out / disable what they can't change). This is the
@@ -6205,6 +6483,7 @@ function buildTpCabRow(t, sub, ed, today, deptId) {
     e.stopPropagation();
     const targetId = sub ? sub.statusId : t.statusId;
     openStatusPopover(dot, targetId, (id) => {
+      if (statusBlocked(t, sub, id)) return;
       const oldId = sub ? sub.statusId : t.statusId;
       if (sub) sub.statusId = id; else t.statusId = id;
       const ns = getStatus(id);
@@ -6258,6 +6537,7 @@ function renderTpGroup(entry, today) {
   headDot.addEventListener("click", (e) => {
     e.stopPropagation();
     openStatusPopover(headDot, t.statusId, (id) => {
+      if (statusBlocked(t, null, id)) return;
       const oldId = t.statusId;
       t.statusId = id;
       logActivity(t, `เปลี่ยนสถานะ: ${getStatus(oldId).name} → ${getStatus(id).name}`);
@@ -6402,6 +6682,7 @@ function renderTodayPanelDept(deptIds, today, pass) {
     headDot.addEventListener("click", (e) => {
       e.stopPropagation();
       openStatusPopover(headDot, t.statusId, (id) => {
+        if (statusBlocked(t, null, id)) return;
         const oldId = t.statusId; t.statusId = id;
         logActivity(t, `เปลี่ยนสถานะ: ${getStatus(oldId).name} → ${getStatus(id).name}`);
         notifyStatusChange(t, null, oldId, id);
@@ -7247,23 +7528,37 @@ function buildChecklistTemplatePanel(container) {
 /* Settings → ⚡ อัตโนมัติ — "when <checklist condition> → set task status". Board-wide (state.settings). */
 function buildAutomationPanel(container) {
   if (!Array.isArray(state.settings.automations)) state.settings.automations = [];
-  const rules = state.settings.automations;
+  if (!state.settings.blockRules || typeof state.settings.blockRules !== "object") state.settings.blockRules = { subNeedChecklist: false, taskNeedSubs: false };
+  const rules = state.settings.automations, br = state.settings.blockRules;
   const sec = document.createElement("div");
   sec.className = "settings-section";
   sec.innerHTML = `
-    <h4 class="settings-h">อัตโนมัติ</h4>
+    <h4 class="settings-h">${ico("ban")} บล็อกการกดเสร็จ</h4>
+    <label class="settings-toggle-row">
+      <input type="checkbox" data-br="subNeedChecklist" ${br.subNeedChecklist ? "checked" : ""} />
+      <span class="settings-toggle-text"><span class="settings-toggle-title">ตู้กดเสร็จไม่ได้ ถ้าเช็คลิสต์ยังไม่ครบ</span></span>
+    </label>
+    <label class="settings-toggle-row">
+      <input type="checkbox" data-br="taskNeedSubs" ${br.taskNeedSubs ? "checked" : ""} />
+      <span class="settings-toggle-text"><span class="settings-toggle-title">โครงการกดเสร็จไม่ได้ ถ้ายังมีตู้ที่ไม่เสร็จ</span></span>
+    </label>
+    <h4 class="settings-h" style="margin-top:16px">${ico("zap")} อัตโนมัติ</h4>
     <div data-list></div>
     <button class="btn btn-sm" data-act="add">+ เพิ่มกฎ</button>
   `;
   container.appendChild(sec);
+  sec.querySelectorAll("[data-br]").forEach(cb => cb.addEventListener("change", () => { br[cb.dataset.br] = cb.checked; saveState(); }));
   const listEl = sec.querySelector("[data-list]");
   const depts = state.departments || [];
   const opt = (v, label) => `<option value="${escapeHtml(v)}">${escapeHtml(label)}</option>`;
-  const whenOptions = (r) => {
-    let h = opt("all", automationWhenLabel({ when: "all", target: r.target }));
+  const condValue = c => (c.when === "all" || c.when === "subs") ? c.when : c.when + ":" + c.deptId;
+  const parseCond = v => { const i = v.indexOf(":"); return i < 0 ? { when: v, deptId: null } : { when: v.slice(0, i), deptId: v.slice(i + 1) }; };
+  const whenOptions = (target, c) => {
+    let h = opt("all", automationWhenLabel({ when: "all", target }));
+    h += opt("subs", target === "sub" ? "ตู้นี้เสร็จ" : "ตู้เสร็จครบทุกตู้");
     h += `<optgroup label="เช็คลิสต์ครบ">` + depts.map(d => opt("done:" + d.id, `เช็คลิสต์ ${d.name} ครบ`)).join("") + `</optgroup>`;
     h += `<optgroup label="เริ่มติ๊ก">` + depts.map(d => opt("start:" + d.id, `เริ่มติ๊กเช็คลิสต์ ${d.name}`)).join("") + `</optgroup>`;
-    if (r.when !== "all" && !depts.some(d => d.id === r.deptId)) h += opt(r.when + ":" + r.deptId, "(แผนกถูกลบแล้ว)");
+    if (c.when !== "all" && c.when !== "subs" && !depts.some(d => d.id === c.deptId)) h += opt(condValue(c), "(แผนกถูกลบแล้ว)");
     return h;
   };
   const statusOptions = (r) => {
@@ -7275,40 +7570,65 @@ function buildAutomationPanel(container) {
   function renderRows() {
     listEl.innerHTML = rules.length ? "" : `<div class="cf-empty">ยังไม่มีกฎ</div>`;
     rules.forEach(r => {
-      const row = document.createElement("div");
-      row.className = "cl-tpl-row auto-row" + (r.on === false ? " off" : "");
-      row.innerHTML = `
-        <input type="checkbox" data-on title="เปิด/ปิด" ${r.on === false ? "" : "checked"} />
-        <select data-target class="auto-target"><option value="sub">ตู้</option><option value="task">งาน</option></select>
-        <span class="auto-word">เมื่อ</span>
-        <select data-when>${whenOptions(r)}</select>
-        <span class="auto-word">→ สถานะ</span>
-        <select data-status>${statusOptions(r)}</select>
-        <button class="btn btn-ghost btn-sm btn-danger" data-act="del" title="ลบ">✕</button>
+      const tg = automationTarget(r);
+      const more = Array.isArray(r.more) ? r.more : [];
+      const card = document.createElement("div");
+      card.className = "auto-card" + (r.on === false ? " off" : "");
+      card.innerHTML = `
+        <div class="cl-tpl-row auto-row">
+          <input type="checkbox" data-on title="เปิด/ปิด" ${r.on === false ? "" : "checked"} />
+          <select data-target class="auto-target"><option value="sub">ตู้</option><option value="task">งาน</option></select>
+          <span class="auto-word">เมื่อ</span>
+          <select data-when="0">${whenOptions(tg, r)}</select>
+          <span class="auto-word">→ สถานะ</span>
+          <select data-status>${statusOptions(r)}</select>
+          <button class="btn btn-ghost btn-sm btn-danger" data-act="del" title="ลบกฎ">✕</button>
+        </div>
+        ${more.map((c, i) => `
+        <div class="auto-row auto-sub">
+          <select data-logic class="auto-logic"><option value="and">และ</option><option value="or">หรือ</option></select>
+          <select data-when="${i + 1}">${whenOptions(tg, c)}</select>
+          <button class="btn btn-ghost btn-sm btn-danger" data-rm="${i}" title="ลบเงื่อนไข">✕</button>
+        </div>`).join("")}
+        <button type="button" class="auto-add-cond" data-act="add-cond">+ เงื่อนไข</button>
       `;
-      const whenSel = row.querySelector("[data-when]"), stSel = row.querySelector("[data-status]"), tgSel = row.querySelector("[data-target]");
-      tgSel.value = automationTarget(r);
-      tgSel.addEventListener("change", () => {
-        r.target = tgSel.value;
-        whenSel.options[0].textContent = automationWhenLabel({ when: "all", target: r.target });
+      card.querySelector("[data-target]").value = tg;
+      card.querySelector("[data-status]").value = r.statusId || "";
+      card.querySelector('[data-when="0"]').value = condValue(r);
+      more.forEach((c, i) => { card.querySelector(`[data-when="${i + 1}"]`).value = condValue(c); });
+      card.querySelectorAll("[data-logic]").forEach(sel => { sel.value = r.logic === "or" ? "or" : "and"; });
+      card.querySelector("[data-on]").addEventListener("change", (e) => { r.on = e.target.checked; card.classList.toggle("off", !r.on); saveState(); });
+      card.querySelector("[data-target]").addEventListener("change", (e) => { r.target = e.target.value; saveState(); renderRows(); });
+      card.querySelector("[data-status]").addEventListener("change", (e) => { r.statusId = e.target.value; saveState(); });
+      card.querySelectorAll("[data-when]").forEach(sel => sel.addEventListener("change", () => {
+        const i = +sel.dataset.when, c = parseCond(sel.value);
+        if (i === 0) { r.when = c.when; r.deptId = c.deptId; } else r.more[i - 1] = c;
         saveState();
-      });
-      whenSel.value = r.when === "all" ? "all" : r.when + ":" + r.deptId;
-      stSel.value = r.statusId || "";
-      row.querySelector("[data-on]").addEventListener("change", (e) => { r.on = e.target.checked; row.classList.toggle("off", !r.on); saveState(); });
-      whenSel.addEventListener("change", () => {
-        const i = whenSel.value.indexOf(":");
-        r.when = i < 0 ? whenSel.value : whenSel.value.slice(0, i);
-        r.deptId = i < 0 ? null : whenSel.value.slice(i + 1);
+      }));
+      // one AND/OR per rule — every connector shows the same value
+      card.querySelectorAll("[data-logic]").forEach(sel => sel.addEventListener("change", () => {
+        r.logic = sel.value;
+        card.querySelectorAll("[data-logic]").forEach(o => { o.value = r.logic; });
         saveState();
+      }));
+      card.querySelectorAll("[data-rm]").forEach(b => b.addEventListener("click", () => {
+        r.more.splice(+b.dataset.rm, 1);
+        if (!r.more.length) delete r.more;
+        saveState(); renderRows();
+      }));
+      card.querySelector('[data-act="add-cond"]').addEventListener("click", () => {
+        if (!Array.isArray(r.more)) r.more = [];
+        if (!r.logic) r.logic = "and";
+        const d0 = depts[0];
+        r.more.push(d0 ? { when: "done", deptId: d0.id } : { when: "all", deptId: null });
+        saveState(); renderRows();
       });
-      stSel.addEventListener("change", () => { r.statusId = stSel.value; saveState(); });
-      row.querySelector('[data-act="del"]').addEventListener("click", async () => {
-        if (!(await confirmDialog({ title: "ลบกฎนี้?", message: `${automationWhenLabel(r)} → ${getStatus(r.statusId).name}` }))) return;
+      card.querySelector('[data-act="del"]').addEventListener("click", async () => {
+        if (!(await confirmDialog({ title: "ลบกฎนี้?", message: `${automationRuleLabel(r)} → ${getStatus(r.statusId).name}` }))) return;
         const idx = rules.indexOf(r); if (idx >= 0) rules.splice(idx, 1);
         saveState(); renderRows();
       });
-      listEl.appendChild(row);
+      listEl.appendChild(card);
     });
   }
   sec.querySelector('[data-act="add"]').addEventListener("click", () => {
@@ -7960,6 +8280,31 @@ function renderDashboard() {
 }
 
 // single-project dashboard popup
+// tooltip body for one department's bar on the project dashboard. Checklist items carry no tick time, so
+// "ล่าสุด" = the last ticked item in checklist order and "ถัดไป" = the first item not yet ticked.
+const DASH_TIP_MAX = 6;
+function deptChecklistTipHtml(t, deptId) {
+  const d = getDept(deptId) || { name: "?" };
+  const dp = deptProgress(t, deptId);
+  if (!dp.total) return `<div class="dash-tip-h">${escapeHtml(d.name)}</div><div class="dash-tip-none">ไม่มีเช็คลิสต์ — ติ๊กเสร็จแบบธรรมดา</div>`;
+  const rows = []; let finished = 0;
+  (t.subtasks || []).forEach(sub => {
+    const items = (sub.checklist || []).filter(i => i.deptId === deptId);
+    if (!items.length) return;
+    let lastIdx = -1; items.forEach((i, ix) => { if (i.done) lastIdx = ix; });
+    const next = items.find(i => !i.done);
+    if (!next) { finished++; return; }   // finished cabinets are only counted — with 50-100 cabinets the note must stay short
+    const nm = x => escapeHtml(x.text || "(ไม่มีชื่อ)");
+    rows.push({ started: lastIdx >= 0, html: `<div class="dash-tip-cab"><b>${escapeHtml(sub.text || "(ไม่มีชื่อตู้)")}</b> <span class="dash-tip-n">${items.filter(i => i.done).length}/${items.length}</span>
+      <div class="dash-tip-line"><span class="dash-tip-k">ล่าสุด</span>${lastIdx >= 0 ? `<span class="dash-tip-ok">✓ ${nm(items[lastIdx])}</span>` : `<span class="dash-tip-none">ยังไม่เริ่ม</span>`}</div>
+      <div class="dash-tip-line"><span class="dash-tip-k">ถัดไป</span><span>○ ${nm(next)}</span></div></div>` });
+  });
+  rows.sort((x, y) => (y.started ? 1 : 0) - (x.started ? 1 : 0));   // cabinets already in progress first
+  const notes = [];
+  if (rows.length > DASH_TIP_MAX) notes.push(`และอีก ${rows.length - DASH_TIP_MAX} ตู้ที่ยังไม่ครบ`);
+  if (finished) notes.push(`ครบแล้ว ${finished} ตู้`);
+  return `<div class="dash-tip-h">${escapeHtml(d.name)} · ${Math.round(dp.done / dp.total * 100)}%</div>${rows.slice(0, DASH_TIP_MAX).map(r => r.html).join("")}${notes.map(n => `<div class="dash-tip-none">${n}</div>`).join("")}`;
+}
 function openProjectDashboard(t) {
   if (typeof t === "string") t = state.tasks.find(x => x.id === t);
   if (!t) return;
@@ -7978,7 +8323,7 @@ function openProjectDashboard(t) {
     const pc = uses ? Math.round(dp.done / dp.total * 100) : (done ? 100 : 0);
     const val = `${uses ? `${dp.done}/${dp.total}` : (done ? "เสร็จ" : "—")}${stg.due ? ` · ${sod ? "เลย " : ""}${formatDateTH(stg.due)}` : ""}`;
     return `
-      <div class="dash-pd-cab${done ? ' done' : ''}">
+      <div class="dash-pd-cab${done ? ' done' : ''}" data-tip-dept="${escapeHtml(stg.deptId)}">
         ${deptIco(d)}
         <span class="dash-pd-name">${escapeHtml(d.name)}${done ? ' ✓' : ''}</span>
         ${dashBar(pc, done ? '#10b981' : d.color)}
@@ -7998,7 +8343,44 @@ function openProjectDashboard(t) {
         <span class="dash-pd-val">${p.total ? `${p.done}/${p.total}` : (cdone ? '✓' : '—')}</span>
       </div>`;
   }).join("") : `<div class="muted" style="font-size:12px;padding:6px 2px">ยังไม่มีตู้</div>`;
+  const DASH_BIG = 12;   // more cabinets than this → compact grid (a row per cabinet would run for pages with 50-100 cabinets)
+  const cabSection = (t.subtasks || []).length > DASH_BIG
+    ? `<div class="dash-cab-grid">${t.subtasks.map(s => {
+        const p = checklistProgress(s), cst = getStatus(s.statusId);
+        const cdone = p.total > 0 ? p.done === p.total : isStatusDone(cst);
+        const pc = p.total ? Math.round(p.done / p.total * 100) : (cdone ? 100 : 0);
+        return `<div class="dash-cab-cell${cdone ? " done" : ""}" title="${escapeHtml((s.text || "") + " · " + (p.total ? p.done + "/" + p.total : cst.name))}"><span class="dash-pd-dot" style="background:${cst.color}"></span><span class="dash-cab-name">${escapeHtml(s.text || "(ไม่มีชื่อตู้)")}</span><span class="dash-cab-pc">${cdone ? "✓" : pc + "%"}</span></div>`;
+      }).join("")}</div>`
+    : cabHtml;
 
+  // checklist per department: rows = checklist items (union by name, in checklist order), columns = cabinets
+  const subsAll = t.subtasks || [];
+  const DASH_MATRIX_MAX = 8;   // up to this many cabinets: ✓/○ matrix (cabinets as columns); more: per-item summary
+  const clBlocks = (state.departments || []).map(d => {
+    const names = [];
+    subsAll.forEach(sub => (sub.checklist || []).forEach(i => { if (i.deptId === d.id && !names.includes(i.text)) names.push(i.text); }));
+    if (!names.length) return "";
+    const dp = deptProgress(t, d.id);
+    const ttl = `<div class="dash-cl-title">${deptIco(d)}<b>${escapeHtml(d.name)}</b><span>${dp.done}/${dp.total} · ${dp.total ? Math.round(dp.done / dp.total * 100) : 0}%</span></div>`;
+    if (subsAll.length > DASH_MATRIX_MAX) {
+      // many cabinets: one row per item — how many cabinets have it done + which are still open
+      const rowsSum = names.map(nm => {
+        let have = 0, done = 0; const open = [];
+        subsAll.forEach(sub => { const it = (sub.checklist || []).find(i => i.deptId === d.id && i.text === nm); if (!it) return; have++; if (it.done) done++; else open.push(sub.text || "-"); });
+        const pc = have ? Math.round(done / have * 100) : 0;
+        const openTxt = !open.length ? `<span class="dash-cl-ok">ครบทุกตู้</span>` : `${escapeHtml(open.slice(0, 5).join(", "))}${open.length > 5 ? ` <span class="dash-cl-more">+${open.length - 5}</span>` : ""}`;
+        return `<tr><td class="dash-cl-item" title="${escapeHtml(nm)}">${escapeHtml(nm || "(ไม่มีชื่อ)")}</td><td class="dash-cl-barcell">${dashBar(pc, pc === 100 ? "#10b981" : d.color)}</td><td class="dash-cl-cnt">${done}/${have}</td><td class="dash-cl-open">${openTxt}</td></tr>`;
+      }).join("");
+      return `<div class="dash-cl-block">${ttl}<table class="dash-cl-table dash-cl-sum"><thead><tr><th></th><th></th><th></th><th>ยังไม่เสร็จ</th></tr></thead><tbody>${rowsSum}</tbody></table></div>`;
+    }
+    const head = subsAll.map(sub => `<th title="${escapeHtml(sub.text || "")}">${escapeHtml(sub.text || "-")}</th>`).join("");
+    const rowsHtml = names.map(nm => `<tr><td class="dash-cl-item">${escapeHtml(nm || "(ไม่มีชื่อ)")}</td>${subsAll.map(sub => {
+      const it = (sub.checklist || []).find(i => i.deptId === d.id && i.text === nm);
+      return it ? (it.done ? `<td class="dash-cl-ok">✓</td>` : `<td class="dash-cl-no">○</td>`) : `<td class="dash-cl-na">–</td>`;
+    }).join("")}</tr>`).join("");
+    return `<div class="dash-cl-block">${ttl}
+      <table class="dash-cl-table"><thead><tr><th></th>${head}</tr></thead><tbody>${rowsHtml}</tbody></table></div>`;
+  }).join("");
   const counts = subStatusCounts(t);
   const sbreak = state.statuses.filter(s => counts[s.id]).map(s =>
     `<span class="dash-sb" style="background:${s.color};color:${textOn(s.color)}">${escapeHtml(s.name)} ${counts[s.id]}</span>`).join("");
@@ -8023,8 +8405,9 @@ function openProjectDashboard(t) {
         <div class="dash-pd-h">ความคืบหน้าตามแผนก (workflow)</div>
         ${deptHtml}
         <div class="dash-pd-h">ตู้ (${(t.subtasks || []).length})</div>
-        ${cabHtml}
+        ${cabSection}
         ${sbreak ? `<div class="dash-sbreak">${sbreak}</div>` : ''}
+        ${clBlocks ? `<div class="dash-pd-h">เช็คลิสต์ตามแผนก</div><div class="dash-cl-grid${subsAll.length <= 4 ? " two" : ""}">${clBlocks}</div>` : ''}
       </div>
       <div class="modal-foot">
         <button class="btn dash-print-hide" data-act="print" title="พิมพ์ / บันทึกเป็น PDF" style="margin-right:auto">${ico("printer")} พิมพ์ / PDF</button>
@@ -8033,15 +8416,44 @@ function openProjectDashboard(t) {
       </div>
     </div>`;
   document.body.appendChild(overlay);
-  const close = () => { overlay.remove(); document.removeEventListener("keydown", onEsc, true); };
+  // hover a department bar → floating note: per cabinet, the last ticked checklist item and the next one
+  let tipEl = null;
+  const hideTip = () => { if (tipEl) { tipEl.remove(); tipEl = null; } };
+  overlay.querySelectorAll("[data-tip-dept]").forEach(row => {
+    row.addEventListener("mouseenter", () => {
+      hideTip();
+      tipEl = document.createElement("div");
+      tipEl.className = "dash-tip";
+      tipEl.innerHTML = deptChecklistTipHtml(t, row.dataset.tipDept);
+      document.body.appendChild(tipEl);
+      const r = row.getBoundingClientRect(), tr = tipEl.getBoundingClientRect();
+      let top = r.bottom + 6;
+      if (top + tr.height > window.innerHeight - 8) top = r.top - tr.height - 6;
+      tipEl.style.top = Math.max(8, top) + "px";
+      tipEl.style.left = Math.max(8, Math.min(r.left + 20, window.innerWidth - tr.width - 8)) + "px";
+    });
+    row.addEventListener("mouseleave", hideTip);
+  });
+  const close = () => { hideTip(); overlay.remove(); document.removeEventListener("keydown", onEsc, true); };
   function onEsc(e) { if (e.key === "Escape") close(); }
   overlay.addEventListener("click", e => { if (e.target === overlay) close(); });
   overlay.querySelectorAll('[data-act="close"]').forEach(b => b.addEventListener("click", close));
   overlay.querySelector('[data-act="open-task"]').addEventListener("click", () => { close(); openTaskModal(t.id); });
   overlay.querySelector('[data-act="print"]').addEventListener("click", () => {
+    hideTip();
     overlay.classList.add("print-target");
     document.body.classList.add("printing-modal");
-    const cleanup = () => { overlay.classList.remove("print-target"); document.body.classList.remove("printing-modal"); window.removeEventListener("afterprint", cleanup); };
+    // fit on ONE A4 page when a LIGHT shrink is enough (printable ≈ 718×1047px at 10mm margins); otherwise keep
+    // normal size and let it run onto a 2nd page (blocks never split) — tiny text is worse than an extra page
+    const dm = overlay.querySelector(".dash-modal"), mb = overlay.querySelector(".dash-mbody"), hd = overlay.querySelector(".modal-head");
+    const saved = [dm.style.cssText, mb.style.cssText];
+    dm.style.cssText = "width:718px;max-width:718px;max-height:none;border:none;box-shadow:none";
+    mb.style.cssText = "overflow:visible;max-height:none;padding:0;flex:none";
+    const need = hd.offsetHeight + mb.scrollHeight, avail = 1010;
+    const fit = avail / need;
+    const z = fit >= 1 ? 1 : (fit >= 0.88 ? fit : 1);
+    mb.style.cssText += `;zoom:${z}`;
+    const cleanup = () => { dm.style.cssText = saved[0]; mb.style.cssText = saved[1]; overlay.classList.remove("print-target"); document.body.classList.remove("printing-modal"); window.removeEventListener("afterprint", cleanup); };
     window.addEventListener("afterprint", cleanup);
     setTimeout(cleanup, 60000);   // safety fallback
     window.print();
