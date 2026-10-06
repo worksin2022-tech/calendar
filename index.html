@@ -2026,6 +2026,7 @@ body.chip-dragging .task-chip.span-bar { pointer-events: none; }   /* let the da
 .auto-row select { flex: 1 1 110px; min-width: 0; border: 1px solid var(--border-strong); border-radius: 6px; padding: 6px 8px; font-size: 13px; background: #fff; color: var(--text); }
 .auto-row .auto-word { font-size: 12px; color: var(--text-dim); }
 .auto-row.off select, .auto-row.off .auto-word { opacity: .45; }
+.auto-st-dot { width: 10px; height: 10px; border-radius: 50%; flex: 0 0 auto; display: inline-block; margin-right: 2px; }
 .auto-card { background: #fafbfc; border: 1px solid var(--border); border-radius: 8px; padding: 2px 0 6px; margin-bottom: 8px; }
 .auto-card .cl-tpl-row { background: transparent; margin-bottom: 0; }
 .auto-card.off select, .auto-card.off .auto-word { opacity: .45; }
@@ -2978,17 +2979,21 @@ function deptUsesChecklist(task, deptId) {
    A rule fires only on the false→true EDGE of its condition (compare a snapshot taken before the edit),
    so re-opening/re-saving a finished task never flips a status back, and a status someone set by hand
    afterwards stays. Rules run top-to-bottom; when several fire at once the last one wins (one log line). */
+// statuses automation must never move a cabinet / project OUT of (⚙ อัตโนมัติ → "สถานะที่ห้ามเปลี่ยนอัตโนมัติ")
+function autoLocked(statusId) { const a = state.settings && state.settings.autoLockStatuses; return Array.isArray(a) && a.includes(statusId); }
 function automationRules() {
   return ((state.settings && state.settings.automations) || []).filter(r => r && r.on !== false && r.statusId);
 }
 function automationTarget(r) { return r.target === "sub" ? "sub" : "task"; }
-function automationConds(r) { return [{ when: r.when, deptId: r.deptId, item: r.item }].concat(Array.isArray(r.more) ? r.more.filter(Boolean) : []); }
+function automationConds(r) { return [{ when: r.when, deptId: r.deptId, item: r.item, stat: r.condStat }].concat(Array.isArray(r.more) ? r.more.filter(Boolean) : []); }
 function automationRuleCond(task, r) { const cs = automationConds(r), f = c => automationCond(task, c); return r.logic === "or" ? cs.some(f) : cs.every(f); }
 function automationRuleSubCond(sub, r) { const cs = automationConds(r), f = c => automationSubCond(sub, c); return r.logic === "or" ? cs.some(f) : cs.every(f); }
 function automationRuleLabel(r) {
   return automationConds(r).map(c => automationWhenLabel({ ...c, target: r.target })).join(r.logic === "or" ? " หรือ " : " และ ");
 }
 function automationCond(task, r) {
+  if (r.when === "status") return !!r.stat && task.statusId === r.stat;   // project is currently in this status
+  if (r.when === "nstatus") return !!r.stat && task.statusId !== r.stat;  // …is NOT in this status
   if (r.when === "subs") { const subs = task.subtasks || []; return subs.length > 0 && subs.every(subtaskDone); }
   if (r.when === "all") {
     const cl = overallChecklist(task);
@@ -3008,6 +3013,8 @@ function automationCond(task, r) {
 }
 // the same conditions, on one cabinet's own checklist
 function automationSubCond(sub, r) {
+  if (r.when === "status") return !!r.stat && sub.statusId === r.stat;    // cabinet is currently in this status
+  if (r.when === "nstatus") return !!r.stat && sub.statusId !== r.stat;   // …is NOT in this status
   if (r.when === "subs") return subtaskDone(sub);
   if (r.when === "all") { const p = checklistProgress(sub); return p.total > 0 && p.done === p.total; }
   if (!r.deptId || !getDept(r.deptId)) return false;
@@ -3026,6 +3033,8 @@ function automationSnapshot(task) {
   return m;
 }
 function automationWhenLabel(r) {
+  if (r.when === "nstatus") return `สถานะไม่ใช่ “${((state.statuses || []).find(x => x.id === r.stat) || {}).name || "(ถูกลบแล้ว)"}”`;
+  if (r.when === "status") return `สถานะเป็น “${((state.statuses || []).find(x => x.id === r.stat) || {}).name || "(ถูกลบแล้ว)"}”`;
   if (r.when === "subs") return "ตู้เสร็จครบทุกตู้";
   if (r.when === "all") return automationTarget(r) === "sub" ? "เช็คลิสต์ครบทุกแผนก" : "ทุกแผนกเสร็จ";
   const dn = (getDept(r.deptId) || {}).name || "?";
@@ -3043,6 +3052,7 @@ function runAutomations(task, before, manualBase) {
   let changed = false;
   // cabinets
   (task.subtasks || []).forEach(sub => {
+    if (autoLocked(sub.statusId)) return;   // 🔒 "ห้ามเปลี่ยนอัตโนมัติ" status — leave it alone
     const b = baseSub(sub.id);
     if (b && b.statusId !== sub.statusId) return;
     const subStart = sub.statusId;
@@ -3060,7 +3070,7 @@ function runAutomations(task, before, manualBase) {
     changed = true;
   });
   // task
-  const taskLocked = manualBase && manualBase.statusId !== task.statusId;
+  const taskLocked = (manualBase && manualBase.statusId !== task.statusId) || autoLocked(task.statusId);
   const startId = task.statusId;
   let fired = null;
   automationRules().forEach(r => {
@@ -3491,6 +3501,7 @@ function migrateState(s) {
   if (typeof s.settings.crossMention !== "boolean") s.settings.crossMention = false;   // @mention people of other departments
   // 🔒 block rules (off unless an admin turns them on)
   if (!s.settings.blockRules || typeof s.settings.blockRules !== "object") s.settings.blockRules = { subNeedChecklist: false, taskNeedSubs: false };
+  if (!Array.isArray(s.settings.autoLockStatuses)) s.settings.autoLockStatuses = [];   // automation never changes these
   if (typeof s.settings.currentUser !== "string") s.settings.currentUser = "";
   if (typeof s.settings.myDept !== "string") s.settings.myDept = "";
   // default department stages for new tasks; seed with all current departments, drop any removed ones
@@ -7818,18 +7829,33 @@ function buildAutomationPanel(container) {
       <input type="checkbox" data-br="taskNeedSubs" ${br.taskNeedSubs ? "checked" : ""} />
       <span class="settings-toggle-text"><span class="settings-toggle-title">โครงการกดเสร็จไม่ได้ ถ้ายังมีตู้ที่ไม่เสร็จ</span></span>
     </label>
+    <h4 class="settings-h" style="margin-top:16px">${ico("ban")} สถานะที่ห้ามเปลี่ยนอัตโนมัติ</h4>
+    <div class="perm-dept-list" data-autolock></div>
     <h4 class="settings-h" style="margin-top:16px">${ico("zap")} อัตโนมัติ</h4>
     <div data-list></div>
     <button class="btn btn-sm" data-act="add">+ เพิ่มกฎ</button>
   `;
   container.appendChild(sec);
   sec.querySelectorAll("[data-br]").forEach(cb => cb.addEventListener("change", () => { br[cb.dataset.br] = cb.checked; saveState(); }));
+  if (!Array.isArray(state.settings.autoLockStatuses)) state.settings.autoLockStatuses = [];
+  const lockEl = sec.querySelector("[data-autolock]");
+  lockEl.innerHTML = (state.statuses || []).map(st =>
+    `<label class="perm-dept-row"><input type="checkbox" value="${escapeHtml(st.id)}" ${state.settings.autoLockStatuses.includes(st.id) ? "checked" : ""}><span class="auto-st-dot" style="background:${st.color}"></span>${escapeHtml(st.name)}</label>`).join("");
+  lockEl.querySelectorAll("input").forEach(cb => cb.addEventListener("change", () => {
+    const set = new Set(state.settings.autoLockStatuses);
+    if (cb.checked) set.add(cb.value); else set.delete(cb.value);
+    state.settings.autoLockStatuses = [...set]; saveState();
+  }));
   const listEl = sec.querySelector("[data-list]");
   const depts = state.departments || [];
   const opt = (v, label) => `<option value="${escapeHtml(v)}">${escapeHtml(label)}</option>`;
   const condValue = c => (c.when === "all" || c.when === "subs") ? c.when
+    : c.when === "status" ? "st:" + (c.stat || "")
+    : c.when === "nstatus" ? "nst:" + (c.stat || "")
     : c.when === "item" ? "item:" + c.deptId + ":" + encodeURIComponent(c.item || "") : c.when + ":" + c.deptId;
   const parseCond = v => {
+    if (v.startsWith("st:")) return { when: "status", deptId: null, stat: v.slice(3) };
+    if (v.startsWith("nst:")) return { when: "nstatus", deptId: null, stat: v.slice(4) };
     if (v.startsWith("item:")) { const r = v.slice(5), j = r.indexOf(":"); return { when: "item", deptId: r.slice(0, j), item: decodeURIComponent(r.slice(j + 1)) }; }
     const i = v.indexOf(":"); return i < 0 ? { when: v, deptId: null } : { when: v.slice(0, i), deptId: v.slice(i + 1) };
   };
@@ -7842,7 +7868,11 @@ function buildAutomationPanel(container) {
       const items = [...new Set((d.checklist || []).map(x => String(x || "").trim()).filter(Boolean))];
       if (items.length) h += `<optgroup label="ติ๊กรายการ · ${escapeHtml(d.name)}">` + items.map(it => opt("item:" + d.id + ":" + encodeURIComponent(it), `ติ๊ก “${it}” (${d.name})`)).join("") + `</optgroup>`;
     });
-    if (c.when !== "all" && c.when !== "subs" && !depts.some(d => d.id === c.deptId)) h += opt(condValue(c), "(แผนกถูกลบแล้ว)");
+    const sts = state.statuses || [];
+    h += `<optgroup label="สถานะปัจจุบัน">` + sts.map(st => opt("st:" + st.id, `สถานะเป็น “${st.name}”`)).join("") + `</optgroup>`;
+    h += `<optgroup label="ยกเว้นสถานะ">` + sts.map(st => opt("nst:" + st.id, `สถานะไม่ใช่ “${st.name}”`)).join("") + `</optgroup>`;
+    if (c.when === "status" || c.when === "nstatus") { if (!sts.some(st => st.id === c.stat)) h += opt(condValue(c), "(สถานะถูกลบแล้ว)"); }
+    else if (c.when !== "all" && c.when !== "subs" && !depts.some(d => d.id === c.deptId)) h += opt(condValue(c), "(แผนกถูกลบแล้ว)");
     else if (c.when === "item" && !((getDept(c.deptId) || {}).checklist || []).map(x => String(x || "").trim()).includes(c.item)) h += opt(condValue(c), `ติ๊ก “${c.item}” (รายการไม่อยู่ในเช็คลิสต์แล้ว)`);
     return h;
   };
@@ -7857,6 +7887,7 @@ function buildAutomationPanel(container) {
     rules.forEach(r => {
       const tg = automationTarget(r);
       const more = Array.isArray(r.more) ? r.more : [];
+      const c0 = automationConds(r)[0];   // first condition, normalised (rule.condStat → .stat)
       const card = document.createElement("div");
       card.className = "auto-card" + (r.on === false ? " off" : "");
       card.innerHTML = `
@@ -7864,7 +7895,7 @@ function buildAutomationPanel(container) {
           <input type="checkbox" data-on title="เปิด/ปิด" ${r.on === false ? "" : "checked"} />
           <select data-target class="auto-target"><option value="sub">ตู้</option><option value="task">งาน</option></select>
           <span class="auto-word">เมื่อ</span>
-          <select data-when="0">${whenOptions(tg, r)}</select>
+          <select data-when="0">${whenOptions(tg, c0)}</select>
           <span class="auto-word">→ สถานะ</span>
           <select data-status>${statusOptions(r)}</select>
           <button class="btn btn-ghost btn-sm btn-danger" data-act="del" title="ลบกฎ">✕</button>
@@ -7879,7 +7910,7 @@ function buildAutomationPanel(container) {
       `;
       card.querySelector("[data-target]").value = tg;
       card.querySelector("[data-status]").value = r.statusId || "";
-      card.querySelector('[data-when="0"]').value = condValue(r);
+      card.querySelector('[data-when="0"]').value = condValue(c0);
       more.forEach((c, i) => { card.querySelector(`[data-when="${i + 1}"]`).value = condValue(c); });
       card.querySelectorAll("[data-logic]").forEach(sel => { sel.value = r.logic === "or" ? "or" : "and"; });
       card.querySelector("[data-on]").addEventListener("change", (e) => { r.on = e.target.checked; card.classList.toggle("off", !r.on); saveState(); });
@@ -7887,7 +7918,11 @@ function buildAutomationPanel(container) {
       card.querySelector("[data-status]").addEventListener("change", (e) => { r.statusId = e.target.value; saveState(); });
       card.querySelectorAll("[data-when]").forEach(sel => sel.addEventListener("change", () => {
         const i = +sel.dataset.when, c = parseCond(sel.value);
-        if (i === 0) { r.when = c.when; r.deptId = c.deptId; if (c.item != null) r.item = c.item; else delete r.item; } else r.more[i - 1] = c;
+        if (i === 0) {
+          r.when = c.when; r.deptId = c.deptId;
+          if (c.item != null) r.item = c.item; else delete r.item;
+          if (c.stat != null) r.condStat = c.stat; else delete r.condStat;
+        } else r.more[i - 1] = c;
         saveState();
       }));
       // one AND/OR per rule — every connector shows the same value
