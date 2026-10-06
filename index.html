@@ -95,7 +95,7 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
 .asg-me { color: var(--text-faint); font-size: 11px; }
 .asg-empty { padding: 14px; color: var(--text-faint); font-size: 13px; text-align: center; }
 /* account card: [avatar | name + department] [ออกจากระบบ] — the card opens the profile, the button signs out */
-.sb-user-badge.sbu-card { gap: 8px; margin: 2px 0 8px; padding: 7px 7px 7px 8px; border: 1px solid var(--border); border-radius: 10px; background: #fafbfc; }
+.sb-user-badge.sbu-card { gap: 8px; margin: 2px 0 0; padding: 7px 7px 7px 8px; border: 1px solid var(--border); border-radius: 10px; background: #fafbfc; }
 .sb-user-badge.sbu-card:hover { background: #f5f6ff; border-color: #d5d9ff; }
 .sb-user-badge.sbu-card .avatar { width: 32px; height: 32px; font-size: 14px; }
 .sbu-text { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 3px; }
@@ -177,9 +177,28 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
   gap: 8px;
 }
 /* board switcher — single-select dropdown (styled like the "มุมมอง" dropdown below it) */
-.board-dd-row { display: flex; margin-bottom: 10px; }
-.board-dd-btn .board-dd-ico { width: 16px; height: 16px; flex: 0 0 auto; color: var(--accent); }
-.board-dd-pop .dept-dd-item .board-dd-tick { width: 16px; flex: 0 0 auto; color: var(--accent); font-weight: 700; }
+.board-chip { display: inline-flex; align-items: center; gap: 7px; flex: 0 0 auto; max-width: 200px; padding: 4px 10px 4px 8px; border: 1px solid var(--accent); border-radius: 6px; background: var(--accent); color: #fff; font: inherit; font-size: 11.5px; gap: 5px; font-weight: 700; cursor: pointer; box-shadow: 0 1px 2px rgba(16,24,40,.12); }
+.board-chip .ico { width: 13px; height: 13px; }
+.board-chip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.board-chip.single { cursor: default; }
+.board-chip:not(.single):hover { filter: brightness(1.08); }
+/* right-edge handle + slide-out calendar drawer */
+.board-tab { position: fixed; right: 0; top: 50%; z-index: 120; transform: translateY(-50%); display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 10px 7px; border: 1px solid var(--border-strong); border-right: 0; border-radius: 10px 0 0 10px; background: #fff; color: var(--accent); box-shadow: var(--shadow-sm); cursor: pointer; font: inherit; font-size: 11px; font-weight: 700; line-height: 1.1; }
+.board-tab .ico { width: 18px; height: 18px; }
+.board-tab:hover { background: #f8f7ff; }
+.board-drawer-overlay { position: fixed; inset: 0; z-index: 140; background: rgba(16,24,40,0); transition: background .22s; }
+.board-drawer-overlay.open { background: rgba(16,24,40,.28); }
+.board-drawer { position: absolute; top: 0; right: 0; bottom: 0; width: min(300px, 86vw); background: #fff; box-shadow: -8px 0 24px rgba(16,24,40,.14); transform: translateX(100%); transition: transform .24s ease; display: flex; flex-direction: column; }
+.board-drawer-overlay.open .board-drawer { transform: translateX(0); }
+.board-drawer-head { display: flex; align-items: center; gap: 8px; padding: 18px 18px 12px; font-size: 15px; font-weight: 700; }
+.board-drawer-head .ico { color: var(--accent); }
+.board-drawer-list { display: flex; flex-direction: column; gap: 6px; padding: 4px 12px 16px; overflow-y: auto; }
+.board-item { display: flex; align-items: center; gap: 10px; width: 100%; padding: 12px 14px; border: 1px solid var(--border); border-radius: 10px; background: #fff; color: var(--text); font: inherit; font-size: 14px; font-weight: 600; text-align: left; cursor: pointer; }
+.board-item:hover { background: #f9fafb; }
+.board-item .ico { color: var(--text-faint); }
+.board-item.active { border-color: var(--accent); background: #f4f3ff; color: var(--accent); }
+.board-item.active .ico { color: var(--accent); }
+.board-item .board-item-tick { margin-left: auto; }
 .sidebar h1 .logo {
   width: 28px; height: 28px;
   border-radius: 6px;
@@ -255,6 +274,11 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
 .dept-dd-btn:hover { background: #f9fafb; }
 .dept-dd-label { flex: 1; min-width: 0; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .dept-dd-caret { flex: 0 0 auto; color: var(--text-faint); font-size: 11px; }
+/* toolbar: department view (next to "งานของฉัน") */
+.tb-dept { flex: 0 0 auto; }
+.tb-dept .dept-switcher { flex: none; }
+.tb-dept .dept-dd-btn { width: auto; max-width: 220px; padding: 5px 10px; border-radius: 7px; font-size: 12.5px; }
+.tb-dept .dept-dd-btn .ico { color: var(--text-dim); }
 .dept-dd-pop {
   position: absolute; z-index: 130;
   background: #fff; border: 1px solid var(--border); border-radius: 9px;
@@ -743,8 +767,11 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
 .dr-seg button + button { border-left: 1px solid var(--border-strong); }
 .dr-seg button.active { background: var(--accent); color: #fff; }
 .dr-attach-hint { display: block; font-size: 12px; font-weight: 600; color: #027a48; margin-top: 4px; }
-#btnDrawReq { width: 100%; }
-.dr-import-btn { width: 100%; position: relative; }
+/* ยื่นขอแบบ + ดึงคำขอ: small, side by side on one row */
+#sbReqSection { flex-direction: row; gap: 6px; }
+#sbReqSection .btn { flex: 1 1 auto; min-width: 0; justify-content: center; gap: 5px; padding: 5px 8px; font-size: 12px; white-space: nowrap; }
+#sbReqSection .btn .ico { width: 14px; height: 14px; }
+.dr-import-btn { position: relative; }
 .dr-import-btn .tb-bell-badge { position: absolute; top: -6px; right: -6px; }
 .dr-import-loading { text-align: center; color: var(--text-faint); padding: 32px 16px; font-size: 13px; }
 
@@ -1053,13 +1080,22 @@ body.chip-dragging .task-chip.span-bar { pointer-events: none; }   /* let the da
 .push-result:empty { display: none; }
 /* task popup footer: autosave status (no บันทึก/ยกเลิก buttons) */
 .autosave-note { color: var(--text-faint); font-size: 12px; white-space: nowrap; }
+/* line icons (same style as the paperclip / camera) — ico("name") in JS */
+.ico { width: 1.15em; height: 1.15em; vertical-align: -0.2em; flex: none; }
+.btn .ico, .settings-nav-item .ico, h3 .ico, h4 .ico { margin-right: 2px; }
+.ico-lg { width: 40px; height: 40px; color: var(--accent); }
+.confirm-icon .ico { width: 26px; height: 26px; }
+.tb-bell .ico { width: 18px; height: 18px; vertical-align: -4px; }
+.btn-settings .ico { width: 16px; height: 16px; vertical-align: -3px; }
+.ts-icon .ico { width: 15px; height: 15px; color: var(--text-dim); vertical-align: -2px; }
+.datefield-cal .ico { width: 16px; height: 16px; }
+.tp-empty .ico { width: 30px; height: 30px; color: #10b981; margin-bottom: 4px; }
+.pri-flag .ico { fill: currentColor; }
 /* toast with an action button ("เลิกทำ") */
 .toast.has-action { pointer-events: auto; display: flex; align-items: center; gap: 12px; text-align: left; }
 .toast-act { flex: 0 0 auto; padding: 4px 12px; border: 1px solid rgba(255,255,255,.35); border-radius: 6px; background: transparent; color: #fff; font: inherit; font-weight: 700; cursor: pointer; }
 .toast-act:hover { background: rgba(255,255,255,.12); }
 /* 🗑️ trash (deleted tasks, 30 days) + 🕘 board history */
-.sb-trash-btn { width: 100%; margin-top: 6px; color: var(--text-dim); font-size: 12.5px; }
-.sb-trash-btn .sb-trash-n { margin-left: 4px; padding: 0 6px; border-radius: 9px; background: #f2f4f7; font-size: 11px; font-weight: 700; }
 .trash-list, .hist-list { display: flex; flex-direction: column; gap: 8px; }
 .trash-row, .hist-row { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; background: #fff; }
 .trash-main, .hist-main { flex: 1; min-width: 0; }
@@ -1846,16 +1882,18 @@ body.chip-dragging .task-chip.span-bar { pointer-events: none; }   /* let the da
   min-height: 0;
   flex: 1 1 auto;
 }
+/* compact header (2026-10-06): title + day stepper on ONE short row → more room for the day's list */
 .tp-head {
-  padding: 12px 2px 8px;
-  display: flex; flex-direction: column;
-  gap: 8px;
+  padding: 8px 2px 6px;
+  display: flex; flex-direction: row; flex-wrap: wrap; align-items: center;
+  gap: 6px 8px;
 }
-.tp-title { font-size: 15px; font-weight: 700; }
+.tp-title { font-size: 13.5px; font-weight: 700; white-space: nowrap; }
 /* day stepper: ‹  [วันนี้ / date]  › */
-.tp-daynav { display: flex; align-items: stretch; gap: 6px; }
+.tp-daynav { display: flex; align-items: stretch; gap: 4px; flex: 1 1 200px; min-width: 0; height: 28px; }
+.tp-nav-btn .ico { width: 15px; height: 15px; }
 .tp-nav-btn {
-  flex: 0 0 auto; width: 30px;
+  flex: 0 0 auto; width: 26px;
   border: 1px solid var(--border-strong); background: #fff;
   border-radius: 7px; cursor: pointer; font-size: 17px; line-height: 1;
   color: var(--text-dim);
@@ -1865,16 +1903,16 @@ body.chip-dragging .task-chip.span-bar { pointer-events: none; }   /* let the da
 .tp-day-label {
   flex: 1; min-width: 0;
   border: 1px solid var(--border-strong); background: #fff;
-  border-radius: 7px; cursor: pointer; padding: 3px 8px;
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
+  border-radius: 7px; cursor: pointer; padding: 0 8px;
+  display: flex; flex-direction: row; align-items: baseline; justify-content: center; gap: 6px; white-space: nowrap; overflow: hidden;
 }
 .tp-day-label:hover { background: #f7f8fa; border-color: var(--accent); }
-.tp-day-word { font-size: 13px; font-weight: 700; color: var(--text); line-height: 1.2; }
-.tp-day-date { font-size: 11px; color: var(--text-dim); line-height: 1.2; }
+.tp-day-word { font-size: 12.5px; font-weight: 700; color: var(--text); line-height: 26px; }
+.tp-day-date { font-size: 11px; color: var(--text-dim); line-height: 26px; }
 .tp-day-label.is-today .tp-day-word { color: var(--accent); }
-.tp-summary { padding: 0 2px 6px; }
-.tp-sum-row { display: flex; justify-content: space-between; font-size: 12px; color: var(--text-dim); margin-bottom: 6px; }
-.tp-progress-track { height: 7px; background: #eef0f3; border-radius: 4px; overflow: hidden; }
+.tp-summary { padding: 0 2px 4px; }
+.tp-sum-row { display: flex; justify-content: space-between; font-size: 11.5px; color: var(--text-dim); margin-bottom: 3px; }
+.tp-progress-track { height: 5px; background: #eef0f3; border-radius: 4px; overflow: hidden; }
 .tp-progress-bar { height: 100%; background: var(--accent); border-radius: 4px; transition: width .25s; }
 .tp-body { padding: 4px 0 16px; flex: 1; overflow-y: auto; min-height: 0; }
 .tp-section-label {
@@ -1992,7 +2030,7 @@ body.chip-dragging .task-chip.span-bar { pointer-events: none; }   /* let the da
     <!-- ★ code entry: the email carries BOTH a 6-digit code and a link — typing the code needs no
          redirect at all, which is why it's the primary path (see the redirect bug in the spec). -->
     <div class="login-sent hidden" id="loginSent">
-      <div class="login-sent-ico">📩</div>
+      <div class="login-sent-ico"><svg class="ico ico-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 5L2 7"/></svg></div>
       <p><b>ส่งรหัสแล้ว</b><br>ใส่รหัสจากอีเมล (หรือกดลิงก์ในอีเมลก็ได้)</p>
       <div class="field">
         <label>รหัสจากอีเมล</label>
@@ -2005,12 +2043,12 @@ body.chip-dragging .task-chip.span-bar { pointer-events: none; }   /* let the da
       <button type="button" class="btn btn-sm" id="btnResendLink">ส่งรหัสใหม่อีกครั้ง</button>
     </div>
     <div class="login-sent hidden" id="loginSyncing">
-      <div class="login-sent-ico">☁️</div>
+      <div class="login-sent-ico"><svg class="ico ico-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></svg></div>
       <p><b>กำลังซิงค์ข้อมูล...</b><br>โหลดข้อมูลล่าสุดจาก cloud</p>
     </div>
     <!-- first sign-in only: pick a display name + optional picture (profiles.name_set flips to true) -->
     <div class="login-sent hidden" id="loginSetup">
-      <div class="login-sent-ico">👋</div>
+      <div class="login-sent-ico"><svg class="ico ico-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg></div>
       <p><b>ยินดีต้อนรับ</b><br>ตั้งชื่อที่จะแสดงให้เพื่อนร่วมงานเห็น (เปลี่ยนทีหลังได้)</p>
       <div class="avatar-pick">
         <div class="avatar-preview" id="setupAvatarPreview">?</div>
@@ -2025,7 +2063,7 @@ body.chip-dragging .task-chip.span-bar { pointer-events: none; }   /* let the da
       <div class="login-msg" id="setupMsg"></div>
     </div>
     <div class="login-sent hidden" id="loginPending">
-      <div class="login-sent-ico">⏳</div>
+      <div class="login-sent-ico"><svg class="ico ico-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></div>
       <p><b>รอ Admin อนุมัติ</b><br>บัญชี <span id="loginPendingEmail"></span> เข้าสู่ระบบสำเร็จ แต่ยังไม่มีสิทธิ์เห็นข้อมูล — แจ้ง Admin ให้กดอนุมัติที่ ⚙ ตั้งค่า</p>
       <div class="row" style="gap:8px; justify-content:center">
         <button type="button" class="btn btn-sm" id="btnCheckApproval">ตรวจสอบอีกครั้ง</button>
@@ -2034,7 +2072,7 @@ body.chip-dragging .task-chip.span-bar { pointer-events: none; }   /* let the da
     </div>
     <!-- blocked (red-flagged) account: an admin can unblock any time, so "ตรวจสอบอีกครั้ง" is offered -->
     <div class="login-sent hidden" id="loginBlocked">
-      <div class="login-sent-ico">🚫</div>
+      <div class="login-sent-ico"><svg class="ico ico-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/></svg></div>
       <p><b>บัญชีถูกระงับการใช้งาน</b><br>บัญชี <span id="loginBlockedEmail"></span> ถูก Admin ระงับไว้ — ถ้าคิดว่าผิดพลาด ติดต่อ Admin ให้ปลดบล็อก</p>
       <div class="row" style="gap:8px; justify-content:center">
         <button type="button" class="btn btn-sm" id="btnCheckBlocked">ตรวจสอบอีกครั้ง</button>
@@ -2049,25 +2087,16 @@ body.chip-dragging .task-chip.span-bar { pointer-events: none; }   /* let the da
     <div class="sb-brand">
       <h1><img class="logo" src="Logo Avatar เล็ก.png" alt="" /> Avatar Planning</h1>
       <div class="sb-brand-actions">
-        <button class="btn btn-settings btn-sm" id="btnSettings" title="ตั้งค่า">⚙</button>
+        <button class="btn btn-settings btn-sm" id="btnSettings" title="ตั้งค่า"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
       </div>
     </div>
     <div class="sb-user-badge" id="sbUserBadge"></div>
 
-    <div class="sb-dept board-dd-row" id="boardSwitcherRow">
-      <span class="sb-dept-label">ปฏิทิน</span>
-      <div class="dept-switcher" id="boardSwitcher"></div>
-    </div>
 
-    <div class="sb-section">
-      <button class="btn" id="btnDrawReq">📐 ยื่นขอแบบ</button>
-      <button class="btn dr-import-btn" id="btnImportReq" style="margin-top:6px">📥 ดึงคำขอจากฟอร์ม<span class="tb-bell-badge" id="importReqBadge" hidden>0</span></button>
-      <button class="btn btn-sm btn-ghost sb-trash-btn" id="btnTrash" style="display:none" title="งานที่ลบ — กู้คืนได้ภายใน 30 วัน">🗑️ ถังขยะ<span class="sb-trash-n">0</span></button>
-    </div>
-
-    <div class="sb-section sb-dept">
-      <span class="sb-dept-label">มุมมอง</span>
-      <div class="dept-switcher" id="deptSwitcher"></div>
+    <div class="sb-section" id="sbReqSection">
+      <button class="btn" id="btnDrawReq"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.41 2.41 0 0 1 0-3.4l2.6-2.6a2.41 2.41 0 0 1 3.4 0Z"/><path d="m14.5 12.5 2-2M11.5 9.5l2-2M8.5 6.5l2-2M17.5 15.5l2-2"/></svg> ยื่นขอแบบ</button>
+      <button class="btn dr-import-btn" id="btnImportReq"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg> ดึงคำขอจากฟอร์ม<span class="tb-bell-badge" id="importReqBadge" hidden>0</span></button>
+      
     </div>
 
     <aside class="today-panel" id="todayPanel">
@@ -2080,8 +2109,8 @@ body.chip-dragging .task-chip.span-bar { pointer-events: none; }   /* let the da
             <span class="tp-day-date" id="tpDate"></span>
           </button>
           <button class="tp-nav-btn" id="tpNextDay" title="วันถัดไป">›</button>
-          <button class="tp-nav-btn tp-print" id="tpReport" title="รายงานสถานะงาน (งานค้างทั้งหมดของแผนกคุณ)">📋</button>
-          <button class="tp-nav-btn tp-print" id="tpPrint" title="พิมพ์ใบสั่งงาน — แผนกที่ดู + วันที่ดู">🖨️</button>
+          <button class="tp-nav-btn tp-print" id="tpReport" title="รายงานสถานะงาน (งานค้างทั้งหมดของแผนกคุณ)"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2M9 12h6M9 16h4"/></svg></button>
+          <button class="tp-nav-btn tp-print" id="tpPrint" title="พิมพ์ใบสั่งงาน — แผนกที่ดู + วันที่ดู"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8" rx="1"/></svg></button>
         </div>
       </div>
       <div class="tp-summary" id="tpSummary"></div>
@@ -2104,7 +2133,7 @@ body.chip-dragging .task-chip.span-bar { pointer-events: none; }   /* let the da
       </div>
       <div class="spacer"></div>
       <div class="toolbar-search">
-        <span class="ts-icon">🔍</span>
+        <span class="ts-icon"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg></span>
         <input type="text" id="searchInput" placeholder="ค้นหางาน / แท็ก ในแอพ..."
                autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
                role="searchbox" aria-label="ค้นหางานในแอพ" />
@@ -2113,17 +2142,19 @@ body.chip-dragging .task-chip.span-bar { pointer-events: none; }   /* let the da
       </div>
       <div class="priority-selector" id="priorityFilter" title="กรองความสำคัญ">
         <button class="priority-btn active" data-pri="all">ทั้งหมด</button>
-        <button class="priority-btn" data-pri="urgent"><span class="pri-flag" style="color:#ef4444">⚑</span> ด่วน</button>
-        <button class="priority-btn" data-pri="high"><span class="pri-flag" style="color:#f97316">⚑</span> สูง</button>
+        <button class="priority-btn" data-pri="urgent"><span class="pri-flag" style="color:#ef4444"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1zM4 22v-7"/></svg></span> ด่วน</button>
+        <button class="priority-btn" data-pri="high"><span class="pri-flag" style="color:#f97316"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1zM4 22v-7"/></svg></span> สูง</button>
       </div>
+      <button type="button" class="board-chip" id="boardChip" title="ปฏิทินที่เปิดอยู่ — กดเพื่อสลับ"></button>
       <div class="priority-selector">
         <button class="priority-btn mine-btn" id="btnMine" title="แสดงเฉพาะงานที่มอบหมายให้ฉัน หรือมีคนกล่าวถึง/แจ้งเตือนถึงฉัน">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>งานของฉัน</button>
       </div>
+      <div class="tb-dept sb-dept" title="มุมมองแผนก"><div class="dept-switcher" id="deptSwitcher"></div></div>
       <div class="spacer"></div>
       <div class="tb-right">
         <div class="legend" id="legend"></div>
-        <button class="btn btn-sm tb-bell" id="btnBell" title="การแจ้งเตือนถึงฉัน/แผนกฉัน — รวมทุกปฏิทิน">🔔<span class="tb-bell-badge" id="bellBadge" hidden>0</span></button>
+        <button class="btn btn-sm tb-bell" id="btnBell" title="การแจ้งเตือนถึงฉัน/แผนกฉัน — รวมทุกปฏิทิน"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><span class="tb-bell-badge" id="bellBadge" hidden>0</span></button>
         <button class="tb-add" id="btnQuickAdd" title="เพิ่มงานใหม่" aria-label="เพิ่มงานใหม่">
           <span class="tb-add-icon">+</span><span class="tb-add-text">เพิ่มงานใหม่</span>
         </button>
@@ -2143,6 +2174,7 @@ body.chip-dragging .task-chip.span-bar { pointer-events: none; }   /* let the da
   </main>
 </div>
 
+<button type="button" class="board-tab" id="boardTab" title="สลับปฏิทิน" hidden></button>
 <input type="file" id="fileImport" accept="application/json" class="hidden" />
 
 <!-- Phase 2, slice 1: Supabase client — used ONLY to pull "ยื่นขอแบบ" requests submitted through the
@@ -2431,7 +2463,7 @@ async function confirmSignOut() {
   const ok = await confirmDialog({
     title: "ออกจากระบบ?",
     message: (email ? `บัญชี ${email}` : "ออกจากบัญชีนี้")
-      + (uploading ? ` — ⚠️ ยังมีไฟล์กำลังอัปโหลด ${uploading} ไฟล์ ถ้าออกตอนนี้ไฟล์จะไม่ถูกบันทึก` : " — ครั้งหน้าต้องขอรหัสเข้าสู่ระบบทางอีเมลใหม่"),
+      + (uploading ? ` — ยังมีไฟล์กำลังอัปโหลด ${uploading} ไฟล์ ถ้าออกตอนนี้ไฟล์จะไม่ถูกบันทึก` : " — ครั้งหน้าต้องขอรหัสเข้าสู่ระบบทางอีเมลใหม่"),
     confirmText: "ออกจากระบบ", cancelText: "ยกเลิก", danger: !!uploading, icon: "👋",
   });
   if (ok) signOutUser();
@@ -2577,7 +2609,7 @@ function openMyProfileModal() {
   overlay.className = "overlay";
   overlay.innerHTML = `
     <div class="modal" role="dialog" aria-modal="true" style="max-width:380px">
-      <div class="modal-head"><h3>👤 โปรไฟล์ของฉัน</h3><button class="btn btn-ghost" data-act="close" title="ปิด">✕</button></div>
+      <div class="modal-head"><h3>${ico("user")} โปรไฟล์ของฉัน</h3><button class="btn btn-ghost" data-act="close" title="ปิด">✕</button></div>
       <div style="padding:16px 18px">
         <div class="avatar-pick">
           <div class="avatar-preview" data-preview></div>
@@ -2585,7 +2617,7 @@ function openMyProfileModal() {
           <button type="button" class="btn btn-sm btn-ghost" data-clear>ลบรูป</button>
         </div>
         <div class="field"><label>ชื่อที่แสดง</label><input type="text" data-name maxlength="60" placeholder="ชื่อของคุณ"></div>
-        <p class="settings-desc">อีเมล <b>${escapeHtml(currentProfile.email || "")}</b> · สิทธิ์ <b>${isAdmin() ? "admin" : "member"}</b> · แผนก <b data-deptname></b><br>สิทธิ์และแผนกแก้ได้โดยผู้ดูแลระบบ (admin) เท่านั้น</p>
+        <p class="settings-desc">อีเมล <b>${escapeHtml(currentProfile.email || "")}</b> · สิทธิ์ <b>${isAdmin() ? "admin" : "member"}</b> · แผนก <b data-deptname></b></p>
         <div class="login-msg" data-msg></div>
       </div>
       <div class="modal-foot"><button class="btn" data-act="close">ยกเลิก</button><button class="btn btn-primary" data-save>บันทึก</button></div>
@@ -2678,7 +2710,7 @@ const PRIORITIES = [
   { id: "urgent", label: "ด่วน",    color: "#ef4444" },
 ];
 // priority shown as a coloured flag (⚑ takes the text colour) instead of a coloured dot
-function priFlag(pr) { return `<span class="pri-flag" style="color:${pr.color}">⚑</span>`; }
+function priFlag(pr) { return `<span class="pri-flag" style="color:${pr.color}">${ico("flag")}</span>`; }
 
 // default checklist for the QC department (the original inspection items)
 const DEFAULT_CHECKLIST = ["Busbar", "Wiring", "Nameplate", "Poly", "Cleaning"];
@@ -3015,7 +3047,7 @@ function loadRoot() {
 function setBoard(id) {
   if (!root.boards[id] || id === root.activeBoard) return;
   if (!visibleBoardIds().includes(id)) return;   // e.g. non-Service users can't open the Service calendar
-  document.querySelectorAll(".overlay, .checklist-popover, #appToast").forEach(n => n.remove());
+  document.querySelectorAll(".overlay, .checklist-popover, #appToast, .dept-dd-pop").forEach(n => n.remove());
   root.activeBoard = id;
   state = root.boards[id];
   applyMyDeptDefaultView();   // each board defaults to its own user's department
@@ -3632,7 +3664,7 @@ function renderDeptSwitcher() {
   if (section) section.style.display = "";
   el.innerHTML = `
     <button type="button" class="dept-dd-btn" aria-haspopup="true">
-      <span class="dept-dd-label">${escapeHtml(deptViewLabel())}</span>
+      ${ico("building")}<span class="dept-dd-label">${escapeHtml(deptViewLabel())}</span>
       <span class="dept-dd-caret">▾</span>
     </button>`;
   el.querySelector(".dept-dd-btn").addEventListener("click", (e) => { e.stopPropagation(); openDeptDropdown(el.querySelector(".dept-dd-btn")); });
@@ -3654,15 +3686,25 @@ function openDeptDropdown(anchor) {
       </label>`).join("")}
   `;
   document.body.appendChild(pop);
-  const r = anchor.getBoundingClientRect();
-  pop.style.top = (r.bottom + window.scrollY + 4) + "px";
-  pop.style.left = (r.left + window.scrollX) + "px";
-  pop.style.minWidth = r.width + "px";
+  // ★ fixed to the viewport, placed under the button and kept on-screen; measured again once layout has
+  //   settled (the toolbar can re-wrap during the click, which left the menu far from the button)
+  const place = () => {
+    if (!document.body.contains(pop) || !anchor.isConnected) return;
+    const r = anchor.getBoundingClientRect();
+    pop.style.position = "fixed";
+    pop.style.minWidth = r.width + "px";
+    pop.style.top = (r.bottom + 4) + "px";
+    pop.style.left = Math.max(8, Math.min(r.left, window.innerWidth - pop.offsetWidth - 8)) + "px";
+  };
+  place();
+  setTimeout(place, 50);
+  window.addEventListener("resize", place);
 
   const refresh = () => {
     saveState();
     renderMainView();          // re-render calendar/gantt/dashboard + today panel, keep the popover open
     renderTodayPanel();
+    if (!anchor.isConnected) { const nb = document.querySelector("#deptSwitcher .dept-dd-btn"); if (nb) anchor = nb; }
     const lbl = anchor.querySelector(".dept-dd-label"); if (lbl) lbl.textContent = deptViewLabel();
     pop.querySelector("[data-all]").classList.toggle("active", activeViewDepts().length === 0);
   };
@@ -3680,7 +3722,7 @@ function openDeptDropdown(anchor) {
   });
   function onDoc(e) { if (!pop.contains(e.target) && e.target !== anchor && !anchor.contains(e.target)) close(); }
   function onEsc(e) { if (e.key === "Escape") close(); }
-  function close() { pop.remove(); document.removeEventListener("mousedown", onDoc, true); document.removeEventListener("keydown", onEsc, true); }
+  function close() { pop.remove(); window.removeEventListener("resize", place); document.removeEventListener("mousedown", onDoc, true); document.removeEventListener("keydown", onEsc, true); }
   setTimeout(() => { document.addEventListener("mousedown", onDoc, true); document.addEventListener("keydown", onEsc, true); }, 0);
 }
 
@@ -4456,7 +4498,7 @@ function createDateField({ value = null, allowClear = false, onChange = () => {}
   wrap.className = "datefield" + (extraClass ? " " + extraClass : "");
   wrap.innerHTML = `
     <input type="text" class="datefield-input" placeholder="dd/mm/yyyy" inputmode="numeric" autocomplete="off" />
-    <button type="button" class="datefield-cal" tabindex="-1" title="เลือกวันที่">📅</button>
+    <button type="button" class="datefield-cal" tabindex="-1" title="เลือกวันที่">${ico("calendar")}</button>
     ${allowClear ? `<button type="button" class="datefield-clear" tabindex="-1" title="ล้างวันที่">✕</button>` : ""}
   `;
   const input = wrap.querySelector(".datefield-input");
@@ -4584,7 +4626,7 @@ function confirmDialog({ title, message = "", confirmText = "ลบ", cancelText
     overlay.className = "overlay confirm-overlay";
     overlay.innerHTML = `
       <div class="confirm-dialog" role="alertdialog" aria-modal="true">
-        <div class="confirm-icon ${danger ? "danger" : ""}">${icon}</div>
+        <div class="confirm-icon ${danger ? "danger" : ""}">${ICONS[icon] ? ico(icon) : EMOJI_ICON[icon] ? ico(EMOJI_ICON[icon]) : escapeHtml(icon)}</div>
         <div class="confirm-title">${escapeHtml(title)}</div>
         ${message ? `<div class="confirm-msg">${escapeHtml(message)}</div>` : ""}
         <div class="confirm-actions">
@@ -4794,7 +4836,7 @@ async function openImportRequestsModal() {
   overlay.innerHTML = `
     <div class="modal alert-modal" role="dialog" aria-modal="true">
       <div class="modal-head">
-        <h3>📥 คำขอจากฟอร์มออนไลน์ <span data-count>…</span></h3>
+        <h3>${ico("inbox")} คำขอจากฟอร์มออนไลน์ <span data-count>…</span></h3>
         <button class="btn btn-ghost" data-act="close" title="ปิด">✕</button>
       </div>
       <div class="alert-list" data-list><div class="dr-import-loading">กำลังโหลด...</div></div>
@@ -4811,7 +4853,7 @@ async function openImportRequestsModal() {
   const rows = await fetchPendingDrawingRequests();
   if (rows === null) { listEl.innerHTML = `<div class="dr-import-loading">โหลดไม่สำเร็จ — ลองใหม่อีกครั้ง</div>`; countEl.textContent = "0"; return; }
   countEl.textContent = rows.length;
-  if (!rows.length) { listEl.innerHTML = `<div class="dr-import-loading">ไม่มีคำขอใหม่ค้างอยู่ 🎉</div>`; return; }
+  if (!rows.length) { listEl.innerHTML = `<div class="dr-import-loading">ไม่มีคำขอใหม่ค้างอยู่</div>`; return; }
 
   listEl.innerHTML = "";
   rows.forEach(row => {
@@ -4820,7 +4862,7 @@ async function openImportRequestsModal() {
     const kindLabel = row.kind === "structure" ? "เขียนแบบโครงสร้างตู้" : "เขียนแบบวงจรไฟฟ้า";
     card.innerHTML = `
       <div class="alert-card-top">
-        <span class="alert-to">📐 ${escapeHtml(kindLabel)}</span>
+        <span class="alert-to">${ico("ruler")} ${escapeHtml(kindLabel)}</span>
         <span class="alert-from">จาก ${escapeHtml(row.submitter || "—")}${row.sales_team ? " · " + escapeHtml(row.sales_team) : ""}</span>
         <span class="alert-time">${formatDateTimeTH(new Date(row.created_at).getTime())}</span>
       </div>
@@ -4828,12 +4870,12 @@ async function openImportRequestsModal() {
       ${row.detail ? `<div class="alert-text">${escapeHtml(row.detail)}</div>` : ""}
       ${row.photo_url ? `<img class="alert-photo" src="${row.photo_url}" alt="แนบรูป">` : ""}
       <div class="alert-card-actions">
-        <button class="btn btn-sm btn-ack" data-import>📥 นำเข้า</button>
+        <button class="btn btn-sm btn-ack" data-import>${ico("inbox")} นำเข้า</button>
         <button class="btn btn-sm btn-reject" data-reject>✕ ปฏิเสธ</button>
       </div>`;
     const ph = card.querySelector(".alert-photo");
     if (ph) ph.addEventListener("click", () => openPhotoLightbox(row.photo_url));
-    const resolveCard = () => { card.remove(); const left = listEl.querySelectorAll(".alert-card").length; countEl.textContent = left; if (!left) listEl.innerHTML = `<div class="dr-import-loading">ไม่มีคำขอใหม่ค้างอยู่ 🎉</div>`; };
+    const resolveCard = () => { card.remove(); const left = listEl.querySelectorAll(".alert-card").length; countEl.textContent = left; if (!left) listEl.innerHTML = `<div class="dr-import-loading">ไม่มีคำขอใหม่ค้างอยู่</div>`; };
     card.querySelector("[data-import]").addEventListener("click", async () => {
       const result = routeDrawingRequest({ kind: row.kind, project: row.project, dwg: row.dwg_no, due: row.due_date, detail: row.detail || "", submitter: row.submitter, sales: row.sales_team || "", photo: row.photo_url || null });
       if (result.denied) return;   // no access to the structure calendar → leave the request pending
@@ -4860,21 +4902,21 @@ async function openImportRequestsModal() {
 
 /* ---------- Drawing request form (ยื่นขอแบบ) — in-app modal, uses routeDrawingRequest() above ---------- */
 function openDrawRequestModal() {
-  let kind = "structure";              // structure | circuit
+  let kind = "circuit";                // structure | circuit — opens on วงจรไฟฟ้า (owner 2026-10-06)
   const overlay = document.createElement("div");
   overlay.className = "overlay";
   overlay.innerHTML = `
     <div class="modal dr-modal" role="dialog" aria-modal="true">
       <div class="modal-head">
-        <h3>📐 ยื่นขอแบบ</h3>
+        <h3>${ico("ruler")} ยื่นขอแบบ</h3>
         <button class="btn btn-ghost" data-act="close" title="ปิด">✕</button>
       </div>
       <div class="modal-body">
         <div class="field">
           <label>ประเภทแบบ</label>
           <div class="dr-seg" data-kind>
-            <button type="button" data-k="structure" class="active">เขียนแบบโครงสร้างตู้</button>
-            <button type="button" data-k="circuit">เขียนแบบวงจรไฟฟ้า</button>
+            <button type="button" data-k="structure">เขียนแบบโครงสร้างตู้</button>
+            <button type="button" data-k="circuit" class="active">เขียนแบบวงจรไฟฟ้า</button>
           </div>
           <span class="settings-toggle-sub" data-kind-hint></span>
         </div>
@@ -4893,10 +4935,10 @@ function openDrawRequestModal() {
           <div class="field"><label>ทีม Sales</label><input type="text" data-f="sales" autocomplete="off" /></div>
         </div>
         <div class="field">
-          <label>แนบรูป / ไฟล์ <span class="muted" style="font-weight:400">(เก็บใน Google Drive)</span></label>
+          <label>แนบรูป / ไฟล์</label>
           <div class="row" style="gap:8px;align-items:center">
-            <button type="button" class="btn btn-sm" data-act="attach">📷 ถ่าย / แนบรูป</button>
-            <button type="button" class="btn btn-sm" data-act="attach-file">📎 แนบไฟล์</button>
+            <button type="button" class="btn btn-sm" data-act="attach">${ico("camera")} ถ่าย / แนบรูป</button>
+            <button type="button" class="btn btn-sm" data-act="attach-file">${ico("clip")} แนบไฟล์</button>
           </div>
           <div class="ta-photo-preview" data-photo-preview hidden></div>
           <input type="file" accept="image/*" capture="environment" data-photo-input hidden />
@@ -5017,7 +5059,7 @@ function openTaskModal(taskId, defaults={}) {
       <div class="modal-head">
         <h3>${isNew ? "เพิ่มงาน" + escapeHtml(boardName) : "โครงการ"}</h3>
         <div class="row" style="gap:6px">
-          ${isNew ? "" : '<button class="btn btn-ghost btn-sm" data-act="dashboard" title="ดูแดชบอร์ดของโปรเจคนี้">📊 แดชบอร์ด</button>'}
+          ${isNew ? "" : '<button class="btn btn-ghost btn-sm" data-act="dashboard" title="ดูแดชบอร์ดของโปรเจคนี้">' + ico("chart") + ' แดชบอร์ด</button>'}
           <button class="btn btn-ghost" data-act="close" title="ปิด">✕</button>
         </div>
       </div>
@@ -5028,7 +5070,7 @@ function openTaskModal(taskId, defaults={}) {
         </div>
         <div class="field-row">
           <div class="field">
-            <label>วันเริ่ม <span class="muted" style="font-weight:400">(ไม่บังคับ)</span></label>
+            <label>วันเริ่ม</label>
             <div data-df="startDate"></div>
           </div>
           <div class="field">
@@ -5040,7 +5082,7 @@ function openTaskModal(taskId, defaults={}) {
           <div class="field">
             <label>ความสำคัญ</label>
             <select class="pri-select" data-priority>
-              ${PRIORITIES.map(p => `<option value="${p.id}" style="color:${p.color}">${p.id === "none" ? p.label : "⚑ " + p.label}</option>`).join("")}
+              ${PRIORITIES.map(p => `<option value="${p.id}" style="color:${p.color}">${p.label}</option>`).join("")}
             </select>
           </div>
           <div class="field">
@@ -5059,7 +5101,7 @@ function openTaskModal(taskId, defaults={}) {
           </div>
         </div>
         <div class="field"${isServiceBoard() ? ' style="display:none"' : ""}>
-          <label>กำหนดส่งต่อแผนก <span class="muted" style="font-weight:400">(แผนก + วันครบ + ติ๊กเมื่อแผนกนั้นเสร็จ · สถานะงานรวมใช้ช่อง “สถานะ” ด้านบน)</span></label>
+          <label>กำหนดส่งต่อแผนก</label>
           <div class="stage-list" data-stages></div>
           <button class="add-sub-btn" data-act="add-stage">+ เพิ่มด่านแผนก</button>
         </div>
@@ -5237,7 +5279,7 @@ function openTaskModal(taskId, defaults={}) {
         <div class="subtask-main">
           <button type="button" class="subtask-dot" aria-label="เปลี่ยนสถานะ"></button>
           <input type="text" value="${escapeHtml(s.text)}" placeholder="รายการ..." />
-          <button type="button" class="subtask-cl-btn" title="Checklist ของตู้นี้ (ชี้เมาส์หรือคลิก)">☑ <span class="cl-count">${prog.done}/${prog.total}</span></button>
+          <button type="button" class="subtask-cl-btn" title="Checklist ของตู้นี้ (ชี้เมาส์หรือคลิก)">${ico("check-square")} <span class="cl-count">${prog.done}/${prog.total}</span></button>
           <span class="subtask-date-mount" title="วันที่ของตู้นี้ (ไม่ใส่ = ตามวันโปรเจค)"></span>
           <button class="subtask-del" title="ลบ">✕</button>
         </div>
@@ -5490,7 +5532,7 @@ function openTaskModal(taskId, defaults={}) {
         al.className = "ta-alert" + (c.ack ? " acked" : "");
         al.innerHTML = `
           <div class="ta-alert-head">
-            <span class="ta-alert-badge">🔔 แจ้งเตือน → ${escapeHtml(dept.name)}</span>
+            <span class="ta-alert-badge">${ico("bell")} แจ้งเตือน → ${escapeHtml(dept.name)}</span>
             <span class="ta-author">${escapeHtml(c.author || "คุณ")}</span>
             <span class="ta-alert-time">${formatDateTimeTH(c.at)}</span>
             <button class="ta-del" title="ลบ">✕</button>
@@ -5498,7 +5540,7 @@ function openTaskModal(taskId, defaults={}) {
           ${c.text ? `<div class="ta-alert-text">${mentionTextHtml(c)}</div>` : ""}
           ${attachmentsHtml(c, "ta-photo")}
           ${c.rejected
-            ? `<div class="ta-alert-ack" style="color:var(--danger)">❌ ปฏิเสธโดย ${escapeHtml(c.rejectedBy || "—")}${c.rejectReason ? " — " + escapeHtml(c.rejectReason) : ""} · ${formatDateTimeTH(c.rejectedAt)}</div>`
+            ? `<div class="ta-alert-ack" style="color:var(--danger)">${ico("x-circle")} ปฏิเสธโดย ${escapeHtml(c.rejectedBy || "—")}${c.rejectReason ? " — " + escapeHtml(c.rejectReason) : ""} · ${formatDateTimeTH(c.rejectedAt)}</div>`
             : (c.ack ? `<div class="ta-alert-ack">✓ รับทราบแล้วโดย ${escapeHtml(c.ackBy || "—")} · ${formatDateTimeTH(c.ackAt)}</div>` : "")}
           ${alertIsForMe(c) ? `<div class="ta-alert-btns"><button class="btn btn-sm btn-ack ta-alert-ackbtn" data-ackbtn>✓ รับทราบ</button><button class="btn btn-sm btn-reject" data-rejectbtn>✕ ปฏิเสธ</button></div>` : ""}
           <div class="alert-replies" data-replies></div>`;
@@ -5543,7 +5585,7 @@ function openTaskModal(taskId, defaults={}) {
           </div>
           ${c.text ? `<div class="ta-text">${mentionTextHtml(c)}</div>` : ""}
           ${attachmentsHtml(c, "ta-photo")}
-          ${mentionPendingForMe(c) ? `<div class="ta-mention-ack">💬 มีการกล่าวถึงคุณ <button type="button" class="btn btn-sm btn-ack" data-mack>✓ รับทราบ</button></div>` : ""}
+          ${mentionPendingForMe(c) ? `<div class="ta-mention-ack">${ico("message")} มีการกล่าวถึงคุณ <button type="button" class="btn btn-sm btn-ack" data-mack>✓ รับทราบ</button></div>` : ""}
         </div>`;
       item.querySelector(".ta-del").addEventListener("click", () => {
         trashAttachments(c);
@@ -5566,7 +5608,7 @@ function openTaskModal(taskId, defaults={}) {
   const fileInput = modal.querySelector('[data-file-input]');
   const attachList = createAttachList(modal.querySelector('[data-photo-preview]'));
   const alertSel = modal.querySelector('[data-alert-dept]');
-  alertSel.innerHTML = `<option value="">🔔 ไม่แจ้งเตือน</option>` +
+  alertSel.innerHTML = `<option value="">ไม่แจ้งเตือน</option>` +
     (state.departments || []).map(d => `<option value="${d.id}">แจ้งเตือน → ${escapeHtml(d.name)}</option>`).join("");
   alertSel.addEventListener("change", () => alertSel.classList.toggle("armed", !!alertSel.value));
   modal.querySelector('[data-act="attach"]').addEventListener("click", () => photoInput.click());
@@ -5842,7 +5884,7 @@ function applyTaskModalPerm(modal) {
     if (head && !head.querySelector('.perm-badge')) {
       const b = document.createElement("span");
       b.className = "perm-badge";
-      b.textContent = edit ? "🖊️ แก้ได้เฉพาะวัน/สถานะ" : (comment ? "💬 คอมเมนต์ได้อย่างเดียว" : "👁️ ดูอย่างเดียว");
+      b.innerHTML = edit ? `${ico("pen")} แก้ได้เฉพาะวัน/สถานะ` : (comment ? `${ico("message")} คอมเมนต์ได้อย่างเดียว` : `${ico("eye")} ดูอย่างเดียว`);
       head.appendChild(b);
     }
   }
@@ -5881,7 +5923,7 @@ function openDayModal(dateIso) {
     const matchedDepts = inDept ? vds.filter(d => { const s = taskStage(t, d); return s && s.due === dateIso; }).map(d => (getDept(d)||{}).name).join(", ") : "";
     const meta = inDept
       ? `${escapeHtml(matchedDepts)} · สถานะงาน: ${escapeHtml(st.name)}`
-      : `${t.startDate && t.startDate !== t.date ? `📅 ${formatDateTH(t.startDate)} → ${formatDateTH(t.date)} · ` : ""}${escapeHtml(st.name)}${totalSub>0?` · ${doneSub}/${totalSub} ตู้`:""}${(t.labels||[]).length?` · ${(t.labels||[]).map(l=>"#"+escapeHtml(l)).join(" ")}`:""}`;
+      : `${t.startDate && t.startDate !== t.date ? `${ico("calendar")} ${formatDateTH(t.startDate)} → ${formatDateTH(t.date)} · ` : ""}${escapeHtml(st.name)}${totalSub>0?` · ${doneSub}/${totalSub} ตู้`:""}${(t.labels||[]).length?` · ${(t.labels||[]).map(l=>"#"+escapeHtml(l)).join(" ")}`:""}`;
     return `
       <div class="day-task" data-id="${t.id}"
            style="--chip-bg:${hexToBgTint(st.color)};--chip-color:${st.color}">
@@ -6057,7 +6099,7 @@ function buildTpCabRow(t, sub, ed, today, deptId) {
   row.innerHTML = `
     <button type="button" class="subtask-dot" style="--st-color:${cur.color}" title="${escapeHtml(cur.name)}"></button>
     <span class="tp-cab-name">${escapeHtml(name)}</span>
-    ${showCl ? `<button type="button" class="tp-cl-btn${clp.total>0&&clp.done===clp.total?' full':''}" title="Checklist ${deptId ? 'แผนกนี้' : 'ของตู้'}">☑ <span class="cl-count">${clp.done}/${clp.total}</span></button>` : ""}
+    ${showCl ? `<button type="button" class="tp-cl-btn${clp.total>0&&clp.done===clp.total?' full':''}" title="Checklist ${deptId ? 'แผนกนี้' : 'ของตู้'}">${ico("check-square")} <span class="cl-count">${clp.done}/${clp.total}</span></button>` : ""}
     <span class="tp-cab-date${overdue ? " overdue" : ""}">${overdue ? `เลย ${overdueDays} วัน` : formatDateShort(ed)}</span>
   `;
   const dot = row.querySelector(".subtask-dot");
@@ -6189,7 +6231,7 @@ function renderTodayPanel() {
 
   body.innerHTML = "";
   if (overdueGroups.length === 0 && todayGroups.length === 0) {
-    body.innerHTML = `<div class="tp-empty">🎉<br>ไม่มีตู้ที่ต้องเสร็จ${tpWhen()}</div>`;
+    body.innerHTML = `<div class="tp-empty">${ico("check-circle")}<br>ไม่มีตู้ที่ต้องเสร็จ${tpWhen()}</div>`;
     return;
   }
   if (overdueGroups.length) {
@@ -6332,7 +6374,7 @@ function renderTodayPanelDept(deptIds, today, pass) {
   ` : "";
 
   if (!anyShown) {
-    body.innerHTML = `<div class="tp-empty">🎉<br>ไม่มีงาน${multi?"ของแผนกที่เลือก":"ของแผนกนี้"}<br>ที่ต้องเสร็จ${tpWhen()}</div>`;
+    body.innerHTML = `<div class="tp-empty">${ico("check-circle")}<br>ไม่มีงาน${multi?"ของแผนกที่เลือก":"ของแผนกนี้"}<br>ที่ต้องเสร็จ${tpWhen()}</div>`;
   }
 }
 
@@ -6340,27 +6382,28 @@ function renderTodayPanelDept(deptIds, today, pass) {
    Sections are modular — add a new nav button + build<X>Panel() to extend. */
 function openSettingsModal(initialTab = "statuses") {
   // ★ non-admins get ONE tab: 🔔 การแจ้งเตือน (their own device's push on/off). Everything else stays admin-only.
-  if (!isAdmin()) initialTab = "notify";
+  if (!isAdmin() && !(initialTab === "trash" && canFull())) initialTab = "notify";
   const overlay = document.createElement("div");
   overlay.className = "overlay";
   overlay.innerHTML = `
     <div class="modal settings-modal" role="dialog" aria-modal="true">
       <div class="modal-head">
-        <h3>⚙ ตั้งค่า</h3>
+        <h3>${ico("settings")} ตั้งค่า</h3>
         <button class="btn btn-ghost" data-act="close" title="ปิด">✕</button>
       </div>
       <div class="settings-layout">
         <nav class="settings-nav">
-          <button class="settings-nav-item" data-tab="user">👤 ผู้ใช้</button>
-          <button class="settings-nav-item" data-tab="users">👥 จัดการผู้ใช้</button>
-          <button class="settings-nav-item" data-tab="statuses">🏷️ สถานะงาน</button>
-          <button class="settings-nav-item" data-tab="departments">🏢 แผนก</button>
-          <button class="settings-nav-item" data-tab="fields">🧩 ฟิลด์เพิ่มเติม</button>
-          <button class="settings-nav-item" data-tab="checklist">🧾 เช็คลิสต์ตู้</button>
-          <button class="settings-nav-item" data-tab="display">🖥️ การแสดงผล</button>
-          <button class="settings-nav-item" data-tab="notify">🔔 การแจ้งเตือน</button>
-          <button class="settings-nav-item" data-tab="history">🕘 ประวัติ/กู้คืน</button>
-          <button class="settings-nav-item" data-tab="data">💾 ข้อมูล</button>
+          <button class="settings-nav-item" data-tab="user">${ico("user")} ผู้ใช้</button>
+          <button class="settings-nav-item" data-tab="users">${ico("users")} จัดการผู้ใช้</button>
+          <button class="settings-nav-item" data-tab="statuses">${ico("tag")} สถานะงาน</button>
+          <button class="settings-nav-item" data-tab="departments">${ico("building")} แผนก</button>
+          <button class="settings-nav-item" data-tab="fields">${ico("sliders")} ฟิลด์เพิ่มเติม</button>
+          <button class="settings-nav-item" data-tab="checklist">${ico("list-check")} เช็คลิสต์ตู้</button>
+          <button class="settings-nav-item" data-tab="display">${ico("monitor")} การแสดงผล</button>
+          <button class="settings-nav-item" data-tab="notify">${ico("bell")} การแจ้งเตือน</button>
+          <button class="settings-nav-item" data-tab="trash">${ico("trash")} ถังขยะ</button>
+          <button class="settings-nav-item" data-tab="history">${ico("history")} ประวัติ/กู้คืน</button>
+          <button class="settings-nav-item" data-tab="data">${ico("database")} ข้อมูล</button>
         </nav>
         <div class="settings-content" data-content></div>
       </div>
@@ -6370,11 +6413,13 @@ function openSettingsModal(initialTab = "statuses") {
 
   const content = overlay.querySelector('[data-content]');
   const navBtns = [...overlay.querySelectorAll('.settings-nav-item')];
-  if (!isAdmin()) navBtns.forEach(b => { if (b.dataset.tab !== "notify") b.remove(); });
-  const PANELS = { user: buildUserPanel, users: buildUsersAdminPanel, statuses: buildStatusesPanel, departments: buildDeptsPanel, fields: buildFieldsPanel, checklist: buildChecklistTemplatePanel, display: buildDisplayPanel, notify: buildNotifyPanel, history: buildHistoryPanel, data: buildDataPanel };
+  // non-admins: 🔔 การแจ้งเตือน (+ ถังขยะ for people allowed to delete tasks)
+  const memberTabs = canFull() ? ["notify", "trash"] : ["notify"];
+  if (!isAdmin()) navBtns.forEach(b => { if (!memberTabs.includes(b.dataset.tab)) b.remove(); });
+  const PANELS = { user: buildUserPanel, users: buildUsersAdminPanel, statuses: buildStatusesPanel, departments: buildDeptsPanel, fields: buildFieldsPanel, checklist: buildChecklistTemplatePanel, display: buildDisplayPanel, notify: buildNotifyPanel, history: buildHistoryPanel, trash: buildTrashPanel, data: buildDataPanel };
 
   function showTab(tab) {
-    if (!isAdmin() && tab !== "notify") tab = "notify";
+    if (!isAdmin() && !memberTabs.includes(tab)) tab = "notify";
     navBtns.forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
     content.innerHTML = "";
     (PANELS[tab] || PANELS.statuses)(content);
@@ -6397,23 +6442,21 @@ function buildUserPanel(container) {
   sec.className = "settings-section";
   sec.innerHTML = `
     <h4 class="settings-h">ผู้ใช้ปัจจุบัน</h4>
-    <p class="settings-desc">ชื่อนี้จะถูกบันทึกเป็น “ผู้ทำ” ในทุกความเคลื่อนไหว (เปลี่ยนสถานะ / ติ๊กแผนกเสร็จ / คอมเมนต์) เพื่อให้ดูย้อนหลังได้ว่าใครทำอะไร</p>
     <div class="field">
       <label>บัญชีที่ล็อกอิน</label>
       <div class="row" style="gap:8px; align-items:center">
         ${avatarHtml(currentProfile)}
         <div class="settings-desc" style="margin:0"><b>${escapeHtml(currentProfile ? currentProfile.display_name : "-")}</b> · ${escapeHtml(currentProfile ? currentProfile.email : "-")} · <span style="text-transform:uppercase">${isAdmin() ? "admin" : "member"}</span></div>
-        <button class="btn btn-sm" data-edit-profile>✏️ แก้ไขชื่อ/รูป</button>
+        <button class="btn btn-sm" data-edit-profile>${ico("edit")} แก้ไขชื่อ/รูป</button>
       </div>
     </div>
     <div class="field">
       <label>แผนกของฉัน</label>
       ${assigned
-        ? `<div class="settings-desc" style="margin:0"><b>${deptIco(assigned)}${escapeHtml(assigned.name)}</b> — ผู้ดูแลระบบกำหนดให้ (ใช้ทุกปฏิทิน)</div>`
+        ? `<div class="settings-desc" style="margin:0"><b>${deptIco(assigned)}${escapeHtml(assigned.name)}</b></div>`
         : `<select data-f="mydept"></select>
-           <span class="settings-toggle-sub" style="margin-top:2px">ในป๊อบอัพโครงการ เช็คลิสต์ของแต่ละตู้จะแสดงเฉพาะของแผนกนี้ — ถ้าไม่ระบุ จะใช้แผนกที่กำลังดูอยู่ (หรือแสดงทุกแผนก)</span>`}
+           `}
     </div>
-    <p class="settings-desc" style="margin-top:4px">🔒 อีเมลและสิทธิ์มาจากบัญชีที่ล็อกอิน — แก้ได้ที่ 👥 จัดการผู้ใช้ (admin เท่านั้น)${assigned ? "" : "<br>ยังไม่ได้ถูกกำหนดแผนกจากหน้าจัดการผู้ใช้ จึงเลือกเองต่อปฏิทินได้ตรงนี้"}</p>
   `;
   container.appendChild(sec);
   sec.querySelector("[data-edit-profile]").addEventListener("click", openMyProfileModal);
@@ -6439,7 +6482,6 @@ function buildUsersAdminPanel(container) {
   sec.className = "settings-section";
   sec.innerHTML = `
     <h4 class="settings-h">จัดการผู้ใช้</h4>
-    <p class="settings-desc">ใครก็ล็อกอินด้วยอีเมลอะไรก็ได้ (magic link ไม่จำกัดโดเมน) — คนใหม่เห็นข้อมูลไม่ได้จนกว่าจะกด “อนุมัติ” · แผนกที่ตั้งให้ใช้ทุกปฏิทิน<br>ลำดับสถานะ: <b>อนุมัติแล้ว</b> →[ถอดสิทธิ์]→ <b>รออนุมัติ</b> →[🚩 บล็อก]→ <b>ถูกบล็อก</b> →[↩ ปลดบล็อก]→ รออนุมัติ (บล็อกกู้คืนได้เสมอ)<br>ระดับสิทธิ์: 👁️ ดูอย่างเดียว · 💬 คอมเมนต์ · 🖊️ แก้วัน/สถานะ · ✅ แก้ไขเต็ม (admin = เต็มเสมอ)<br>ปฏิทิน: ติ๊กว่าแต่ละคนเปิดปฏิทินไหนได้ (ไม่ได้ติ๊ก = ข้อมูลปฏิทินนั้นไม่ถูกส่งไปที่เครื่องเขาเลย) — admin ก็เห็นเฉพาะที่ติ๊ก แต่ติ๊กของตัวเองได้ · คนใหม่ = ตามแผนก (ออกแบบ → เขียนแบบโครงสร้าง + โรงงาน, อื่น ๆ → โรงงาน) · Service เห็นเฉพาะ Service เสมอ<br>👑 Owner เท่านั้นที่แต่งตั้ง/ถอด admin และจัดการ admin คนอื่นได้</p>
     <div class="um-count" data-count></div>
     <div data-list><div class="cf-empty">กำลังโหลด...</div></div>
   `;
@@ -6533,7 +6575,7 @@ function buildUsersAdminPanel(container) {
       <div class="um-who">
         ${avatarHtml(p)}
         <div style="min-width:0">
-          <div class="um-name">${escapeHtml(p.display_name || "(ไม่มีชื่อ)")} ${p.is_owner ? '<span class="um-owner" title="เจ้าของระบบ — แต่งตั้ง/ถอด admin ได้คนเดียว">👑 Owner</span> ' : ""}${isMe ? '<span class="um-me">คุณ</span>' : ""}${p.approved ? "" : ' <span class="um-pending">รออนุมัติ</span>'}</div>
+          <div class="um-name">${escapeHtml(p.display_name || "(ไม่มีชื่อ)")} ${p.is_owner ? '<span class="um-owner" title="เจ้าของระบบ — แต่งตั้ง/ถอด admin ได้คนเดียว">' + ico("crown") + ' Owner</span> ' : ""}${isMe ? '<span class="um-me">คุณ</span>' : ""}${p.approved ? "" : ' <span class="um-pending">รออนุมัติ</span>'}</div>
           <div class="um-mail">${escapeHtml(p.email || "")}</div>
         </div>
       </div>
@@ -6542,15 +6584,15 @@ function buildUsersAdminPanel(container) {
       </select>
       <select data-dept title="${locked ? "จัดการ admin ได้เฉพาะ Owner" : "แผนก (ใช้ทุกปฏิทิน)"}" ${locked ? "disabled" : ""}>${deptOptions}</select>
       <select data-perm class="um-perm-sel" title="ระดับสิทธิ์การแก้ไข (admin = เต็มเสมอ)" ${p.role === "admin" || locked ? "disabled" : ""}>
-        <option value="read">👁️ ดูอย่างเดียว</option>
-        <option value="comment">💬 คอมเมนต์</option>
-        <option value="edit">🖊️ แก้วัน/สถานะ</option>
-        <option value="full">✅ แก้ไขเต็ม</option>
+        <option value="read">ดูอย่างเดียว</option>
+        <option value="comment">คอมเมนต์</option>
+        <option value="edit">แก้วัน/สถานะ</option>
+        <option value="full">แก้ไขเต็ม</option>
       </select>
       ${p.approved
-        ? `<button class="btn btn-ghost btn-sm btn-danger" data-revoke ${isMe || locked ? "disabled" : ""} title="${isMe ? "ถอดสิทธิ์ตัวเองไม่ได้" : locked ? "จัดการ admin ได้เฉพาะ Owner" : "ถอดสิทธิ์ — ย้ายกลับไปสถานะรออนุมัติ"}">🚫 ถอดสิทธิ์</button>`
+        ? `<button class="btn btn-ghost btn-sm btn-danger" data-revoke ${isMe || locked ? "disabled" : ""} title="${isMe ? "ถอดสิทธิ์ตัวเองไม่ได้" : locked ? "จัดการ admin ได้เฉพาะ Owner" : "ถอดสิทธิ์ — ย้ายกลับไปสถานะรออนุมัติ"}">${ico("ban")} ถอดสิทธิ์</button>`
         : `<button class="btn btn-sm btn-primary" data-approve>✓ อนุมัติ</button>
-           <button class="btn btn-ghost btn-sm btn-danger" data-block ${isMe ? "disabled" : ""} title="${isMe ? "บล็อกตัวเองไม่ได้" : "ติดธงแดง (บล็อก) — ซ่อนออกจากลิสต์ เข้าไม่ได้ · ปลดบล็อกภายหลังได้"}">🚩</button>`}
+           <button class="btn btn-ghost btn-sm btn-danger" data-block ${isMe ? "disabled" : ""} title="${isMe ? "บล็อกตัวเองไม่ได้" : "ติดธงแดง (บล็อก) — ซ่อนออกจากลิสต์ เข้าไม่ได้ · ปลดบล็อกภายหลังได้"}">${ico("flag")}</button>`}
     `;
     wireRoleDept(row, p, isMe);
     if (p.approved || !p.blocked) row.appendChild(boardTicks(p, locked));
@@ -6577,7 +6619,7 @@ function buildUsersAdminPanel(container) {
     if (blockBtn) blockBtn.addEventListener("click", async () => {
       const ok = await confirmDialog({
         title: "บล็อกผู้ใช้ (ติดธงแดง)?",
-        message: `${who} (${p.email || ""}) จะถูกซ่อนออกจากลิสต์และเข้าใช้งานไม่ได้เลย — ปลดบล็อกภายหลังได้ที่ส่วน “🚩 ถูกบล็อก”`,
+        message: `${who} (${p.email || ""}) จะถูกซ่อนออกจากลิสต์และเข้าใช้งานไม่ได้เลย — ปลดบล็อกภายหลังได้ที่ส่วน “ถูกบล็อก”`,
         confirmText: "บล็อก", danger: true, icon: "🚩",
       });
       if (!ok) return;
@@ -6622,7 +6664,7 @@ function buildUsersAdminPanel(container) {
       <div class="um-who">
         ${avatarHtml(p)}
         <div style="min-width:0">
-          <div class="um-name">${escapeHtml(p.display_name || "(ไม่มีชื่อ)")} <span class="um-blocked-badge">🚩 ถูกบล็อก</span></div>
+          <div class="um-name">${escapeHtml(p.display_name || "(ไม่มีชื่อ)")} <span class="um-blocked-badge">${ico("flag")} ถูกบล็อก</span></div>
           <div class="um-mail">${escapeHtml(p.email || "")}</div>
         </div>
       </div>
@@ -6653,7 +6695,7 @@ function buildUsersAdminPanel(container) {
 
     // 1) "รออนุมัติ" first — the priority action, kept together across all departments
     if (pending.length) {
-      listEl.appendChild(groupHead("⏳ รออนุมัติ", pending.length));
+      listEl.appendChild(groupHead(`${ico("clock")} รออนุมัติ`, pending.length));
       pending.forEach(p => listEl.appendChild(makeRow(p)));
     }
 
@@ -6683,13 +6725,13 @@ function buildUsersAdminPanel(container) {
     if (blocked.length) {
       const wrap = document.createElement("div");
       wrap.className = "um-blocked-wrap";
-      wrap.innerHTML = `<button class="um-blocked-toggle" data-toggle>🚩 ถูกบล็อก (${blocked.length}) ▾</button><div class="um-blocked-list hidden" data-blocked></div>`;
+      wrap.innerHTML = `<button class="um-blocked-toggle" data-toggle>${ico("flag")} ถูกบล็อก (${blocked.length}) ▾</button><div class="um-blocked-list hidden" data-blocked></div>`;
       const bl = wrap.querySelector("[data-blocked]");
       blocked.forEach(p => bl.appendChild(makeBlockedRow(p)));
       const tgl = wrap.querySelector("[data-toggle]");
       tgl.addEventListener("click", () => {
         const open = !bl.classList.toggle("hidden");
-        tgl.textContent = `🚩 ถูกบล็อก (${blocked.length}) ${open ? "▴" : "▾"}`;
+        tgl.innerHTML = `${ico("flag")} ถูกบล็อก (${blocked.length}) ${open ? "▴" : "▾"}`;
       });
       listEl.appendChild(wrap);
     }
@@ -6704,7 +6746,6 @@ function buildStatusesPanel(container) {
   sec.className = "settings-section";
   sec.innerHTML = `
     <h4 class="settings-h">สถานะงาน</h4>
-    <p class="settings-desc">กำหนดสถานะ สี และลำดับ — ใช้ร่วมกันทั้งงาน (โปรเจค) และตู้ (subtask) ติ๊ก “เสร็จ” เพื่อให้สถานะนั้นถือว่าเสร็จ (ขีดทับ + นับความคืบหน้า)</p>
     <div data-list></div>
     <button class="btn btn-sm" data-act="add">+ เพิ่มสถานะ</button>
   `;
@@ -6778,7 +6819,6 @@ function buildDeptsPanel(container) {
   sec.className = "settings-section";
   sec.innerHTML = `
     <h4 class="settings-h">แผนก (Department / ด่านส่งต่อ)</h4>
-    <p class="settings-desc">กำหนดแผนกที่งานต้องไหลผ่าน เรียงตามลำดับ workflow — แต่ละงานจะตั้งวันครบกำหนดของแต่ละแผนกได้ในป๊อบอัพงาน และสลับดูตามแผนกได้ที่แถบซ้าย</p>
     <div data-list></div>
     <button class="btn btn-sm" data-act="add">+ เพิ่มแผนก</button>
   `;
@@ -6790,7 +6830,6 @@ function buildDeptsPanel(container) {
   defSec.className = "settings-section";
   defSec.innerHTML = `
     <h4 class="settings-h">ด่านเริ่มต้นสำหรับงานใหม่</h4>
-    <p class="settings-desc">เลือกแผนกที่จะถูกเพิ่มเป็น “กำหนดส่งต่อแผนก” ให้อัตโนมัติทุกครั้งที่สร้างงานใหม่ (เรียงตามลำดับ workflow ด้านบน) — ส่วนวันครบกำหนดของแต่ละด่านยังตั้งเองในป๊อบอัพงาน</p>
     <div class="default-stage-list" data-default-list></div>
   `;
   container.appendChild(defSec);
@@ -6801,7 +6840,6 @@ function buildDeptsPanel(container) {
   limSec.className = "settings-section";
   limSec.innerHTML = `
     <h4 class="settings-h">จำกัดวันไม่ให้เกินแผนกอ้างอิง</h4>
-    <p class="settings-desc">บล็อกไม่ให้แผนกที่เลือก ตั้งวันครบกำหนด “เกินกว่า” วันของแผนกอ้างอิง (เช่น ทุกแผนกต้องไม่เกิน QC — ยกเว้นจัดส่ง) มีผลทั้งในป๊อบอัพงานและการลากบนปฏิทิน</p>
     <label class="settings-toggle-row">
       <input type="checkbox" data-lim-enabled />
       <span class="settings-toggle-text"><span class="settings-toggle-title">เปิดใช้งานการจำกัด</span></span>
@@ -6932,7 +6970,6 @@ function buildFieldsPanel(container) {
   sec.className = "settings-section";
   sec.innerHTML = `
     <h4 class="settings-h">ฟิลด์ dropdown กำหนดเอง (ต่อแผนก)</h4>
-    <p class="settings-desc">สร้างช่องเลือกเพิ่มเติมให้แต่ละแผนก เช่น แผนก “ส่งมอบ” มีฟิลด์ “รถขนส่ง” — ตัวเลือกจัดเป็นกลุ่มได้ (เช่น รถบริษัท / รถเช่า) ค่าที่เลือกตั้งในป๊อบอัพงาน (ต่อแผนก ทั้งโปรเจค) ติ๊ก “แสดงบนปฏิทิน” เพื่อให้โชว์บน chip และแถบ “ต้องเสร็จ”</p>
     <div class="field"><label>เลือกแผนก</label><select data-dept></select></div>
     <div data-fields></div>
     <button class="btn btn-sm" data-add-field>+ เพิ่มฟิลด์</button>
@@ -7047,7 +7084,6 @@ function buildChecklistTemplatePanel(container) {
   sec.className = "settings-section";
   sec.innerHTML = `
     <h4 class="settings-h">เช็คลิสต์ของแต่ละแผนก</h4>
-    <p class="settings-desc">แต่ละแผนกมีรายการงาน/ตรวจของตัวเอง — ตู้ที่สร้าง<b>ใหม่</b>จะได้เช็คลิสต์ของทุกแผนกอัตโนมัติ และ <b>แผนกจะถือว่าเสร็จเมื่อติ๊ก checklist ของแผนกนั้นครบทุกตู้</b> (ไม่ต้องติ๊กซ้ำ)</p>
     <div class="field">
       <label>เลือกแผนก</label>
       <select data-dept></select>
@@ -7111,21 +7147,17 @@ function buildDisplayPanel(container) {
       <input type="checkbox" data-f="cabchips" ${state.settings.showCabinetChips ? "checked" : ""} />
       <span class="settings-toggle-text">
         <span class="settings-toggle-title">แสดงตู้ (subtask) บนปฏิทิน</span>
-        <span class="settings-toggle-sub">ปกติปิดไว้เพื่อไม่ให้รก — ดูตู้ได้จากแถบ “วันนี้” ด้านขวาอยู่แล้ว</span>
       </span>
     </label>
     <label class="settings-toggle-row">
       <input type="checkbox" data-f="deptcab" ${state.settings.deptCalByCabinet ? "checked" : ""} />
       <span class="settings-toggle-text">
         <span class="settings-toggle-title">มุมมองแผนก: แตกปฏิทินเป็นรายตู้</span>
-        <span class="settings-toggle-sub">เมื่อดูปฏิทินแบบรายแผนก ให้แสดงแยกเป็นตู้ตามวันของแต่ละแผนก (ลากเลื่อนเปลี่ยนวันได้) — ปิด = 1 ป้าย/โปรเจค ที่วันของแผนก</span>
       </span>
     </label>
-    ${root.activeBoard === SERVICE_BOARD ? "" : `<h4 class="settings-h" style="margin-top:14px">ปุ่ม “📐 ยื่นขอแบบ” แสดงกับแผนก</h4>
-    <p class="settings-desc">ติ๊กแผนกที่จะเห็นปุ่มยื่นขอแบบ (ต้องสิทธิ์แก้ไขเต็มด้วย) — <b>ไม่ติ๊กเลย = เห็นเฉพาะผู้ดูแลระบบ (admin)</b></p>
+    ${root.activeBoard === SERVICE_BOARD ? "" : `<h4 class="settings-h" style="margin-top:14px">ปุ่ม “ยื่นขอแบบ” แสดงกับแผนก</h4>
     <div class="perm-dept-list" data-draw-depts></div>
-    <h4 class="settings-h" style="margin-top:14px">ปุ่ม “📥 ดึงคำขอจากฟอร์ม” แสดงกับแผนก</h4>
-    <p class="settings-desc">ติ๊กแผนกที่จะเห็นปุ่มดึงคำขอ เช่น เขียนแบบ/ออกแบบ (ต้องสิทธิ์แก้ไขเต็มด้วย) — <b>ไม่ติ๊กเลย = เห็นเฉพาะผู้ดูแลระบบ (admin)</b></p>
+    <h4 class="settings-h" style="margin-top:14px">ปุ่ม “ดึงคำขอจากฟอร์ม” แสดงกับแผนก</h4>
     <div class="perm-dept-list" data-import-depts></div>`}
   `;
   container.appendChild(sec);
@@ -7177,24 +7209,23 @@ function buildNotifyPanel(container) {
     const on = n.enabled && perm === "granted";
     const pushOn = on && !!sub;
     sec.innerHTML = `
-      <h4 class="settings-h">การแจ้งเตือนของฉัน <span class="muted" style="font-weight:400">(ตั้งแยกแต่ละคน แต่ละเครื่อง)</span></h4>
+      <h4 class="settings-h">การแจ้งเตือนของฉัน</h4>
       <div class="push-box" style="margin-top:0">
         <span class="push-state${on ? " on" : ""}">${on ? (pushOn || !PUSH_SUPPORTED ? "✓ เปิดอยู่บนเครื่องนี้" : "✓ เปิดอยู่ (เฉพาะตอนเปิดแอป)") : perm === "denied" ? "✕ ถูกบล็อกในเบราว์เซอร์" : "ปิดอยู่"}</span>
-        <p>เปิดแล้วจะเด้งเตือนบนเครื่องนี้ <b>ทั้งตอนเปิดแอปและตอนปิดแอป/ล็อกจอ</b> · สิ่งที่คุณกดเองจะไม่เด้งที่เครื่องคุณ${perm === "denied" ? "<br>⚠ เบราว์เซอร์บล็อกไว้ — กดไอคอน 🔒/ⓘ หน้า URL → Notifications → Allow แล้วรีโหลด" : ""}${on && !pushOn && PUSH_SUPPORTED ? "<br>⚠ ยังไม่ได้ลงทะเบียนแจ้งเตือนตอนปิดแอป — กดปิดแล้วเปิดใหม่อีกครั้ง" : ""}</p>
+        <p>${perm === "denied" ? ico("alert") + " เบราว์เซอร์บล็อกไว้ — กดไอคอน 🔒/ⓘ หน้า URL → Notifications → Allow แล้วรีโหลด" : ""}${on && !pushOn && PUSH_SUPPORTED ? "<br>⚠ ยังไม่ได้ลงทะเบียนแจ้งเตือนตอนปิดแอป — กดปิดแล้วเปิดใหม่อีกครั้ง" : ""}</p>
         <button type="button" class="btn btn-sm ${on ? "" : "btn-primary"}" data-toggle>${on ? "ปิดการแจ้งเตือนบนเครื่องนี้" : "เปิดการแจ้งเตือนบนเครื่องนี้"}</button>
-        ${pushOn ? `<button type="button" class="btn btn-sm" data-push-test title="ส่งแจ้งเตือนทดสอบมาที่เครื่องนี้ใน 10 วินาที — ปัดปิดแอปก่อนเพื่อลองแบบปิดแอป">📨 ส่งทดสอบมาเครื่องนี้</button>` : on ? `<button type="button" class="btn btn-sm" data-local-test>🔔 ทดสอบ</button>` : ""}
+        ${pushOn ? `<button type="button" class="btn btn-sm" data-push-test title="ส่งแจ้งเตือนทดสอบมาที่เครื่องนี้ใน 10 วินาที — ปัดปิดแอปก่อนเพื่อลองแบบปิดแอป">${ico("send")} ส่งทดสอบมาเครื่องนี้</button>` : on ? `<button type="button" class="btn btn-sm" data-local-test>${ico("bell")} ทดสอบ</button>` : ""}
         <div class="push-result" data-push-result></div>
       </div>
-      <p class="settings-desc" style="margin:14px 0 8px">📌 <b>มอบหมายงานให้ฉัน</b> · 💬 <b>@กล่าวถึงฉัน</b> · 🔔 <b>แจ้งเตือนถึงแผนกฉัน</b> — เด้งเสมอเมื่อเปิดการแจ้งเตือน</p>
       <div${on ? "" : ' style="opacity:.5;pointer-events:none"'}>
         <label class="settings-toggle-row">
           <input type="checkbox" data-f="onlyMyDept" ${n.onlyMyDept ? "checked" : ""} />
-          <span class="settings-toggle-text"><span class="settings-toggle-title">เฉพาะงานของแผนกฉัน</span><span class="settings-toggle-sub">รายการด้านล่างแจ้งเฉพาะงานที่มีด่านแผนกของฉัน หรือมอบหมายให้ฉัน (ไม่มีแผนก = ไม่แจ้ง) — ไม่ติ๊ก = ทุกงาน</span></span>
+          <span class="settings-toggle-text"><span class="settings-toggle-title">เฉพาะงานของแผนกฉัน</span></span>
         </label>
-        <h4 class="settings-h" style="margin-top:14px">แจ้งเตือนเพิ่มเมื่อคนอื่น… <span class="muted" style="font-weight:400">(ขณะเปิดแอป)</span></h4>
-        <label class="settings-toggle-row"><input type="checkbox" data-f="status" ${n.status ? "checked" : ""} /><span class="settings-toggle-text"><span class="settings-toggle-title">🔁 เปลี่ยนสถานะงาน/ตู้</span></span></label>
-        <label class="settings-toggle-row"><input type="checkbox" data-f="done" ${n.done ? "checked" : ""} /><span class="settings-toggle-text"><span class="settings-toggle-title">✅ งาน/แผนก/ตู้ เสร็จ</span></span></label>
-        <label class="settings-toggle-row"><input type="checkbox" data-f="comment" ${n.comment ? "checked" : ""} /><span class="settings-toggle-text"><span class="settings-toggle-title">💬 คอมเมนต์ / ตอบกลับใหม่</span></span></label>
+        <h4 class="settings-h" style="margin-top:14px">แจ้งเตือนเพิ่มเมื่อคนอื่น…</h4>
+        <label class="settings-toggle-row"><input type="checkbox" data-f="status" ${n.status ? "checked" : ""} /><span class="settings-toggle-text"><span class="settings-toggle-title">เปลี่ยนสถานะงาน/ตู้</span></span></label>
+        <label class="settings-toggle-row"><input type="checkbox" data-f="done" ${n.done ? "checked" : ""} /><span class="settings-toggle-text"><span class="settings-toggle-title">งาน/แผนก/ตู้ เสร็จ</span></span></label>
+        <label class="settings-toggle-row"><input type="checkbox" data-f="comment" ${n.comment ? "checked" : ""} /><span class="settings-toggle-text"><span class="settings-toggle-title">คอมเมนต์ / ตอบกลับใหม่</span></span></label>
       </div>`;
     sec.querySelectorAll("input[data-f]").forEach(inp => inp.addEventListener("change", () => setNotifyPref(inp.dataset.f, inp.checked)));
     sec.querySelector("[data-toggle]").addEventListener("click", async (e) => {
@@ -7239,19 +7270,14 @@ function buildDataPanel(container) {
   sec.className = "settings-section";
   sec.innerHTML = `
     <h4 class="settings-h">ข้อมูล</h4>
-    <p class="settings-desc">สำรอง/กู้คืนข้อมูลทั้งหมด (สถานะ + งาน + การตั้งค่า) เป็นไฟล์ JSON</p>
     <div class="row" style="gap:8px; flex-wrap:wrap">
-      <button class="btn" data-act="export">⬇ Export (ดาวน์โหลด)</button>
-      <button class="btn" data-act="import">⬆ Import (โหลดไฟล์)</button>
+      <button class="btn" data-act="export">${ico("download")} Export (ดาวน์โหลด)</button>
+      <button class="btn" data-act="import">${ico("upload")} Import (โหลดไฟล์)</button>
     </div>
-    <p class="settings-desc" style="margin-top:10px; color:var(--danger)">⚠ การ Import จะแทนที่ข้อมูลปัจจุบันทั้งหมด</p>
-    <h4 class="settings-h" style="margin-top:18px">ถังขยะ</h4>
-    <p class="settings-desc">งานที่ถูกลบในปฏิทินนี้ (${(state.trash || []).length} งาน) เก็บไว้ ${TRASH_DAYS} วัน กู้คืนได้</p>
-    <button class="btn" data-act="trash">🗑️ เปิดถังขยะ</button>
+    
   `;
   container.appendChild(sec);
   sec.querySelector('[data-act="export"]').addEventListener("click", exportJson);
-  sec.querySelector('[data-act="trash"]').addEventListener("click", openTrashModal);
   sec.querySelector('[data-act="import"]').addEventListener("click", () => document.getElementById("fileImport").click());
 }
 
@@ -7295,25 +7321,13 @@ function purgeExpiredTrash() {
   });
   if (changed) saveState();
 }
-function renderTrashButton() {
-  const btn = document.getElementById("btnTrash");
-  if (!btn) return;
-  const n = (state.trash || []).length;
-  btn.style.display = (n && canFull()) ? "" : "none";
-  btn.querySelector(".sb-trash-n").textContent = n;
-}
-function openTrashModal() {
-  const overlay = document.createElement("div");
-  overlay.className = "overlay";
-  overlay.innerHTML = `
-    <div class="modal wide" role="dialog" aria-modal="true">
-      <div class="modal-head">
-        <h3>🗑️ ถังขยะ <span class="muted" style="font-weight:400">· งานที่ลบในปฏิทินนี้ เก็บไว้ ${TRASH_DAYS} วัน</span></h3>
-        <button class="btn btn-ghost" data-act="close" title="ปิด">✕</button>
-      </div>
-      <div class="modal-body"><div class="trash-list" data-list></div></div>
-    </div>`;
-  const list = overlay.querySelector("[data-list]");
+// ⚙ → ถังขยะ (admins + anyone allowed to delete tasks)
+function buildTrashPanel(container) {
+  const sec = document.createElement("div");
+  sec.className = "settings-section";
+  sec.innerHTML = `<h4 class="settings-h">ถังขยะ <span class="muted" style="font-weight:400">(${escapeHtml(boardNameOf(root.activeBoard))})</span></h4><div class="trash-list" data-list></div>`;
+  container.appendChild(sec);
+  const list = sec.querySelector("[data-list]");
   function render() {
     const items = state.trash || [];
     if (!items.length) { list.innerHTML = `<div class="trash-empty">ถังขยะว่าง</div>`; return; }
@@ -7323,7 +7337,7 @@ function openTrashModal() {
           <div class="trash-title">${escapeHtml(ent.task.title || "(ไม่มีชื่องาน)")}</div>
           <div class="trash-meta">ลบโดย ${escapeHtml(ent.deletedBy || "—")} · ${formatDateTimeTH(ent.deletedAt)} · ตู้ ${(ent.task.subtasks || []).length} · <span class="trash-left">ลบถาวรใน ${daysLeftInTrash(ent)} วัน</span></div>
         </div>
-        <button class="btn btn-sm btn-primary" data-restore="${escapeHtml(ent.id)}">♻️ กู้คืน</button>
+        <button class="btn btn-sm btn-primary" data-restore="${escapeHtml(ent.id)}">${ico("restore")} กู้คืน</button>
         ${isAdmin() ? `<button class="btn btn-sm btn-danger" data-purge="${escapeHtml(ent.id)}" title="ลบถาวรตอนนี้">ลบถาวร</button>` : ""}
       </div>`).join("");
     list.querySelectorAll("[data-restore]").forEach(b => b.addEventListener("click", () => { restoreFromTrash(b.dataset.restore); render(); }));
@@ -7338,13 +7352,8 @@ function openTrashModal() {
     }));
   }
   render();
-  function close() { overlay.remove(); document.removeEventListener("keydown", onEsc, true); }
-  function onEsc(e) { if (e.key === "Escape" && !document.querySelector(".confirm-overlay")) close(); }
-  overlay.addEventListener("mousedown", e => { if (e.target === overlay) close(); });
-  overlay.querySelector('[data-act="close"]').addEventListener("click", close);
-  document.addEventListener("keydown", onEsc, true);
-  document.body.appendChild(overlay);
 }
+function openTrashModal() { openSettingsModal("trash"); }
 
 /* ---------- 🕘 board history (Supabase boards_history — see supabase-schema.sql slice 5a) ----------
    The database keeps an automatic copy of each board before it changes (at most one per 20 minutes,
@@ -7356,10 +7365,9 @@ function buildHistoryPanel(container) {
   const boards = root.boardMeta || [];
   sec.innerHTML = `
     <h4 class="settings-h">ประวัติย้อนหลัง / กู้คืน</h4>
-    <p class="settings-desc">ฐานข้อมูลเก็บสำเนาของแต่ละปฏิทินไว้อัตโนมัติ <b>ก่อนมีการแก้ไข</b> (ไม่เกิน 1 ชุดต่อ 20 นาที เก็บ 30 วัน · เกิน 3 วันเหลือวันละ 1 ชุด) — ถ้าการตั้งค่าหรืองานหาย เลือกเวลาก่อนเกิดเหตุแล้วกด "กู้คืน"</p>
     <div class="hist-bar">
       <select data-board>${boards.map(b => `<option value="${escapeHtml(b.id)}" ${b.id === root.activeBoard ? "selected" : ""}>${escapeHtml(b.name)}</option>`).join("")}</select>
-      <button class="btn btn-sm" data-act="snap">📸 สำรองตอนนี้</button>
+      <button class="btn btn-sm" data-act="snap">${ico("database")} สำรองตอนนี้</button>
       <button class="btn btn-sm btn-ghost" data-act="reload">↻ โหลดใหม่</button>
     </div>
     <div class="hist-list" data-list><div class="hist-empty">กำลังโหลด…</div></div>`;
@@ -7377,7 +7385,7 @@ function buildHistoryPanel(container) {
       list.innerHTML = `<div class="hist-empty">โหลดประวัติไม่ได้: ${escapeHtml(error.message)}<br><br>ถ้ายังไม่เคยตั้ง ให้รัน SQL ส่วน <b>slice 5a</b> ใน supabase-schema.sql ก่อน</div>`;
       return;
     }
-    if (!data.length) { list.innerHTML = `<div class="hist-empty">ยังไม่มีสำเนา — ระบบจะเริ่มเก็บเมื่อมีการแก้ไขครั้งถัดไป (หรือกด 📸 สำรองตอนนี้)</div>`; return; }
+    if (!data.length) { list.innerHTML = `<div class="hist-empty">ยังไม่มีสำเนา — ระบบจะเริ่มเก็บเมื่อมีการแก้ไขครั้งถัดไป (หรือกด สำรองตอนนี้)</div>`; return; }
     list.innerHTML = data.map(h => `
       <div class="hist-row">
         <div class="hist-main">
@@ -7677,7 +7685,7 @@ function renderDashboard() {
       <span class="dash-filter-lbl">กรองแผนก:</span>
       <button class="dept-chip${!dep ? ' active' : ''}" data-df="">ทุกแผนก</button>
       ${(state.departments || []).map(d => `<button class="dept-chip${dep === d.id ? ' active' : ''}" data-df="${d.id}">${deptIco(d)}${escapeHtml(d.name)}</button>`).join("")}
-      <button class="btn btn-sm dash-print-hide" data-act="print" title="พิมพ์ / บันทึกเป็น PDF" style="margin-left:auto">🖨️ พิมพ์ / PDF</button>
+      <button class="btn btn-sm dash-print-hide" data-act="print" title="พิมพ์ / บันทึกเป็น PDF" style="margin-left:auto">${ico("printer")} พิมพ์ / PDF</button>
     </div>`;
 
   const scopeLbl = dep ? ` · แผนก ${escapeHtml((getDept(dep) || {}).name || "")}` : "";
@@ -7816,7 +7824,7 @@ function openProjectDashboard(t) {
   overlay.innerHTML = `
     <div class="modal dash-modal" role="dialog" aria-modal="true">
       <div class="modal-head">
-        <h3>📊 ${escapeHtml(t.title)}</h3>
+        <h3>${ico("chart")} ${escapeHtml(t.title)}</h3>
         <button class="btn btn-ghost" data-act="close" title="ปิด">✕</button>
       </div>
       <div class="dash-mbody">
@@ -7835,7 +7843,7 @@ function openProjectDashboard(t) {
         ${sbreak ? `<div class="dash-sbreak">${sbreak}</div>` : ''}
       </div>
       <div class="modal-foot">
-        <button class="btn dash-print-hide" data-act="print" title="พิมพ์ / บันทึกเป็น PDF" style="margin-right:auto">🖨️ พิมพ์ / PDF</button>
+        <button class="btn dash-print-hide" data-act="print" title="พิมพ์ / บันทึกเป็น PDF" style="margin-right:auto">${ico("printer")} พิมพ์ / PDF</button>
         <button class="btn" data-act="open-task">เปิดงาน</button>
         <button class="btn btn-primary" data-act="close">ปิด</button>
       </div>
@@ -7938,9 +7946,9 @@ function openWorkOrderPrint() {
   overlay.innerHTML = `
     <div class="modal dash-modal wo-modal" role="dialog" aria-modal="true">
       <div class="modal-head">
-        <h3>🖨️ ใบสั่งงาน · ${escapeHtml(tpWhen())}</h3>
+        <h3>${ico("printer")} ใบสั่งงาน · ${escapeHtml(tpWhen())}</h3>
         <div class="row dash-print-hide" style="gap:6px">
-          ${sheets.length ? '<button class="btn btn-primary btn-sm" data-act="print">🖨️ พิมพ์ / PDF</button>' : ""}
+          ${sheets.length ? '<button class="btn btn-primary btn-sm" data-act="print">' + ico("printer") + ' พิมพ์ / PDF</button>' : ""}
           <button class="btn btn-ghost" data-act="close" title="ปิด">✕</button>
         </div>
       </div>
@@ -8070,6 +8078,12 @@ function renderMainView() {
 
 /* ----- Browser notifications (Notification API) — configurable per event type in ⚙ การแจ้งเตือน ----- */
 const NOTIF_SUPPORTED = typeof window !== "undefined" && "Notification" in window;
+// line icon set — one style everywhere (stroke = currentColor). ico("bell"), ico("trash", "ico ico-lg")
+const ICONS = {"bell": "<path d=\"M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9\"/><path d=\"M10.3 21a1.94 1.94 0 0 0 3.4 0\"/>", "settings": "<circle cx=\"12\" cy=\"12\" r=\"3\"/><path d=\"M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z\"/>", "search": "<circle cx=\"11\" cy=\"11\" r=\"7\"/><path d=\"m21 21-4.3-4.3\"/>", "ruler": "<path d=\"M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.41 2.41 0 0 1 0-3.4l2.6-2.6a2.41 2.41 0 0 1 3.4 0Z\"/><path d=\"m14.5 12.5 2-2M11.5 9.5l2-2M8.5 6.5l2-2M17.5 15.5l2-2\"/>", "inbox": "<path d=\"M22 12h-6l-2 3h-4l-2-3H2\"/><path d=\"M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z\"/>", "trash": "<path d=\"M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6\"/>", "clipboard": "<rect x=\"8\" y=\"2\" width=\"8\" height=\"4\" rx=\"1\"/><path d=\"M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2M9 12h6M9 16h4\"/>", "printer": "<path d=\"M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2\"/><rect x=\"6\" y=\"14\" width=\"12\" height=\"8\" rx=\"1\"/>", "user": "<circle cx=\"12\" cy=\"8\" r=\"4\"/><path d=\"M4 21a8 8 0 0 1 16 0\"/>", "users": "<path d=\"M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2\"/><circle cx=\"9\" cy=\"7\" r=\"4\"/><path d=\"M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75\"/>", "tag": "<path d=\"M12.6 2.6A2 2 0 0 0 11.2 2H4a2 2 0 0 0-2 2v7.2a2 2 0 0 0 .6 1.4l8.7 8.7a2.4 2.4 0 0 0 3.4 0l6.6-6.6a2.4 2.4 0 0 0 0-3.4z\"/><circle cx=\"7.5\" cy=\"7.5\" r=\"1.5\"/>", "building": "<rect x=\"4\" y=\"2\" width=\"16\" height=\"20\" rx=\"2\"/><path d=\"M9 22v-4h6v4M8 6h.01M12 6h.01M16 6h.01M8 10h.01M12 10h.01M16 10h.01M8 14h.01M12 14h.01M16 14h.01\"/>", "sliders": "<path d=\"M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6\"/>", "list-check": "<path d=\"m3 17 2 2 4-4M3 7l2 2 4-4M13 6h8M13 12h8M13 18h8\"/>", "monitor": "<rect x=\"2\" y=\"3\" width=\"20\" height=\"14\" rx=\"2\"/><path d=\"M8 21h8M12 17v4\"/>", "history": "<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\"/><path d=\"M3 3v5h5M12 7v5l4 2\"/>", "restore": "<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\"/><path d=\"M3 3v5h5\"/>", "database": "<ellipse cx=\"12\" cy=\"5\" rx=\"9\" ry=\"3\"/><path d=\"M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5M3 12c0 1.66 4 3 9 3s9-1.34 9-3\"/>", "calendar": "<rect x=\"3\" y=\"4\" width=\"18\" height=\"18\" rx=\"2\"/><path d=\"M16 2v4M8 2v4M3 10h18\"/>", "download": "<path d=\"M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3\"/>", "upload": "<path d=\"M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12\"/>", "camera": "<path d=\"M14.5 4h-5L7.5 6.5H5A2 2 0 0 0 3 8.5v9a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2h-2.5z\"/><circle cx=\"12\" cy=\"12.5\" r=\"3.5\"/>", "clip": "<path d=\"M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48\"/>", "chart": "<path d=\"M3 3v18h18M18 17V9M13 17V5M8 17v-3\"/>", "edit": "<path d=\"M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z\"/><path d=\"m15 5 4 4\"/>", "flag": "<path d=\"M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1zM4 22v-7\"/>", "ban": "<circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"m4.9 4.9 14.2 14.2\"/>", "clock": "<circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"M12 6v6l4 2\"/>", "mail": "<rect x=\"2\" y=\"4\" width=\"20\" height=\"16\" rx=\"2\"/><path d=\"m22 7-10 5L2 7\"/>", "cloud": "<path d=\"M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z\"/>", "logout": "<path d=\"M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9\"/>", "check-circle": "<circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"m9 12 2 2 4-4\"/>", "check-square": "<rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"2\"/><path d=\"m9 12 2 2 4-4\"/>", "eye": "<path d=\"M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z\"/><circle cx=\"12\" cy=\"12\" r=\"3\"/>", "pen": "<path d=\"M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z\"/>", "crown": "<path d=\"m2 6 4 11h12l4-11-6 5-4-7-4 7-6-5zM6 21h12\"/>", "message": "<path d=\"M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z\"/>", "alert": "<path d=\"m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z\"/><path d=\"M12 9v4M12 17h.01\"/>", "x-circle": "<circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"m15 9-6 6M9 9l6 6\"/>", "send": "<path d=\"m22 2-7 20-4-9-9-4Z\"/><path d=\"M22 2 11 13\"/>", "copy": "<rect x=\"8\" y=\"8\" width=\"14\" height=\"14\" rx=\"2\"/><path d=\"M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2\"/>", "file": "<path d=\"M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z\"/><path d=\"M14 2v6h6\"/>", "file-text": "<path d=\"M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z\"/><path d=\"M14 2v6h6M16 13H8M16 17H8M10 9H8\"/>", "file-sheet": "<path d=\"M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z\"/><path d=\"M14 2v6h6M8 13h8M8 17h8M12 11v8\"/>", "image": "<rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"2\"/><circle cx=\"9\" cy=\"9\" r=\"2\"/><path d=\"m21 15-3.09-3.09a2 2 0 0 0-2.82 0L6 21\"/>", "archive": "<rect x=\"2\" y=\"3\" width=\"20\" height=\"5\" rx=\"1\"/><path d=\"M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8M10 12h4\"/>"};
+const ICON_ATTR = 'viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"';
+function ico(name, cls = "ico") { return ICONS[name] ? `<svg class="${cls}" ${ICON_ATTR}>${ICONS[name]}</svg>` : ""; }
+// confirm dialogs used to take an emoji — map the old ones, or pass an icon name
+const EMOJI_ICON = { "🗑️": "trash", "🚩": "flag", "🚫": "ban", "👋": "logout", "⧉": "copy", "⚠️": "alert" };
 // iPad home-screen apps (and Android) don't support `new Notification()` — show it through the service worker
 function sysNotify(title, opts) {
   try {
@@ -8348,13 +8362,12 @@ function driveThumb(id, w) { return `https://drive.google.com/thumbnail?id=${enc
 function driveViewUrl(id) { return `https://drive.google.com/file/d/${encodeURIComponent(id)}/view`; }
 function fileIcon(name) {
   const ext = String(name || "").split(".").pop().toLowerCase();
-  if (ext === "pdf") return "📕";
-  if (["dwg", "dxf"].includes(ext)) return "📐";
-  if (["xls", "xlsx", "xlsm", "csv"].includes(ext)) return "📊";
-  if (["doc", "docx"].includes(ext)) return "📝";
-  if (["zip", "rar", "7z"].includes(ext)) return "🗜️";
-  if (["jpg", "jpeg", "png", "heic", "heif", "webp", "gif"].includes(ext)) return "🖼️";
-  return "📄";
+  if (ext === "pdf" || ["doc", "docx", "txt"].includes(ext)) return ico("file-text");
+  if (["dwg", "dxf"].includes(ext)) return ico("ruler");
+  if (["xls", "xlsx", "xlsm", "csv"].includes(ext)) return ico("file-sheet");
+  if (["zip", "rar", "7z"].includes(ext)) return ico("archive");
+  if (["jpg", "jpeg", "png", "heic", "heif", "webp", "gif"].includes(ext)) return ico("image");
+  return ico("file");
 }
 function fmtBytes(b) { return b >= 1048576 ? (b / 1048576).toFixed(1) + " MB" : Math.max(1, Math.round(b / 1024)) + " KB"; }
 function driveDownloadUrl(id) { return `https://drive.google.com/uc?export=download&id=${encodeURIComponent(id)}`; }
@@ -8377,7 +8390,7 @@ function attachmentsHtml(c, imgClass) {
     const failed = f.up === "failed" || stale;
     const thumb = attachPreviewCache.get(f.key);
     return `<div class="att-file att-busy${failed ? " att-failed" : ""}">${thumb ? `<img class="att-mini" src="${thumb}" alt="">` : fileIcon(f.name)}<span class="att-fname">${escapeHtml(f.name || "ไฟล์")}</span>`
-      + `<span class="att-fsize">${failed ? (stale ? "⚠️ อัปโหลดไม่เสร็จ" : "⚠️ อัปโหลดไม่สำเร็จ") : "⏳ กำลังอัปโหลด…"}</span>`
+      + `<span class="att-fsize">${failed ? (stale ? ico("alert") + " อัปโหลดไม่เสร็จ" : ico("alert") + " อัปโหลดไม่สำเร็จ") : ico("clock") + " กำลังอัปโหลด…"}</span>`
       + `${failed && mine ? `<button type="button" class="btn btn-sm att-retry" data-retry="${escapeHtml(f.key)}">ลองใหม่</button>` : ""}</div>`;
   }).join("");
   if (docHtml || busyHtml) h += `<div class="att-files">${docHtml}${busyHtml}</div>`;
@@ -8410,7 +8423,7 @@ function openAttachmentsGallery(task) {
   overlay.innerHTML = `
     <div class="modal wide attg-modal" role="dialog" aria-modal="true">
       <div class="modal-head">
-        <h3>📎 ไฟล์แนบทั้งหมด <span class="muted" style="font-weight:400">· ${escapeHtml(task.title || "งานนี้")}</span></h3>
+        <h3>${ico("clip")} ไฟล์แนบทั้งหมด <span class="muted" style="font-weight:400">· ${escapeHtml(task.title || "งานนี้")}</span></h3>
         <div class="row" style="gap:8px">
           <div class="attg-filter" data-filter>
             <button type="button" class="active" data-f="all">ทั้งหมด ${items.length}</button>
@@ -8429,7 +8442,7 @@ function openAttachmentsGallery(task) {
     const files = items.filter(x => !(x.kind === "image" || (x.kind === "busy" && x.isImg)));
     const showImg = filter !== "file" && imgs.length, showFile = filter !== "image" && files.length;
     if (!showImg && !showFile) {
-      body.innerHTML = `<div class="attg-empty">${items.length ? "ไม่มีไฟล์ประเภทนี้" : "ยังไม่มีไฟล์แนบในงานนี้<br>แนบรูป/ไฟล์ได้ที่ช่อง Activity (📷 / 📎)"}</div>`;
+      body.innerHTML = `<div class="attg-empty">${items.length ? "ไม่มีไฟล์ประเภทนี้" : "ยังไม่มีไฟล์แนบในงานนี้<br>แนบรูป/ไฟล์ได้ที่ช่อง Activity"}</div>`;
       return;
     }
     let h = "";
@@ -8438,7 +8451,7 @@ function openAttachmentsGallery(task) {
       : `<figure class="attg-img"><img src="${x.src}" data-full="${x.full}" ${x.id ? `data-drive="${escapeHtml(x.id)}" onerror="attImgErr(this)"` : ""} data-name="${escapeHtml(x.name || "")}" alt="${escapeHtml(x.name || "รูปแนบ")}" loading="lazy"><div class="attg-meta" title="${escapeHtml(x.name || "")}">${metaTxt(x)}</div></figure>`).join("") + `</div>`;
     if (showFile) h += `<div class="attg-sec-h">ไฟล์ (${files.length})</div><div class="attg-files">` + files.map(x => x.kind === "busy"
       ? `<div class="attg-row">${attachmentsHtml({ files: [x.f] }, "").replace(/^<div class="att-files">|<\/div>$/g, "")}<span class="attg-meta">${metaTxt(x)}</span></div>`
-      : `<div class="attg-row"><a class="att-file" href="${driveViewUrl(x.id)}" target="_blank" rel="noopener" data-view="${escapeHtml(x.id)}" data-name="${escapeHtml(x.name || "")}" title="เปิดดูในแอป">${fileIcon(x.name)}<span class="att-fname">${escapeHtml(x.name || "ไฟล์")}</span>${x.size ? `<span class="att-fsize">${fmtBytes(x.size)}</span>` : ""}</a><a class="btn btn-sm" href="${driveDownloadUrl(x.id)}" target="_blank" rel="noopener" title="ดาวน์โหลด">⬇</a><span class="attg-meta">${metaTxt(x)}</span></div>`).join("") + `</div>`;
+      : `<div class="attg-row"><a class="att-file" href="${driveViewUrl(x.id)}" target="_blank" rel="noopener" data-view="${escapeHtml(x.id)}" data-name="${escapeHtml(x.name || "")}" title="เปิดดูในแอป">${fileIcon(x.name)}<span class="att-fname">${escapeHtml(x.name || "ไฟล์")}</span>${x.size ? `<span class="att-fsize">${fmtBytes(x.size)}</span>` : ""}</a><a class="btn btn-sm" href="${driveDownloadUrl(x.id)}" target="_blank" rel="noopener" title="ดาวน์โหลด">${ico("download")}</a><span class="attg-meta">${metaTxt(x)}</span></div>`).join("") + `</div>`;
     body.innerHTML = h;
     wireAttachments(body);   // images → lightbox, files → in-app viewer, ลองใหม่ → retry
   }
@@ -8478,7 +8491,7 @@ function openFileViewer({ id, name }) {
     <div class="fv-box" role="dialog" aria-modal="true">
       <div class="fv-head">
         <span class="fv-title">${fileIcon(name)} ${escapeHtml(name || "ไฟล์")}</span>
-        <a class="btn btn-sm" href="${driveDownloadUrl(id)}" target="_blank" rel="noopener">⬇ ดาวน์โหลด</a>
+        <a class="btn btn-sm" href="${driveDownloadUrl(id)}" target="_blank" rel="noopener">${ico("download")} ดาวน์โหลด</a>
         <a class="btn btn-sm" href="${driveViewUrl(id)}" target="_blank" rel="noopener">เปิดใน Drive</a>
         <button class="btn btn-ghost" data-close title="ปิด">✕</button>
       </div>
@@ -8764,7 +8777,7 @@ function mountPdfViewer(body, id, fallback) {
     } catch (err) {
       if (destroyed) return;
       if (/unknown action/.test(err.message || "")) { fallback(); return; }   // Apps Script not updated yet → Drive preview
-      msg.innerHTML = `<span>⚠️ เปิด PDF ไม่สำเร็จ: ${escapeHtml(driveErrMsg(err))}</span><button type="button" class="btn btn-sm">ใช้ตัวดูของ Google Drive แทน</button>`;
+      msg.innerHTML = `<span>${ico("alert")} เปิด PDF ไม่สำเร็จ: ${escapeHtml(driveErrMsg(err))}</span><button type="button" class="btn btn-sm">ใช้ตัวดูของ Google Drive แทน</button>`;
       msg.querySelector("button").addEventListener("click", fallback);
     }
   })();
@@ -8788,7 +8801,7 @@ function attImgErr(img) {
   if (n < 3) { img.dataset.retry = n + 1; setTimeout(() => { img.src = driveThumb(img.dataset.drive, 800) + "&r=" + (n + 1); }, 2500 * (n + 1)); return; }
   const a = document.createElement("a");
   a.className = "att-file"; a.href = driveViewUrl(img.dataset.drive); a.target = "_blank"; a.rel = "noopener";
-  a.innerHTML = `🖼️<span class="att-fname">${escapeHtml(img.dataset.name || "รูปแนบ")}</span>`;
+  a.innerHTML = `${ico("image")}<span class="att-fname">${escapeHtml(img.dataset.name || "รูปแนบ")}</span>`;
   img.replaceWith(a);
 }
 
@@ -8904,8 +8917,8 @@ function attachMentionPicker(input) {
 }
 // "who is this alert for" label — a person (👤 name) or a department
 function alertTarget(c) {
-  if (c.type !== "alert") return { name: "💬 กล่าวถึงคุณ" };
-  if (c.toUser) return { name: "👤 " + personName(teamProfiles.get(c.toUser)) };
+  if (c.type !== "alert") return { name: "กล่าวถึงคุณ" };
+  if (c.toUser) return { name: personName(teamProfiles.get(c.toUser)) };
   return getDept(c.toDept) || { name: c.toDept || "?" };
 }
 // my department in ANY board (same precedence as myDeptId(), which only covers the active board)
@@ -9005,7 +9018,7 @@ function openAlertPopup(list) {
   overlay.innerHTML = `
     <div class="modal alert-modal" role="alertdialog" aria-modal="true">
       <div class="modal-head">
-        <h3><span class="alert-bell-ico">🔔</span> มีการแจ้งเตือน <span data-count>${list.length}</span></h3>
+        <h3><span class="alert-bell-ico">${ico("bell")}</span> มีการแจ้งเตือน <span data-count>${list.length}</span></h3>
         <button class="btn btn-ghost" data-act="close" title="ปิดไว้ดูทีหลังที่กระดิ่ง">✕</button>
       </div>
       <div class="alert-list" data-list></div>
@@ -9022,15 +9035,15 @@ function openAlertPopup(list) {
     const bid = boardId || root.activeBoard;
     const ws = root.boards[bid] || state;
     const isAlert = alertIsForMeIn(c, ws);   // false = only an @mention of me (no reject / reply thread)
-    const dept = !isAlert ? { name: "💬 กล่าวถึงคุณ" }
-      : c.toUser ? { name: "👤 " + personName(teamProfiles.get(c.toUser)) }
+    const dept = !isAlert ? { name: "กล่าวถึงคุณ" }
+      : c.toUser ? { name: personName(teamProfiles.get(c.toUser)) }
       : (getDeptIn(ws, c.toDept) || { name: c.toDept || "?" });
     const card = document.createElement("div");
     card.className = "alert-card";
     card.innerHTML = `
       <div class="alert-card-top">
-        ${bid !== root.activeBoard ? `<span class="alert-board" title="อยู่ในปฏิทินนี้">📅 ${escapeHtml(boardNameOf(bid))}</span>` : ""}
-        <span class="alert-to">${isAlert ? "🔔 " : ""}${escapeHtml(dept.name)}</span>
+        ${bid !== root.activeBoard ? `<span class="alert-board" title="อยู่ในปฏิทินนี้">${ico("calendar")} ${escapeHtml(boardNameOf(bid))}</span>` : ""}
+        <span class="alert-to">${isAlert ? ico("bell") + " " : ""}${escapeHtml(dept.name)}</span>
         <span class="alert-from">จาก ${escapeHtml(c.author || "—")}</span>
         <span class="alert-time">${formatDateTimeTH(c.at)}</span>
       </div>
@@ -9140,7 +9153,7 @@ function openStatusReport() {
 
   let rowsHtml;
   if (pending.length === 0) {
-    rowsHtml = `<div class="rp-empty">🎉<br>ไม่มีงานค้าง${deptName ? ` ของแผนก ${escapeHtml(deptName)}` : ""}</div>`;
+    rowsHtml = `<div class="rp-empty">${ico("check-circle")}<br>ไม่มีงานค้าง${deptName ? ` ของแผนก ${escapeHtml(deptName)}` : ""}</div>`;
   } else {
     rowsHtml = pending.map(t => {
       const p = prog(t), remain = p.total - p.done, pc = p.total ? Math.round(p.done / p.total * 100) : 0;
@@ -9179,7 +9192,7 @@ function openStatusReport() {
   overlay.innerHTML = `
     <div class="modal report-modal" role="dialog" aria-modal="true">
       <div class="modal-head">
-        <h3>📋 รายงานสถานะงาน${deptName ? ` — ${escapeHtml(deptName)}` : ""}</h3>
+        <h3>${ico("clipboard")} รายงานสถานะงาน${deptName ? ` — ${escapeHtml(deptName)}` : ""}</h3>
         <button class="btn btn-ghost" data-act="close" title="ปิด">✕</button>
       </div>
       <div class="report-body">
@@ -9187,7 +9200,7 @@ function openStatusReport() {
           <div class="rp-sum-stat"><span class="rp-sum-num">${pending.length}</span><span class="rp-sum-lbl">งานค้าง</span></div>
           <div class="rp-sum-stat"><span class="rp-sum-num">${doneCount}</span><span class="rp-sum-lbl">เสร็จแล้ว</span></div>
           ${totTotal ? `<div class="rp-sum-stat"><span class="rp-sum-num">${pct}%</span><span class="rp-sum-lbl">เช็คลิสต์รวม (${totDone}/${totTotal})</span></div>` : ""}
-          <div class="rp-sum-board">📅 ${escapeHtml(boardName)}<br>${formatDateFullTH(today)}</div>
+          <div class="rp-sum-board">${ico("calendar")} ${escapeHtml(boardName)}<br>${formatDateFullTH(today)}</div>
         </div>
         ${deptId ? "" : `<div class="rp-note">ยังไม่ได้ตั้ง “แผนกของฉัน” — ตั้งที่ ⚙ ตั้งค่า › ผู้ใช้ เพื่อดูเฉพาะแผนกของคุณ (ตอนนี้แสดงรวมทุกแผนก)</div>`}
         <div class="rp-list">${rowsHtml}</div>
@@ -9220,45 +9233,54 @@ function openStatusReport() {
   document.addEventListener("keydown", onEsc, true);
 }
 
+// "which calendar am I on": the purple chip at the start of the toolbar + the handle on the right edge
+// both open the slide-out calendar drawer (only when there is more than one calendar to choose from)
 function renderBoardSwitcher() {
-  const el = document.getElementById("boardSwitcher");
-  if (!el) return;
   const vis = new Set(visibleBoardIds());
   const boards = (root.boardMeta || []).filter(b => vis.has(b.id));
-  // only one calendar allowed (e.g. Service people) → nothing to switch, hide the whole row
-  const row = document.getElementById("boardSwitcherRow") || el;
-  row.style.display = boards.length > 1 ? "" : "none";
   const cur = boards.find(b => b.id === root.activeBoard) || boards[0] || { name: "" };
-  el.innerHTML = `
-    <button type="button" class="dept-dd-btn board-dd-btn" aria-haspopup="listbox" title="สลับปฏิทิน">
-      <svg class="board-dd-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
-      <span class="dept-dd-label">${escapeHtml(cur.name)}</span>
-      <span class="dept-dd-caret">▾</span>
-    </button>`;
-  const btn = el.querySelector(".board-dd-btn");
-  btn.addEventListener("click", (e) => { e.stopPropagation(); openBoardDropdown(btn, boards); });
+  const many = boards.length > 1;
+  const chip = document.getElementById("boardChip");
+  if (chip) {
+    chip.innerHTML = `${ico("calendar")}<span>${escapeHtml(cur.name)}</span>`;
+    chip.classList.toggle("single", !many);
+    chip.title = many ? "ปฏิทินที่เปิดอยู่ — กดเพื่อสลับ" : "ปฏิทินที่เปิดอยู่";
+  }
+  const tab = document.getElementById("boardTab");
+  if (tab) { tab.hidden = !many; tab.innerHTML = `${ico("calendar")}ปฏิทิน`; }
 }
-// list of calendars the user may open; picking one switches immediately
-function openBoardDropdown(anchor, boards) {
-  if (document.querySelector(".board-dd-pop")) { document.querySelectorAll(".board-dd-pop").forEach(n => n.remove()); return; }   // 2nd click = close
-  const pop = document.createElement("div");
-  pop.className = "dept-dd-pop board-dd-pop";
-  pop.setAttribute("role", "listbox");
-  pop.innerHTML = boards.map(b => `
-    <button type="button" role="option" class="dept-dd-item${b.id === root.activeBoard ? " active" : ""}" data-board="${escapeHtml(b.id)}" aria-selected="${b.id === root.activeBoard}">
-      <span class="board-dd-tick">${b.id === root.activeBoard ? "✓" : ""}</span><span>${escapeHtml(b.name)}</span>
-    </button>`).join("");
-  document.body.appendChild(pop);
-  const r = anchor.getBoundingClientRect();
-  pop.style.top = (r.bottom + window.scrollY + 4) + "px";
-  pop.style.left = (r.left + window.scrollX) + "px";
-  pop.style.minWidth = r.width + "px";
-  function close() { pop.remove(); document.removeEventListener("mousedown", onDoc, true); document.removeEventListener("keydown", onEsc, true); }
-  function onDoc(e) { if (!pop.contains(e.target) && !anchor.contains(e.target)) close(); }
-  function onEsc(e) { if (e.key === "Escape") close(); }
-  pop.querySelectorAll("[data-board]").forEach(it => it.addEventListener("click", () => { close(); setBoard(it.dataset.board); }));
-  setTimeout(() => { document.addEventListener("mousedown", onDoc, true); document.addEventListener("keydown", onEsc, true); }, 0);
+function openBoardDrawer() {
+  if (document.querySelector(".board-drawer-overlay")) return;
+  const vis = new Set(visibleBoardIds());
+  const boards = (root.boardMeta || []).filter(b => vis.has(b.id));
+  if (boards.length < 2) return;
+  const ov = document.createElement("div");
+  ov.className = "board-drawer-overlay";
+  ov.innerHTML = `
+    <aside class="board-drawer" role="dialog" aria-label="สลับปฏิทิน">
+      <div class="board-drawer-head">${ico("calendar")} ปฏิทิน</div>
+      <div class="board-drawer-list">
+        ${boards.map(b => `
+          <button type="button" class="board-item${b.id === root.activeBoard ? " active" : ""}" data-board="${escapeHtml(b.id)}">
+            ${ico("calendar")}<span>${escapeHtml(b.name)}</span>${b.id === root.activeBoard ? `<span class="board-item-tick">${ico("check-circle")}</span>` : ""}
+          </button>`).join("")}
+      </div>
+    </aside>`;
+  document.body.appendChild(ov);
+  void ov.offsetWidth;   // commit the closed position first so the slide-in animates
+  ov.classList.add("open");
+  const close = () => {
+    document.removeEventListener("keydown", onEsc, true);
+    ov.classList.remove("open");
+    setTimeout(() => ov.remove(), 240);
+  };
+  const onEsc = (e) => { if (e.key === "Escape") { e.stopPropagation(); close(); } };
+  document.addEventListener("keydown", onEsc, true);
+  ov.addEventListener("mousedown", (e) => { if (e.target === ov) close(); });   // click the empty area → slide back
+  ov.querySelectorAll("[data-board]").forEach(b => b.addEventListener("click", () => { close(); setBoard(b.dataset.board); }));
 }
+document.getElementById("boardChip").addEventListener("click", openBoardDrawer);
+document.getElementById("boardTab").addEventListener("click", openBoardDrawer);
 
 function renderAll() {
   ensureVisibleBoard();   // must run first: may repoint `state` (e.g. a user just moved into/out of Service)
@@ -9269,7 +9291,6 @@ function renderAll() {
   renderMainView();
   renderTodayPanel();
   renderBell();
-  renderTrashButton();
   applySidebarPerm();
   renderUserBadge();   // keep the department chip in sync when it changes
   document.dispatchEvent(new Event("app-rendered"));   // an open task popup refreshes itself from the saved data
@@ -9281,13 +9302,14 @@ function applySidebarPerm() {
   set("btnQuickAdd", full);
   set("btnDrawReq", canSeeDeptButton("drawReqDepts"));
   set("btnImportReq", canSeeDeptButton("importReqDepts"));
+  // no request buttons for this person → drop the empty block too (otherwise it leaves a gap above "งานที่ต้องเสร็จ")
+  set("sbReqSection", canSeeDeptButton("drawReqDepts") || canSeeDeptButton("importReqDepts"));
 }
 // may the current user see a department-restricted action button (settings key = an array of dept ids)?
-// Admins always see it. Everyone else must (a) have full rights AND (b) belong to a department the
-// admin explicitly TICKED. Nothing ticked = only admins see it (even full members don't).
+// ★ 2026-10-06 (owner): admins NO LONGER see it automatically — same rule for everyone: (a) full rights AND
+//   (b) my department is TICKED in ⚙ การแสดงผล. Nothing ticked = nobody sees it.
 function canSeeDeptButton(settingKey) {
   if (root.activeBoard === SERVICE_BOARD) return false;   // drawing-request flow is factory-only — hidden on Service even for admins
-  if (isAdmin()) return true;
   if (!canFull()) return false;
   const my = myDeptId();
   const allow = (state.settings && state.settings[settingKey]) || [];
@@ -9298,7 +9320,6 @@ function canSeeDrawReq() { return canSeeDeptButton("drawReqDepts"); }
 
 document.getElementById("btnSettings").addEventListener("click", () => openSettingsModal(isAdmin() ? "statuses" : "notify"));
 document.getElementById("sbUserBadge").addEventListener("click", openMyProfileModal);
-document.getElementById("btnTrash").addEventListener("click", openTrashModal);
 document.getElementById("btnBell").addEventListener("click", () => {
   const list = pendingAlerts();
   if (list.length) openAlertPopup(list);
