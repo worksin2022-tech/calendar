@@ -1859,6 +1859,11 @@ body.chip-dragging .task-chip.span-bar { pointer-events: none; }   /* let the da
   padding: 6px 8px; font-size: 13px;
 }
 .cl-tpl-row input[type=text]:focus { outline: none; border-color: var(--accent); }
+.auto-row { flex-wrap: wrap; }
+.auto-row select.auto-target { flex: 0 0 auto; font-weight: 600; }
+.auto-row select { flex: 1 1 110px; min-width: 0; border: 1px solid var(--border-strong); border-radius: 6px; padding: 6px 8px; font-size: 13px; background: #fff; color: var(--text); }
+.auto-row .auto-word { font-size: 12px; color: var(--text-dim); }
+.auto-row.off select, .auto-row.off .auto-word { opacity: .45; }
 
 /* day detail (when more tasks) */
 .day-tasks { display: flex; flex-direction: column; gap: 6px; }
@@ -2757,6 +2762,94 @@ function isDeptComplete(task, deptId) {
 function deptUsesChecklist(task, deptId) {
   return deptProgress(task, deptId).total > 0;
 }
+/* ---------- ⚡ Automation: checklist → status of the TASK or of each CABINET (subtask) ----------
+   rule = { id, on, target:"sub"|"task", when:"all"|"done"|"start", deptId, statusId }
+   (no `target` = "task": rules made before cabinets were an option keep working as they were).
+   target "sub" checks each cabinet's OWN checklist and sets that cabinet's status.
+   A rule fires only on the false→true EDGE of its condition (compare a snapshot taken before the edit),
+   so re-opening/re-saving a finished task never flips a status back, and a status someone set by hand
+   afterwards stays. Rules run top-to-bottom; when several fire at once the last one wins (one log line). */
+function automationRules() {
+  return ((state.settings && state.settings.automations) || []).filter(r => r && r.on !== false && r.statusId);
+}
+function automationTarget(r) { return r.target === "sub" ? "sub" : "task"; }
+function automationCond(task, r) {
+  if (r.when === "all") {
+    const cl = overallChecklist(task);
+    const stages = task.deptStages || [];
+    if (stages.length) return stages.every(s => isDeptComplete(task, s.deptId)) && cl.done === cl.total;
+    return cl.total > 0 && cl.done === cl.total;
+  }
+  if (!r.deptId || !getDept(r.deptId)) return false;
+  if (r.when === "done") return deptUsesChecklist(task, r.deptId) && isDeptComplete(task, r.deptId);
+  if (r.when === "start") return deptProgress(task, r.deptId).done > 0;
+  return false;
+}
+// the same conditions, on one cabinet's own checklist
+function automationSubCond(sub, r) {
+  if (r.when === "all") { const p = checklistProgress(sub); return p.total > 0 && p.done === p.total; }
+  if (!r.deptId || !getDept(r.deptId)) return false;
+  const p = checklistProgress(sub, r.deptId);
+  if (r.when === "done") return p.total > 0 && p.done === p.total;
+  if (r.when === "start") return p.done > 0;
+  return false;
+}
+function automationSnapshot(task) {
+  const m = {};
+  if (task) automationRules().forEach(r => {
+    if (automationTarget(r) === "sub") (task.subtasks || []).forEach(sub => { m[r.id + ":" + sub.id] = automationSubCond(sub, r); });
+    else m[r.id] = automationCond(task, r);
+  });
+  return m;
+}
+function automationWhenLabel(r) {
+  if (r.when === "all") return automationTarget(r) === "sub" ? "เช็คลิสต์ครบทุกแผนก" : "ทุกแผนกเสร็จ";
+  const dn = (getDept(r.deptId) || {}).name || "?";
+  return r.when === "start" ? `เริ่มติ๊กเช็คลิสต์ ${dn}` : `เช็คลิสต์ ${dn} ครบ`;
+}
+// apply rules whose condition just became true; returns true when any status changed.
+// `manualBase` (the task popup's saved copy): a task/cabinet whose status the person changed by hand
+// in this same save is left alone — their pick wins.
+function runAutomations(task, before, manualBase) {
+  if (!task || !canEdit()) return false;
+  before = before || {};
+  const validStatus = id => (state.statuses || []).some(x => x.id === id);
+  const baseSub = id => manualBase && (manualBase.subtasks || []).find(x => x.id === id);
+  let changed = false;
+  // task
+  const taskLocked = manualBase && manualBase.statusId !== task.statusId;
+  const startId = task.statusId;
+  let fired = null;
+  automationRules().forEach(r => {
+    if (automationTarget(r) !== "task" || taskLocked) return;
+    if (before[r.id] || !automationCond(task, r) || !validStatus(r.statusId)) return;
+    fired = r; task.statusId = r.statusId;
+  });
+  if (task.statusId !== startId) {
+    logActivity(task, `⚡ อัตโนมัติ (${automationWhenLabel(fired)}): ${getStatus(startId).name} → ${getStatus(task.statusId).name}`);
+    notifyStatusChange(task, null, startId, task.statusId);
+    toast(`⚡ งาน → “${getStatus(task.statusId).name}”`);
+    changed = true;
+  }
+  // cabinets
+  (task.subtasks || []).forEach(sub => {
+    const b = baseSub(sub.id);
+    if (b && b.statusId !== sub.statusId) return;
+    const subStart = sub.statusId;
+    let subFired = null;
+    automationRules().forEach(r => {
+      if (automationTarget(r) !== "sub") return;
+      if (before[r.id + ":" + sub.id] || !automationSubCond(sub, r) || !validStatus(r.statusId)) return;
+      subFired = r; sub.statusId = r.statusId;
+    });
+    if (sub.statusId === subStart) return;
+    logActivity(task, `⚡ อัตโนมัติ ตู้ “${sub.text || "(ไม่มีชื่อ)"}” (${automationWhenLabel(subFired)}): ${getStatus(subStart).name} → ${getStatus(sub.statusId).name}`);
+    notifyStatusChange(task, sub, subStart, sub.statusId);
+    toast(`⚡ ตู้ ${sub.text || ""} → “${getStatus(sub.statusId).name}”`);
+    changed = true;
+  });
+  return changed;
+}
 // per-cabinet, per-department due date: a cabinet-specific override, else this department's
 // project stage due. Returns null when neither is set (= cabinet not scheduled for this dept).
 function cabinetDeptDue(task, sub, deptId) {
@@ -3083,6 +3176,8 @@ function migrateState(s) {
   // which departments may see the "ดึงคำขอจากฟอร์ม" / "ยื่นขอแบบ" buttons ([] = everyone with full edit rights)
   if (!Array.isArray(s.settings.importReqDepts)) s.settings.importReqDepts = [];
   if (!Array.isArray(s.settings.drawReqDepts)) s.settings.drawReqDepts = [];
+  // ⚡ automation rules [{ id, on, target:"sub"|"task", when:"all"|"done"|"start", deptId, statusId }] — board-wide (admin sets)
+  if (!Array.isArray(s.settings.automations)) s.settings.automations = [];
   if (typeof s.settings.currentUser !== "string") s.settings.currentUser = "";
   if (typeof s.settings.myDept !== "string") s.settings.myDept = "";
   // default department stages for new tasks; seed with all current departments, drop any removed ones
@@ -4464,6 +4559,7 @@ function openChecklistPopover(anchorEl, sub, onChange, opts = {}) {
     clearTimeout(closeTimer);
     pop.remove();
     if (_clPopAnchor === anchorEl) _clPopAnchor = null;
+    opts.onClose && opts.onClose();
     document.removeEventListener("mousedown", onDoc, true);
     document.removeEventListener("keydown", onEsc, true);
     anchorEl.removeEventListener("mouseenter", cancelClose);
@@ -5724,8 +5820,10 @@ function openTaskModal(taskId, defaults={}) {
     if (!canEdit()) local = { ...base, comments: task.comments };
     else if (!(task.title || "").trim()) local = { ...task, title: base.title };
     if (deepEq(local, base)) { setSavedNote("✓ บันทึกอัตโนมัติ"); return; }
+    let autoFired = false;
     if (canEdit()) {
       diffTaskActivity(base, local).forEach(text => logActivity(local, text));   // only MY changes (base → mine)
+      autoFired = runAutomations(local, automationSnapshot(base), base);   // ⚡ (a status picked by hand wins)
       notifyAssigneeChanges(base, local);
       notifyTaskDiff(base, local);
     }
@@ -5734,7 +5832,7 @@ function openTaskModal(taskId, defaults={}) {
     state.tasks[state.tasks.indexOf(real)] = JSON.parse(JSON.stringify(merged));
     base = JSON.parse(JSON.stringify(merged));
     saveState();
-    if (!deepEq(merged, task)) adoptIntoModal(merged);
+    if (autoFired || !deepEq(merged, task)) adoptIntoModal(merged);
     renderAll();
     setSavedNote("✓ บันทึกแล้ว " + new Date().toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" }));
   }
@@ -6118,13 +6216,19 @@ function buildTpCabRow(t, sub, ed, today, deptId) {
   });
   if (showCl) {
     const clBtn = row.querySelector(".tp-cl-btn");
-    const openCl = () => openChecklistPopover(clBtn, sub, () => {
-      const p = checklistProgress(sub, deptId);
-      clBtn.querySelector(".cl-count").textContent = `${p.done}/${p.total}`;
-      clBtn.classList.toggle("full", p.total > 0 && p.done === p.total);
-      t.updatedAt = Date.now();
-      saveState();
-    }, { deptId, task: t });
+    let autoBase = null, autoFired = false;
+    const openCl = () => {
+      if (_clPopAnchor !== clBtn) { autoBase = automationSnapshot(t); autoFired = false; }
+      openChecklistPopover(clBtn, sub, () => {
+        const p = checklistProgress(sub, deptId);
+        clBtn.querySelector(".cl-count").textContent = `${p.done}/${p.total}`;
+        clBtn.classList.toggle("full", p.total > 0 && p.done === p.total);
+        if (runAutomations(t, autoBase)) autoFired = true;   // ⚡
+        autoBase = automationSnapshot(t);
+        t.updatedAt = Date.now();
+        saveState();
+      }, { deptId, task: t, onClose: () => { if (autoFired) { autoFired = false; renderAll(); } } });
+    };
     clBtn.addEventListener("click", (e) => { e.stopPropagation(); openCl(); });
     clBtn.addEventListener("mouseenter", openCl);
   }
@@ -6286,8 +6390,10 @@ function renderTodayPanelDept(deptIds, today, pass) {
     if (cb) {
       cb.addEventListener("click", (e) => e.stopPropagation());
       cb.addEventListener("change", () => {
+        const autoBase = automationSnapshot(t);
         stg.done = cb.checked;
         logActivity(t, cb.checked ? `✓ แผนก ${dn} เสร็จ` : `ยกเลิกเสร็จ แผนก ${dn}`);
+        runAutomations(t, autoBase);   // ⚡
         if (cb.checked && taskRelevantToMe(t)) pushNotify("done", "✅ แผนกเสร็จ", `${t.title} · ${dn}`, "dd-" + t.id + deptId);
         t.updatedAt = Date.now(); saveState(); renderAll();
       });
@@ -6399,6 +6505,7 @@ function openSettingsModal(initialTab = "statuses") {
           <button class="settings-nav-item" data-tab="departments">${ico("building")} แผนก</button>
           <button class="settings-nav-item" data-tab="fields">${ico("sliders")} ฟิลด์เพิ่มเติม</button>
           <button class="settings-nav-item" data-tab="checklist">${ico("list-check")} เช็คลิสต์ตู้</button>
+          <button class="settings-nav-item" data-tab="automation">${ico("zap")} อัตโนมัติ</button>
           <button class="settings-nav-item" data-tab="display">${ico("monitor")} การแสดงผล</button>
           <button class="settings-nav-item" data-tab="notify">${ico("bell")} การแจ้งเตือน</button>
           <button class="settings-nav-item" data-tab="trash">${ico("trash")} ถังขยะ</button>
@@ -6416,7 +6523,7 @@ function openSettingsModal(initialTab = "statuses") {
   // non-admins: 🔔 การแจ้งเตือน (+ ถังขยะ for people allowed to delete tasks)
   const memberTabs = canFull() ? ["notify", "trash"] : ["notify"];
   if (!isAdmin()) navBtns.forEach(b => { if (!memberTabs.includes(b.dataset.tab)) b.remove(); });
-  const PANELS = { user: buildUserPanel, users: buildUsersAdminPanel, statuses: buildStatusesPanel, departments: buildDeptsPanel, fields: buildFieldsPanel, checklist: buildChecklistTemplatePanel, display: buildDisplayPanel, notify: buildNotifyPanel, history: buildHistoryPanel, trash: buildTrashPanel, data: buildDataPanel };
+  const PANELS = { user: buildUserPanel, users: buildUsersAdminPanel, statuses: buildStatusesPanel, departments: buildDeptsPanel, fields: buildFieldsPanel, checklist: buildChecklistTemplatePanel, automation: buildAutomationPanel, display: buildDisplayPanel, notify: buildNotifyPanel, history: buildHistoryPanel, trash: buildTrashPanel, data: buildDataPanel };
 
   function showTab(tab) {
     if (!isAdmin() && !memberTabs.includes(tab)) tab = "notify";
@@ -7135,6 +7242,83 @@ function buildChecklistTemplatePanel(container) {
     saveState(); renderRows();
     listEl.querySelectorAll('input')[curDept.checklist.length - 1]?.focus();
   });
+}
+
+/* Settings → ⚡ อัตโนมัติ — "when <checklist condition> → set task status". Board-wide (state.settings). */
+function buildAutomationPanel(container) {
+  if (!Array.isArray(state.settings.automations)) state.settings.automations = [];
+  const rules = state.settings.automations;
+  const sec = document.createElement("div");
+  sec.className = "settings-section";
+  sec.innerHTML = `
+    <h4 class="settings-h">อัตโนมัติ</h4>
+    <div data-list></div>
+    <button class="btn btn-sm" data-act="add">+ เพิ่มกฎ</button>
+  `;
+  container.appendChild(sec);
+  const listEl = sec.querySelector("[data-list]");
+  const depts = state.departments || [];
+  const opt = (v, label) => `<option value="${escapeHtml(v)}">${escapeHtml(label)}</option>`;
+  const whenOptions = (r) => {
+    let h = opt("all", automationWhenLabel({ when: "all", target: r.target }));
+    h += `<optgroup label="เช็คลิสต์ครบ">` + depts.map(d => opt("done:" + d.id, `เช็คลิสต์ ${d.name} ครบ`)).join("") + `</optgroup>`;
+    h += `<optgroup label="เริ่มติ๊ก">` + depts.map(d => opt("start:" + d.id, `เริ่มติ๊กเช็คลิสต์ ${d.name}`)).join("") + `</optgroup>`;
+    if (r.when !== "all" && !depts.some(d => d.id === r.deptId)) h += opt(r.when + ":" + r.deptId, "(แผนกถูกลบแล้ว)");
+    return h;
+  };
+  const statusOptions = (r) => {
+    const sts = state.statuses || [];
+    let h = sts.map(st => opt(st.id, st.name)).join("");
+    if (!sts.some(st => st.id === r.statusId)) h = opt(r.statusId || "", "(สถานะถูกลบแล้ว)") + h;
+    return h;
+  };
+  function renderRows() {
+    listEl.innerHTML = rules.length ? "" : `<div class="cf-empty">ยังไม่มีกฎ</div>`;
+    rules.forEach(r => {
+      const row = document.createElement("div");
+      row.className = "cl-tpl-row auto-row" + (r.on === false ? " off" : "");
+      row.innerHTML = `
+        <input type="checkbox" data-on title="เปิด/ปิด" ${r.on === false ? "" : "checked"} />
+        <select data-target class="auto-target"><option value="sub">ตู้</option><option value="task">งาน</option></select>
+        <span class="auto-word">เมื่อ</span>
+        <select data-when>${whenOptions(r)}</select>
+        <span class="auto-word">→ สถานะ</span>
+        <select data-status>${statusOptions(r)}</select>
+        <button class="btn btn-ghost btn-sm btn-danger" data-act="del" title="ลบ">✕</button>
+      `;
+      const whenSel = row.querySelector("[data-when]"), stSel = row.querySelector("[data-status]"), tgSel = row.querySelector("[data-target]");
+      tgSel.value = automationTarget(r);
+      tgSel.addEventListener("change", () => {
+        r.target = tgSel.value;
+        whenSel.options[0].textContent = automationWhenLabel({ when: "all", target: r.target });
+        saveState();
+      });
+      whenSel.value = r.when === "all" ? "all" : r.when + ":" + r.deptId;
+      stSel.value = r.statusId || "";
+      row.querySelector("[data-on]").addEventListener("change", (e) => { r.on = e.target.checked; row.classList.toggle("off", !r.on); saveState(); });
+      whenSel.addEventListener("change", () => {
+        const i = whenSel.value.indexOf(":");
+        r.when = i < 0 ? whenSel.value : whenSel.value.slice(0, i);
+        r.deptId = i < 0 ? null : whenSel.value.slice(i + 1);
+        saveState();
+      });
+      stSel.addEventListener("change", () => { r.statusId = stSel.value; saveState(); });
+      row.querySelector('[data-act="del"]').addEventListener("click", async () => {
+        if (!(await confirmDialog({ title: "ลบกฎนี้?", message: `${automationWhenLabel(r)} → ${getStatus(r.statusId).name}` }))) return;
+        const idx = rules.indexOf(r); if (idx >= 0) rules.splice(idx, 1);
+        saveState(); renderRows();
+      });
+      listEl.appendChild(row);
+    });
+  }
+  sec.querySelector('[data-act="add"]').addEventListener("click", () => {
+    const sts = state.statuses || [];
+    const done = sts.find(st => st.isDone) || sts[sts.length - 1];
+    if (!done) return;
+    rules.push({ id: uid("au"), on: true, target: "sub", when: "all", deptId: null, statusId: done.id });
+    saveState(); renderRows();
+  });
+  renderRows();
 }
 
 /* Settings → การแสดงผล */
@@ -8079,7 +8263,7 @@ function renderMainView() {
 /* ----- Browser notifications (Notification API) — configurable per event type in ⚙ การแจ้งเตือน ----- */
 const NOTIF_SUPPORTED = typeof window !== "undefined" && "Notification" in window;
 // line icon set — one style everywhere (stroke = currentColor). ico("bell"), ico("trash", "ico ico-lg")
-const ICONS = {"bell": "<path d=\"M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9\"/><path d=\"M10.3 21a1.94 1.94 0 0 0 3.4 0\"/>", "settings": "<circle cx=\"12\" cy=\"12\" r=\"3\"/><path d=\"M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z\"/>", "search": "<circle cx=\"11\" cy=\"11\" r=\"7\"/><path d=\"m21 21-4.3-4.3\"/>", "ruler": "<path d=\"M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.41 2.41 0 0 1 0-3.4l2.6-2.6a2.41 2.41 0 0 1 3.4 0Z\"/><path d=\"m14.5 12.5 2-2M11.5 9.5l2-2M8.5 6.5l2-2M17.5 15.5l2-2\"/>", "inbox": "<path d=\"M22 12h-6l-2 3h-4l-2-3H2\"/><path d=\"M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z\"/>", "trash": "<path d=\"M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6\"/>", "clipboard": "<rect x=\"8\" y=\"2\" width=\"8\" height=\"4\" rx=\"1\"/><path d=\"M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2M9 12h6M9 16h4\"/>", "printer": "<path d=\"M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2\"/><rect x=\"6\" y=\"14\" width=\"12\" height=\"8\" rx=\"1\"/>", "user": "<circle cx=\"12\" cy=\"8\" r=\"4\"/><path d=\"M4 21a8 8 0 0 1 16 0\"/>", "users": "<path d=\"M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2\"/><circle cx=\"9\" cy=\"7\" r=\"4\"/><path d=\"M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75\"/>", "tag": "<path d=\"M12.6 2.6A2 2 0 0 0 11.2 2H4a2 2 0 0 0-2 2v7.2a2 2 0 0 0 .6 1.4l8.7 8.7a2.4 2.4 0 0 0 3.4 0l6.6-6.6a2.4 2.4 0 0 0 0-3.4z\"/><circle cx=\"7.5\" cy=\"7.5\" r=\"1.5\"/>", "building": "<rect x=\"4\" y=\"2\" width=\"16\" height=\"20\" rx=\"2\"/><path d=\"M9 22v-4h6v4M8 6h.01M12 6h.01M16 6h.01M8 10h.01M12 10h.01M16 10h.01M8 14h.01M12 14h.01M16 14h.01\"/>", "sliders": "<path d=\"M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6\"/>", "list-check": "<path d=\"m3 17 2 2 4-4M3 7l2 2 4-4M13 6h8M13 12h8M13 18h8\"/>", "monitor": "<rect x=\"2\" y=\"3\" width=\"20\" height=\"14\" rx=\"2\"/><path d=\"M8 21h8M12 17v4\"/>", "history": "<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\"/><path d=\"M3 3v5h5M12 7v5l4 2\"/>", "restore": "<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\"/><path d=\"M3 3v5h5\"/>", "database": "<ellipse cx=\"12\" cy=\"5\" rx=\"9\" ry=\"3\"/><path d=\"M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5M3 12c0 1.66 4 3 9 3s9-1.34 9-3\"/>", "calendar": "<rect x=\"3\" y=\"4\" width=\"18\" height=\"18\" rx=\"2\"/><path d=\"M16 2v4M8 2v4M3 10h18\"/>", "download": "<path d=\"M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3\"/>", "upload": "<path d=\"M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12\"/>", "camera": "<path d=\"M14.5 4h-5L7.5 6.5H5A2 2 0 0 0 3 8.5v9a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2h-2.5z\"/><circle cx=\"12\" cy=\"12.5\" r=\"3.5\"/>", "clip": "<path d=\"M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48\"/>", "chart": "<path d=\"M3 3v18h18M18 17V9M13 17V5M8 17v-3\"/>", "edit": "<path d=\"M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z\"/><path d=\"m15 5 4 4\"/>", "flag": "<path d=\"M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1zM4 22v-7\"/>", "ban": "<circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"m4.9 4.9 14.2 14.2\"/>", "clock": "<circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"M12 6v6l4 2\"/>", "mail": "<rect x=\"2\" y=\"4\" width=\"20\" height=\"16\" rx=\"2\"/><path d=\"m22 7-10 5L2 7\"/>", "cloud": "<path d=\"M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z\"/>", "logout": "<path d=\"M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9\"/>", "check-circle": "<circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"m9 12 2 2 4-4\"/>", "check-square": "<rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"2\"/><path d=\"m9 12 2 2 4-4\"/>", "eye": "<path d=\"M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z\"/><circle cx=\"12\" cy=\"12\" r=\"3\"/>", "pen": "<path d=\"M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z\"/>", "crown": "<path d=\"m2 6 4 11h12l4-11-6 5-4-7-4 7-6-5zM6 21h12\"/>", "message": "<path d=\"M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z\"/>", "alert": "<path d=\"m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z\"/><path d=\"M12 9v4M12 17h.01\"/>", "x-circle": "<circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"m15 9-6 6M9 9l6 6\"/>", "send": "<path d=\"m22 2-7 20-4-9-9-4Z\"/><path d=\"M22 2 11 13\"/>", "copy": "<rect x=\"8\" y=\"8\" width=\"14\" height=\"14\" rx=\"2\"/><path d=\"M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2\"/>", "file": "<path d=\"M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z\"/><path d=\"M14 2v6h6\"/>", "file-text": "<path d=\"M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z\"/><path d=\"M14 2v6h6M16 13H8M16 17H8M10 9H8\"/>", "file-sheet": "<path d=\"M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z\"/><path d=\"M14 2v6h6M8 13h8M8 17h8M12 11v8\"/>", "image": "<rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"2\"/><circle cx=\"9\" cy=\"9\" r=\"2\"/><path d=\"m21 15-3.09-3.09a2 2 0 0 0-2.82 0L6 21\"/>", "archive": "<rect x=\"2\" y=\"3\" width=\"20\" height=\"5\" rx=\"1\"/><path d=\"M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8M10 12h4\"/>"};
+const ICONS = {"zap": "<polygon points=\"13 2 3 14 12 14 11 22 21 10 12 10 13 2\"/>", "bell": "<path d=\"M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9\"/><path d=\"M10.3 21a1.94 1.94 0 0 0 3.4 0\"/>", "settings": "<circle cx=\"12\" cy=\"12\" r=\"3\"/><path d=\"M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z\"/>", "search": "<circle cx=\"11\" cy=\"11\" r=\"7\"/><path d=\"m21 21-4.3-4.3\"/>", "ruler": "<path d=\"M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.41 2.41 0 0 1 0-3.4l2.6-2.6a2.41 2.41 0 0 1 3.4 0Z\"/><path d=\"m14.5 12.5 2-2M11.5 9.5l2-2M8.5 6.5l2-2M17.5 15.5l2-2\"/>", "inbox": "<path d=\"M22 12h-6l-2 3h-4l-2-3H2\"/><path d=\"M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z\"/>", "trash": "<path d=\"M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6\"/>", "clipboard": "<rect x=\"8\" y=\"2\" width=\"8\" height=\"4\" rx=\"1\"/><path d=\"M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2M9 12h6M9 16h4\"/>", "printer": "<path d=\"M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2\"/><rect x=\"6\" y=\"14\" width=\"12\" height=\"8\" rx=\"1\"/>", "user": "<circle cx=\"12\" cy=\"8\" r=\"4\"/><path d=\"M4 21a8 8 0 0 1 16 0\"/>", "users": "<path d=\"M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2\"/><circle cx=\"9\" cy=\"7\" r=\"4\"/><path d=\"M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75\"/>", "tag": "<path d=\"M12.6 2.6A2 2 0 0 0 11.2 2H4a2 2 0 0 0-2 2v7.2a2 2 0 0 0 .6 1.4l8.7 8.7a2.4 2.4 0 0 0 3.4 0l6.6-6.6a2.4 2.4 0 0 0 0-3.4z\"/><circle cx=\"7.5\" cy=\"7.5\" r=\"1.5\"/>", "building": "<rect x=\"4\" y=\"2\" width=\"16\" height=\"20\" rx=\"2\"/><path d=\"M9 22v-4h6v4M8 6h.01M12 6h.01M16 6h.01M8 10h.01M12 10h.01M16 10h.01M8 14h.01M12 14h.01M16 14h.01\"/>", "sliders": "<path d=\"M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6\"/>", "list-check": "<path d=\"m3 17 2 2 4-4M3 7l2 2 4-4M13 6h8M13 12h8M13 18h8\"/>", "monitor": "<rect x=\"2\" y=\"3\" width=\"20\" height=\"14\" rx=\"2\"/><path d=\"M8 21h8M12 17v4\"/>", "history": "<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\"/><path d=\"M3 3v5h5M12 7v5l4 2\"/>", "restore": "<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\"/><path d=\"M3 3v5h5\"/>", "database": "<ellipse cx=\"12\" cy=\"5\" rx=\"9\" ry=\"3\"/><path d=\"M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5M3 12c0 1.66 4 3 9 3s9-1.34 9-3\"/>", "calendar": "<rect x=\"3\" y=\"4\" width=\"18\" height=\"18\" rx=\"2\"/><path d=\"M16 2v4M8 2v4M3 10h18\"/>", "download": "<path d=\"M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3\"/>", "upload": "<path d=\"M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12\"/>", "camera": "<path d=\"M14.5 4h-5L7.5 6.5H5A2 2 0 0 0 3 8.5v9a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2h-2.5z\"/><circle cx=\"12\" cy=\"12.5\" r=\"3.5\"/>", "clip": "<path d=\"M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48\"/>", "chart": "<path d=\"M3 3v18h18M18 17V9M13 17V5M8 17v-3\"/>", "edit": "<path d=\"M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z\"/><path d=\"m15 5 4 4\"/>", "flag": "<path d=\"M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1zM4 22v-7\"/>", "ban": "<circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"m4.9 4.9 14.2 14.2\"/>", "clock": "<circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"M12 6v6l4 2\"/>", "mail": "<rect x=\"2\" y=\"4\" width=\"20\" height=\"16\" rx=\"2\"/><path d=\"m22 7-10 5L2 7\"/>", "cloud": "<path d=\"M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z\"/>", "logout": "<path d=\"M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9\"/>", "check-circle": "<circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"m9 12 2 2 4-4\"/>", "check-square": "<rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"2\"/><path d=\"m9 12 2 2 4-4\"/>", "eye": "<path d=\"M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z\"/><circle cx=\"12\" cy=\"12\" r=\"3\"/>", "pen": "<path d=\"M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z\"/>", "crown": "<path d=\"m2 6 4 11h12l4-11-6 5-4-7-4 7-6-5zM6 21h12\"/>", "message": "<path d=\"M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z\"/>", "alert": "<path d=\"m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z\"/><path d=\"M12 9v4M12 17h.01\"/>", "x-circle": "<circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"m15 9-6 6M9 9l6 6\"/>", "send": "<path d=\"m22 2-7 20-4-9-9-4Z\"/><path d=\"M22 2 11 13\"/>", "copy": "<rect x=\"8\" y=\"8\" width=\"14\" height=\"14\" rx=\"2\"/><path d=\"M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2\"/>", "file": "<path d=\"M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z\"/><path d=\"M14 2v6h6\"/>", "file-text": "<path d=\"M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z\"/><path d=\"M14 2v6h6M16 13H8M16 17H8M10 9H8\"/>", "file-sheet": "<path d=\"M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z\"/><path d=\"M14 2v6h6M8 13h8M8 17h8M12 11v8\"/>", "image": "<rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"2\"/><circle cx=\"9\" cy=\"9\" r=\"2\"/><path d=\"m21 15-3.09-3.09a2 2 0 0 0-2.82 0L6 21\"/>", "archive": "<rect x=\"2\" y=\"3\" width=\"20\" height=\"5\" rx=\"1\"/><path d=\"M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8M10 12h4\"/>"};
 const ICON_ATTR = 'viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"';
 function ico(name, cls = "ico") { return ICONS[name] ? `<svg class="${cls}" ${ICON_ATTR}>${ICONS[name]}</svg>` : ""; }
 // confirm dialogs used to take an emoji — map the old ones, or pass an icon name
