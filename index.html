@@ -186,6 +186,45 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
 .board-tab { position: fixed; right: 0; top: 50%; z-index: 120; transform: translateY(-50%); display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 10px 7px; border: 1px solid var(--border-strong); border-right: 0; border-radius: 10px 0 0 10px; background: #fff; color: var(--accent); box-shadow: var(--shadow-sm); cursor: pointer; font: inherit; font-size: 11px; font-weight: 700; line-height: 1.1; }
 .board-tab .ico { width: 18px; height: 18px; }
 .board-tab:hover { background: #f8f7ff; }
+/* ★ right-edge handles: a stack of half-circles that grow into a labelled pill on hover; click = slide-out panel */
+.side-tabs { position: fixed; right: 0; top: 50%; transform: translateY(-50%); z-index: 120; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; pointer-events: none; }
+.side-tab { pointer-events: auto; position: relative; display: flex; align-items: center; gap: 8px; height: 44px; width: 30px; padding: 0 0 0 9px; overflow: hidden; white-space: nowrap; border: 1px solid var(--border-strong); border-right: 0; border-radius: 22px 0 0 22px; background: #fff; color: var(--accent); box-shadow: var(--shadow-sm); cursor: pointer; font: inherit; font-size: 12px; font-weight: 700; transition: width .2s ease, padding .2s ease, background .15s; }
+.side-tab[hidden] { display: none; }
+.side-tab .ico { width: 18px; height: 18px; flex: 0 0 auto; }
+.side-tab-label { opacity: 0; transition: opacity .15s; }
+.side-tab:hover, .side-tab:focus-visible { width: 100px; padding-left: 13px; background: #f8f7ff; }
+.side-tab:hover .side-tab-label, .side-tab:focus-visible .side-tab-label { opacity: 1; }
+.side-tab-count { position: absolute; top: 3px; left: 3px; min-width: 14px; height: 14px; padding: 0 3px; border-radius: 7px; background: #f59e0b; color: #fff; font-size: 9.5px; line-height: 14px; text-align: center; }
+.side-tab:hover .side-tab-count { position: static; margin-left: auto; margin-right: 8px; }
+#starTab { color: #d97706; }
+#starTab .ico { fill: #fbbf24; }
+@media (hover: none) { .side-tab { width: 36px; } }
+.star-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; background: #fff; cursor: pointer; }
+.star-item:hover { background: #f9fafb; }
+.star-dot { width: 10px; height: 10px; border-radius: 50%; flex: 0 0 auto; }
+.star-main { flex: 1; min-width: 0; }
+.star-title { font-size: 13.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.star-sub { font-size: 11.5px; color: var(--text-dim); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.star-od { color: var(--danger); font-weight: 700; }
+.star-off { flex: 0 0 auto; border: 0; background: none; padding: 4px; border-radius: 6px; cursor: pointer; color: #d97706; display: inline-flex; }
+.star-off .ico { fill: #fbbf24; }
+.star-off:hover { background: #fef3c7; }
+.tm-star .ico { color: var(--text-faint); }
+.tm-star.on .ico { color: #d97706; fill: #fbbf24; }
+.chip-star { width: 11px; height: 11px; flex: 0 0 auto; color: #d97706; fill: #fbbf24; }
+.chip-so-row { display: flex; align-items: center; gap: 6px; min-width: 0; margin-bottom: -1px; }
+.chip-so-row .as-stack { margin-left: auto; flex: 0 0 auto; }
+.chip-so { flex: 0 1 auto; min-width: 0; max-width: 100%; height: 15px; line-height: 15px; padding: 0 5px; border-radius: 4px; background: rgba(16,24,40,.07); color: var(--text-dim); font-size: 10px; font-weight: 600; letter-spacing: .2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tp-so { flex: 0 0 auto; padding: 0 6px; height: 18px; line-height: 18px; border-radius: 4px; background: #eef0f3; color: var(--text-dim); font-size: 10.5px; font-weight: 600; }
+.field.tm-title-row { flex-direction: row; gap: 8px; }
+.tm-title-row .tm-so { flex: 0 0 calc((100% - 8px) / 5); min-width: 0; }   /* SO = 1/4 of the name field */
+.tm-title-row .tm-name { flex: 1 1 0; min-width: 0; }
+.extra-input { flex: 1; min-width: 0; border: 1px solid var(--border-strong); border-radius: 6px; padding: 5px 8px; font: inherit; font-size: 12.5px; background: #fff; }
+.extra-input:focus { outline: none; border-color: var(--accent); }
+.extra-link-open { flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border: 1px solid var(--border-strong); border-radius: 6px; color: var(--accent); text-decoration: none; font-weight: 700; }
+.extra-link-open.off { color: var(--text-faint); pointer-events: none; opacity: .5; }
+.cf-type-row { margin: 6px 0 2px; }
+.cf-type-row select { padding: 4px 8px; border: 1px solid var(--border-strong); border-radius: 6px; font: inherit; font-size: 12.5px; }
 .board-drawer-overlay { position: fixed; inset: 0; z-index: 140; background: rgba(16,24,40,0); transition: background .22s; }
 .board-drawer-overlay.open { background: rgba(16,24,40,.28); }
 .board-drawer { position: absolute; top: 0; right: 0; bottom: 0; width: min(300px, 86vw); background: #fff; box-shadow: -8px 0 24px rgba(16,24,40,.14); transform: translateX(100%); transition: transform .24s ease; display: flex; flex-direction: column; }
@@ -644,6 +683,7 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
 .dash-col-lbl { font-size: 11px; color: var(--text-dim); margin-top: 8px; text-align: center; }
 .dash-dept-od { color: var(--danger); font-weight: 700; }
 @media print {
+  .side-tabs { display: none !important; }
   /* keep background colours (progress bars, chart bars, status badges, dots) when printing */
   * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
   .sidebar, .toolbar, .overlay, #appToast { display: none !important; }
@@ -665,7 +705,7 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
   body.printing-modal .overlay.print-target [data-act="close"] { display: none !important; }
   body.printing-modal .dash-pd-cab { break-inside: avoid; }
   /* fixed UI that sits outside .app must not print (the "ปฏิทิน" side tab, toast, hover notes, popovers) */
-  body.printing-modal .board-tab, body.printing-modal .toast, body.printing-modal .dash-tip,
+  body.printing-modal .board-tab, body.printing-modal .side-tabs, body.printing-modal .toast, body.printing-modal .dash-tip,
   body.printing-modal .board-drawer-overlay, body.printing-modal .status-popover, body.printing-modal .checklist-popover { display: none !important; }
   body.printing-modal .overlay.print-target { page: dashpage; }
   body.printing-modal .overlay.print-target .modal-head { padding: 4px 0 8px !important; }
@@ -703,6 +743,7 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
 .wo-foot { display: flex; justify-content: space-between; gap: 16px; margin-top: 16px; font-size: 12px; color: var(--text-dim); flex-wrap: wrap; }
 .wo-empty { padding: 32px; text-align: center; color: var(--text-faint); }
 @media print {
+  .side-tabs { display: none !important; }
   .wo-sheet { break-after: page; }
   .wo-sheet:last-child { break-after: auto; }
   .wo-row, .wo-proj, .wo-group-head { break-inside: avoid; }
@@ -1011,6 +1052,13 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
 .chip-status-edge:hover::before, .chip-status-edge.open::before { width: 8px; box-shadow: 1px 0 3px rgba(16,24,40,.25); }
 @media (hover: none) { .chip-status-edge { width: 18px; } }   /* iPad: bigger tap target (no hover to reveal it) */
 .task-chip.dragging { opacity: .4; }
+/* ★ department finished → the status colours (background tint, left edge, cabinet-status numbers) fade back
+   so the green "✓ เสร็จ" badge is what the eye lands on */
+.task-chip.dept-done { background: color-mix(in srgb, var(--chip-bg, #f3f4f6) 35%, #fff); border-left-color: color-mix(in srgb, var(--chip-color, #98a2b3) 38%, #fff); }
+.task-chip.dept-done .chip-status-edge::before { background: color-mix(in srgb, var(--chip-color, #98a2b3) 38%, #fff); }
+.task-chip.dept-done .task-title { color: var(--text-dim); }
+.task-chip.dept-done .sub-badge, .task-chip.dept-done .cab-proj { opacity: .45; }
+.task-chip.dept-done .dept-done-badge { box-shadow: 0 0 0 2px rgba(16,185,129,.28); }
 .task-chip.done .task-title { text-decoration: line-through; color: var(--text-faint); }
 /* cabinet chip — a subtask with its own date, shown on the calendar */
 .cabinet-chip {
@@ -1282,6 +1330,7 @@ body.chip-dragging .task-chip.span-bar { pointer-events: none; }   /* let the da
 .ta-sys-time { font-size: 10.5px; color: var(--text-faint); white-space: nowrap; flex: 0 0 auto; }
 .ta-compose { border-top: 1px solid var(--border); padding: 10px 12px; background: #fff; flex: 0 0 auto; position: relative; }
 /* @mention picker (opens above the composer) + highlighted mentions */
+.mention-group { padding: 5px 10px 2px; font-size: 10.5px; font-weight: 700; color: var(--text-faint); border-top: 1px solid var(--border); }
 .mention-pop { position: absolute; left: 10px; right: 10px; bottom: calc(100% - 4px); z-index: 30; max-height: 250px; overflow-y: auto; padding: 4px; border: 1px solid var(--border); border-radius: 10px; background: #fff; box-shadow: var(--shadow-lg); }
 .mention-head { padding: 4px 8px 6px; color: var(--text-faint); font-size: 11px; }
 .mention-item { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 7px; font-size: 13px; cursor: pointer; }
@@ -1539,8 +1588,8 @@ body.chip-dragging .task-chip.span-bar { pointer-events: none; }   /* let the da
 /* department done indicators */
 .dept-done-badge {
   height: 18px; line-height: 18px;
-  padding: 0 6px; border-radius: 4px;
-  font-size: 10.5px; font-weight: 700;
+  padding: 0 7px; border-radius: 4px;
+  font-size: 11px; font-weight: 700;
   background: #10b981; color: #fff;
 }
 .dept-done-cb { width: 17px; height: 17px; flex: 0 0 auto; cursor: pointer; margin: 0; }
@@ -1631,6 +1680,8 @@ body.chip-dragging .task-chip.span-bar { pointer-events: none; }   /* let the da
   color: var(--text);
 }
 .subtask-row input[type=text]:focus { outline: none; background: #fff; border-bottom: 1px solid var(--accent); }
+.subtask-row input.sub-mo { flex: 1 1 0; min-width: 44px; color: var(--text-dim); }
+.subtask-row input.sub-name { flex: 4 1 0; }
 .subtask-row.done input[type=text] { text-decoration: line-through; color: var(--text-faint); }
 .subtask-row input[type=date].subtask-date {
   flex: 0 0 auto;
@@ -2057,7 +2108,8 @@ body.chip-dragging .task-chip.span-bar { pointer-events: none; }   /* let the da
   overflow: hidden;
   background: #fff;
 }
-.tp-group.complete { opacity: .62; }
+.tp-group.complete .tp-group-title, .tp-group.complete .tp-group-head .subtask-dot, .tp-group.complete .tp-group-head .tp-field, .tp-group.complete .tp-cab-row { opacity: .6; }
+.tp-group.complete .dept-done-badge { box-shadow: 0 0 0 2px rgba(16,185,129,.28); }
 .tp-group-head {
   display: flex; align-items: center; gap: 8px;
   padding: 9px 10px;
@@ -2297,7 +2349,10 @@ body.chip-dragging .task-chip.span-bar { pointer-events: none; }   /* let the da
   </main>
 </div>
 
-<button type="button" class="board-tab" id="boardTab" title="สลับปฏิทิน" hidden></button>
+<div class="side-tabs" id="sideTabs">
+  <button type="button" class="side-tab" id="boardTab" title="สลับปฏิทิน" hidden></button>
+  <button type="button" class="side-tab" id="starTab" title="โปรเจคที่ติดดาว"></button>
+</div>
 <input type="file" id="fileImport" accept="application/json" class="hidden" />
 
 <!-- Phase 2, slice 1: Supabase client — used ONLY to pull "ยื่นขอแบบ" requests submitted through the
@@ -2402,14 +2457,47 @@ function loadTeam() {
 }
 function personName(p) { return p ? (p.display_name || p.email || "ผู้ใช้") : "ผู้ใช้"; }
 function isAssignedToMe(t) { return !!(currentProfile && (t.assignees || []).includes(currentProfile.id)); }
+// ★ (owner 2026-10-06) department staff see ONLY people of their own department — assignee photos, the assign
+//   picker and @mentions. No department / a "เห็นงานทั้งหมด (PM)" department → everyone (as before).
+function canSeePerson(p) {
+  if (!p) return false;
+  if (!myViewDeptId()) return true;
+  if (currentProfile && p.id === currentProfile.id) return true;
+  return p.dept_id === myDeptId();
+}
+// can person p see task t on their department calendar? (no department / PM department = every task) — personal
+// notifications (assignment, @mention) only go to people who can actually see the task: no cross-department alerts
+function personSeesTask(p, t, ws) {
+  if (!p || !t) return false;
+  const d = p.dept_id && getDeptIn(ws || state, p.dept_id);
+  if (!d || d.seeAll) return true;
+  return (t.deptStages || []).some(s => s.deptId === d.id);
+}
+function iSeeTask(t, ws) {
+  if (!currentProfile) return false;
+  return personSeesTask({ ...currentProfile, dept_id: (ws && ws !== state) ? myDeptIn(ws) : myDeptId() }, t, ws);
+}
+// ⚙ การแสดงผล → "@ กล่าวถึงคนแผนกอื่นได้" (state.settings.crossMention, per calendar, off by default)
+function crossMentionOn(ws) { return !!((ws || state).settings && (ws || state).settings.crossMention); }
+// people who may be @mentioned here: the usual candidates, plus — when cross-department mentions are on — everyone
+// else who can actually OPEN this calendar (a mention they can't open would be a dead notification)
+function mentionCandidates() {
+  const own = assignCandidates();
+  if (!crossMentionOn()) return own;
+  const ownIds = new Set(own.map(p => p.id));
+  const allBoards = (root.boardMeta || []).map(b => b.id).filter(id => root.boards[id]);
+  const others = [...teamProfiles.values()].filter(p => !ownIds.has(p.id) && allowedBoardIdsFor(p, allBoards).includes(root.activeBoard));
+  return own.concat(others.map(p => ({ ...p, _otherDept: true })));
+}
 // who may be assigned on the CURRENT board = people who can actually see it (see visibleBoardIds)
 function assignCandidates() {
   const svc = isServiceBoard();
-  return [...teamProfiles.values()].filter(p => svc ? (p.dept_id === SERVICE_DEPT || p.role === "admin") : p.dept_id !== SERVICE_DEPT);
+  return [...teamProfiles.values()].filter(p => svc ? (p.dept_id === SERVICE_DEPT || p.role === "admin") : p.dept_id !== SERVICE_DEPT)
+    .filter(canSeePerson);
 }
 // overlapping profile photos for a calendar chip
 function assigneeStack(t, max = 3) {
-  const ids = (t.assignees || []).filter(id => teamProfiles.has(id));
+  const ids = (t.assignees || []).filter(id => teamProfiles.has(id) && canSeePerson(teamProfiles.get(id)));
   if (!ids.length) return "";
   const names = ids.map(id => personName(teamProfiles.get(id))).join(", ");
   return `<span class="as-stack" title="ผู้รับผิดชอบ: ${escapeHtml(names)}">`
@@ -2467,7 +2555,7 @@ function notifyAssigneeChanges(before, task) {
   if (!Array.isArray(task.comments)) task.comments = [];
   now.filter(id => !prev.has(id)).forEach(id => {
     logActivity(task, `มอบหมายงานให้ ${personName(teamProfiles.get(id))}`);
-    if (id !== me) {
+    if (id !== me && (!teamProfiles.has(id) || personSeesTask(teamProfiles.get(id), task))) {
       const c = { id: uid("al"), type: "alert", author: currentUser(), toUser: id, text: "📌 มอบหมายงานนี้ให้คุณ", at: Date.now(), ack: false };
       task.comments.push(c);
       pushForComment(task, c);
@@ -2693,6 +2781,7 @@ async function onSignedIn(session) {
 }
 async function onSignedInInner(session) {
   currentProfile = await loadProfile(session.user.id, session.user.email);
+  mergeLocalStarsIntoCloud();
   ["loginEmailField", "loginSent"].forEach(id => document.getElementById(id).classList.add("hidden"));
   document.getElementById("btnSendMagicLink").classList.add("hidden");
 
@@ -2893,7 +2982,7 @@ function automationRules() {
   return ((state.settings && state.settings.automations) || []).filter(r => r && r.on !== false && r.statusId);
 }
 function automationTarget(r) { return r.target === "sub" ? "sub" : "task"; }
-function automationConds(r) { return [{ when: r.when, deptId: r.deptId }].concat(Array.isArray(r.more) ? r.more.filter(Boolean) : []); }
+function automationConds(r) { return [{ when: r.when, deptId: r.deptId, item: r.item }].concat(Array.isArray(r.more) ? r.more.filter(Boolean) : []); }
 function automationRuleCond(task, r) { const cs = automationConds(r), f = c => automationCond(task, c); return r.logic === "or" ? cs.some(f) : cs.every(f); }
 function automationRuleSubCond(sub, r) { const cs = automationConds(r), f = c => automationSubCond(sub, c); return r.logic === "or" ? cs.some(f) : cs.every(f); }
 function automationRuleLabel(r) {
@@ -2908,6 +2997,11 @@ function automationCond(task, r) {
     return cl.total > 0 && cl.done === cl.total;
   }
   if (!r.deptId || !getDept(r.deptId)) return false;
+  // one checklist item (e.g. QC "ทดสอบ") — task level: ticked in EVERY cabinet that has it
+  if (r.when === "item") {
+    const its = (task.subtasks || []).map(sub => (sub.checklist || []).find(i => i.deptId === r.deptId && i.text === r.item)).filter(Boolean);
+    return its.length > 0 && its.every(i => i.done);
+  }
   if (r.when === "done") return deptUsesChecklist(task, r.deptId) && isDeptComplete(task, r.deptId);
   if (r.when === "start") return deptProgress(task, r.deptId).done > 0;
   return false;
@@ -2917,6 +3011,7 @@ function automationSubCond(sub, r) {
   if (r.when === "subs") return subtaskDone(sub);
   if (r.when === "all") { const p = checklistProgress(sub); return p.total > 0 && p.done === p.total; }
   if (!r.deptId || !getDept(r.deptId)) return false;
+  if (r.when === "item") { const it = (sub.checklist || []).find(i => i.deptId === r.deptId && i.text === r.item); return !!(it && it.done); }
   const p = checklistProgress(sub, r.deptId);
   if (r.when === "done") return p.total > 0 && p.done === p.total;
   if (r.when === "start") return p.done > 0;
@@ -2934,6 +3029,7 @@ function automationWhenLabel(r) {
   if (r.when === "subs") return "ตู้เสร็จครบทุกตู้";
   if (r.when === "all") return automationTarget(r) === "sub" ? "เช็คลิสต์ครบทุกแผนก" : "ทุกแผนกเสร็จ";
   const dn = (getDept(r.deptId) || {}).name || "?";
+  if (r.when === "item") return `ติ๊ก “${r.item || "?"}” (${dn})`;
   return r.when === "start" ? `เริ่มติ๊กเช็คลิสต์ ${dn}` : `เช็คลิสต์ ${dn} ครบ`;
 }
 // apply rules whose condition just became true; returns true when any status changed.
@@ -3072,10 +3168,18 @@ function myDeptId() {
   const fromBoard = state.settings && state.settings.myDept;
   return (fromBoard && getDept(fromBoard)) ? fromBoard : "";
 }
+// ★ "เห็นงานทั้งหมด (PM)": a department flagged dept.seeAll (⚙ แผนก) views the board like someone with NO department —
+//   every project, every stage, the department picker, project dates. Only the VIEW scope changes: alerts addressed to
+//   that department, notifications and the department buttons still use myDeptId().
+function myViewDeptId() {
+  const my = myDeptId();
+  const d = my && getDept(my);
+  return (d && d.seeAll) ? "" : my;
+}
 // the department whose checklist the user should see in the task modal:
 // their own department → else the department currently being viewed → else null (all)
 function effectiveUserDept() {
-  const my = myDeptId();
+  const my = myViewDeptId();
   if (my) return my;
   const vs = activeViewDepts();
   return vs.length === 1 ? vs[0] : null;   // a single department in view → use it; else "all"
@@ -3090,7 +3194,7 @@ function applyMyDeptDefaultView() { /* handled at render time by activeViewDepts
 // the first department's dates). Planners (no department) fall back to the multi-select viewDepts.
 function activeViewDepts() {
   if (isServiceBoard()) return [];   // Service has no department hand-offs → always the project dates
-  const my = myDeptId();
+  const my = myViewDeptId();
   if (my) return [my];
   return ((state.settings && state.settings.viewDepts) || []).filter(id => getDept(id));
 }
@@ -3108,6 +3212,55 @@ function textOn(hex) {
   return (0.299*r + 0.587*g + 0.114*b) > 150 ? "#1d2939" : "#fff";
 }
 
+/* ----- SO (project) / MO (cabinet) numbers — task.so / sub.mo, shown in front of the name ----- */
+function taskLabel(t) { const so = ((t && t.so) || "").trim(); return so ? `${so} ${t.title || ""}` : ((t && t.title) || ""); }
+function subLabel(s) { const mo = ((s && s.mo) || "").trim(), nm = (s && s.text) || "(ไม่มีชื่อตู้)"; return mo ? `${mo} ${nm}` : nm; }
+/* ----- ⭐ starred projects, PER PERSON — keys "boardId:taskId".
+   Synced across devices in profiles.starred (supabase-slice7.sql). Until that column exists (or offline) the list
+   lives in localStorage only; the first time the column is seen, this device's local stars are merged into it. ----- */
+function starStoreKey() { return "qc_stars_" + ((currentProfile && currentProfile.id) || "anon"); }
+function starsInCloud() { return !!(currentProfile && Array.isArray(currentProfile.starred)); }
+function localStars() { try { const a = JSON.parse(localStorage.getItem(starStoreKey()) || "[]"); return Array.isArray(a) ? a : []; } catch (_) { return []; } }
+function starList() { return starsInCloud() ? currentProfile.starred.slice() : localStars(); }
+function isStarred(t, bid) { return !!t && starList().includes((bid || root.activeBoard) + ":" + t.id); }
+function saveStars(a) {
+  try { localStorage.setItem(starStoreKey(), JSON.stringify(a)); } catch (_) {}
+  if (!starsInCloud()) return;
+  currentProfile.starred = a.slice();
+  const sb = getSupabase();
+  if (sb) sb.from("profiles").update({ starred: a }).eq("id", currentProfile.id).select("id")
+    .then(({ error }) => { if (error) toast("บันทึกดาวขึ้น cloud ไม่สำเร็จ (เก็บในเครื่องไว้แล้ว)"); }, () => {});
+}
+function toggleStar(t, bid) {
+  const k = (bid || root.activeBoard) + ":" + t.id, a = starList(), i = a.indexOf(k);
+  if (i >= 0) a.splice(i, 1); else a.unshift(k);
+  saveStars(a);
+  return i < 0;
+}
+// after sign-in: fold stars made on this device before the cloud column existed into the cloud list (once)
+function mergeLocalStarsIntoCloud() {
+  if (!starsInCloud()) return;
+  const extra = localStars().filter(k => !currentProfile.starred.includes(k));
+  if (extra.length) saveStars(currentProfile.starred.concat(extra));
+}
+// pick up stars changed on another device (opening the ⭐ panel / coming back to the app)
+async function refreshMyStars() {
+  const sb = getSupabase();
+  if (!sb || !starsInCloud()) return false;
+  const { data, error } = await sb.from("profiles").select("starred").eq("id", currentProfile.id).single();
+  if (error || !data || !Array.isArray(data.starred)) return false;
+  const changed = JSON.stringify(data.starred) !== JSON.stringify(currentProfile.starred);
+  currentProfile.starred = data.starred;
+  try { localStorage.setItem(starStoreKey(), JSON.stringify(data.starred)); } catch (_) {}
+  return changed;
+}
+/* ----- link fields: only http(s); "maps.app.goo.gl/x" → https:// ----- */
+function safeLinkUrl(v) {
+  v = String(v || "").trim(); if (!v) return null;
+  if (!/^[a-z][a-z0-9+.-]*:/i.test(v)) v = "https://" + v;
+  return /^https?:\/\//i.test(v) ? v : null;
+}
+function linkHost(v) { const u = safeLinkUrl(v); if (!u) return v || ""; try { return new URL(u).hostname.replace(/^www\./, ""); } catch (_) { return v; } }
 /* ----- custom dropdown fields: defined per department, value stored on a task's dept stage ----- */
 // the custom fields defined on a department (e.g. แผนกจัดส่ง → "รถขนส่ง")
 function deptFields(deptId) { const d = getDept(deptId); return (d && Array.isArray(d.fields)) ? d.fields : []; }
@@ -3119,7 +3272,10 @@ function findFieldOption(field, optId) {
 }
 // the chosen option's label for one field on one task's dept stage (null = nothing chosen)
 function stageFieldLabel(field, stg) {
-  const o = findFieldOption(field, stg && stg.fields ? stg.fields[field.id] : null);
+  const v = stg && stg.fields ? stg.fields[field.id] : null;
+  if (field.type === "text") return v ? String(v) : null;            // free text field
+  if (field.type === "link") return v ? "🔗 " + linkHost(v) : null;   // link field (e.g. Google Maps)
+  const o = findFieldOption(field, v);
   return o ? o.label : null;
 }
 // [{name,label}] for fields flagged showOnChip that have a value on this task's dept stage (for chips/panels)
@@ -3332,6 +3488,7 @@ function migrateState(s) {
   if (!Array.isArray(s.settings.drawReqDepts)) s.settings.drawReqDepts = [];
   // ⚡ automation rules [{ id, on, target:"sub"|"task", when:"all"|"done"|"start", deptId, statusId }] — board-wide (admin sets)
   if (!Array.isArray(s.settings.automations)) s.settings.automations = [];
+  if (typeof s.settings.crossMention !== "boolean") s.settings.crossMention = false;   // @mention people of other departments
   // 🔒 block rules (off unless an admin turns them on)
   if (!s.settings.blockRules || typeof s.settings.blockRules !== "object") s.settings.blockRules = { subNeedChecklist: false, taskNeedSubs: false };
   if (typeof s.settings.currentUser !== "string") s.settings.currentUser = "";
@@ -3369,6 +3526,7 @@ function migrateState(s) {
   const qcLegacy = s.departments.find(d => d.id === "d_qc");
   const seedQcChecklist = !!(qcLegacy && !Array.isArray(qcLegacy.checklist));
   s.departments.forEach(d => { if (!Array.isArray(d.checklist)) d.checklist = []; });
+  s.departments.forEach(d => { if (typeof d.seeAll !== "boolean") d.seeAll = false; });   // "เห็นงานทั้งหมด (PM)" — off unless an admin ticks it
   // department emoji marker (replaces colour dot) — seed defaults / a generic for custom depts
   s.departments.forEach(d => { if (!d.icon) d.icon = DEFAULT_DEPT_ICONS[d.id] || "🏷️"; });
   // custom dropdown fields per department: [{ id, name, showOnChip, groups:[{ id, name, options:[{id,label}] }] }]
@@ -3652,7 +3810,11 @@ async function refreshBoardsOnResume() {
     && (!root.boards[h.id] || _lastPushedJson[h.id] === JSON.stringify(root.boards[h.id]))).map(h => h.id);
   if (stale.length && !_cloudSaveTimer) await adoptCloudBoards(stale);
 }
-document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") refreshBoardsOnResume(); });
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState !== "visible") return;
+  refreshBoardsOnResume();
+  refreshMyStars().then(ch => { if (ch) renderAll(); });
+});
 window.addEventListener("online", () => { if (_cloudReady) refreshBoardsOnResume(); else syncRootFromCloud(); });
 window.addEventListener("pageshow", (e) => { if (e.persisted) refreshBoardsOnResume(); });
 // called once from startApp(): first login ever → upload local data as the cloud seed;
@@ -3721,10 +3883,11 @@ function notifyRemoteBoardChange(ws, newTasks, oldTasksById) {
     const before = oldTasksById[t.id];
     const oldIds = new Set(((before && before.comments) || []).map(c => c.id));
     (t.comments || []).forEach(c => {
-      if (!oldIds.has(c.id) && Array.isArray(c.mentions) && c.mentions.includes(meId)) {
+      const seen = iSeeTask(t, ws);   // no cross-department personal notifications (mentions: unless ⚙ allows them)
+      if (!oldIds.has(c.id) && Array.isArray(c.mentions) && c.mentions.includes(meId) && (seen || crossMentionOn(ws))) {
         try { sysNotify("💬 มีคนกล่าวถึงคุณ", { body: `${t.title} · ${c.author || ""}: ${c.text || ""}`.slice(0, 180), tag: "rt-men-" + c.id, renotify: true }); } catch (e) {}
       }
-      if (c.type === "alert" && !c.ack && c.toUser === meId && !oldIds.has(c.id)) {
+      if (seen && c.type === "alert" && !c.ack && c.toUser === meId && !oldIds.has(c.id)) {
         try { sysNotify("📌 มีงานมอบหมายให้คุณ", { body: `${t.title}${c.author ? " · จาก " + c.author : ""}`, tag: "rt-asg-" + c.id, renotify: true }); } catch (e) {}
       }
     });
@@ -3911,7 +4074,7 @@ function renderDeptSwitcher() {
   if (!Array.isArray(state.settings.viewDepts)) state.settings.viewDepts = [];
   // ★ accounts that HAVE a department only ever see their own department — there's nothing to switch,
   // so hide the whole section (label included). Only planners/admins with no department get the picker.
-  if (myDeptId() || isServiceBoard()) { el.innerHTML = ""; if (section) section.style.display = "none"; return; }
+  if (myViewDeptId() || isServiceBoard()) { el.innerHTML = ""; if (section) section.style.display = "none"; return; }
   if (section) section.style.display = "";
   el.innerHTML = `
     <button type="button" class="dept-dd-btn" aria-haspopup="true">
@@ -4153,7 +4316,7 @@ function renderTaskChip(t, position = "single", showLabel = true) {
   const counts = subStatusCounts(t);
   const breakdown = state.statuses.filter(s => counts[s.id]);
   const breakdownText = breakdown.map(s => `${s.name}: ${counts[s.id]}`).join(", ");
-  chip.title = t.title
+  chip.title = taskLabel(t)
     + (t.startDate && t.startDate !== t.date ? `\n${formatDateTH(t.startDate)} → ${formatDateTH(t.date)}` : "")
     + (breakdownText ? `\nตู้ — ${breakdownText}` : "");
 
@@ -4171,9 +4334,12 @@ function renderTaskChip(t, position = "single", showLabel = true) {
   const fieldHtml = fchips.map(f =>
     `<span class="chip-field" title="${escapeHtml(f.name)}: ${escapeHtml(f.label)}">${escapeHtml(f.label)}</span>`).join("");
   const inlineFields = position !== "single" && fchips.length ? fieldHtml : "";
+  const soTag = (t.so || "").trim() ? `<span class="chip-so" title="SO ${escapeHtml(t.so)}">${escapeHtml(t.so.trim())}</span>` : "";
   const badgeRow = (badges || flag || inlineFields) ? `<div class="task-substatus">${badges}${flag}${inlineFields}</div>` : "";
   const fieldRow = (position === "single" && fchips.length) ? `<div class="chip-fields">${fieldHtml}</div>` : "";
-  chip.innerHTML = `<div class="chip-title-row"><span class="task-title">${escapeHtml(t.title)}</span>${alertPin(t)}${assigneeStack(t)}</div>${badgeRow}${fieldRow}`;
+  // single-day card: SO on its own line above the name; multi-day bars have a fixed lane height → SO inline before the name
+  const soRow = soTag && position === "single";
+  chip.innerHTML = `${soRow ? `<div class="chip-so-row">${soTag}${assigneeStack(t)}</div>` : ""}<div class="chip-title-row">${isStarred(t) ? ico("star", "ico chip-star") : ""}${position !== "single" ? soTag : ""}<span class="task-title">${escapeHtml(t.title)}</span>${alertPin(t)}${soRow ? "" : assigneeStack(t)}</div>${badgeRow}${fieldRow}`;
   if (position === "single" || position === "start") addStatusEdge(chip, t);   // mid/end pieces have no left edge
   chip.addEventListener("click", (e) => { e.stopPropagation(); openTaskModal(t.id); });
   chip.addEventListener("dragstart", (e) => {
@@ -4311,7 +4477,7 @@ function renderCabinetChip(t, s) {
   chip.title = `[${t.title}] ${s.text || "(ไม่มีชื่อตู้)"}\nสถานะ: ${st.name}\nกำหนด: ${formatDateTH(s.date)}`;
   chip.innerHTML = `
     <span class="proj-dot" style="background:${projHashColor(t.title)}"></span>
-    <span class="cab-name">${escapeHtml(s.text || "(ไม่มีชื่อตู้)")}</span>
+    <span class="cab-name">${escapeHtml(subLabel(s))}</span>
     ${alertPin(t)}
   `;
   addStatusEdge(chip, t, s);
@@ -4341,8 +4507,8 @@ function buildDeptItems(tasks, deptIds) {
   const byCab = !!(state.settings && state.settings.deptCalByCabinet);
   const push = (iso, item) => { if (iso) (out[iso] = out[iso] || []).push(item); };
   tasks.forEach(t => {
-    // ★ a task assigned to me shows on my calendar even when it has no stage for my department
-    if (isAssignedToMe(t) && !depts.some(d => taskStage(t, d))) push(t.date, { kind: "project", task: t, position: "single" });
+    // (2026-10-06) being assigned to a task does NOT make it appear on a department calendar that has no stage for it —
+    // department calendars show only that department's stages; only a "เห็นงานทั้งหมด (PM)" department (no department scope) sees everything
     depts.forEach(deptId => {
       const stg = taskStage(t, deptId);
       if (!stg) return;
@@ -4355,8 +4521,14 @@ function buildDeptItems(tasks, deptIds) {
     });
   });
   const prRank = { urgent:4, high:3, medium:2, low:1, none:0 };
+  // ★ finished ones (this department's checklist complete / cabinet done) sink to the bottom of the day, so the
+  //   work still to do rises to the top; inside each group the old order (priority, then title) is kept
+  const finished = it => it.kind === "deptstage" ? isDeptComplete(it.task, it.stage.deptId)
+    : it.kind === "deptcab" ? cabDeptDone(it.task, it.sub, it.stage.deptId)
+    : isStatusDone(getStatus(it.task.statusId));
   Object.values(out).forEach(arr => arr.sort((a,b) =>
-    (prRank[b.task.priority]||0) - (prRank[a.task.priority]||0)
+    (finished(a) ? 1 : 0) - (finished(b) ? 1 : 0)
+    || (prRank[b.task.priority]||0) - (prRank[a.task.priority]||0)
     || a.task.title.localeCompare(b.task.title, "th")
     || (a.sub?.text||"").localeCompare(b.sub?.text||"", "th")));
   return out;
@@ -4369,7 +4541,7 @@ function renderDeptChip(t, stage) {
   const deptDone = isDeptComplete(t, deptId);   // all cabinets' checklist for this dept ticked (or manual tick)
   const chip = document.createElement("div");
   // same look as the all-departments chip: status colour stays even when done
-  chip.className = "task-chip" + (isStatusDone(st) ? " done" : "");
+  chip.className = "task-chip" + (isStatusDone(st) ? " done" : "") + (deptDone ? " dept-done" : "");
   chip.style.setProperty("--chip-bg", hexToBgTint(st.color));
   chip.style.setProperty("--chip-color", st.color);
   chip.draggable = canEdit();
@@ -4378,7 +4550,7 @@ function renderDeptChip(t, stage) {
   // no date of its own → it's shown on (and inherits) the project's due date; say so in the tooltip
   const shownDue = stage.due || t.date;
   const dueNote = stage.due ? "" : " (ตามวันของโปรเจค — ยังไม่ได้ตั้งวันของแผนกนี้)";
-  chip.title = `[${dept ? dept.name : ""}] ${t.title}\nสถานะงาน (รวม): ${st.name}\nแผนกนี้: ${deptDone ? "เสร็จแล้ว ✓" : "ยังไม่เสร็จ"}\nกำหนด: ${formatDateTH(shownDue)}${dueNote}`;
+  chip.title = `[${dept ? dept.name : ""}] ${taskLabel(t)}\nสถานะงาน (รวม): ${st.name}\nแผนกนี้: ${deptDone ? "เสร็จแล้ว ✓" : "ยังไม่เสร็จ"}\nกำหนด: ${formatDateTH(shownDue)}${dueNote}`;
   // cabinet-status breakdown — coloured numeric badges (no status-name text), like the all view
   const counts = subStatusCounts(t);
   const breakdown = state.statuses.filter(s => counts[s.id]);
@@ -4388,12 +4560,13 @@ function renderDeptChip(t, stage) {
   const doneBadge = deptDone ? `<span class="dept-done-badge">✓ เสร็จ</span>` : "";
   // when several departments are in view, mark which dept this chip belongs to
   const deptDot = activeViewDepts().length > 1 ? deptIco(dept) : "";
+  const soTag = (t.so || "").trim() ? `<span class="chip-so" title="SO ${escapeHtml(t.so)}">${escapeHtml(t.so.trim())}</span>` : "";
   const badgeRow = (badges || flag || doneBadge) ? `<div class="task-substatus">${badges}${flag}${doneBadge}</div>` : "";
   // selected custom-field values for this department, flagged to show on chips
   const fchips = stageFieldChips(t, deptId);
   const fieldRow = fchips.length ? `<div class="chip-fields">${fchips.map(f =>
     `<span class="chip-field" title="${escapeHtml(f.name)}: ${escapeHtml(f.label)}">${escapeHtml(f.label)}</span>`).join("")}</div>` : "";
-  chip.innerHTML = `<div class="chip-title-row">${deptDot}<span class="task-title">${escapeHtml(t.title)}</span>${alertPin(t)}${assigneeStack(t)}</div>${badgeRow}${fieldRow}`;
+  chip.innerHTML = `${soTag ? `<div class="chip-so-row">${soTag}${assigneeStack(t)}</div>` : ""}<div class="chip-title-row">${deptDot}${isStarred(t) ? ico("star", "ico chip-star") : ""}<span class="task-title">${escapeHtml(t.title)}</span>${alertPin(t)}${soTag ? "" : assigneeStack(t)}</div>${badgeRow}${fieldRow}`;
   addStatusEdge(chip, t);
   chip.addEventListener("click", (e) => { e.stopPropagation(); openTaskModal(t.id, { focusDept: deptId }); });
   chip.addEventListener("dragstart", (e) => {
@@ -4425,7 +4598,7 @@ function renderDeptCabChip(t, stage, sub) {
 
   const chip = document.createElement("div");
   // same look as the dept / all-departments chip: status colour stays even when done
-  chip.className = "task-chip" + (isStatusDone(cst) ? " done" : "");
+  chip.className = "task-chip" + (isStatusDone(cst) ? " done" : "") + (done ? " dept-done" : "");
   chip.style.setProperty("--chip-bg", hexToBgTint(cst.color));
   chip.style.setProperty("--chip-color", cst.color);
   chip.draggable = canEdit();
@@ -4442,7 +4615,7 @@ function renderDeptCabChip(t, stage, sub) {
     <div class="chip-title-row">
       ${deptDot}${pr.id !== "none" ? priFlag(pr) : ""}
       <span class="proj-dot" style="background:${projHashColor(t.title)}"></span>
-      <span class="task-title">${escapeHtml(sub.text || "(ไม่มีชื่อตู้)")}</span>
+      <span class="task-title">${escapeHtml(subLabel(sub))}</span>
       ${alertPin(t)}
     </div>
     <div class="task-substatus">
@@ -4489,7 +4662,7 @@ function matchesFilter(filter) {
     if (filter.mine && !isMyTask(t)) return false;
     if (filter.priority && filter.priority !== "all" && t.priority !== filter.priority) return false;
     if (filter.search) {
-      const hay = (t.title + " " + (t.description||"") + " " + (t.labels||[]).join(" ")).toLowerCase();
+      const hay = ((t.so || "") + " " + t.title + " " + (t.description||"") + " " + (t.labels||[]).join(" ") + " " + (t.subtasks || []).map(s => (s.mo || "") + " " + (s.text || "")).join(" ")).toLowerCase();
       if (!hay.includes(filter.search)) return false;
     }
     return true;
@@ -5312,14 +5485,16 @@ function openTaskModal(taskId, defaults={}) {
       <div class="modal-head">
         <h3>${isNew ? "เพิ่มงาน" + escapeHtml(boardName) : "โครงการ"}</h3>
         <div class="row" style="gap:6px">
+          ${isNew ? "" : `<button class="btn btn-ghost btn-sm tm-star${isStarred(task) ? " on" : ""}" data-act="star" title="ติดดาว">${ico("star")}</button>`}
           ${isNew ? "" : '<button class="btn btn-ghost btn-sm" data-act="dashboard" title="ดูแดชบอร์ดของโปรเจคนี้">' + ico("chart") + ' แดชบอร์ด</button>'}
           <button class="btn btn-ghost" data-act="close" title="ปิด">✕</button>
         </div>
       </div>
       <div class="task-split">
       <div class="modal-body">
-        <div class="field">
-          <input type="text" class="title-input" data-f="title" placeholder="ชื่องาน เช่น ตรวจ MDB ตู้ A1" />
+        <div class="field tm-title-row">
+          <input type="text" class="title-input tm-so" data-f="so" placeholder="SO" />
+          <input type="text" class="title-input tm-name" data-f="title" placeholder="ชื่อโครงการ" />
         </div>
         <div class="tm-meta">
           <div class="tm-cell tm-cell-status">
@@ -5408,6 +5583,13 @@ function openTaskModal(taskId, defaults={}) {
 
   const modal = overlay.querySelector(".modal");
   modal.querySelector('[data-f="title"]').value = task.title;
+  modal.querySelector('[data-f="so"]').value = task.so || "";
+  modal.querySelector('[data-f="so"]').addEventListener("input", (e) => { task.so = e.target.value; scheduleCommit(created ? 800 : 600); });
+  modal.querySelector('[data-act="star"]')?.addEventListener("click", (e) => {
+    const on = toggleStar(task);
+    e.currentTarget.classList.toggle("on", on);
+    renderAll(); toast(on ? "ติดดาวแล้ว" : "เอาดาวออกแล้ว");
+  });
   modal.querySelector('[data-f="description"]').value = task.description || "";
 
   // custom dd/mm/yyyy date fields
@@ -5536,7 +5718,8 @@ function openTaskModal(taskId, defaults={}) {
       row.innerHTML = `
         <div class="subtask-main">
           <button type="button" class="subtask-dot" aria-label="เปลี่ยนสถานะ"></button>
-          <input type="text" value="${escapeHtml(s.text)}" placeholder="รายการ..." />
+          <input type="text" class="sub-mo" value="${escapeHtml(s.mo || "")}" placeholder="MO" />
+          <input type="text" class="sub-name" value="${escapeHtml(s.text)}" placeholder="ชื่อตู้" />
           <button type="button" class="subtask-cl-btn" title="Checklist ของตู้นี้ (ชี้เมาส์หรือคลิก)">${ico("check-square")} <span class="cl-count">${prog.done}/${prog.total}</span></button>
           <span class="subtask-date-mount" title="วันที่ของตู้นี้ (ไม่ใส่ = ตามวันโปรเจค)"></span>
           <button class="subtask-del" title="ลบ">✕</button>
@@ -5544,7 +5727,9 @@ function openTaskModal(taskId, defaults={}) {
         <div class="subtask-progress" title="ความคืบหน้า checklist"><div class="subtask-progress-bar"></div></div>
       `;
       const dotBtn = row.querySelector(".subtask-dot");
-      const txt = row.querySelector('input[type=text]');
+      const txt = row.querySelector('input.sub-name');
+      const moInp = row.querySelector('input.sub-mo');
+      moInp.addEventListener("input", () => { s.mo = moInp.value; scheduleCommit(800); });
       const clBtn = row.querySelector(".subtask-cl-btn");
       const del = row.querySelector(".subtask-del");
       const progBar = row.querySelector(".subtask-progress-bar");
@@ -5724,6 +5909,7 @@ function openTaskModal(taskId, defaults={}) {
             if (max) { toast(dateLimitMsg(stg.deptId, max)); df.setValue(stg.due || null); return; }
           }
           stg.due = iso || null;
+          if (deptDueField && stg.deptId === myViewDeptId()) deptDueField.setValue(stg.due);
           repaintChip(); repaintWhen(); scheduleCommit(0);
         } });
       if (!edit) df.querySelectorAll("input,button").forEach(el => el.disabled = true);
@@ -5832,6 +6018,25 @@ function openTaskModal(taskId, defaults={}) {
           if (!opts) return "";
           return g.name ? `<optgroup label="${escapeHtml(g.name)}">${opts}</optgroup>` : opts;
         }).join("");
+        if (f.type === "text" || f.type === "link") {
+          const rowT = document.createElement("label");
+          rowT.className = "extra-row";
+          rowT.innerHTML = `<span class="extra-row-name" title="${escapeHtml(f.name)}">${escapeHtml(f.name || "(ฟิลด์)")}</span>`
+            + `<input type="${f.type === "link" ? "url" : "text"}" class="extra-input" placeholder="${f.type === "link" ? "วางลิงก์ เช่น Google Maps" : "พิมพ์…"}" />`
+            + (f.type === "link" ? `<a class="extra-link-open" target="_blank" rel="noopener noreferrer" title="เปิดลิงก์">↗</a>` : "");
+          const inp = rowT.querySelector("input"), openA = rowT.querySelector(".extra-link-open");
+          inp.value = typeof cur === "string" ? cur : "";
+          const paintLink = () => { if (!openA) return; const u = safeLinkUrl(inp.value); if (u) openA.href = u; else openA.removeAttribute("href"); openA.classList.toggle("off", !u); };
+          paintLink();
+          inp.addEventListener("input", () => {
+            if (!canFull()) { permDenied("สิทธิ์ของคุณแก้ข้อมูลนี้ไม่ได้"); inp.value = cur; return; }
+            const v = inp.value.trim();
+            if (v) stg.fields[f.id] = v; else delete stg.fields[f.id];
+            paintLink(); scheduleCommit(1200);
+          });
+          rowsEl.appendChild(rowT);
+          return;
+        }
         const rowEl = document.createElement("label");
         rowEl.className = "extra-row";
         rowEl.innerHTML = `<span class="extra-row-name" title="${escapeHtml(f.name)}">${escapeHtml(f.name || "(ฟิลด์)")}</span><select><option value="">— ไม่ระบุ —</option>${groupsHtml}</select>`;
@@ -6083,8 +6288,9 @@ function openTaskModal(taskId, defaults={}) {
       task.updatedAt = Date.now();
       diffTaskActivity(null, task).forEach(text => logActivity(task, text));
       notifyAssigneeChanges(null, task);
-      state.tasks.push(JSON.parse(JSON.stringify(task)));
-      base = JSON.parse(JSON.stringify(task));
+      const firstSave = { ...task, subtasks: (task.subtasks || []).filter(x => (x.text || "").trim()) };   // unnamed cabinets wait
+      state.tasks.push(JSON.parse(JSON.stringify(firstSave)));
+      base = JSON.parse(JSON.stringify(firstSave));
       created = true;
       saveState(); renderAll();
       setSavedNote("✓ สร้างงานแล้ว · บันทึกอัตโนมัติ");
@@ -6096,6 +6302,12 @@ function openTaskModal(taskId, defaults={}) {
     let local = task;
     if (!canEdit()) local = { ...base, comments: task.comments };
     else if (!(task.title || "").trim()) local = { ...task, title: base.title };
+    // ★ a cabinet added here but still WITHOUT a name isn't saved yet (stays in the popup). Only never-saved ones —
+    //   clearing the name of an existing cabinet must never drop it (and its checklist) from the data.
+    const savedSubIds = new Set(((base && base.subtasks) || []).map(x => x.id));
+    const unsavedBlank = x => !(x.text || "").trim() && !savedSubIds.has(x.id);
+    const pendingBlanks = (task.subtasks || []).filter(unsavedBlank);
+    if (pendingBlanks.length) local = { ...local, subtasks: (local.subtasks || []).filter(x => !unsavedBlank(x)) };
     if (deepEq(local, base)) { setSavedNote("✓ บันทึกอัตโนมัติ"); return; }
     let autoFired = false;
     if (canEdit()) {
@@ -6109,7 +6321,8 @@ function openTaskModal(taskId, defaults={}) {
     state.tasks[state.tasks.indexOf(real)] = JSON.parse(JSON.stringify(merged));
     base = JSON.parse(JSON.stringify(merged));
     saveState();
-    if (autoFired || !deepEq(merged, task)) adoptIntoModal(merged);
+    const view = pendingBlanks.length ? { ...merged, subtasks: [...(merged.subtasks || []), ...pendingBlanks] } : merged;
+    if (autoFired || !deepEq(view, task)) adoptIntoModal(view);
     renderAll();
     setSavedNote("✓ บันทึกแล้ว " + new Date().toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" }));
   }
@@ -6130,27 +6343,31 @@ function openTaskModal(taskId, defaults={}) {
     document.removeEventListener("app-rendered", refreshFromReal);
   }
   // replace the popup's copy with `src` and repaint every section (keeps what's being typed + the caret)
+  let deptDueField = null;   // department staff: the "กำหนดส่ง · <แผนก>" field in the meta box
   function adoptIntoModal(src) {
     const ae = document.activeElement;
     const sidFocus = ae && ae.closest && ae.closest(".subtask-row") && modal.contains(ae) ? ae.closest(".subtask-row").dataset.sid : null;
     const caret = sidFocus && typeof ae.selectionStart === "number" ? ae.selectionStart : null;
+    const focusMo = !!(sidFocus && ae.classList && ae.classList.contains("sub-mo"));
     const fresh = JSON.parse(JSON.stringify(src));
     Object.keys(task).forEach(k => delete task[k]);
     Object.assign(task, fresh);
     if (!Array.isArray(task.comments)) task.comments = [];
     if (!Array.isArray(task.assignees)) task.assignees = [];
     if (!Array.isArray(task.deptStages)) task.deptStages = [];
-    const titleEl = modal.querySelector('[data-f="title"]'), descEl = modal.querySelector('[data-f="description"]');
+    const titleEl = modal.querySelector('[data-f="title"]'), descEl = modal.querySelector('[data-f="description"]'), soEl = modal.querySelector('[data-f="so"]');
     if (ae !== titleEl) titleEl.value = task.title || "";
+    if (ae !== soEl) soEl.value = task.so || "";
     if (ae !== descEl) descEl.value = task.description || "";
     startField.setValue(task.startDate || null);
     dueField.setValue(task.date || null);
+    if (deptDueField) { const st0 = taskStage(task, myViewDeptId()); deptDueField.setValue(st0 ? st0.due || null : null); }
     if (prioritySel) { prioritySel.value = task.priority || "none"; prioritySel.style.color = getPriority(prioritySel.value).color; }
     if (closeStagePop) closeStagePop(); document.querySelectorAll(".checklist-popover, .stage-pop").forEach(n => n.remove());
     paintStatus(); renderLabels(); renderSubs(); renderStages(); renderAssignees(); renderFeed();
     applyTaskModalPerm(modal);
     if (sidFocus) {
-      const inp = subWrap.querySelector(`.subtask-row[data-sid="${CSS.escape(sidFocus)}"] input[type=text]`);
+      const inp = subWrap.querySelector(`.subtask-row[data-sid="${CSS.escape(sidFocus)}"] input.${focusMo ? "sub-mo" : "sub-name"}`);
       if (inp) { inp.focus(); if (caret != null) try { inp.setSelectionRange(caret, caret); } catch (_) {} }
     }
   }
@@ -6201,7 +6418,7 @@ function openTaskModal(taskId, defaults={}) {
   const asgWrap = modal.querySelector("[data-assignees]");
   function renderAssignees() {
     const editable = canEdit();
-    asgWrap.innerHTML = task.assignees.map(id => {
+    asgWrap.innerHTML = task.assignees.filter(id => !teamProfiles.has(id) || canSeePerson(teamProfiles.get(id))).map(id => {
       const p = teamProfiles.get(id) || { id, display_name: "(ผู้ใช้ที่ถูกลบ)" };
       return `<span class="asg-chip">${avatarHtml(p)}<span class="asg-chip-name">${escapeHtml(personName(p))}</span>${editable ? `<button type="button" data-rm="${escapeHtml(id)}" title="เอาออก">✕</button>` : ""}</span>`;
     }).join("")
@@ -6220,10 +6437,29 @@ function openTaskModal(taskId, defaults={}) {
   // only their own department's date in the stages section below, so the project rollup date up top
   // would just be confusing. Planners (no department) still see & set it. Hidden ≠ cleared: the field
   // keeps its value, so saving leaves task.date/startDate untouched.
-  if (myDeptId() && !isServiceBoard()) {   // Service has no stages → its people set the project dates directly
-    const dateRow = modal.querySelector('[data-dates]');
-    if (dateRow) dateRow.style.display = "none";
-    modal.querySelector(".tm-meta").classList.add("no-dates");
+  if (myViewDeptId() && !isServiceBoard()) {   // Service has no stages → its people set the project dates directly
+    // ★ department staff: the cell shows THEIR department's due date (stage.due) instead of the project dates
+    const myD = myViewDeptId(), dateRow = modal.querySelector('[data-dates]');
+    if (dateRow && taskStage(task, myD)) {
+      dateRow.querySelector(".tm-lbl").textContent = `กำหนดส่ง · ${(getDept(myD) || {}).name || ""}`;
+      const box = dateRow.querySelector(".tm-dates"); box.innerHTML = "";
+      deptDueField = createDateField({ value: taskStage(task, myD).due || null, allowClear: true, extraClass: "tm-date",
+        onChange: (iso) => {
+          const stg = taskStage(task, myD); if (!stg) return;
+          if (!canEdit()) { permDenied("สิทธิ์ของคุณแก้วันไม่ได้"); deptDueField.setValue(stg.due || null); return; }
+          if (iso) {
+            const max = dateLimitViolation(task, myD, iso, null);
+            if (max) { toast(dateLimitMsg(myD, max)); deptDueField.setValue(stg.due || null); return; }
+          }
+          stg.due = iso || null;
+          renderStages(); scheduleCommit(0);
+        } });
+      deptDueField.title = "กำหนดส่งของแผนก";
+      box.appendChild(deptDueField);
+    } else {
+      if (dateRow) dateRow.style.display = "none";
+      modal.querySelector(".tm-meta").classList.add("no-dates");
+    }
   }
 
   // ★ apply the viewer's permission tier (grey out / disable what they can't change). This is the
@@ -6247,7 +6483,7 @@ function applyTaskModalPerm(modal) {
     gone(modal.querySelector('[data-act="save"]'));
   } else if (!full) {
     // edit tier → keep dates/status/checklist; disable structural fields only
-    ['[data-f="title"]', 'select[data-priority]', '[data-f="description"]', '[data-act="add-stage"]', '[data-act="add-sub"]']
+    ['[data-f="title"]', '[data-f="so"]', 'select[data-priority]', '[data-f="description"]', '[data-act="add-stage"]', '[data-act="add-sub"]']
       .forEach(sel => modal.querySelectorAll(sel).forEach(off));
     modal.querySelectorAll('[data-labels] input, [data-labels] .label-chip button, [data-extra-fields] select, [data-subtasks] input[type="text"], [data-subtasks] .subtask-del, [data-stages] .stage-dept, [data-stages] .subtask-del').forEach(off);
   }
@@ -6411,6 +6647,7 @@ function logActivity(task, text) {
 function diffTaskActivity(before, after) {
   const logs = [];
   if (!before) { logs.push("สร้างงาน"); return logs; }
+  if ((before.so || "") !== (after.so || "")) logs.push(after.so ? `SO → ${after.so}` : "ลบ SO");
   if (before.statusId !== after.statusId)
     logs.push(`เปลี่ยนสถานะ: ${getStatus(before.statusId).name} → ${getStatus(after.statusId).name}`);
   if (before.date !== after.date)
@@ -6433,7 +6670,7 @@ function diffTaskActivity(before, after) {
       deptFields(s.deptId).forEach(f => {
         const bv = (b.fields || {})[f.id] || null, av = (s.fields || {})[f.id] || null;
         if (bv === av) return;
-        const lbl = av ? ((findFieldOption(f, av) || {}).label || "?") : null;
+        const lbl = av ? ((f.type === "text" || f.type === "link") ? String(av).slice(0, 60) : ((findFieldOption(f, av) || {}).label || "?")) : null;
         logs.push(av ? `${dn} · ${f.name}: ${lbl}` : `${dn} · ล้าง ${f.name}`);
       });
     }
@@ -6466,7 +6703,7 @@ function buildTpCabRow(t, sub, ed, today, deptId) {
   const done = isStatusDone(cur);
   const overdue = ed < today;
   const overdueDays = overdue ? Math.round((fromIso(today) - fromIso(ed)) / 86400000) : 0;
-  const name = sub ? (sub.text || "(ไม่มีชื่อตู้)") : "(ทั้งโปรเจค — ยังไม่มีตู้)";
+  const name = sub ? subLabel(sub) : "(ทั้งโปรเจค — ยังไม่มีตู้)";
   const clp = sub ? checklistProgress(sub, deptId) : { done:0, total:0, pct:0 };
   // in a department view, only show the checklist button if that dept has items for this cabinet
   const showCl = sub && (deptId ? clp.total > 0 : (sub.checklist || []).length > 0);
@@ -6529,7 +6766,7 @@ function renderTpGroup(entry, today) {
   head.className = "tp-group-head";
   head.innerHTML = `
     <button type="button" class="subtask-dot" style="--st-color:${st.color}" title="สถานะโปรเจค: ${escapeHtml(st.name)}"></button>
-    <span class="tp-group-title">${pr.id !== "none" ? priFlag(pr) + " " : ""}${escapeHtml(t.title)}</span>
+    <span class="tp-group-title">${pr.id !== "none" ? priFlag(pr) + " " : ""}${escapeHtml(t.title)}</span>${(t.so || "").trim() ? `<span class="tp-so">${escapeHtml(t.so.trim())}</span>` : ""}
     ${alertPin(t)}
     <span class="tp-group-badge">${prog.done}/${prog.total}</span>
   `;
@@ -6653,7 +6890,7 @@ function renderTodayPanelDept(deptIds, today, pass) {
     const wrap = document.createElement("div");
     wrap.className = "tp-group" + (deptDone ? " complete" : "");
     const headControl = usesChecklist
-      ? (deptDone ? `<span class="dept-done-badge" title="แผนก ${escapeHtml(dn)} เสร็จแล้ว (ติ๊ก checklist ครบทุกตู้)">✓</span>` : "")
+      ? ""
       : `<input type="checkbox" class="dept-done-cb" ${stg.done?"checked":""} title="ติ๊กเมื่อแผนก ${escapeHtml(dn)} ทำเสร็จ" />`;
     const head = document.createElement("div");
     head.className = "tp-group-head";
@@ -6662,9 +6899,10 @@ function renderTodayPanelDept(deptIds, today, pass) {
     head.innerHTML = `
       ${headControl}
       <button type="button" class="subtask-dot" style="--st-color:${st.color}" title="สถานะงาน (รวม): ${escapeHtml(st.name)}"></button>
-      <span class="tp-group-title">${pr.id!=="none"?priFlag(pr)+" ":""}${escapeHtml(t.title)}</span>
+      <span class="tp-group-title">${pr.id!=="none"?priFlag(pr)+" ":""}${escapeHtml(t.title)}</span>${(t.so || "").trim() ? `<span class="tp-so">${escapeHtml(t.so.trim())}</span>` : ""}
       ${alertPin(t)}
       ${fchips}
+      ${deptDone ? `<span class="dept-done-badge" title="แผนก ${escapeHtml(dn)} เสร็จแล้ว${usesChecklist ? " (ติ๊ก checklist ครบทุกตู้)" : ""}">✓ เสร็จ</span>` : ""}
     `;
     const cb = head.querySelector(".dept-done-cb");
     if (cb) {
@@ -6723,10 +6961,15 @@ function renderTodayPanelDept(deptIds, today, pass) {
         else if (showOverdue && u.ed < today && !u.done) { addTo(overdueMap, t, stg, u.sub, u.ed); cabTotal++; }
       });
     });
-    const overdueGroups = [...overdueMap.values()].sort(byEntry);
-    const todayGroups = [...todayMap.values()].sort(byEntry);
+    // ★ same rule as the calendar chips: finished work sinks to the bottom — a project whose department is complete
+    //   goes after the open ones, and inside a project the finished cabinets go after the open ones
+    const groupDone = g => isDeptComplete(g.task, deptId) ? 1 : 0;
+    const cabDone1 = (t, c) => (c.sub ? cabDeptDone(t, c.sub, deptId) : isDeptComplete(t, deptId)) ? 1 : 0;
+    const byOpenFirst = (a, b) => groupDone(a) - groupDone(b) || byEntry(a, b);
+    const overdueGroups = [...overdueMap.values()].sort(byOpenFirst);
+    const todayGroups = [...todayMap.values()].sort(byOpenFirst);
     [...overdueGroups, ...todayGroups].forEach(g =>
-      g.cabs.sort((a,b) => (a.ed||"").localeCompare(b.ed||"") || (a.sub?.text||"").localeCompare(b.sub?.text||"", "th")));
+      g.cabs.sort((a,b) => cabDone1(g.task, a) - cabDone1(g.task, b) || (a.ed||"").localeCompare(b.ed||"") || (a.sub?.text||"").localeCompare(b.sub?.text||"", "th")));
     return { overdueGroups, todayGroups, cabTotal, cabDone };
   }
 
@@ -7223,6 +7466,28 @@ function buildDeptsPanel(container) {
   container.appendChild(defSec);
   const defListEl = defSec.querySelector('[data-default-list]');
 
+  // PM departments: see every project like a person with no department
+  const pmSec = document.createElement("div");
+  pmSec.className = "settings-section";
+  pmSec.innerHTML = `
+    <h4 class="settings-h">แผนกที่เห็นงานทั้งหมด (PM)</h4>
+    <div class="default-stage-list" data-pm-list></div>
+  `;
+  container.appendChild(pmSec);
+  function renderPm() {
+    const el = pmSec.querySelector("[data-pm-list]");
+    el.innerHTML = "";
+    if (!state.departments.length) { el.innerHTML = `<div class="muted" style="font-size:12px">ยังไม่มีแผนก</div>`; return; }
+    state.departments.forEach(d => {
+      const row = document.createElement("label");
+      row.className = "default-stage-row";
+      row.innerHTML = `<input type="checkbox" ${d.seeAll ? "checked" : ""} />${deptIco(d)}<span class="default-stage-name">${escapeHtml(d.name)}</span>`;
+      row.querySelector("input").addEventListener("change", (e) => { d.seeAll = e.target.checked; saveState(); renderAll(); });
+      el.appendChild(row);
+    });
+  }
+  renderPm();
+
   // third section: date-limit rule — block chosen departments from being scheduled past an anchor dept
   const limSec = document.createElement("div");
   limSec.className = "settings-section";
@@ -7277,6 +7542,7 @@ function buildDeptsPanel(container) {
   });
 
   function renderDefaults() {
+    renderPm();
     if (!Array.isArray(state.settings.defaultStages)) state.settings.defaultStages = [];
     defListEl.innerHTML = "";
     if (state.departments.length === 0) {
@@ -7357,7 +7623,7 @@ function buildFieldsPanel(container) {
   const sec = document.createElement("div");
   sec.className = "settings-section";
   sec.innerHTML = `
-    <h4 class="settings-h">ฟิลด์ dropdown กำหนดเอง (ต่อแผนก)</h4>
+    <h4 class="settings-h">ฟิลด์เพิ่มเติม (ต่อแผนก)</h4>
     <div class="field"><label>เลือกแผนก</label><select data-dept></select></div>
     <div data-fields></div>
     <button class="btn btn-sm" data-add-field>+ เพิ่มฟิลด์</button>
@@ -7393,9 +7659,18 @@ function buildFieldsPanel(container) {
           <label class="cf-showchip" title="แสดงค่าที่เลือกบน chip ปฏิทิน และแถบ ‘ต้องเสร็จ’"><input type="checkbox" ${f.showOnChip ? "checked" : ""} /> แสดงบนปฏิทิน</label>
           <button class="btn btn-ghost btn-sm btn-danger" data-del-field title="ลบฟิลด์">✕</button>
         </div>
+        <div class="cf-type-row"><select class="cf-ftype"><option value="select">ตัวเลือก (dropdown)</option><option value="text">กล่องข้อความ</option><option value="link">ลิงก์ (เช่น Map)</option></select></div>
         <div class="cf-groups" data-groups></div>
         <button class="btn btn-sm" data-add-group>+ เพิ่มกลุ่ม</button>
       `;
+      const ftype = fieldBox.querySelector(".cf-ftype");
+      ftype.value = f.type === "text" || f.type === "link" ? f.type : "select";
+      const paintType = () => {
+        const isSel = ftype.value === "select";
+        fieldBox.querySelector("[data-groups]").style.display = isSel ? "" : "none";
+        fieldBox.querySelector("[data-add-group]").style.display = isSel ? "" : "none";
+      };
+      ftype.addEventListener("change", () => { if (ftype.value === "select") delete f.type; else f.type = ftype.value; paintType(); saveState(); renderAll(); });
       const fname = fieldBox.querySelector(".cf-fname");
       fname.addEventListener("input", () => { f.name = fname.value; saveState(); renderAll(); });
       fieldBox.querySelector(".cf-showchip input").addEventListener("change", (e) => { f.showOnChip = e.target.checked; saveState(); renderAll(); });
@@ -7453,6 +7728,7 @@ function buildFieldsPanel(container) {
       }
       renderGroups();
       fieldBox.querySelector("[data-add-group]").addEventListener("click", () => { f.groups.push({ id: uid("grp"), name: "", options: [] }); saveState(); renderGroups(); });
+      paintType();
       fieldsEl.appendChild(fieldBox);
     });
   }
@@ -7551,14 +7827,23 @@ function buildAutomationPanel(container) {
   const listEl = sec.querySelector("[data-list]");
   const depts = state.departments || [];
   const opt = (v, label) => `<option value="${escapeHtml(v)}">${escapeHtml(label)}</option>`;
-  const condValue = c => (c.when === "all" || c.when === "subs") ? c.when : c.when + ":" + c.deptId;
-  const parseCond = v => { const i = v.indexOf(":"); return i < 0 ? { when: v, deptId: null } : { when: v.slice(0, i), deptId: v.slice(i + 1) }; };
+  const condValue = c => (c.when === "all" || c.when === "subs") ? c.when
+    : c.when === "item" ? "item:" + c.deptId + ":" + encodeURIComponent(c.item || "") : c.when + ":" + c.deptId;
+  const parseCond = v => {
+    if (v.startsWith("item:")) { const r = v.slice(5), j = r.indexOf(":"); return { when: "item", deptId: r.slice(0, j), item: decodeURIComponent(r.slice(j + 1)) }; }
+    const i = v.indexOf(":"); return i < 0 ? { when: v, deptId: null } : { when: v.slice(0, i), deptId: v.slice(i + 1) };
+  };
   const whenOptions = (target, c) => {
     let h = opt("all", automationWhenLabel({ when: "all", target }));
     h += opt("subs", target === "sub" ? "ตู้นี้เสร็จ" : "ตู้เสร็จครบทุกตู้");
     h += `<optgroup label="เช็คลิสต์ครบ">` + depts.map(d => opt("done:" + d.id, `เช็คลิสต์ ${d.name} ครบ`)).join("") + `</optgroup>`;
     h += `<optgroup label="เริ่มติ๊ก">` + depts.map(d => opt("start:" + d.id, `เริ่มติ๊กเช็คลิสต์ ${d.name}`)).join("") + `</optgroup>`;
+    depts.forEach(d => {
+      const items = [...new Set((d.checklist || []).map(x => String(x || "").trim()).filter(Boolean))];
+      if (items.length) h += `<optgroup label="ติ๊กรายการ · ${escapeHtml(d.name)}">` + items.map(it => opt("item:" + d.id + ":" + encodeURIComponent(it), `ติ๊ก “${it}” (${d.name})`)).join("") + `</optgroup>`;
+    });
     if (c.when !== "all" && c.when !== "subs" && !depts.some(d => d.id === c.deptId)) h += opt(condValue(c), "(แผนกถูกลบแล้ว)");
+    else if (c.when === "item" && !((getDept(c.deptId) || {}).checklist || []).map(x => String(x || "").trim()).includes(c.item)) h += opt(condValue(c), `ติ๊ก “${c.item}” (รายการไม่อยู่ในเช็คลิสต์แล้ว)`);
     return h;
   };
   const statusOptions = (r) => {
@@ -7602,7 +7887,7 @@ function buildAutomationPanel(container) {
       card.querySelector("[data-status]").addEventListener("change", (e) => { r.statusId = e.target.value; saveState(); });
       card.querySelectorAll("[data-when]").forEach(sel => sel.addEventListener("change", () => {
         const i = +sel.dataset.when, c = parseCond(sel.value);
-        if (i === 0) { r.when = c.when; r.deptId = c.deptId; } else r.more[i - 1] = c;
+        if (i === 0) { r.when = c.when; r.deptId = c.deptId; if (c.item != null) r.item = c.item; else delete r.item; } else r.more[i - 1] = c;
         saveState();
       }));
       // one AND/OR per rule — every connector shows the same value
@@ -7659,6 +7944,12 @@ function buildDisplayPanel(container) {
         <span class="settings-toggle-title">มุมมองแผนก: แตกปฏิทินเป็นรายตู้</span>
       </span>
     </label>
+    <label class="settings-toggle-row">
+      <input type="checkbox" data-f="xmention" ${state.settings.crossMention ? "checked" : ""} />
+      <span class="settings-toggle-text">
+        <span class="settings-toggle-title">@ กล่าวถึงคนแผนกอื่นได้</span>
+      </span>
+    </label>
     ${root.activeBoard === SERVICE_BOARD ? "" : `<h4 class="settings-h" style="margin-top:14px">ปุ่ม “ยื่นขอแบบ” แสดงกับแผนก</h4>
     <div class="perm-dept-list" data-draw-depts></div>
     <h4 class="settings-h" style="margin-top:14px">ปุ่ม “ดึงคำขอจากฟอร์ม” แสดงกับแผนก</h4>
@@ -7669,6 +7960,7 @@ function buildDisplayPanel(container) {
     state.settings.showCabinetChips = e.target.checked;
     saveState(); renderMainView();
   });
+  sec.querySelector('[data-f="xmention"]').addEventListener("change", (e) => { state.settings.crossMention = e.target.checked; saveState(); });
   sec.querySelector('[data-f="deptcab"]').addEventListener("change", (e) => {
     state.settings.deptCalByCabinet = e.target.checked;
     saveState(); renderMainView();
@@ -8058,7 +8350,8 @@ function pushForComment(task, c, boardId) {
     const d = getDeptIn(root.boards[bid] || state, c.toDept);
     sendPush({ deptId: c.toDept, boardId: bid, taskId: task.id, title: `🔔 แจ้งเตือนถึงแผนก${d ? " " + d.name : ""}`, body: `${task.title}${snippet ? " · " + snippet : ""}`, tag: "rt-alert-" + c.id });
   }
-  if (Array.isArray(c.mentions) && c.mentions.length) sendPush({ userIds: c.mentions, boardId: bid, taskId: task.id, title: "💬 มีคนกล่าวถึงคุณ", body: `${task.title} · ${who}: ${snippet}`, tag: "rt-men-" + c.id });
+  const menIds = Array.isArray(c.mentions) ? c.mentions.filter(id => crossMentionOn(root.boards[bid]) || !teamProfiles.has(id) || personSeesTask(teamProfiles.get(id), task, root.boards[bid])) : [];
+  if (menIds.length) sendPush({ userIds: menIds, boardId: bid, taskId: task.id, title: "💬 มีคนกล่าวถึงคุณ", body: `${task.title} · ${who}: ${snippet}`, tag: "rt-men-" + c.id });
 }
 
 /* ---------- Import / Export ---------- */
@@ -8338,7 +8631,7 @@ function openProjectDashboard(t) {
     return `
       <div class="dash-pd-cab${cdone ? ' done' : ''}">
         <span class="dash-pd-dot" style="background:${cst.color}"></span>
-        <span class="dash-pd-name">${escapeHtml(s.text || "(ไม่มีชื่อตู้)")}</span>
+        <span class="dash-pd-name">${escapeHtml(subLabel(s))}</span>
         ${dashBar(pc, cdone ? '#10b981' : cst.color)}
         <span class="dash-pd-val">${p.total ? `${p.done}/${p.total}` : (cdone ? '✓' : '—')}</span>
       </div>`;
@@ -8349,7 +8642,7 @@ function openProjectDashboard(t) {
         const p = checklistProgress(s), cst = getStatus(s.statusId);
         const cdone = p.total > 0 ? p.done === p.total : isStatusDone(cst);
         const pc = p.total ? Math.round(p.done / p.total * 100) : (cdone ? 100 : 0);
-        return `<div class="dash-cab-cell${cdone ? " done" : ""}" title="${escapeHtml((s.text || "") + " · " + (p.total ? p.done + "/" + p.total : cst.name))}"><span class="dash-pd-dot" style="background:${cst.color}"></span><span class="dash-cab-name">${escapeHtml(s.text || "(ไม่มีชื่อตู้)")}</span><span class="dash-cab-pc">${cdone ? "✓" : pc + "%"}</span></div>`;
+        return `<div class="dash-cab-cell${cdone ? " done" : ""}" title="${escapeHtml((s.text || "") + " · " + (p.total ? p.done + "/" + p.total : cst.name))}"><span class="dash-pd-dot" style="background:${cst.color}"></span><span class="dash-cab-name">${escapeHtml(subLabel(s))}</span><span class="dash-cab-pc">${cdone ? "✓" : pc + "%"}</span></div>`;
       }).join("")}</div>`
     : cabHtml;
 
@@ -8390,7 +8683,7 @@ function openProjectDashboard(t) {
   overlay.innerHTML = `
     <div class="modal dash-modal" role="dialog" aria-modal="true">
       <div class="modal-head">
-        <h3>${ico("chart")} ${escapeHtml(t.title)}</h3>
+        <h3>${ico("chart")} ${escapeHtml(taskLabel(t))}</h3>
         <button class="btn btn-ghost" data-act="close" title="ปิด">✕</button>
       </div>
       <div class="dash-mbody">
@@ -8675,7 +8968,7 @@ function renderMainView() {
 /* ----- Browser notifications (Notification API) — configurable per event type in ⚙ การแจ้งเตือน ----- */
 const NOTIF_SUPPORTED = typeof window !== "undefined" && "Notification" in window;
 // line icon set — one style everywhere (stroke = currentColor). ico("bell"), ico("trash", "ico ico-lg")
-const ICONS = {"zap": "<polygon points=\"13 2 3 14 12 14 11 22 21 10 12 10 13 2\"/>", "bell": "<path d=\"M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9\"/><path d=\"M10.3 21a1.94 1.94 0 0 0 3.4 0\"/>", "settings": "<circle cx=\"12\" cy=\"12\" r=\"3\"/><path d=\"M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z\"/>", "search": "<circle cx=\"11\" cy=\"11\" r=\"7\"/><path d=\"m21 21-4.3-4.3\"/>", "ruler": "<path d=\"M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.41 2.41 0 0 1 0-3.4l2.6-2.6a2.41 2.41 0 0 1 3.4 0Z\"/><path d=\"m14.5 12.5 2-2M11.5 9.5l2-2M8.5 6.5l2-2M17.5 15.5l2-2\"/>", "inbox": "<path d=\"M22 12h-6l-2 3h-4l-2-3H2\"/><path d=\"M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z\"/>", "trash": "<path d=\"M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6\"/>", "clipboard": "<rect x=\"8\" y=\"2\" width=\"8\" height=\"4\" rx=\"1\"/><path d=\"M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2M9 12h6M9 16h4\"/>", "printer": "<path d=\"M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2\"/><rect x=\"6\" y=\"14\" width=\"12\" height=\"8\" rx=\"1\"/>", "user": "<circle cx=\"12\" cy=\"8\" r=\"4\"/><path d=\"M4 21a8 8 0 0 1 16 0\"/>", "users": "<path d=\"M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2\"/><circle cx=\"9\" cy=\"7\" r=\"4\"/><path d=\"M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75\"/>", "tag": "<path d=\"M12.6 2.6A2 2 0 0 0 11.2 2H4a2 2 0 0 0-2 2v7.2a2 2 0 0 0 .6 1.4l8.7 8.7a2.4 2.4 0 0 0 3.4 0l6.6-6.6a2.4 2.4 0 0 0 0-3.4z\"/><circle cx=\"7.5\" cy=\"7.5\" r=\"1.5\"/>", "building": "<rect x=\"4\" y=\"2\" width=\"16\" height=\"20\" rx=\"2\"/><path d=\"M9 22v-4h6v4M8 6h.01M12 6h.01M16 6h.01M8 10h.01M12 10h.01M16 10h.01M8 14h.01M12 14h.01M16 14h.01\"/>", "sliders": "<path d=\"M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6\"/>", "list-check": "<path d=\"m3 17 2 2 4-4M3 7l2 2 4-4M13 6h8M13 12h8M13 18h8\"/>", "monitor": "<rect x=\"2\" y=\"3\" width=\"20\" height=\"14\" rx=\"2\"/><path d=\"M8 21h8M12 17v4\"/>", "history": "<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\"/><path d=\"M3 3v5h5M12 7v5l4 2\"/>", "restore": "<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\"/><path d=\"M3 3v5h5\"/>", "database": "<ellipse cx=\"12\" cy=\"5\" rx=\"9\" ry=\"3\"/><path d=\"M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5M3 12c0 1.66 4 3 9 3s9-1.34 9-3\"/>", "calendar": "<rect x=\"3\" y=\"4\" width=\"18\" height=\"18\" rx=\"2\"/><path d=\"M16 2v4M8 2v4M3 10h18\"/>", "download": "<path d=\"M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3\"/>", "upload": "<path d=\"M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12\"/>", "camera": "<path d=\"M14.5 4h-5L7.5 6.5H5A2 2 0 0 0 3 8.5v9a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2h-2.5z\"/><circle cx=\"12\" cy=\"12.5\" r=\"3.5\"/>", "clip": "<path d=\"M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48\"/>", "chart": "<path d=\"M3 3v18h18M18 17V9M13 17V5M8 17v-3\"/>", "edit": "<path d=\"M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z\"/><path d=\"m15 5 4 4\"/>", "flag": "<path d=\"M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1zM4 22v-7\"/>", "ban": "<circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"m4.9 4.9 14.2 14.2\"/>", "clock": "<circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"M12 6v6l4 2\"/>", "mail": "<rect x=\"2\" y=\"4\" width=\"20\" height=\"16\" rx=\"2\"/><path d=\"m22 7-10 5L2 7\"/>", "cloud": "<path d=\"M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z\"/>", "logout": "<path d=\"M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9\"/>", "check-circle": "<circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"m9 12 2 2 4-4\"/>", "check-square": "<rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"2\"/><path d=\"m9 12 2 2 4-4\"/>", "eye": "<path d=\"M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z\"/><circle cx=\"12\" cy=\"12\" r=\"3\"/>", "pen": "<path d=\"M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z\"/>", "crown": "<path d=\"m2 6 4 11h12l4-11-6 5-4-7-4 7-6-5zM6 21h12\"/>", "message": "<path d=\"M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z\"/>", "alert": "<path d=\"m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z\"/><path d=\"M12 9v4M12 17h.01\"/>", "x-circle": "<circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"m15 9-6 6M9 9l6 6\"/>", "send": "<path d=\"m22 2-7 20-4-9-9-4Z\"/><path d=\"M22 2 11 13\"/>", "copy": "<rect x=\"8\" y=\"8\" width=\"14\" height=\"14\" rx=\"2\"/><path d=\"M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2\"/>", "file": "<path d=\"M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z\"/><path d=\"M14 2v6h6\"/>", "file-text": "<path d=\"M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z\"/><path d=\"M14 2v6h6M16 13H8M16 17H8M10 9H8\"/>", "file-sheet": "<path d=\"M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z\"/><path d=\"M14 2v6h6M8 13h8M8 17h8M12 11v8\"/>", "image": "<rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"2\"/><circle cx=\"9\" cy=\"9\" r=\"2\"/><path d=\"m21 15-3.09-3.09a2 2 0 0 0-2.82 0L6 21\"/>", "archive": "<rect x=\"2\" y=\"3\" width=\"20\" height=\"5\" rx=\"1\"/><path d=\"M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8M10 12h4\"/>"};
+const ICONS = {"star": "<polygon points=\"12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2\"/>", "zap": "<polygon points=\"13 2 3 14 12 14 11 22 21 10 12 10 13 2\"/>", "bell": "<path d=\"M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9\"/><path d=\"M10.3 21a1.94 1.94 0 0 0 3.4 0\"/>", "settings": "<circle cx=\"12\" cy=\"12\" r=\"3\"/><path d=\"M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z\"/>", "search": "<circle cx=\"11\" cy=\"11\" r=\"7\"/><path d=\"m21 21-4.3-4.3\"/>", "ruler": "<path d=\"M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.41 2.41 0 0 1 0-3.4l2.6-2.6a2.41 2.41 0 0 1 3.4 0Z\"/><path d=\"m14.5 12.5 2-2M11.5 9.5l2-2M8.5 6.5l2-2M17.5 15.5l2-2\"/>", "inbox": "<path d=\"M22 12h-6l-2 3h-4l-2-3H2\"/><path d=\"M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z\"/>", "trash": "<path d=\"M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6\"/>", "clipboard": "<rect x=\"8\" y=\"2\" width=\"8\" height=\"4\" rx=\"1\"/><path d=\"M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2M9 12h6M9 16h4\"/>", "printer": "<path d=\"M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2\"/><rect x=\"6\" y=\"14\" width=\"12\" height=\"8\" rx=\"1\"/>", "user": "<circle cx=\"12\" cy=\"8\" r=\"4\"/><path d=\"M4 21a8 8 0 0 1 16 0\"/>", "users": "<path d=\"M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2\"/><circle cx=\"9\" cy=\"7\" r=\"4\"/><path d=\"M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75\"/>", "tag": "<path d=\"M12.6 2.6A2 2 0 0 0 11.2 2H4a2 2 0 0 0-2 2v7.2a2 2 0 0 0 .6 1.4l8.7 8.7a2.4 2.4 0 0 0 3.4 0l6.6-6.6a2.4 2.4 0 0 0 0-3.4z\"/><circle cx=\"7.5\" cy=\"7.5\" r=\"1.5\"/>", "building": "<rect x=\"4\" y=\"2\" width=\"16\" height=\"20\" rx=\"2\"/><path d=\"M9 22v-4h6v4M8 6h.01M12 6h.01M16 6h.01M8 10h.01M12 10h.01M16 10h.01M8 14h.01M12 14h.01M16 14h.01\"/>", "sliders": "<path d=\"M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6\"/>", "list-check": "<path d=\"m3 17 2 2 4-4M3 7l2 2 4-4M13 6h8M13 12h8M13 18h8\"/>", "monitor": "<rect x=\"2\" y=\"3\" width=\"20\" height=\"14\" rx=\"2\"/><path d=\"M8 21h8M12 17v4\"/>", "history": "<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\"/><path d=\"M3 3v5h5M12 7v5l4 2\"/>", "restore": "<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\"/><path d=\"M3 3v5h5\"/>", "database": "<ellipse cx=\"12\" cy=\"5\" rx=\"9\" ry=\"3\"/><path d=\"M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5M3 12c0 1.66 4 3 9 3s9-1.34 9-3\"/>", "calendar": "<rect x=\"3\" y=\"4\" width=\"18\" height=\"18\" rx=\"2\"/><path d=\"M16 2v4M8 2v4M3 10h18\"/>", "download": "<path d=\"M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3\"/>", "upload": "<path d=\"M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12\"/>", "camera": "<path d=\"M14.5 4h-5L7.5 6.5H5A2 2 0 0 0 3 8.5v9a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2h-2.5z\"/><circle cx=\"12\" cy=\"12.5\" r=\"3.5\"/>", "clip": "<path d=\"M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48\"/>", "chart": "<path d=\"M3 3v18h18M18 17V9M13 17V5M8 17v-3\"/>", "edit": "<path d=\"M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z\"/><path d=\"m15 5 4 4\"/>", "flag": "<path d=\"M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1zM4 22v-7\"/>", "ban": "<circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"m4.9 4.9 14.2 14.2\"/>", "clock": "<circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"M12 6v6l4 2\"/>", "mail": "<rect x=\"2\" y=\"4\" width=\"20\" height=\"16\" rx=\"2\"/><path d=\"m22 7-10 5L2 7\"/>", "cloud": "<path d=\"M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z\"/>", "logout": "<path d=\"M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9\"/>", "check-circle": "<circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"m9 12 2 2 4-4\"/>", "check-square": "<rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"2\"/><path d=\"m9 12 2 2 4-4\"/>", "eye": "<path d=\"M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z\"/><circle cx=\"12\" cy=\"12\" r=\"3\"/>", "pen": "<path d=\"M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z\"/>", "crown": "<path d=\"m2 6 4 11h12l4-11-6 5-4-7-4 7-6-5zM6 21h12\"/>", "message": "<path d=\"M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z\"/>", "alert": "<path d=\"m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z\"/><path d=\"M12 9v4M12 17h.01\"/>", "x-circle": "<circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"m15 9-6 6M9 9l6 6\"/>", "send": "<path d=\"m22 2-7 20-4-9-9-4Z\"/><path d=\"M22 2 11 13\"/>", "copy": "<rect x=\"8\" y=\"8\" width=\"14\" height=\"14\" rx=\"2\"/><path d=\"M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2\"/>", "file": "<path d=\"M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z\"/><path d=\"M14 2v6h6\"/>", "file-text": "<path d=\"M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z\"/><path d=\"M14 2v6h6M16 13H8M16 17H8M10 9H8\"/>", "file-sheet": "<path d=\"M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z\"/><path d=\"M14 2v6h6M8 13h8M8 17h8M12 11v8\"/>", "image": "<rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"2\"/><circle cx=\"9\" cy=\"9\" r=\"2\"/><path d=\"m21 15-3.09-3.09a2 2 0 0 0-2.82 0L6 21\"/>", "archive": "<rect x=\"2\" y=\"3\" width=\"20\" height=\"5\" rx=\"1\"/><path d=\"M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8M10 12h4\"/>"};
 const ICON_ATTR = 'viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"';
 function ico(name, cls = "ico") { return ICONS[name] ? `<svg class="${cls}" ${ICON_ATTR}>${ICONS[name]}</svg>` : ""; }
 // confirm dialogs used to take an emoji — map the old ones, or pass an icon name
@@ -8713,7 +9006,7 @@ function canNotify(type) {
 function taskRelevantToMe(t) {
   const n = myNotifyPrefs(), my = myDeptId();
   if (!n.onlyMyDept) return true;   // "notify me about everything" mode → always relevant
-  if (isAssignedToMe(t)) return true;     // assigned to me → always relevant
+  if (isAssignedToMe(t) && iSeeTask(t)) return true;     // assigned to me → relevant (only if it's on my calendar)
   if (!my) return false;                  // department-scoped but no department = admin mode → nothing
   return (t.deptStages || []).some(s => s.deptId === my);
 }
@@ -9431,7 +9724,7 @@ function extractMentions(text) {
   const me = currentProfile && currentProfile.id;
   // longest names first + must end at a word boundary + can't overlap an earlier match — so "@สมชาย QC"
   // doesn't also count a different person called "สมชาย"
-  const cands = assignCandidates().filter(p => p.id !== me)
+  const cands = mentionCandidates().filter(p => p.id !== me)
     .map(p => ({ id: p.id, tok: "@" + personName(p) })).sort((a, b) => b.tok.length - a.tok.length);
   const taken = [], ids = [];
   cands.forEach(({ id, tok }) => {
@@ -9472,13 +9765,14 @@ function attachMentionPicker(input) {
     range = currentQuery();
     if (!range) return close();
     const me = currentProfile && currentProfile.id;
-    items = assignCandidates().filter(p => p.id !== me &&
+    items = mentionCandidates().filter(p => p.id !== me &&
         (personName(p).toLowerCase().includes(range.q) || (p.email || "").toLowerCase().startsWith(range.q)))
-      .sort((a, b) => personName(a).localeCompare(personName(b), "th")).slice(0, 8);
+      .sort((a, b) => (a._otherDept ? 1 : 0) - (b._otherDept ? 1 : 0) || personName(a).localeCompare(personName(b), "th")).slice(0, 8);
     if (!items.length) return close();
     idx = Math.min(idx, items.length - 1);
     if (!pop) { pop = document.createElement("div"); pop.className = "mention-pop"; host.appendChild(pop); }
     pop.innerHTML = `<div class="mention-head">กล่าวถึง — ↑↓ เลือก · Enter ใส่ชื่อ · Esc ปิด</div>` + items.map((p, i) =>
+      (p._otherDept && (i === 0 || !items[i - 1]._otherDept) ? `<div class="mention-group">แผนกอื่น</div>` : "") +
       `<div class="mention-item${i === idx ? " active" : ""}" data-i="${i}">${avatarHtml(p)}<span class="mention-name">${escapeHtml(personName(p))}</span><span class="mention-dept">${escapeHtml((getDept(p.dept_id) || {}).name || "")}</span></div>`).join("");
     pop.querySelectorAll(".mention-item").forEach(el => el.addEventListener("mousedown", (e) => { e.preventDefault(); pick(+el.dataset.i); }));
     const act = pop.querySelector(".mention-item.active");
@@ -9538,7 +9832,9 @@ function pendingAlerts() {
     const ws = root.boards[bid];
     if (!ws) return;
     (ws.tasks || []).forEach(t => (t.comments || []).forEach(c => {
-      if (alertIsForMeIn(c, ws) || mentionPendingForMe(c)) out.push({ task: t, c, boardId: bid });
+      // personal items only for tasks I can see — except @mentions while cross-department mentions are on
+      const personal = !!c.toUser || (mentionPendingForMe(c) && !crossMentionOn(ws));
+      if ((alertIsForMeIn(c, ws) || mentionPendingForMe(c)) && (!personal || iSeeTask(t, ws))) out.push({ task: t, c, boardId: bid });
     }));
   });
   return out.sort((a, b) => (b.c.at || 0) - (a.c.at || 0));
@@ -9712,7 +10008,7 @@ function markReportSeen() {
 }
 // is there actually any outstanding work to report? (same scope the report itself uses)
 function statusReportHasContent() {
-  const deptId = myDeptId() || null;
+  const deptId = myViewDeptId() || null;
   const isComplete = t => {
     if (deptId) return isDeptComplete(t, deptId);
     const p = (t.subtasks || []).reduce((a, s) => { const x = checklistProgress(s); a.done += x.done; a.total += x.total; return a; }, { done: 0, total: 0 });
@@ -9722,7 +10018,7 @@ function statusReportHasContent() {
 }
 
 function openStatusReport() {
-  const deptId = myDeptId() || null;
+  const deptId = myViewDeptId() || null;
   const deptName = deptId ? (getDept(deptId).name || "") : null;
   const today = todayIso();
   const boardName = (root.boardMeta.find(b => b.id === root.activeBoard) || {}).name || "";
@@ -9843,7 +10139,12 @@ function renderBoardSwitcher() {
     chip.title = many ? "ปฏิทินที่เปิดอยู่ — กดเพื่อสลับ" : "ปฏิทินที่เปิดอยู่";
   }
   const tab = document.getElementById("boardTab");
-  if (tab) { tab.hidden = !many; tab.innerHTML = `${ico("calendar")}ปฏิทิน`; }
+  if (tab) { tab.hidden = !many; tab.innerHTML = `${ico("calendar")}<span class="side-tab-label">ปฏิทิน</span>`; }
+  const st = document.getElementById("starTab");
+  if (st) {
+    const n = starredEntries().length;
+    st.innerHTML = `${ico("star")}<span class="side-tab-label">ติดดาว</span>${n ? `<span class="side-tab-count">${n}</span>` : ""}`;
+  }
 }
 function openBoardDrawer() {
   if (document.querySelector(".board-drawer-overlay")) return;
@@ -9877,6 +10178,59 @@ function openBoardDrawer() {
 }
 document.getElementById("boardChip").addEventListener("click", openBoardDrawer);
 document.getElementById("boardTab").addEventListener("click", openBoardDrawer);
+document.getElementById("starTab").addEventListener("click", openStarDrawer);
+// ⭐ starred projects across every calendar I can open (missing / hidden ones are skipped)
+function starredEntries() {
+  const vis = new Set(visibleBoardIds());
+  return starList().map(k => {
+    const i = k.indexOf(":"); const bid = k.slice(0, i), tid = k.slice(i + 1);
+    const ws = vis.has(bid) && root.boards[bid]; const t = ws && (ws.tasks || []).find(x => x.id === tid);
+    return t ? { bid, ws, t } : null;
+  }).filter(Boolean);
+}
+function openStarDrawer() {
+  if (document.querySelector(".board-drawer-overlay")) return;
+  const ov = document.createElement("div");
+  ov.className = "board-drawer-overlay";
+  const today = todayIso();
+  function paint() {
+    const list = starredEntries();
+    ov.innerHTML = `
+      <aside class="board-drawer" role="dialog" aria-label="โปรเจคที่ติดดาว">
+        <div class="board-drawer-head">${ico("star")} ติดดาว</div>
+        <div class="board-drawer-list">
+          ${list.length ? list.map(({ bid, ws, t }) => {
+            const st = getStatusIn(ws, t.statusId), od = t.date && t.date < today && !isStatusDone(st);
+            const p = projectProgress(t);
+            return `<div class="star-item" data-b="${escapeHtml(bid)}" data-t="${escapeHtml(t.id)}">
+              <span class="star-dot" style="background:${st.color}"></span>
+              <div class="star-main"><div class="star-title">${escapeHtml(taskLabel(t))}</div>
+                <div class="star-sub">${escapeHtml(boardNameOf(bid))} · ${escapeHtml(st.name)} · <span class="${od ? "star-od" : ""}">${t.date ? formatDateTH(t.date) : "—"}</span> · ${p.pct}%</div></div>
+              <button type="button" class="star-off" data-unstar title="เอาดาวออก">${ico("star")}</button>
+            </div>`;
+          }).join("") : `<div class="cf-empty" style="padding:8px 6px">ยังไม่มีโปรเจคที่ติดดาว</div>`}
+        </div>
+      </aside>`;
+    ov.querySelectorAll(".star-item").forEach(el => {
+      el.addEventListener("click", (e) => {
+        const { b, t } = el.dataset;
+        if (e.target.closest("[data-unstar]")) { const ws = root.boards[b]; const task = ws && ws.tasks.find(x => x.id === t); if (task) toggleStar(task, b); paint(); ov.querySelector(".board-drawer").style.transition = "none"; renderAll(); return; }
+        close();
+        if (b !== root.activeBoard) setBoard(b);
+        openTaskModal(t);
+      });
+    });
+  }
+  paint();
+  document.body.appendChild(ov);
+  void ov.offsetWidth;
+  ov.classList.add("open");
+  refreshMyStars().then(ch => { if (ch && document.body.contains(ov)) { paint(); ov.querySelector(".board-drawer").style.transition = "none"; renderAll(); } });
+  const close = () => { document.removeEventListener("keydown", onEsc, true); ov.classList.remove("open"); setTimeout(() => ov.remove(), 240); };
+  const onEsc = (e) => { if (e.key === "Escape") { e.stopPropagation(); close(); } };
+  document.addEventListener("keydown", onEsc, true);
+  ov.addEventListener("mousedown", (e) => { if (e.target === ov) close(); });
+}
 
 function renderAll() {
   ensureVisibleBoard();   // must run first: may repoint `state` (e.g. a user just moved into/out of Service)
