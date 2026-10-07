@@ -3400,7 +3400,13 @@ function findFieldOption(field, optId) {
   for (const g of (field.groups || [])) { const o = (g.options || []).find(x => x.id === optId); if (o) return o; }
   return null;
 }
-// the chosen option's label for one field on one task's dept stage (null = nothing chosen)
+// shared (all-department) fields of this calendar — set once per task, everyone who sees the task sees them
+function sharedFields() { return Array.isArray(state.sharedFields) ? state.sharedFields : []; }
+function sharedFieldChips(t) {
+  const holder = { fields: (t && t.fields) || {} };
+  return sharedFields().filter(f => f.showOnChip).map(f => ({ name: f.name, label: stageFieldLabel(f, holder) })).filter(x => x.label);
+}
+// the chosen option's label for one field on one task's dept stage — or on the task itself for a shared field (null = nothing chosen)
 function stageFieldLabel(field, stg) {
   const v = stg && stg.fields ? stg.fields[field.id] : null;
   if (field.type === "text") return v ? String(v) : null;            // free text field
@@ -3419,7 +3425,7 @@ function stageFieldChips(t, deptId) {
 }
 // same, across every department stage of a task (for the all-departments calendar chip)
 function taskFieldChips(t) {
-  const out = [];
+  const out = sharedFieldChips(t);
   (t.deptStages || []).forEach(stg => stageFieldChips(t, stg.deptId).forEach(f => out.push(f)));
   return out;
 }
@@ -3622,6 +3628,8 @@ function migrateState(s) {
   // 🔒 block rules (off unless an admin turns them on)
   if (!s.settings.blockRules || typeof s.settings.blockRules !== "object") s.settings.blockRules = { subNeedChecklist: false, taskNeedSubs: false };
   // 🔗 IT system link (Edge Function it-sync): enabled = this calendar receives new SOs; codes = { deptId: "IT code, …" }
+  // ⚙ ฟิลด์เพิ่มเติม → "ทุกแผนก (ใช้ร่วมกัน)": fields of the whole calendar, value stored on task.fields (2026-10-07)
+  if (!Array.isArray(s.sharedFields)) s.sharedFields = [];
   if (!s.settings.itSync || typeof s.settings.itSync !== "object") s.settings.itSync = { enabled: false, codes: {}, unknown: [] };
   if (!s.settings.itSync.codes || typeof s.settings.itSync.codes !== "object") s.settings.itSync.codes = {};
   if (!Array.isArray(s.settings.itSync.unknown)) s.settings.itSync.unknown = [];
@@ -4730,7 +4738,7 @@ function renderDeptChip(t, stage, position = "single") {
   const soTag = (t.so || "").trim() ? `<span class="chip-so" title="SO ${escapeHtml(t.so)}">${escapeHtml(t.so.trim())}</span>` : "";
   const badgeRow = (badges || flag || doneBadge) ? `<div class="task-substatus">${badges}${flag}${doneBadge}</div>` : "";
   // selected custom-field values for this department, flagged to show on chips
-  const fchips = stageFieldChips(t, deptId);
+  const fchips = [...sharedFieldChips(t), ...stageFieldChips(t, deptId)];
   const fieldRow = (fchips.length && !isSpan) ? `<div class="chip-fields">${fchips.map(f =>
     `<span class="chip-field" title="${escapeHtml(f.name)}: ${escapeHtml(f.label)}">${escapeHtml(f.label)}</span>`).join("")}</div>` : "";
   // a bar has a fixed lane height (2 rows) → SO goes inline before the name, like the project bars
@@ -6195,16 +6203,25 @@ function openTaskModal(taskId, defaults={}) {
     });
     const relevant = (task.deptStages || []).filter(stg =>
       (!modalDept || stg.deptId === modalDept) && deptFields(stg.deptId).length > 0);
-    paintMore(relevant.length > 0);
-    if (relevant.length === 0) { extraBlock.style.display = "none"; return; }
-    extraBlock.style.display = "";
+    // shared fields live on the task itself (a fake "stage" whose .fields IS task.fields)
+    const cards = [];
+    if (sharedFields().length) {
+      if (!task.fields || typeof task.fields !== "object") task.fields = {};
+      cards.push({ stg: { fields: task.fields }, list: sharedFields(), head: `${ico("users")}ข้อมูลเพิ่มเติม` });
+    }
     relevant.forEach(stg => {
       const dept = getDept(stg.deptId) || { name: "?", color: "#888" };
       if (!stg.fields || typeof stg.fields !== "object") stg.fields = {};
+      cards.push({ stg, list: deptFields(stg.deptId), head: `${deptIco(dept)}ข้อมูลเพิ่มเติม · ${escapeHtml(dept.name)}` });
+    });
+    paintMore(cards.length > 0);
+    if (cards.length === 0) { extraBlock.style.display = "none"; return; }
+    extraBlock.style.display = "";
+    cards.forEach(({ stg, list, head }) => {
       const card = document.createElement("div");
       card.className = "extra-card";
-      card.innerHTML = `<div class="extra-card-head">${deptIco(dept)}ข้อมูลเพิ่มเติม · ${escapeHtml(dept.name)}</div>`;
-      const fieldList = deptFields(stg.deptId);
+      card.innerHTML = `<div class="extra-card-head">${head}</div>`;
+      const fieldList = list;
       const rowsEl = document.createElement("div");
       rowsEl.className = "extra-rows" + (fieldList.length >= 4 ? " cols-2" : "");  // many fields → 2 columns
       fieldList.forEach(f => {
@@ -6259,7 +6276,8 @@ function openTaskModal(taskId, defaults={}) {
     parts.push("รายละเอียด", "แท็ก");
     modal.querySelector("[data-more-label]").textContent = parts.join(" · ");
     const filled = !!(task.description || "").trim() || (task.labels || []).length > 0
-      || (task.deptStages || []).some(st => st.fields && Object.keys(st.fields).length && (!modalDept || st.deptId === modalDept));
+      || (task.deptStages || []).some(st => st.fields && Object.keys(st.fields).length && (!modalDept || st.deptId === modalDept))
+      || !!(task.fields && Object.keys(task.fields).length && sharedFields().length);
     if (!moreTouched && filled) moreEl.open = true;
   }
   function addStage() {
@@ -6878,6 +6896,13 @@ function diffTaskActivity(before, after) {
     logs.push(after.startDate ? `ตั้งวันเริ่ม → ${formatDateTH(after.startDate)}` : "ลบวันเริ่ม");
   if (before.priority !== after.priority)
     logs.push(`เปลี่ยนความสำคัญ → ${getPriority(after.priority).label}`);
+  // shared (all-department) fields
+  sharedFields().forEach(f => {
+    const bv = (before.fields || {})[f.id] || null, av = (after.fields || {})[f.id] || null;
+    if (bv === av) return;
+    const lbl = av ? ((f.type === "text" || f.type === "link") ? String(av).slice(0, 60) : ((findFieldOption(f, av) || {}).label || "?")) : null;
+    logs.push(av ? `${f.name}: ${lbl}` : `ล้าง ${f.name}`);
+  });
   // department stages
   const bS = before.deptStages || [], aS = after.deptStages || [];
   aS.forEach(s => {
@@ -7117,7 +7142,7 @@ function renderTodayPanelDept(deptIds, today, pass) {
       : `<input type="checkbox" class="dept-done-cb" ${stg.done?"checked":""} title="ติ๊กเมื่อแผนก ${escapeHtml(dn)} ทำเสร็จ" />`;
     const head = document.createElement("div");
     head.className = "tp-group-head";
-    const fchips = stageFieldChips(t, deptId).map(f =>
+    const fchips = [...sharedFieldChips(t), ...stageFieldChips(t, deptId)].map(f =>
       `<span class="tp-field" title="${escapeHtml(f.name)}: ${escapeHtml(f.label)}">${escapeHtml(f.label)}</span>`).join("");
     head.innerHTML = `
       ${headControl}
@@ -7849,7 +7874,7 @@ function buildFieldsPanel(container) {
   const sec = document.createElement("div");
   sec.className = "settings-section";
   sec.innerHTML = `
-    <h4 class="settings-h">ฟิลด์เพิ่มเติม (ต่อแผนก)</h4>
+    <h4 class="settings-h">ฟิลด์เพิ่มเติม</h4>
     <div class="field"><label>เลือกแผนก</label><select data-dept></select></div>
     <div data-fields></div>
     <button class="btn btn-sm" data-add-field>+ เพิ่มฟิลด์</button>
@@ -7863,12 +7888,17 @@ function buildFieldsPanel(container) {
   }
   const deptSel = sec.querySelector('[data-dept]');
   const fieldsEl = sec.querySelector('[data-fields]');
-  deptSel.innerHTML = state.departments.map(d => `<option value="${d.id}">${escapeHtml(d.name)}</option>`).join("");
-  let curDeptId = state.departments[0].id;
+  const SHARED = "__shared";   // board-level fields (state.sharedFields), value on task.fields
+  deptSel.innerHTML = `<option value="${SHARED}">ทุกแผนก (ใช้ร่วมกัน)</option>`
+    + state.departments.map(d => `<option value="${d.id}">${escapeHtml(d.name)}</option>`).join("");
+  let curDeptId = SHARED;
   deptSel.value = curDeptId;
 
-  const curDept = () => getDept(curDeptId) || state.departments[0];
-  const ensureFields = (d) => { if (!Array.isArray(d.fields)) d.fields = []; return d.fields; };
+  const curDept = () => curDeptId === SHARED ? { id: SHARED } : (getDept(curDeptId) || state.departments[0]);
+  const ensureFields = (d) => {
+    if (d.id === SHARED) { if (!Array.isArray(state.sharedFields)) state.sharedFields = []; return state.sharedFields; }
+    if (!Array.isArray(d.fields)) d.fields = []; return d.fields;
+  };
 
   function renderFields() {
     const d = curDept();
@@ -7904,7 +7934,8 @@ function buildFieldsPanel(container) {
         const ok = await confirmDialog({ title: `ลบฟิลด์ “${f.name || "(ไม่มีชื่อ)"}”?`, message: "ตัวเลือกทั้งหมดในฟิลด์นี้ และค่าที่เลือกไว้ในงานต่างๆ จะถูกล้าง", confirmText: "ลบฟิลด์" });
         if (!ok) return;
         fields.splice(fi, 1);
-        (state.tasks || []).forEach(t => (t.deptStages || []).forEach(stg => { if (stg.deptId === d.id && stg.fields) delete stg.fields[f.id]; }));
+        if (d.id === SHARED) (state.tasks || []).forEach(t => { if (t.fields) delete t.fields[f.id]; });
+        else (state.tasks || []).forEach(t => (t.deptStages || []).forEach(stg => { if (stg.deptId === d.id && stg.fields) delete stg.fields[f.id]; }));
         saveState(); renderFields(); renderAll();
       });
       const groupsEl = fieldBox.querySelector("[data-groups]");
