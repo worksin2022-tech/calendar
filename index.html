@@ -3896,10 +3896,10 @@ function notifyRemoteBoardChange(ws, newTasks, oldTasksById) {
     const oldIds = new Set(((before && before.comments) || []).map(c => c.id));
     (t.comments || []).forEach(c => {
       const seen = iSeeTask(t, ws);   // no cross-department personal notifications (mentions: unless ⚙ allows them)
-      if (!oldIds.has(c.id) && Array.isArray(c.mentions) && c.mentions.includes(meId) && (seen || crossMentionOn(ws))) {
+      if (commentFresh(c, before) && Array.isArray(c.mentions) && c.mentions.includes(meId) && (seen || crossMentionOn(ws))) {
         try { sysNotify("💬 มีคนกล่าวถึงคุณ", { body: `${t.title} · ${c.author || ""}: ${c.text || ""}`.slice(0, 180), tag: "rt-men-" + c.id, renotify: true }); } catch (e) {}
       }
-      if (seen && c.type === "alert" && !c.ack && c.toUser === meId && !oldIds.has(c.id)) {
+      if (seen && c.type === "alert" && !c.ack && c.toUser === meId && commentFresh(c, before)) {
         try { sysNotify("📌 มีงานมอบหมายให้คุณ", { body: `${t.title}${c.author ? " · จาก " + c.author : ""}`, tag: "rt-asg-" + c.id, renotify: true }); } catch (e) {}
       }
     });
@@ -3916,7 +3916,7 @@ function notifyRemoteBoardChange(ws, newTasks, oldTasksById) {
     const before = oldTasksById[t.id];
     const oldIds = new Set(((before && before.comments) || []).map(c => c.id));
     (t.comments || []).forEach(c => {
-      if (c.type === "alert" && !c.ack && !oldIds.has(c.id) && c.toDept === myDept) fire("alert", "🔔 การแจ้งเตือนใหม่", `${t.title}${c.text ? " · " + c.text : ""}`, "rt-alert-" + c.id);
+      if (c.type === "alert" && !c.ack && commentFresh(c, before) && c.toDept === myDept) fire("alert", "🔔 การแจ้งเตือนใหม่", `${t.title}${c.text ? " · " + c.text : ""}`, "rt-alert-" + c.id);
     });
   });
   if (!myDept && notify.onlyMyDept) return;
@@ -3950,7 +3950,7 @@ function notifyRemoteBoardChange(ws, newTasks, oldTasksById) {
     (t.comments || []).forEach(c => {
       if (c.type === "system" || (c.author && currentProfile && c.author === currentProfile.display_name)) return;
       const mentionsMe = meId && Array.isArray(c.mentions) && c.mentions.includes(meId);
-      if (!oldC[c.id] && c.type !== "alert" && !mentionsMe) fire("comment", "💬 คอมเมนต์ใหม่", `${t.title} · ${c.author || ""}: ${c.text || ""}`.slice(0, 180), "rt-cm-" + c.id);
+      if (commentFresh(c, before) && c.type !== "alert" && !mentionsMe) fire("comment", "💬 คอมเมนต์ใหม่", `${t.title} · ${c.author || ""}: ${c.text || ""}`.slice(0, 180), "rt-cm-" + c.id);
       const oldReps = new Set(((oldC[c.id] && oldC[c.id].replies) || []).map(r => r.id));
       (c.replies || []).forEach(r => {
         if (!oldReps.has(r.id) && !(currentProfile && r.author === currentProfile.display_name)) fire("comment", "💬 ตอบกลับ", `${t.title} · ${r.author || ""}: ${r.text || ""}`.slice(0, 180), "rt-rp-" + r.id);
@@ -6230,17 +6230,18 @@ function openTaskModal(taskId, defaults={}) {
     const mentions = extractMentions(text);
     const att = Object.assign(files.length ? { files } : {}, mentions.length ? { mentions } : {});
     const lbl = attachLabel(photo, files);
+    const waitKeys = (files || []).filter(f => f.up === "pending" && f.key).map(f => f.key);
     if (toDept) {
       const dept = getDept(toDept) || { name: toDept };
       const c = { id: uid("al"), type: "alert", author: currentUser(), toDept, text, photo: photo || null, ...att, at: Date.now(), ack: false };
       task.comments.push(c);
-      pushForComment(task, c);
-      toast(`ส่งแจ้งเตือนไปแผนก “${dept.name}” แล้ว`);
+      if (waitKeys.length) holdPushUntilUploaded(c, waitKeys, task); else pushForComment(task, c);
+      toast(waitKeys.length ? `จะแจ้งเตือนแผนก “${dept.name}” เมื่ออัปโหลดเสร็จ` : `ส่งแจ้งเตือนไปแผนก “${dept.name}” แล้ว`);
       pushNotify("alert", `🔔 แจ้งเตือนถึงแผนก ${dept.name}`, `${task.title}: ${text || lbl}`, "al-" + task.id);
     } else {
       const c = { id: uid("cm"), author: currentUser(), text, photo: photo || null, ...att, at: Date.now() };
       task.comments.push(c);
-      pushForComment(task, c);
+      if (waitKeys.length) holdPushUntilUploaded(c, waitKeys, task); else pushForComment(task, c);
       if (taskRelevantToMe(task)) pushNotify("comment", "💬 คอมเมนต์ใหม่", `${task.title} · ${currentUser()}: ${text || lbl}`, "cm-" + task.id);
     }
     commentInput.value = "";
@@ -9181,7 +9182,7 @@ function createAttachList(previewEl) {
       if (f.type.startsWith("image/") && !/svg/i.test(f.type)) {
         if (!drive && items.some(x => x.isImage)) { toast("ยังไม่ได้ตั้งค่า Google Drive — แนบได้ครั้งละ 1 รูป"); continue; }
         try {
-          const preview = await compressImage(f, drive ? 1600 : 1000, drive ? 0.8 : 0.6);
+          const preview = await compressImage(f, drive ? 1280 : 1000, drive ? 0.72 : 0.6);   // 2026-10-07: smaller → faster upload
           items.push({ isImage: true, name: attachStamp() + ".jpg", mime: "image/jpeg", preview });
           continue;
         } catch (_) {
@@ -9264,9 +9265,39 @@ async function uploadOne(key) {
     toast(`อัปโหลด “${e ? e.name : "ไฟล์"}” ไม่สำเร็จ: ${driveErrMsg(err)}`);
   }
   _upCount--;
+  releasePushWait(key);   // last file of a comment done → its notification goes out now
   renderUploadPill();
   saveState();
   document.dispatchEvent(new CustomEvent("attach-updated"));
+}
+/* ---- notifications wait for the attachments (2026-10-07: alert arrived before its photo) ----
+   A comment posted with files still uploading carries `notifyPending: true` (synced) and isn't pushed. When its last
+   file finishes (or fails) the flag is removed on every copy and the push goes out; other devices treat the moment the
+   flag disappears as "new" (commentFresh). Tab closed mid-upload → receivers stop waiting after NOTIFY_HOLD_MS. */
+const _pushWait = new Map();   // comment id → { keys:Set, bid, live: the composer's comment object }
+const NOTIFY_HOLD_MS = 15 * 60 * 1000;
+function holdPushUntilUploaded(c, keys, hostTask) {
+  c.notifyPending = true;
+  _pushWait.set(c.id, { keys: new Set(keys), bid: root.activeBoard, live: c, host: hostTask });
+}
+function releasePushWait(key) {
+  _pushWait.forEach((w, cid) => {
+    if (!w.keys.delete(key) || w.keys.size) return;
+    _pushWait.delete(cid);
+    let task = null, com = null;
+    ((root.boards[w.bid] || {}).tasks || []).forEach(t => (t.comments || []).forEach(c => { if (c.id === cid) { delete c.notifyPending; task = t; com = c; } }));
+    if (w.live) delete w.live.notifyPending;
+    if (!task && w.host) { task = w.host; com = w.live; }
+    if (task && com) pushForComment(task, com, w.bid);
+  });
+}
+// still waiting for its files? (receivers) — gives up after NOTIFY_HOLD_MS so a closed tab can't swallow it forever
+function notifyHeld(c) { return !!(c && c.notifyPending && Date.now() - (c.at || 0) < NOTIFY_HOLD_MS); }
+// is this comment "new" for notifications? new id, or its upload just finished (flag went away)
+function commentFresh(c, before) {
+  if (notifyHeld(c)) return false;
+  const o = ((before && before.comments) || []).find(x => x.id === c.id);
+  return !o || notifyHeld(o);
 }
 function retryUpload(key) {
   if (!_upBlobs.has(key)) return;
@@ -9882,6 +9913,7 @@ function pendingAlerts() {
     const ws = root.boards[bid];
     if (!ws) return;
     (ws.tasks || []).forEach(t => (t.comments || []).forEach(c => {
+      if (notifyHeld(c)) return;   // files still uploading → not shown until they're there
       // personal items only for tasks I can see — except @mentions while cross-department mentions are on
       const personal = !!c.toUser || (mentionPendingForMe(c) && !crossMentionOn(ws));
       if ((alertIsForMeIn(c, ws) || mentionPendingForMe(c)) && (!personal || iSeeTask(t, ws))) out.push({ task: t, c, boardId: bid });
