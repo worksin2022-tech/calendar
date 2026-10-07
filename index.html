@@ -2941,6 +2941,10 @@ function makeCabinetChecklist(departments) {
 // build the default department stages for a NEW task, following workflow (department) order
 function makeDefaultStages() {
   if (isServiceBoard()) return [];
+  // 2026-10-07: someone in a normal department creates the task for their OWN department only;
+  // no department / a "เห็นงานทั้งหมด (PM)" department → the usual default chain from ⚙ ตั้งค่า
+  const mine = myViewDeptId();
+  if (mine) return [{ deptId: mine, due: null, done: false }];
   const chosen = new Set((state.settings && state.settings.defaultStages) || []);
   return (state.departments || [])
     .filter(d => chosen.has(d.id))
