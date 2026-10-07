@@ -2120,6 +2120,15 @@ body.chip-dragging .task-chip.span-bar { pointer-events: none; }   /* let the da
 .theme-sw-dark { background: linear-gradient(90deg, #0f1218 0 30%, #181c24 30%); }
 .theme-name { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; }
 .theme-name .ico { width: 15px; height: 15px; }
+.cf-type-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.cf-multi { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; cursor: pointer; }
+.extra-row-multi { align-items: flex-start; } .extra-row-multi .extra-row-name { padding-top: 4px; }
+.extra-multi { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; min-width: 0; flex: 1 1 auto; }
+.extra-pill { border: 1px solid var(--border-strong); background: var(--panel); color: var(--text); border-radius: 999px; padding: 3px 10px; font-size: 12.5px; cursor: pointer; }
+.extra-pill:hover { border-color: var(--accent); }
+.extra-pill.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+.extra-pill-group { font-size: 11px; color: var(--text-faint); margin-left: 4px; }
+.extra-pill-group:first-child { margin-left: 0; }
 .cu-body { margin-top: 10px; }
 .cu-stats { font-size: 13px; margin-bottom: 6px; }
 .cu-grid { display: grid; grid-template-columns: minmax(120px, max-content) minmax(140px, 220px); gap: 6px 10px; align-items: center; margin-top: 6px; }
@@ -3410,8 +3419,17 @@ function sharedFieldChips(t) {
   return sharedFields().filter(f => f.showOnChip).map(f => ({ name: f.name, label: stageFieldLabel(f, holder) })).filter(x => x.label);
 }
 // the chosen option's label for one field on one task's dept stage — or on the task itself for a shared field (null = nothing chosen)
+// option ids chosen in a dropdown field — always an array (single value / multi array / nothing)
+function fieldValueIds(v) { return Array.isArray(v) ? v.filter(Boolean) : (v ? [v] : []); }
+// label for any stored value of a field ("A, B" for a multi-select); used by chips, activity log, work orders
+function fieldValueText(field, v) {
+  if (field.type === "text" || field.type === "link") return v ? String(v).slice(0, 60) : null;
+  const labels = fieldValueIds(v).map(id => (findFieldOption(field, id) || {}).label).filter(Boolean);
+  return labels.length ? labels.join(", ") : null;
+}
 function stageFieldLabel(field, stg) {
   const v = stg && stg.fields ? stg.fields[field.id] : null;
+  if (Array.isArray(v)) return fieldValueText(field, v);   // multi-select
   if (field.type === "text") return v ? String(v) : null;            // free text field
   if (field.type === "link") return v ? "🔗 " + linkHost(v) : null;   // link field (e.g. Google Maps)
   const o = findFieldOption(field, v);
@@ -6229,9 +6247,10 @@ function openTaskModal(taskId, defaults={}) {
       rowsEl.className = "extra-rows" + (fieldList.length >= 4 ? " cols-2" : "");  // many fields → 2 columns
       fieldList.forEach(f => {
         const cur = stg.fields[f.id] || "";
+        const cur1 = fieldValueIds(cur)[0] || "";
         const groupsHtml = (f.groups || []).map(g => {
           const opts = (g.options || []).filter(o => o.label !== undefined)
-            .map(o => `<option value="${o.id}" ${o.id === cur ? "selected" : ""}>${escapeHtml(o.label)}</option>`).join("");
+            .map(o => `<option value="${o.id}" ${o.id === cur1 ? "selected" : ""}>${escapeHtml(o.label)}</option>`).join("");
           if (!opts) return "";
           return g.name ? `<optgroup label="${escapeHtml(g.name)}">${opts}</optgroup>` : opts;
         }).join("");
@@ -6254,11 +6273,32 @@ function openTaskModal(taskId, defaults={}) {
           rowsEl.appendChild(rowT);
           return;
         }
+        if (f.multi) {
+          const rowM = document.createElement("div");
+          rowM.className = "extra-row extra-row-multi";
+          const chosen = new Set(fieldValueIds(cur));
+          rowM.innerHTML = `<span class="extra-row-name" title="${escapeHtml(f.name)}">${escapeHtml(f.name || "(ฟิลด์)")}</span><div class="extra-multi">${
+            (f.groups || []).map(g => {
+              const opts = (g.options || []).filter(o => o.label !== undefined).map(o =>
+                `<button type="button" class="extra-pill${chosen.has(o.id) ? " on" : ""}" data-opt="${escapeHtml(o.id)}">${escapeHtml(o.label)}</button>`).join("");
+              return opts ? (g.name ? `<span class="extra-pill-group">${escapeHtml(g.name)}</span>` : "") + opts : "";
+            }).join("") || `<span class="muted" style="font-size:12px">—</span>`}</div>`;
+          rowM.querySelectorAll("[data-opt]").forEach(b => b.addEventListener("click", () => {
+            if (!canFull()) { permDenied("สิทธิ์ของคุณแก้ข้อมูลนี้ไม่ได้"); return; }
+            const set = new Set(fieldValueIds(stg.fields[f.id]));
+            if (set.has(b.dataset.opt)) set.delete(b.dataset.opt); else set.add(b.dataset.opt);
+            if (set.size) stg.fields[f.id] = [...set]; else delete stg.fields[f.id];
+            b.classList.toggle("on", set.has(b.dataset.opt));
+            scheduleCommit(600);
+          }));
+          rowsEl.appendChild(rowM);
+          return;
+        }
         const rowEl = document.createElement("label");
         rowEl.className = "extra-row";
         rowEl.innerHTML = `<span class="extra-row-name" title="${escapeHtml(f.name)}">${escapeHtml(f.name || "(ฟิลด์)")}</span><select><option value="">— ไม่ระบุ —</option>${groupsHtml}</select>`;
         const sel = rowEl.querySelector("select");
-        sel.value = cur;
+        sel.value = fieldValueIds(cur)[0] || "";
         sel.addEventListener("change", () => {
           if (!canFull()) { permDenied("สิทธิ์ของคุณแก้ข้อมูลนี้ไม่ได้"); sel.value = cur; return; }
           if (sel.value) stg.fields[f.id] = sel.value; else delete stg.fields[f.id];
@@ -6902,9 +6942,9 @@ function diffTaskActivity(before, after) {
   // shared (all-department) fields
   sharedFields().forEach(f => {
     const bv = (before.fields || {})[f.id] || null, av = (after.fields || {})[f.id] || null;
-    if (bv === av) return;
-    const lbl = av ? ((f.type === "text" || f.type === "link") ? String(av).slice(0, 60) : ((findFieldOption(f, av) || {}).label || "?")) : null;
-    logs.push(av ? `${f.name}: ${lbl}` : `ล้าง ${f.name}`);
+    if (JSON.stringify(bv) === JSON.stringify(av)) return;
+    const lbl = fieldValueText(f, av);
+    logs.push(lbl ? `${f.name}: ${lbl}` : `ล้าง ${f.name}`);
   });
   // department stages
   const bS = before.deptStages || [], aS = after.deptStages || [];
@@ -6920,9 +6960,9 @@ function diffTaskActivity(before, after) {
       // custom dropdown field value changes on this stage
       deptFields(s.deptId).forEach(f => {
         const bv = (b.fields || {})[f.id] || null, av = (s.fields || {})[f.id] || null;
-        if (bv === av) return;
-        const lbl = av ? ((f.type === "text" || f.type === "link") ? String(av).slice(0, 60) : ((findFieldOption(f, av) || {}).label || "?")) : null;
-        logs.push(av ? `${dn} · ${f.name}: ${lbl}` : `${dn} · ล้าง ${f.name}`);
+        if (JSON.stringify(bv) === JSON.stringify(av)) return;
+        const lbl = fieldValueText(f, av);
+        logs.push(lbl ? `${dn} · ${f.name}: ${lbl}` : `${dn} · ล้าง ${f.name}`);
       });
     }
   });
@@ -7918,7 +7958,7 @@ function buildFieldsPanel(container) {
           <label class="cf-showchip" title="แสดงค่าที่เลือกบน chip ปฏิทิน และแถบ ‘ต้องเสร็จ’"><input type="checkbox" ${f.showOnChip ? "checked" : ""} /> แสดงบนปฏิทิน</label>
           <button class="btn btn-ghost btn-sm btn-danger" data-del-field title="ลบฟิลด์">✕</button>
         </div>
-        <div class="cf-type-row"><select class="cf-ftype"><option value="select">ตัวเลือก (dropdown)</option><option value="text">กล่องข้อความ</option><option value="link">ลิงก์ (เช่น Map)</option></select></div>
+        <div class="cf-type-row"><select class="cf-ftype"><option value="select">ตัวเลือก (dropdown)</option><option value="text">กล่องข้อความ</option><option value="link">ลิงก์ (เช่น Map)</option></select><label class="cf-multi"><input type="checkbox" ${f.multi ? "checked" : ""} /> เลือกได้หลายค่า</label></div>
         <div class="cf-groups" data-groups></div>
         <button class="btn btn-sm" data-add-group>+ เพิ่มกลุ่ม</button>
       `;
@@ -7928,7 +7968,9 @@ function buildFieldsPanel(container) {
         const isSel = ftype.value === "select";
         fieldBox.querySelector("[data-groups]").style.display = isSel ? "" : "none";
         fieldBox.querySelector("[data-add-group]").style.display = isSel ? "" : "none";
+        fieldBox.querySelector(".cf-multi").style.display = isSel ? "" : "none";
       };
+      fieldBox.querySelector(".cf-multi input").addEventListener("change", (e) => { if (e.target.checked) f.multi = true; else delete f.multi; saveState(); renderAll(); });
       ftype.addEventListener("change", () => { if (ftype.value === "select") delete f.type; else f.type = ftype.value; paintType(); saveState(); renderAll(); });
       const fname = fieldBox.querySelector(".cf-fname");
       fname.addEventListener("input", () => { f.name = fname.value; saveState(); renderAll(); });
