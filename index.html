@@ -2410,7 +2410,7 @@ function isAdmin() { return !!(currentProfile && currentProfile.role === "admin"
 /* ----- fine-grained member permission (slice 4b): read < comment < edit < full -----
    Client-side gating only (board data is one JSON blob — RLS can't police fields). Admins = full.
    Default "full" so existing members are unchanged until an admin lowers them. */
-const PERM_RANK = { read: 0, comment: 1, edit: 2, full: 3 };
+const PERM_RANK = { read: 0, comment: 1, checklist: 1.5, edit: 2, full: 3 };   // checklist = tick items + comment (2026-10-07)
 function myPerm() {
   if (isAdmin()) return "full";
   const p = currentProfile && currentProfile.perm;
@@ -2418,10 +2418,11 @@ function myPerm() {
 }
 function permRank() { const r = PERM_RANK[myPerm()]; return (r === undefined) ? 3 : r; }
 function canComment() { return permRank() >= 1; }
+function canTick()    { return permRank() >= 1.5; } // tick / untick checklist items
 function canEdit()    { return permRank() >= 2; }   // dates, statuses, checklists
 function canFull()    { return permRank() >= 3; }   // create/delete tasks, titles, structure
 function permDenied(msg) { toast(msg || "สิทธิ์ของคุณทำรายการนี้ไม่ได้ — ติดต่อผู้ดูแลระบบ"); }
-const PERM_LABEL = { read: "ดูอย่างเดียว", comment: "คอมเมนต์ได้", edit: "แก้วัน/สถานะ", full: "แก้ไขเต็ม" };
+const PERM_LABEL = { read: "ดูอย่างเดียว", comment: "คอมเมนต์ได้", checklist: "ติ๊กเช็คลิสต์ + คอมเมนต์", edit: "แก้วัน/สถานะ", full: "แก้ไขเต็ม" };
 
 function showLoginScreen(msg) {
   document.getElementById("loginScreen").classList.remove("hidden");
@@ -3045,7 +3046,7 @@ function automationWhenLabel(r) {
 // `manualBase` (the task popup's saved copy): a task/cabinet whose status the person changed by hand
 // in this same save is left alone — their pick wins.
 function runAutomations(task, before, manualBase) {
-  if (!task || !canEdit()) return false;
+  if (!task || !canTick()) return false;
   before = before || {};
   const validStatus = id => (state.statuses || []).some(x => x.id === id);
   const baseSub = id => manualBase && (manualBase.subtasks || []).find(x => x.id === id);
@@ -4774,7 +4775,8 @@ function openStatusPopover(anchorEl, currentId, onChange) {
    onChange() fires after any change so the caller can repaint/save. */
 let _clPopAnchor = null;
 function openChecklistPopover(anchorEl, sub, onChange, opts = {}) {
-  if (!canEdit()) { permDenied("สิทธิ์ของคุณแก้เช็คลิสต์ไม่ได้"); return; }
+  if (!canTick()) { permDenied("สิทธิ์ของคุณแก้เช็คลิสต์ไม่ได้"); return; }
+  const structOk = canEdit();   // "ติ๊กเช็คลิสต์" tier: tick only — no rename / add / delete
   // already open on this anchor → keep (prevents hover-flicker)
   if (_clPopAnchor === anchorEl && document.querySelector(".checklist-popover")) return;
   document.querySelectorAll(".checklist-popover").forEach(n => n.remove());
@@ -4802,6 +4804,7 @@ function openChecklistPopover(anchorEl, sub, onChange, opts = {}) {
       <button type="button" class="cl-item-del" title="ลบ">✕</button>
     `;
     const [cb, nameI, delB] = r.children;
+    if (!structOk) { nameI.readOnly = true; delB.style.display = "none"; }
     cb.addEventListener("change", () => {
       const was = task ? isDeptComplete(task, it.deptId) : false;
       it.done = cb.checked;
@@ -4815,8 +4818,8 @@ function openChecklistPopover(anchorEl, sub, onChange, opts = {}) {
       paintBar();
       onChange && onChange();
     });
-    nameI.addEventListener("input", () => { it.text = nameI.value; onChange && onChange(); });
-    nameI.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); addItem(it.deptId); } });
+    nameI.addEventListener("input", () => { if (!structOk) return; it.text = nameI.value; onChange && onChange(); });
+    nameI.addEventListener("keydown", (e) => { if (e.key === "Enter" && structOk) { e.preventDefault(); addItem(it.deptId); } });
     delB.addEventListener("click", () => {
       const idx = sub.checklist.indexOf(it);
       if (idx >= 0) sub.checklist.splice(idx, 1);
@@ -4837,9 +4840,10 @@ function openChecklistPopover(anchorEl, sub, onChange, opts = {}) {
       ${deptId ? `<button type="button" class="cl-pop-add" data-act="add">+ เพิ่มรายการ</button>` : ""}
     `;
     const itemsEl = pop.querySelector("[data-items]");
+    if (!structOk) pop.querySelectorAll('[data-act="add"]').forEach(b => b.remove());
     if (deptId) {
       sub.checklist.filter(i => i.deptId === deptId).forEach(it => itemsEl.appendChild(buildItemRow(it)));
-      pop.querySelector('[data-act="add"]').addEventListener("click", () => addItem(deptId));
+      pop.querySelector('[data-act="add"]')?.addEventListener("click", () => addItem(deptId));
     } else {
       // grouped by department
       (state.departments || []).forEach(d => {
@@ -4848,7 +4852,8 @@ function openChecklistPopover(anchorEl, sub, onChange, opts = {}) {
         const grp = document.createElement("div");
         grp.className = "cl-pop-group";
         grp.innerHTML = `${deptIco(d)}${escapeHtml(d.name)} <span class="cl-pop-group-add" title="เพิ่มรายการ">+</span>`;
-        grp.querySelector(".cl-pop-group-add").addEventListener("click", (e) => { e.stopPropagation(); addItem(d.id); });
+        if (structOk) grp.querySelector(".cl-pop-group-add").addEventListener("click", (e) => { e.stopPropagation(); addItem(d.id); });
+        else grp.querySelector(".cl-pop-group-add").remove();
         itemsEl.appendChild(grp);
         items.forEach(it => itemsEl.appendChild(buildItemRow(it)));
       });
@@ -6311,7 +6316,15 @@ function openTaskModal(taskId, defaults={}) {
     if (!real) { goneElsewhere(); return; }
     // my version of the task: read/comment tiers may only add to the Activity; an emptied title isn't saved
     let local = task;
-    if (!canEdit()) local = { ...base, comments: task.comments };
+    if (!canEdit()) {
+      local = { ...base, comments: task.comments };
+      if (canTick()) {   // copy only each item's done flag (by id) — names, cabinets, dates, statuses stay as saved
+        const mine = new Map();
+        (task.subtasks || []).forEach(sx => (sx.checklist || []).forEach(i => mine.set(sx.id + "|" + i.id, !!i.done)));
+        local.subtasks = (base.subtasks || []).map(sx => ({ ...sx, checklist: (sx.checklist || []).map(i => {
+          const k = sx.id + "|" + i.id; return mine.has(k) ? { ...i, done: mine.get(k) } : i; }) }));
+      }
+    }
     else if (!(task.title || "").trim()) local = { ...task, title: base.title };
     // ★ a cabinet added here but still WITHOUT a name isn't saved yet (stays in the popup). Only never-saved ones —
     //   clearing the name of an existing cabinet must never drop it (and its checklist) from the data.
@@ -6321,7 +6334,7 @@ function openTaskModal(taskId, defaults={}) {
     if (pendingBlanks.length) local = { ...local, subtasks: (local.subtasks || []).filter(x => !unsavedBlank(x)) };
     if (deepEq(local, base)) { setSavedNote("✓ บันทึกอัตโนมัติ"); return; }
     let autoFired = false;
-    if (canEdit()) {
+    if (canTick()) {
       diffTaskActivity(base, local).forEach(text => logActivity(local, text));   // only MY changes (base → mine)
       autoFired = runAutomations(local, automationSnapshot(base), base);   // ⚡ (a status picked by hand wins)
       notifyAssigneeChanges(base, local);
@@ -6492,6 +6505,7 @@ function applyTaskModalPerm(modal) {
     // read-only / comment-only → the whole task panel (left) is view-only
     modal.querySelectorAll('.modal-body input, .modal-body textarea, .modal-body select, .modal-body button').forEach(off);
     gone(modal.querySelector('[data-act="save"]'));
+    if (canTick()) modal.querySelectorAll('.subtask-cl-btn').forEach(b => { b.disabled = false; b.classList.remove("perm-off"); });
   } else if (!full) {
     // edit tier → keep dates/status/checklist; disable structural fields only
     ['[data-f="title"]', '[data-f="so"]', 'select[data-priority]', '[data-f="description"]', '[data-act="add-stage"]', '[data-act="add-sub"]']
@@ -6507,7 +6521,7 @@ function applyTaskModalPerm(modal) {
     if (head && !head.querySelector('.perm-badge')) {
       const b = document.createElement("span");
       b.className = "perm-badge";
-      b.innerHTML = edit ? `${ico("pen")} แก้ได้เฉพาะวัน/สถานะ` : (comment ? `${ico("message")} คอมเมนต์ได้อย่างเดียว` : `${ico("eye")} ดูอย่างเดียว`);
+      b.innerHTML = edit ? `${ico("pen")} แก้ได้เฉพาะวัน/สถานะ` : canTick() ? `${ico("check-square")} ติ๊กเช็คลิสต์ + คอมเมนต์` : (comment ? `${ico("message")} คอมเมนต์ได้อย่างเดียว` : `${ico("eye")} ดูอย่างเดียว`);
       head.appendChild(b);
     }
   }
@@ -7228,6 +7242,7 @@ function buildUsersAdminPanel(container) {
       <select data-perm class="um-perm-sel" title="ระดับสิทธิ์การแก้ไข (admin = เต็มเสมอ)" ${p.role === "admin" || locked ? "disabled" : ""}>
         <option value="read">ดูอย่างเดียว</option>
         <option value="comment">คอมเมนต์</option>
+        <option value="checklist">ติ๊กเช็คลิสต์ + คอมเมนต์</option>
         <option value="edit">แก้วัน/สถานะ</option>
         <option value="full">แก้ไขเต็ม</option>
       </select>
