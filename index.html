@@ -2122,13 +2122,18 @@ body.chip-dragging .task-chip.span-bar { pointer-events: none; }   /* let the da
 .theme-name .ico { width: 15px; height: 15px; }
 .cf-type-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .cf-multi { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; cursor: pointer; }
-.extra-row-multi { align-items: flex-start; } .extra-row-multi .extra-row-name { padding-top: 4px; }
-.extra-multi { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; min-width: 0; flex: 1 1 auto; }
-.extra-pill { border: 1px solid var(--border-strong); background: var(--panel); color: var(--text); border-radius: 999px; padding: 3px 10px; font-size: 12.5px; cursor: pointer; }
-.extra-pill:hover { border-color: var(--accent); }
-.extra-pill.on { background: var(--accent); border-color: var(--accent); color: #fff; }
-.extra-pill-group { font-size: 11px; color: var(--text-faint); margin-left: 4px; }
-.extra-pill-group:first-child { margin-left: 0; }
+.ms-wrap { position: relative; flex: 1 1 auto; min-width: 0; }
+.ms-btn { width: 100%; display: flex; align-items: center; gap: 6px; min-height: 30px; padding: 3px 8px; border: 1px solid var(--border-strong); border-radius: 6px; background: var(--panel); color: var(--text); font: inherit; font-size: 13px; text-align: left; cursor: pointer; }
+.ms-btn:hover { border-color: var(--accent); }
+.ms-val { flex: 1 1 auto; min-width: 0; display: flex; flex-wrap: wrap; gap: 4px; }
+.ms-tag { background: var(--b-eef0ff, #eef0ff); color: var(--accent); border-radius: 5px; padding: 1px 7px; font-size: 12px; font-weight: 600; }
+.ms-ph { color: var(--text-faint); }
+.ms-caret { flex: 0 0 auto; color: var(--text-dim); font-size: 11px; }
+.ms-list { position: absolute; left: 0; right: 0; top: calc(100% + 3px); z-index: 70; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; box-shadow: var(--shadow-lg); padding: 4px; max-height: 240px; overflow-y: auto; }
+.ms-group { font-size: 11px; font-weight: 700; color: var(--text-faint); padding: 6px 8px 2px; }
+.ms-opt { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 6px; font-size: 13px; cursor: pointer; }
+.ms-opt:hover { background: var(--b-f3f4f6, #f3f4f6); }
+.ms-opt input { width: 15px; height: 15px; margin: 0; flex: 0 0 auto; }
 .cu-body { margin-top: 10px; }
 .cu-stats { font-size: 13px; margin-bottom: 6px; }
 .cu-grid { display: grid; grid-template-columns: minmax(120px, max-content) minmax(140px, 220px); gap: 6px 10px; align-items: center; margin-top: 6px; }
@@ -6274,23 +6279,40 @@ function openTaskModal(taskId, defaults={}) {
           return;
         }
         if (f.multi) {
+          // multi-select = a dropdown button; the list (checkboxes, grouped) drops down on click, the button shows what's chosen
           const rowM = document.createElement("div");
-          rowM.className = "extra-row extra-row-multi";
-          const chosen = new Set(fieldValueIds(cur));
-          rowM.innerHTML = `<span class="extra-row-name" title="${escapeHtml(f.name)}">${escapeHtml(f.name || "(ฟิลด์)")}</span><div class="extra-multi">${
-            (f.groups || []).map(g => {
-              const opts = (g.options || []).filter(o => o.label !== undefined).map(o =>
-                `<button type="button" class="extra-pill${chosen.has(o.id) ? " on" : ""}" data-opt="${escapeHtml(o.id)}">${escapeHtml(o.label)}</button>`).join("");
-              return opts ? (g.name ? `<span class="extra-pill-group">${escapeHtml(g.name)}</span>` : "") + opts : "";
-            }).join("") || `<span class="muted" style="font-size:12px">—</span>`}</div>`;
-          rowM.querySelectorAll("[data-opt]").forEach(b => b.addEventListener("click", () => {
+          rowM.className = "extra-row";
+          rowM.innerHTML = `<span class="extra-row-name" title="${escapeHtml(f.name)}">${escapeHtml(f.name || "(ฟิลด์)")}</span><div class="ms-wrap"><button type="button" class="ms-btn"><span class="ms-val"></span><span class="ms-caret">▾</span></button></div>`;
+          const wrap = rowM.querySelector(".ms-wrap"), btn = rowM.querySelector(".ms-btn"), valEl = rowM.querySelector(".ms-val");
+          const paintVal = () => {
+            const ids = fieldValueIds(stg.fields[f.id]);
+            const labels = ids.map(id => (findFieldOption(f, id) || {}).label).filter(Boolean);
+            valEl.innerHTML = labels.length ? labels.map(l => `<span class="ms-tag">${escapeHtml(l)}</span>`).join("") : `<span class="ms-ph">— ไม่ระบุ —</span>`;
+          };
+          paintVal();
+          let list = null;
+          const closeList = () => { if (list) { list.remove(); list = null; document.removeEventListener("mousedown", outside, true); } };
+          const outside = (e) => { if (!wrap.contains(e.target)) closeList(); };
+          btn.addEventListener("click", () => {
+            if (list) { closeList(); return; }
             if (!canFull()) { permDenied("สิทธิ์ของคุณแก้ข้อมูลนี้ไม่ได้"); return; }
-            const set = new Set(fieldValueIds(stg.fields[f.id]));
-            if (set.has(b.dataset.opt)) set.delete(b.dataset.opt); else set.add(b.dataset.opt);
-            if (set.size) stg.fields[f.id] = [...set]; else delete stg.fields[f.id];
-            b.classList.toggle("on", set.has(b.dataset.opt));
-            scheduleCommit(600);
-          }));
+            const chosen = new Set(fieldValueIds(stg.fields[f.id]));
+            list = document.createElement("div");
+            list.className = "ms-list";
+            list.innerHTML = (f.groups || []).map(g => {
+              const opts = (g.options || []).filter(o => o.label !== undefined).map(o =>
+                `<label class="ms-opt"><input type="checkbox" value="${escapeHtml(o.id)}" ${chosen.has(o.id) ? "checked" : ""} /><span>${escapeHtml(o.label)}</span></label>`).join("");
+              return opts ? (g.name ? `<div class="ms-group">${escapeHtml(g.name)}</div>` : "") + opts : "";
+            }).join("") || `<div class="ms-group">ยังไม่มีตัวเลือก</div>`;
+            list.querySelectorAll("input").forEach(cb => cb.addEventListener("change", () => {
+              const set = new Set(fieldValueIds(stg.fields[f.id]));
+              if (cb.checked) set.add(cb.value); else set.delete(cb.value);
+              if (set.size) stg.fields[f.id] = [...set]; else delete stg.fields[f.id];
+              paintVal(); scheduleCommit(800);
+            }));
+            wrap.appendChild(list);
+            document.addEventListener("mousedown", outside, true);
+          });
           rowsEl.appendChild(rowM);
           return;
         }
