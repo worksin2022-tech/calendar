@@ -833,14 +833,17 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
 
 /* ===== Alert system (department alerts + photos in chat) ===== */
 .tb-bell { position: relative; padding: 6px 9px; }
-/* circular "+" add button in the toolbar — slides open to the full label on hover */
-.tb-add { display: inline-flex; align-items: center; height: 32px; border:none; border-radius:16px;
-  background:var(--accent); color:var(--t-ffffff, #fff); cursor: pointer; padding: 0; overflow: hidden; flex: 0 0 auto; }
-.tb-add:hover { background:var(--accent-hover); }
+/* circular "+" add button in the toolbar — the pill slides open to the LEFT over its neighbours on hover.
+   (2026-10-07: it used to grow in the layout → on a one-row toolbar the extra width re-wrapped the row, the button
+   slid away from the mouse, shrank, came back… the screen shook. The button keeps a fixed 32px slot now.) */
+.tb-add { position: relative; width: 32px; height: 32px; border:none; background: transparent; cursor: pointer; padding: 0; flex: 0 0 auto; }
+.tb-add .tb-add-pill { position: absolute; top: 0; right: 0; display: inline-flex; flex-direction: row-reverse; align-items: center; height: 32px;
+  border-radius:16px; background:var(--accent); color:var(--t-ffffff, #fff); overflow: hidden; z-index: 5; box-shadow: var(--shadow-sm); }
+.tb-add:hover .tb-add-pill { background:var(--accent-hover); }
 .tb-add .tb-add-icon { width: 32px; height: 32px; display: grid; place-items: center; font-size: 21px; line-height: 1; flex: 0 0 auto; }
 .tb-add .tb-add-text { max-width: 0; opacity: 0; overflow: hidden; white-space: nowrap; font-weight: 600; font-size: 13px;
   transition: max-width .25s ease, opacity .2s ease, padding .25s ease; }
-.tb-add:hover .tb-add-text, .tb-add:focus-visible .tb-add-text { max-width: 140px; opacity: 1; padding-right: 14px; }
+.tb-add:hover .tb-add-text, .tb-add:focus-visible .tb-add-text { max-width: 140px; opacity: 1; padding-left: 14px; }
 .tb-bell-badge {
   position: absolute; top: -5px; right: -5px;
   min-width: 17px; height: 17px; padding: 0 4px;
@@ -2447,7 +2450,7 @@ body.chip-dragging .task-chip.span-bar { pointer-events: none; }   /* let the da
         <div class="legend" id="legend"></div>
         <button class="btn btn-sm tb-bell" id="btnBell" title="การแจ้งเตือนถึงฉัน/แผนกฉัน — รวมทุกปฏิทิน"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><span class="tb-bell-badge" id="bellBadge" hidden>0</span></button>
         <button class="tb-add" id="btnQuickAdd" title="เพิ่มงานใหม่" aria-label="เพิ่มงานใหม่">
-          <span class="tb-add-icon">+</span><span class="tb-add-text">เพิ่มงานใหม่</span>
+          <span class="tb-add-pill"><span class="tb-add-icon">+</span><span class="tb-add-text">เพิ่มงานใหม่</span></span>
         </button>
       </div>
     </div>
