@@ -4227,8 +4227,9 @@ function renderMonth() {
     const taskWrap = cell.querySelector(".cell-tasks");
     // multi-day bars are placed by lane (with spacers for empty upper lanes) so each bar keeps
     // its row across every day it crosses; everything else stacks below in sorted order.
-    const spans = dayItems.filter(it => it.kind === "project" && it.position !== "single");
-    const rest  = dayItems.filter(it => !(it.kind === "project" && it.position !== "single"));
+    const isSpanItem = it => !!it.position && it.position !== "single";   // project spans + department bars (stage.start)
+    const spans = dayItems.filter(isSpanItem);
+    const rest  = dayItems.filter(it => !isSpanItem(it));
     if (spans.length) {
       const maxLane = spans.reduce((m, it) => Math.max(m, it.lane || 0), 0);
       const laneArr = new Array(maxLane + 1).fill(null);
@@ -4240,9 +4241,12 @@ function renderMonth() {
       laneArr.forEach(it => {
         const segStart = it && (it.position === "start" || isFirstOfRow);
         if (!segStart) { taskWrap.appendChild(makeSpanGap()); return; }
-        const daysLeft = Math.round((fromIso(it.task.date) - fromIso(iso)) / 86400000) + 1;
+        const daysLeft = Math.round((fromIso(it.end || it.task.date) - fromIso(iso)) / 86400000) + 1;
         const n = Math.max(1, Math.min(daysLeft, 7 - (i % 7)));
-        const chip = renderTaskChip(it.task, it.position === "start" ? "start" : "mid", true);
+        const pos = it.position === "start" ? "start" : "mid";
+        const chip = it.kind === "deptstage" ? renderDeptChip(it.task, it.stage, pos)
+          : it.kind === "deptcab" ? renderDeptCabChip(it.task, it.stage, it.sub, pos)
+          : renderTaskChip(it.task, pos, true);
         chip.classList.add("span-bar");
         if (it.position !== "start") chip.classList.add("bar-cont-left");   // continues from last week
         if (daysLeft > n) chip.classList.add("bar-cont-right");              // continues next week
@@ -4278,6 +4282,7 @@ function renderMonth() {
         if (stg && stg.due !== iso) {
           const max = dateLimitViolation(t, dragStage.deptId, iso, null);
           if (max) { toast(dateLimitMsg(dragStage.deptId, max)); return; }
+          if (stg.start) stg.start = addDaysIso(stg.start, Math.round((fromIso(iso) - fromIso(stg.due || t.date)) / 86400000));
           stg.due = iso;
           logActivity(t, `เลื่อนกำหนดแผนก ${(getDept(stg.deptId)||{}).name||""} → ${formatDateTH(iso)}`);
           t.updatedAt = Date.now();
@@ -4545,6 +4550,21 @@ function buildDeptItems(tasks, deptIds) {
   const out = {};
   const byCab = !!(state.settings && state.settings.deptCalByCabinet);
   const push = (iso, item) => { if (iso) (out[iso] = out[iso] || []).push(item); };
+  // ★ 2026-10-07: a stage with a start date (stage.start, shared by all its cabinets) = a bar from start to its due day
+  const ranges = [];
+  const place = (end, item, key) => {
+    if (!end) return;
+    const st = item.stage.start;
+    if (!st || st >= end) { push(end, item); return; }
+    const days = [];
+    for (let d = fromIso(st); d <= fromIso(end); d.setDate(d.getDate() + 1)) days.push(isoDate(d));
+    const r = { id: key, s: st, e: end, len: fromIso(end) - fromIso(st), items: [] };
+    days.forEach((iso, i) => {
+      const it = { ...item, position: i === 0 ? "start" : i === days.length - 1 ? "end" : "mid", end };
+      r.items.push(it); push(iso, it);
+    });
+    ranges.push(r);
+  };
   tasks.forEach(t => {
     // (2026-10-06) being assigned to a task does NOT make it appear on a department calendar that has no stage for it —
     // department calendars show only that department's stages; only a "เห็นงานทั้งหมด (PM)" department (no department scope) sees everything
@@ -4553,11 +4573,22 @@ function buildDeptItems(tasks, deptIds) {
       if (!stg) return;
       const subs = t.subtasks || [];
       if (byCab && subs.length) {
-        subs.forEach(sub => push(deptDueForView(t, sub, deptId), { kind: "deptcab", task: t, stage: stg, sub }));
+        subs.forEach(sub => place(deptDueForView(t, sub, deptId), { kind: "deptcab", task: t, stage: stg, sub }, t.id + "|" + deptId + "|" + sub.id));
       } else {
-        push(stg.due || t.date, { kind: "deptstage", task: t, stage: stg });
+        place(stg.due || t.date, { kind: "deptstage", task: t, stage: stg }, t.id + "|" + deptId);
       }
     });
+  });
+  // fixed lane per bar for the whole month (longest first, lowest free lane) — same rule as assignSpanLanes()
+  const lanes = [];
+  ranges.sort((a, b) => (b.len - a.len) || a.s.localeCompare(b.s) || a.id.localeCompare(b.id)).forEach(r => {
+    let lane = 0;
+    for (;;) {
+      const occ = lanes[lane] || (lanes[lane] = []);
+      if (!occ.some(o => r.s <= o.e && o.s <= r.e)) { occ.push(r); break; }
+      lane++;
+    }
+    r.items.forEach(it => { it.lane = lane; });
   });
   const prRank = { urgent:4, high:3, medium:2, low:1, none:0 };
   // ★ finished ones (this department's checklist complete / cabinet done) sink to the bottom of the day, so the
@@ -4573,14 +4604,15 @@ function buildDeptItems(tasks, deptIds) {
   return out;
 }
 
-function renderDeptChip(t, stage) {
+function renderDeptChip(t, stage, position = "single") {
   const deptId = stage.deptId;
+  const isSpan = position !== "single";
   const st = getStatus(t.statusId); // shared work status (synced across departments)
   const pr = getPriority(t.priority);
   const deptDone = isDeptComplete(t, deptId);   // all cabinets' checklist for this dept ticked (or manual tick)
   const chip = document.createElement("div");
   // same look as the all-departments chip: status colour stays even when done
-  chip.className = "task-chip" + (isStatusDone(st) ? " done" : "") + (deptDone ? " dept-done" : "");
+  chip.className = "task-chip" + (isStatusDone(st) ? " done" : "") + (deptDone ? " dept-done" : "") + (isSpan ? " span-" + position : "");
   chip.style.setProperty("--chip-bg", hexToBgTint(st.color));
   chip.style.setProperty("--chip-color", st.color);
   chip.draggable = canEdit();
@@ -4589,7 +4621,7 @@ function renderDeptChip(t, stage) {
   // no date of its own → it's shown on (and inherits) the project's due date; say so in the tooltip
   const shownDue = stage.due || t.date;
   const dueNote = stage.due ? "" : " (ตามวันของโปรเจค — ยังไม่ได้ตั้งวันของแผนกนี้)";
-  chip.title = `[${dept ? dept.name : ""}] ${taskLabel(t)}\nสถานะงาน (รวม): ${st.name}\nแผนกนี้: ${deptDone ? "เสร็จแล้ว ✓" : "ยังไม่เสร็จ"}\nกำหนด: ${formatDateTH(shownDue)}${dueNote}`;
+  chip.title = `[${dept ? dept.name : ""}] ${taskLabel(t)}\nสถานะงาน (รวม): ${st.name}\nแผนกนี้: ${deptDone ? "เสร็จแล้ว ✓" : "ยังไม่เสร็จ"}\n${stage.start ? `เริ่ม: ${formatDateTH(stage.start)}\n` : ""}กำหนด: ${formatDateTH(shownDue)}${dueNote}`;
   // cabinet-status breakdown — coloured numeric badges (no status-name text), like the all view
   const counts = subStatusCounts(t);
   const breakdown = state.statuses.filter(s => counts[s.id]);
@@ -4603,9 +4635,12 @@ function renderDeptChip(t, stage) {
   const badgeRow = (badges || flag || doneBadge) ? `<div class="task-substatus">${badges}${flag}${doneBadge}</div>` : "";
   // selected custom-field values for this department, flagged to show on chips
   const fchips = stageFieldChips(t, deptId);
-  const fieldRow = fchips.length ? `<div class="chip-fields">${fchips.map(f =>
+  const fieldRow = (fchips.length && !isSpan) ? `<div class="chip-fields">${fchips.map(f =>
     `<span class="chip-field" title="${escapeHtml(f.name)}: ${escapeHtml(f.label)}">${escapeHtml(f.label)}</span>`).join("")}</div>` : "";
-  chip.innerHTML = `${soTag ? `<div class="chip-so-row">${soTag}${assigneeStack(t)}</div>` : ""}<div class="chip-title-row">${deptDot}${isStarred(t) ? ico("star", "ico chip-star") : ""}<span class="task-title">${escapeHtml(t.title)}</span>${alertPin(t)}${soTag ? "" : assigneeStack(t)}</div>${badgeRow}${fieldRow}`;
+  // a bar has a fixed lane height (2 rows) → SO goes inline before the name, like the project bars
+  chip.innerHTML = isSpan
+    ? `<div class="chip-title-row">${deptDot}${isStarred(t) ? ico("star", "ico chip-star") : ""}${soTag}<span class="task-title">${escapeHtml(t.title)}</span>${alertPin(t)}${assigneeStack(t)}</div>${badgeRow}`
+    : `${soTag ? `<div class="chip-so-row">${soTag}${assigneeStack(t)}</div>` : ""}<div class="chip-title-row">${deptDot}${isStarred(t) ? ico("star", "ico chip-star") : ""}<span class="task-title">${escapeHtml(t.title)}</span>${alertPin(t)}${soTag ? "" : assigneeStack(t)}</div>${badgeRow}${fieldRow}`;
   addStatusEdge(chip, t);
   chip.addEventListener("click", (e) => { e.stopPropagation(); openTaskModal(t.id, { focusDept: deptId }); });
   chip.addEventListener("dragstart", (e) => {
@@ -4625,7 +4660,7 @@ function renderDeptChip(t, stage) {
 /* one cabinet's chip in a department calendar view (when deptCalByCabinet is on):
    project + cabinet name, this dept's checklist progress / done, draggable to set the
    cabinet's per-department date (sub.deptDates[deptId]). */
-function renderDeptCabChip(t, stage, sub) {
+function renderDeptCabChip(t, stage, sub, position = "single") {
   const deptId = stage.deptId;
   const cst = getStatus(sub.statusId);         // this cabinet's own status → its colour (like the all-view badges)
   const pr = getPriority(t.priority);
@@ -4637,7 +4672,7 @@ function renderDeptCabChip(t, stage, sub) {
 
   const chip = document.createElement("div");
   // same look as the dept / all-departments chip: status colour stays even when done
-  chip.className = "task-chip" + (isStatusDone(cst) ? " done" : "") + (done ? " dept-done" : "");
+  chip.className = "task-chip" + (isStatusDone(cst) ? " done" : "") + (done ? " dept-done" : "") + (position !== "single" ? " span-" + position : "");
   chip.style.setProperty("--chip-bg", hexToBgTint(cst.color));
   chip.style.setProperty("--chip-color", cst.color);
   chip.draggable = canEdit();
@@ -4645,7 +4680,7 @@ function renderDeptCabChip(t, stage, sub) {
   chip.dataset.subId = sub.id;
   chip.title = `[${dept ? dept.name : ""}] ${t.title} · ${sub.text || "(ไม่มีชื่อตู้)"}\n`
     + `สถานะตู้: ${cst.name}\nแผนกนี้: ${done ? "เสร็จแล้ว ✓" : "ยังไม่เสร็จ"}${usesChecklist ? ` (${p.done}/${p.total})` : ""}\n`
-    + `กำหนด: ${ed ? formatDateTH(ed) : "-"}`;
+    + (stage.start ? `เริ่ม: ${formatDateTH(stage.start)}\n` : "") + `กำหนด: ${ed ? formatDateTH(ed) : "-"}`;
   // no progress number on the chip — the left "วันนี้" panel shows checklist detail; status is the colour
   const doneBadge = done ? `<span class="dept-done-badge">✓ เสร็จ</span>` : "";
   // when several departments are in view, mark which dept this chip belongs to
@@ -5871,13 +5906,21 @@ function openTaskModal(taskId, defaults={}) {
     else { rel = `เกินกำหนด ${-diff} วัน`; if (!done) cls = "over"; }
     return { label, cls, tip: `${formatDateTH(iso)} (${rel})` };
   }
+  // "10–20 ต.ค." / "28 ก.ย.–3 ต.ค." / "10 ต.ค.–วันนี้" — start shown in front of the due label
+  function stageStartLabel(stg, di) {
+    if (!stg.start) return "";
+    const s = fromIso(stg.start);
+    const sameMon = di && stg.due && /^\d/.test(di.label) && stg.due.slice(0, 7) === stg.start.slice(0, 7);
+    return (sameMon ? `${s.getDate()}` : `${s.getDate()} ${TH_MON_SHORT[s.getMonth()]}`) + "–";
+  }
   function stageChipHtml(stg) {
     const dept = getDept(stg.deptId) || state.departments[0] || { name: "?" };
     const dp = deptProgress(task, stg.deptId), done = isDeptComplete(task, stg.deptId);
     const di = stageDueInfo(stg.due, done);
     const prog = dp.total > 0 ? `<span class="stage-chip-prog">${Math.round(dp.done / dp.total * 100)}%</span>` : "";
     return `${deptIco(dept)}<span class="stage-chip-name">${escapeHtml(dept.name)}</span>`
-      + (di ? `<span class="stage-chip-date ${di.cls}">${di.label}</span>` : `<span class="stage-chip-date none">—</span>`)
+      + (di ? `<span class="stage-chip-date ${di.cls}">${stageStartLabel(stg, di)}${di.label}</span>`
+            : stg.start ? `<span class="stage-chip-date">${stageStartLabel(stg, null)}</span>` : `<span class="stage-chip-date none">—</span>`)
       + (done ? `<span class="stage-chip-ok">✓</span>` : prog);
   }
   function renderStages() {
@@ -5939,6 +5982,7 @@ function openTaskModal(taskId, defaults={}) {
       pop.innerHTML = `
         <div class="stage-pop-row"><select class="stage-dept" ${full ? "" : "disabled"}>${optsHtml}</select></div>
         ${di ? `<div class="stage-pop-when ${di.cls}">${escapeHtml(di.tip)}</div>` : ""}
+        <div class="stage-pop-row"><span class="stage-pop-lbl">เริ่ม</span><span class="stage-start-mount"></span></div>
         <div class="stage-pop-row"><span class="stage-pop-lbl">กำหนดส่ง</span><span class="stage-date-mount"></span></div>
         <div class="stage-pop-row">${usesChecklist
           ? `<span class="stage-prog${deptDone?' full':''}" title="เสร็จอัตโนมัติเมื่อติ๊ก checklist ของแผนกนี้ครบทุกตู้">Checklist ${dp.done}/${dp.total} (${Math.round(dp.done / dp.total * 100)}%)${deptDone ? " ✓" : ""}</span>`
@@ -5949,6 +5993,7 @@ function openTaskModal(taskId, defaults={}) {
         onChange: (iso) => {
           if (!canEdit()) { permDenied("สิทธิ์ของคุณแก้วันไม่ได้"); df.setValue(stg.due || null); return; }
           if (iso) {
+            if (stg.start && iso < stg.start) { toast("กำหนดส่งต้องไม่ก่อนวันเริ่ม"); df.setValue(stg.due || null); return; }
             const max = dateLimitViolation(task, stg.deptId, iso, null);
             if (max) { toast(dateLimitMsg(stg.deptId, max)); df.setValue(stg.due || null); return; }
           }
@@ -5958,6 +6003,16 @@ function openTaskModal(taskId, defaults={}) {
         } });
       if (!edit) df.querySelectorAll("input,button").forEach(el => el.disabled = true);
       pop.querySelector(".stage-date-mount").replaceWith(df);
+      const sf = createDateField({ value: stg.start || null, allowClear: true, extraClass: "tm-date",
+        onChange: (iso) => {
+          if (!canEdit()) { permDenied("สิทธิ์ของคุณแก้วันไม่ได้"); sf.setValue(stg.start || null); return; }
+          if (iso && stg.due && iso > stg.due) { toast("วันเริ่มต้องไม่หลังกำหนดส่ง"); sf.setValue(stg.start || null); return; }
+          stg.start = iso || null;
+          if (deptStartField && stg.deptId === myViewDeptId()) deptStartField.setValue(stg.start);
+          repaintChip(); scheduleCommit(0);
+        } });
+      if (!edit) sf.querySelectorAll("input,button").forEach(el => el.disabled = true);
+      pop.querySelector(".stage-start-mount").replaceWith(sf);
       pop.querySelector(".stage-dept").addEventListener("change", (e) => {
         if (!canFull()) { permDenied("สิทธิ์ของคุณเปลี่ยนแผนกของด่านไม่ได้"); e.target.value = stg.deptId; return; }
         stg.deptId = e.target.value;
@@ -6397,6 +6452,7 @@ function openTaskModal(taskId, defaults={}) {
   }
   // replace the popup's copy with `src` and repaint every section (keeps what's being typed + the caret)
   let deptDueField = null;   // department staff: the "กำหนดส่ง · <แผนก>" field in the meta box
+  let deptStartField = null; // …and their department's start date next to it
   function adoptIntoModal(src) {
     const ae = document.activeElement;
     const sidFocus = ae && ae.closest && ae.closest(".subtask-row") && modal.contains(ae) ? ae.closest(".subtask-row").dataset.sid : null;
@@ -6415,6 +6471,7 @@ function openTaskModal(taskId, defaults={}) {
     startField.setValue(task.startDate || null);
     dueField.setValue(task.date || null);
     if (deptDueField) { const st0 = taskStage(task, myViewDeptId()); deptDueField.setValue(st0 ? st0.due || null : null); }
+    if (deptStartField) { const st0 = taskStage(task, myViewDeptId()); deptStartField.setValue(st0 ? st0.start || null : null); }
     if (prioritySel) { prioritySel.value = task.priority || "none"; prioritySel.style.color = getPriority(prioritySel.value).color; }
     if (closeStagePop) closeStagePop(); document.querySelectorAll(".checklist-popover, .stage-pop").forEach(n => n.remove());
     paintStatus(); renderLabels(); renderSubs(); renderStages(); renderAssignees(); renderFeed();
@@ -6494,13 +6551,14 @@ function openTaskModal(taskId, defaults={}) {
     // ★ department staff: the cell shows THEIR department's due date (stage.due) instead of the project dates
     const myD = myViewDeptId(), dateRow = modal.querySelector('[data-dates]');
     if (dateRow && taskStage(task, myD)) {
-      dateRow.querySelector(".tm-lbl").textContent = `กำหนดส่ง · ${(getDept(myD) || {}).name || ""}`;
+      dateRow.querySelector(".tm-lbl").textContent = `กำหนดเวลา · ${(getDept(myD) || {}).name || ""}`;
       const box = dateRow.querySelector(".tm-dates"); box.innerHTML = "";
       deptDueField = createDateField({ value: taskStage(task, myD).due || null, allowClear: true, extraClass: "tm-date",
         onChange: (iso) => {
           const stg = taskStage(task, myD); if (!stg) return;
           if (!canEdit()) { permDenied("สิทธิ์ของคุณแก้วันไม่ได้"); deptDueField.setValue(stg.due || null); return; }
           if (iso) {
+            if (stg.start && iso < stg.start) { toast("กำหนดส่งต้องไม่ก่อนวันเริ่ม"); deptDueField.setValue(stg.due || null); return; }
             const max = dateLimitViolation(task, myD, iso, null);
             if (max) { toast(dateLimitMsg(myD, max)); deptDueField.setValue(stg.due || null); return; }
           }
@@ -6508,7 +6566,19 @@ function openTaskModal(taskId, defaults={}) {
           renderStages(); scheduleCommit(0);
         } });
       deptDueField.title = "กำหนดส่งของแผนก";
-      box.appendChild(deptDueField);
+      deptStartField = createDateField({ value: taskStage(task, myD).start || null, allowClear: true, extraClass: "tm-date",
+        onChange: (iso) => {
+          const stg = taskStage(task, myD); if (!stg) return;
+          if (!canEdit()) { permDenied("สิทธิ์ของคุณแก้วันไม่ได้"); deptStartField.setValue(stg.start || null); return; }
+          if (iso && stg.due && iso > stg.due) { toast("วันเริ่มต้องไม่หลังกำหนดส่ง"); deptStartField.setValue(stg.start || null); return; }
+          stg.start = iso || null;
+          renderStages(); scheduleCommit(0);
+        } });
+      deptStartField.title = "วันเริ่มของแผนก";
+      const grp = (lbl, el) => { const g = document.createElement("span"); g.className = "tm-dgrp"; g.innerHTML = `<span class="tm-dl">${lbl}</span>`; g.appendChild(el); return g; };
+      box.appendChild(grp("เริ่ม", deptStartField));
+      box.insertAdjacentHTML("beforeend", `<span class="tm-arrow">→</span>`);
+      box.appendChild(grp("จบ", deptDueField));
     } else {
       if (dateRow) dateRow.style.display = "none";
       modal.querySelector(".tm-meta").classList.add("no-dates");
@@ -6720,6 +6790,7 @@ function diffTaskActivity(before, after) {
       if (!b.done && s.done) logs.push(`✓ แผนก ${dn} เสร็จ`);
       if (b.done && !s.done) logs.push(`ยกเลิกเสร็จ แผนก ${dn}`);
       if ((b.due || null) !== (s.due || null) && s.due) logs.push(`ตั้งกำหนดแผนก ${dn} → ${formatDateTH(s.due)}`);
+      if ((b.start || null) !== (s.start || null)) logs.push(s.start ? `ตั้งวันเริ่มแผนก ${dn} → ${formatDateTH(s.start)}` : `ลบวันเริ่มแผนก ${dn}`);
       // custom dropdown field value changes on this stage
       deptFields(s.deptId).forEach(f => {
         const bv = (b.fields || {})[f.id] || null, av = (s.fields || {})[f.id] || null;
