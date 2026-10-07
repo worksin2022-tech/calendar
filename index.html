@@ -1471,6 +1471,8 @@ body.chip-dragging .task-chip.span-bar { pointer-events: none; }   /* let the da
   box-shadow: 0 0 0 3px rgba(123,104,238,.15);
 }
 .field textarea { resize: vertical; min-height: 64px; }
+/* project description: bigger + grows with its text (imported scopes are long) — 2026-10-07 */
+.field textarea.tm-desc { min-height: 150px; max-height: 60vh; font-size: 14.5px; line-height: 1.6; padding: 10px 12px; }
 /* priority dropdown: compact (not full width) + coloured by selected level */
 .field select.pri-select { align-self: flex-start; width: auto; min-width: 120px; padding: 6px 10px; font-size: 13px; font-weight: 600; }
 .title-input {
@@ -1639,10 +1641,16 @@ body.chip-dragging .task-chip.span-bar { pointer-events: none; }   /* let the da
 }
 /* selected-field badge on calendar chips */
 .chip-fields { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 2px; }
+/* 2026-10-07: same hue as the chip but readable — a lighter wash of the status colour behind a DARKER shade of it
+   (was: status colour text on the status tint → orange on orange). Dark theme: light shade on a faint wash. */
 .chip-field {
-  font-size: 10px; font-weight: 600; line-height: 1.4;
-  padding: 1px 6px; border-radius:6px;
-  background:rgba(0,0,0,.06); color:var(--chip-color, var(--t-475467, #475467));
+  font-size: 10.5px; font-weight: 600; line-height: 1.45;
+  padding: 1px 7px; border-radius:6px;
+  background: rgba(255,255,255,.62); color: color-mix(in srgb, var(--chip-color, #667085) 52%, #1d2939);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--chip-color, #667085) 22%, transparent);
+}
+:root[data-theme="dark"] .chip-field { background: rgba(255,255,255,.07); color: color-mix(in srgb, var(--chip-color, #a3acb9) 55%, #ffffff); }
+.chip-field {
   max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 /* selected-field badge in the today panel group head */
@@ -3436,7 +3444,7 @@ function stageFieldLabel(field, stg) {
   const v = stg && stg.fields ? stg.fields[field.id] : null;
   if (Array.isArray(v)) return fieldValueText(field, v);   // multi-select
   if (field.type === "text") return v ? String(v) : null;            // free text field
-  if (field.type === "link") return v ? "🔗 " + linkHost(v) : null;   // link field (e.g. Google Maps)
+  if (field.type === "link") return v ? "🔗 " + (field.name || linkHost(v)) : null;   // link field (e.g. Google Maps) — its name, the host says nothing
   const o = findFieldOption(field, v);
   return o ? o.label : null;
 }
@@ -3743,7 +3751,66 @@ function migrateState(s) {
     });
   });
 }
+/* ---------- ออกไซต์ follows โรงงาน's departments (2026-10-07) ----------
+   Same list, names, colours, icons, "เห็นงานทั้งหมด (PM)" and order. Each calendar keeps its OWN checklist template and
+   fields per department. dst.settings.deptLink = { factoryDeptId: onsiteDeptId } (same id normally; a same-name dept
+   that already existed on ออกไซต์ is linked instead of duplicated). Deleted at โรงงาน → removed at ออกไซต์ only when
+   nothing there uses it (no stage / checklist item / template / field) — never wipes data. Admin devices only. */
+const DEPT_LINKS = [{ from: "factory", to: "onsite" }];
+function deptUsedOnBoard(ws, deptId) {
+  const d = (ws.departments || []).find(x => x.id === deptId);
+  if (d && ((d.checklist || []).length || (d.fields || []).length)) return true;
+  const inTask = t => t && ((t.deptStages || []).some(st => st.deptId === deptId)
+    || (t.subtasks || []).some(sb => (sb.checklist || []).some(i => i.deptId === deptId)));
+  return (ws.tasks || []).some(inTask) || (ws.trash || []).some(x => inTask(x.task));
+}
+function syncLinkedDepts() {
+  if (!isAdmin() || !root || !root.boards) return false;
+  let changed = false;
+  const norm = x => String(x || "").trim().toLowerCase();
+  DEPT_LINKS.forEach(({ from, to }) => {
+    const src = root.boards[from], dst = root.boards[to];
+    if (!src || !dst || !Array.isArray(src.departments)) return;
+    if (!Array.isArray(dst.departments)) dst.departments = [];
+    const st = dst.settings || (dst.settings = {});
+    if (!st.deptLink || typeof st.deptLink !== "object") st.deptLink = {};
+    const map = st.deptLink;
+    const before = JSON.stringify([dst.departments, map]);
+    src.departments.forEach(sd => {
+      const taken = new Set(Object.entries(map).filter(([k]) => k !== sd.id).map(([, v]) => v));
+      let td = map[sd.id] ? dst.departments.find(d => d.id === map[sd.id]) : null;
+      if (!td) td = dst.departments.find(d => d.id === sd.id && !taken.has(d.id))
+        || dst.departments.find(d => !taken.has(d.id) && norm(d.name) === norm(sd.name));
+      if (!td) {
+        td = { id: dst.departments.some(d => d.id === sd.id) ? uid("d") : sd.id, name: sd.name, color: sd.color, icon: sd.icon, checklist: [], fields: [], seeAll: !!sd.seeAll };
+        dst.departments.push(td);
+      }
+      map[sd.id] = td.id;
+      td.name = sd.name; td.color = sd.color; td.icon = sd.icon; td.seeAll = !!sd.seeAll;
+    });
+    // removed at the source → remove here too, but only when unused (else it stays and is retried next time)
+    Object.keys(map).forEach(fid => {
+      if (src.departments.some(d => d.id === fid)) return;
+      const tid = map[fid];
+      if (deptUsedOnBoard(dst, tid)) return;
+      dst.departments = dst.departments.filter(d => d.id !== tid);
+      delete map[fid];
+      if (Array.isArray(st.defaultStages)) st.defaultStages = st.defaultStages.filter(id => id !== tid);
+      if (Array.isArray(st.viewDepts)) st.viewDepts = st.viewDepts.filter(id => id !== tid);
+    });
+    // order: the source's order first, departments that exist only here keep theirs after them
+    const rank = new Map(src.departments.map((d, i) => [map[d.id], i]));
+    const orig = new Map(dst.departments.map((d, i) => [d.id, i]));
+    dst.departments.sort((a, b) => (rank.has(a.id) ? rank.get(a.id) : 1000 + orig.get(a.id)) - (rank.has(b.id) ? rank.get(b.id) : 1000 + orig.get(b.id)));
+    if (JSON.stringify([dst.departments, map]) !== before) changed = true;
+  });
+  return changed;
+}
+let _deptSyncing = false;
 function saveState() {
+  if (!_deptSyncing && root && root.activeBoard === "factory") {   // a department edit at โรงงาน → ออกไซต์ follows
+    _deptSyncing = true; try { syncLinkedDepts(); } catch (e) { console.warn("dept sync", e); } _deptSyncing = false;
+  }
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(root));   // local cache/backup — always kept, cloud push is best-effort on top
   } catch (e) {
@@ -5753,7 +5820,7 @@ function openTaskModal(taskId, defaults={}) {
           </div>
           <div class="field">
             <label>รายละเอียด</label>
-            <textarea data-f="description" placeholder="หมายเหตุ / ขอบเขตงาน..."></textarea>
+            <textarea data-f="description" class="tm-desc" placeholder="หมายเหตุ / ขอบเขตงาน..."></textarea>
           </div>
           <div class="field">
             <label>แท็ก / Label</label>
@@ -5802,6 +5869,13 @@ function openTaskModal(taskId, defaults={}) {
     renderAll(); toast(on ? "ติดดาวแล้ว" : "เอาดาวออกแล้ว");
   });
   modal.querySelector('[data-f="description"]').value = task.description || "";
+  // description grows to fit its text (up to 60% of the screen, then scrolls)
+  const descEl = modal.querySelector('[data-f="description"]');
+  const fitDesc = () => { descEl.style.height = "auto"; descEl.style.height = Math.min(descEl.scrollHeight + 2, window.innerHeight * 0.6) + "px"; };
+  descEl.addEventListener("input", fitDesc);
+  // fit once it's visible (it sits in a collapsible section)
+  modal.querySelector("[data-more]")?.addEventListener("toggle", () => requestAnimationFrame(fitDesc));
+  requestAnimationFrame(fitDesc);
 
   // custom dd/mm/yyyy date fields
   const startField = createDateField({ value: task.startDate, allowClear: true, extraClass: "tm-date",
@@ -11208,6 +11282,7 @@ async function startApp() {
   await syncRootFromCloud();   // first login ever seeds the cloud from local data; every login after that pulls the cloud copy
   startRealtimeSync();   // slice 3: start listening for changes other devices push from this point on
   if (_cloudReady) purgeExpiredTrash();   // 🗑️ entries past 30 days
+  if (_cloudReady && syncLinkedDepts()) saveState();   // ออกไซต์ = โรงงาน's departments
   applyMyDeptDefaultView();   // open on the user's own department by default
   renderAll();
   // on app open: urgent department alerts take precedence over the routine status report.
