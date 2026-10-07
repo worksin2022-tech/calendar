@@ -8427,7 +8427,7 @@ function cuSplitJob(name) {
   return { so: m[1].replace(/\s+/g, ""), title: title || name };
 }
 const CU_MO_RE = /^(WH\/MO\/\d{3,}|MO\s*-?\s*\d{4,})\b[\s\t:–-]*/i;
-function cuClean(v) { return String(v || "").replace(/[\u200b\u00a0]/g, " ").replace(/\t+/g, " ").replace(/ {2,}/g, " ").trim(); }
+function cuClean(v) { return String(v || "").replace(/\\n/g, " ").replace(/[\u200b\u00a0]/g, " ").replace(/\t+/g, " ").replace(/ {2,}/g, " ").trim(); }
 function cuDay(ms) { const n = Number(ms); return n > 0 ? isoDate(new Date(n)) : null; }
 function cuJson(v, dflt) { try { const x = JSON.parse(v); return x == null ? dflt : x; } catch (_) { return dflt; } }
 function cuList(v) { return String(v || "").replace(/^\[|\]$/g, "").split(",").map(x => cuClean(x)).filter(Boolean); }
@@ -8447,7 +8447,12 @@ function buildClickUpImport(container) {
       <div class="cu-stats" data-cu-stats></div>
       <label class="default-stage-row"><input type="checkbox" data-cu-open checked /><span class="default-stage-name">เฉพาะงานที่ยังไม่ complete</span></label>
       <div class="cu-grid">
-        <span class="cu-lbl">วันครบกำหนด → ด่านแผนก</span><select data-cu-dept></select>
+        <span class="cu-lbl">Subtask คือ</span><select data-cu-kind><option value="cab">ตู้</option><option value="people">คนที่ไปหน้างาน</option></select>
+        <span class="cu-lbl" data-cu-dept-lbl>วันครบกำหนด → ด่านแผนก</span><select data-cu-dept></select>
+      </div>
+      <div data-cu-pplwrap hidden>
+        <h4 class="settings-h" style="margin-top:12px; font-size:14px">แผนกของคน (สถานะ subtask) → แผนกในแอป</h4>
+        <div class="cu-grid" data-cu-ppl></div>
       </div>
       <h4 class="settings-h" style="margin-top:12px; font-size:14px">สถานะ ClickUp → สถานะในแอป</h4>
       <div class="cu-grid" data-cu-status></div>
@@ -8458,7 +8463,9 @@ function buildClickUpImport(container) {
     </div>`;
   container.appendChild(sec);
   const $ = q => sec.querySelector(q);
-  let rows = null, statusMap = {};
+  let rows = null, statusMap = {}, pplMap = {};
+  const isTop = r => !r["Parent ID"] || r["Parent ID"] === "null";
+  const kind = () => $("[data-cu-kind]").value;   // "cab" = subtask is a cabinet · "people" = subtask is a person sent out (status = their department)
   $("[data-cu-pick]").addEventListener("click", () => $("[data-cu-input]").click());
   $("[data-cu-input]").addEventListener("change", async (e) => {
     const f = e.target.files[0]; if (!f) return;
@@ -8474,18 +8481,42 @@ function buildClickUpImport(container) {
     const qc = depts.find(d => /qc/i.test(d.name) || d.id === "d_qc");
     $("[data-cu-dept]").innerHTML = `<option value="">— ไม่ใส่ด่าน —</option>` + depts.map(d =>
       `<option value="${escapeHtml(d.id)}" ${qc && qc.id === d.id ? "selected" : ""}>${escapeHtml(d.name)}</option>`).join("");
-    // ClickUp statuses → app statuses (same name first; "complete" → the first "done" status)
-    const sts = state.statuses || [];
-    const names = [...new Set(rows.map(r => cuClean(r.Status)).filter(Boolean))];
-    statusMap = {};
-    names.forEach(n => {
-      const same = sts.find(x => x.name.trim().toLowerCase() === n.toLowerCase());
-      const done = /^(complete|closed|done)$/i.test(n) ? sts.find(x => x.isDone) : null;
-      statusMap[n] = (same || done || sts[0] || {}).id;
+    // subtasks whose statuses are mostly "แผนก …" = people sent to a site (งานนอก list), not cabinets
+    const subSt = rows.filter(r => !isTop(r)).map(r => cuClean(r.Status));
+    $("[data-cu-kind]").value = subSt.length && subSt.filter(x => /^แผนก/.test(x)).length > subSt.length / 2 ? "people" : "cab";
+    // people's department (subtask status) → app department, guessed by name
+    const SYN = { disign: "design", design: "design ออกแบบ เขียนแบบ", busbar: "busbar บัสบาร์", wiring: "wiring วายริ่ง เดินสาย", power: "power พาวเวอร์", qc: "qc คิวซี", poly: "poly nameplate" };
+    pplMap = {};
+    [...new Set(subSt.filter(Boolean))].forEach(n => {
+      const key = n.replace(/^แผนก\s*/, "").toLowerCase().trim();
+      const words = ((SYN[key.split(/[\s&]+/)[0]] || "") + " " + key).split(/\s+/).filter(w => w.length > 1);
+      const d = depts.find(x => words.some(w => x.name.toLowerCase().includes(w) || x.id.toLowerCase().includes(w)));
+      pplMap[n] = d ? d.id : "";
     });
-    $("[data-cu-status]").innerHTML = names.map(n => `<span class="cu-lbl">${escapeHtml(n)}</span><select data-st="${escapeHtml(n)}">${
-      sts.map(x => `<option value="${escapeHtml(x.id)}" ${statusMap[n] === x.id ? "selected" : ""}>${escapeHtml(x.name)}</option>`).join("")}</select>`).join("");
-    sec.querySelectorAll("[data-st]").forEach(sel => sel.addEventListener("change", () => { statusMap[sel.dataset.st] = sel.value; }));
+    const renderMaps = () => {
+      const people = kind() === "people";
+      $("[data-cu-pplwrap]").hidden = !people;
+      $("[data-cu-dept-lbl]").textContent = people ? "งานที่ไม่มีคน → ด่านแผนก" : "วันครบกำหนด → ด่านแผนก";
+      $("[data-cu-ppl]").innerHTML = Object.keys(pplMap).map(n => `<span class="cu-lbl">${escapeHtml(n)}</span><select data-pp="${escapeHtml(n)}"><option value="">— ไม่ใส่ด่าน —</option>${
+        depts.map(d => `<option value="${escapeHtml(d.id)}" ${pplMap[n] === d.id ? "selected" : ""}>${escapeHtml(d.name)}</option>`).join("")}</select>`).join("");
+      sec.querySelectorAll("[data-pp]").forEach(sel => sel.addEventListener("change", () => { pplMap[sel.dataset.pp] = sel.value; }));
+      // ClickUp statuses → app statuses (same name first; "complete" → the first "done" status). People mode: only the projects' statuses
+      const sts = state.statuses || [];
+      const names = [...new Set(rows.filter(r => !people || isTop(r)).map(r => cuClean(r.Status)).filter(Boolean))];
+      names.forEach(n => {
+        if (statusMap[n]) return;
+        const same = sts.find(x => x.name.trim().toLowerCase() === n.toLowerCase());
+        const done = /^(complete|closed|done)$/i.test(n) ? sts.find(x => x.isDone) : null;
+        statusMap[n] = (same || done || sts[0] || {}).id;
+      });
+      $("[data-cu-status]").innerHTML = names.map(n => `<span class="cu-lbl">${escapeHtml(n)}</span><select data-st="${escapeHtml(n)}">${
+        sts.map(x => `<option value="${escapeHtml(x.id)}" ${statusMap[n] === x.id ? "selected" : ""}>${escapeHtml(x.name)}</option>`).join("")}</select>`).join("");
+      sec.querySelectorAll("[data-st]").forEach(sel => sel.addEventListener("change", () => { statusMap[sel.dataset.st] = sel.value; }));
+      refresh();
+    };
+    statusMap = {};
+    $("[data-cu-kind]").onchange = renderMaps;
+    renderMaps();
     $("[data-cu-open]").onchange = refresh;
     $("[data-cu-body]").hidden = false;
     refresh();
@@ -8505,16 +8536,18 @@ function buildClickUpImport(container) {
     const isOpen = r => !/^(complete|closed|done)$/i.test(cuClean(r.Status));
     const onlyOpen = $("[data-cu-open]").checked;
     const have = already();
-    const chosen = top.filter(r => !onlyOpen || isOpen(r) || (kids.get(r["Task ID"]) || []).some(isOpen));
+    // people mode: a person's status is their department, not progress → only the project's own status counts
+    const chosen = top.filter(r => !onlyOpen || isOpen(r) || (kind() === "cab" && (kids.get(r["Task ID"]) || []).some(isOpen)));
     const todo = chosen.filter(r => !have.has(r["Task ID"]));
     return { top, kids, chosen, todo, skipped: chosen.length - todo.length };
   }
   function refresh() {
     const p = pick();
     const subs = p.todo.reduce((n, r) => n + (p.kids.get(r["Task ID"]) || []).length, 0);
-    $("[data-cu-stats]").textContent = `ในไฟล์ ${p.top.length.toLocaleString()} โครงการ · ${(rows.length - p.top.length).toLocaleString()} ตู้`;
+    const unit = kind() === "people" ? "คน" : "ตู้";
+    $("[data-cu-stats]").textContent = `ในไฟล์ ${p.top.length.toLocaleString()} งาน · ${(rows.length - p.top.length).toLocaleString()} ${unit}`;
     const go = $("[data-cu-go]");
-    go.textContent = `นำเข้า ${p.todo.length.toLocaleString()} โครงการ (${subs.toLocaleString()} ตู้) → ${boardNameOf(root.activeBoard)}`;
+    go.textContent = `นำเข้า ${p.todo.length.toLocaleString()} งาน (${subs.toLocaleString()} ${unit}) → ${boardNameOf(root.activeBoard)}`;
     go.disabled = !p.todo.length;
     $("[data-cu-skip]").textContent = p.skipped ? `นำเข้าแล้ว ${p.skipped} — ข้าม` : "";
     if (p.todo.length > 400) $("[data-cu-skip]").textContent += (p.skipped ? " · " : "") + "จำนวนมาก แอปอาจช้าลง";
@@ -8524,12 +8557,16 @@ function buildClickUpImport(container) {
     const p = pick();
     if (!p.todo.length) return;
     const subCount = p.todo.reduce((n, r) => n + (p.kids.get(r["Task ID"]) || []).length, 0);
-    const ok = await confirmDialog({ icon: "upload", title: "นำเข้าจาก ClickUp", message: `${p.todo.length} โครงการ · ${subCount} ตู้ → “${boardNameOf(root.activeBoard)}”`, confirmText: "นำเข้า", danger: false });
+    const people = kind() === "people";
+    const ok = await confirmDialog({ icon: "upload", title: "นำเข้าจาก ClickUp", message: `${p.todo.length} งาน · ${subCount} ${people ? "คน" : "ตู้"} → “${boardNameOf(root.activeBoard)}”`, confirmText: "นำเข้า", danger: false });
     if (!ok) return;
     if (!teamProfiles.size) { try { await loadTeam(); } catch (_) {} }
-    const people = [...teamProfiles.values()];
-    const byEmail = new Map(people.filter(x => x.email).map(x => [x.email.toLowerCase(), x]));
-    const byName = new Map(people.filter(x => x.display_name).map(x => [cuClean(x.display_name).toLowerCase(), x]));
+    const profs = [...teamProfiles.values()];
+    const byEmail = new Map(profs.filter(x => x.email).map(x => [x.email.toLowerCase(), x]));
+    const byName = new Map(profs.filter(x => x.display_name).map(x => [cuClean(x.display_name).toLowerCase(), x]));
+    // nickname match for people sent out: "พี่เก๋" / "เก๋" ↔ a profile named "เก๋" (exact after dropping พี่/น้อง)
+    const nick = n => cuClean(n).toLowerCase().replace(/^(พี่|น้อง|คุณ)\s*/, "");
+    const byNick = new Map(profs.filter(x => x.display_name).map(x => [nick(x.display_name), x]));
     const deptId = $("[data-cu-dept]").value || null;
     const PR = { "1": "urgent", "2": "high", "3": "medium", "4": "low" };
     const author = by => { const pp = byEmail.get(String(by || "").toLowerCase()); return pp ? personName(pp) : (String(by || "ClickUp").split("@")[0]); };
@@ -8552,6 +8589,32 @@ function buildClickUpImport(container) {
       const stId = statusMap[cuClean(r.Status)] || state.statuses[0].id;
       const taskDone = isStatusDone(getStatus(stId));
       const subsRows = (p.kids.get(r["Task ID"]) || []).sort((a, b) => Number(a["Date Created"]) - Number(b["Date Created"]));
+      if (people) {
+        // people sent out → one department stage per department involved (start → due like the job), names in the description
+        const stStart = start && start < date ? start : null;
+        const stages = [];
+        const addStage = d => { if (d && !stages.some(x => x.deptId === d)) stages.push({ deptId: d, start: stStart, due: date, done: taskDone, fields: {} }); };
+        subsRows.forEach(sr => addStage(pplMap[cuClean(sr.Status)]));
+        if (!stages.length) addStage(deptId);
+        const order = new Map((state.departments || []).map((d, i) => [d.id, i]));
+        stages.sort((a, b) => (order.get(a.deptId) ?? 99) - (order.get(b.deptId) ?? 99));
+        const team = subsRows.map(sr => { const n = cuClean(sr["Task Name"]); const d = getDept(pplMap[cuClean(sr.Status)]); return d ? `${n} (${d.name})` : n; });
+        const assignees = [...new Set(subsRows.map(sr => byNick.get(nick(sr["Task Name"]))).filter(Boolean).map(x => x.id))];
+        const allComments = [...comments(r, ""), ...attachNote(r, "")];
+        subsRows.forEach(sr => { const lbl = `[${cuClean(sr["Task Name"])}]`; allComments.push(...comments(sr, lbl), ...attachNote(sr, lbl)); });
+        allComments.sort((a, b) => a.at - b.at);
+        allComments.push({ id: uid("ac"), type: "system", author: currentUser(), text: "นำเข้าจาก ClickUp", at: Date.now() });
+        const body = cuClean(String(r["Task Content"] || "").replace(/\\n/g, "\n")).replace(/ ?\n ?/g, "\n");
+        state.tasks.push({
+          id: uid("t"), title, so, description: (team.length ? `ทีมหน้างาน: ${team.join(" · ")}` + (body ? "\n\n" : "") : "") + body,
+          date, startDate: stStart, statusId: stId, priority: PR[cuClean(r.Priority)] || "none",
+          labels: cuList(r.Tags), assignees, subtasks: [], deptStages: stages,
+          comments: allComments, createdAt: created, updatedAt: Date.now(),
+          ext: { src: "clickup", id: r["Task ID"] },
+        });
+        nT++; nS += subsRows.length;
+        return;
+      }
       const subtasks = subsRows.map(sr => {
         const sn = cuClean(sr["Task Name"]); const mm = sn.match(CU_MO_RE);
         const sSt = statusMap[cuClean(sr.Status)] || state.statuses[0].id;
@@ -8578,7 +8641,7 @@ function buildClickUpImport(container) {
       nT++;
     });
     saveState(); renderAll(); refresh();
-    toast(`นำเข้าแล้ว ${nT} โครงการ · ${nS} ตู้`);
+    toast(`นำเข้าแล้ว ${nT} งาน · ${nS} ${people ? "คน" : "ตู้"}`);
   });
 }
 
