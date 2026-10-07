@@ -7339,9 +7339,12 @@ function renderTodayPanelDept(deptIds, today, pass) {
       const stg = taskStage(t, deptId);
       if (!stg) return;
       const subs = t.subtasks || [];
+      // 2026-10-07: a project (or cabinet) whose STATUS is finished isn't overdue for any department, even when this
+      // department's own tick/checklist was never done (e.g. imported finished jobs) — same as the all-departments view
+      const taskFinished = isStatusDone(getStatus(t.statusId));
       const units = subs.length
-        ? subs.map(s => ({ sub: s, ed: deptDueForView(t, s, deptId), done: cabDeptDone(t, s, deptId) }))
-        : [{ sub: null, ed: stg.due || t.date || null, done: isDeptComplete(t, deptId) }];
+        ? subs.map(s => ({ sub: s, ed: deptDueForView(t, s, deptId), done: taskFinished || subtaskDone(s) || cabDeptDone(t, s, deptId) }))
+        : [{ sub: null, ed: stg.due || t.date || null, done: taskFinished || isDeptComplete(t, deptId) }];
       units.forEach(u => {
         if (!u.ed) return;
         if (u.ed === today) { addTo(todayMap, t, stg, u.sub, u.ed); cabTotal++; if (u.done) cabDone++; }
