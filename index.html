@@ -2026,6 +2026,25 @@ body.chip-dragging .task-chip.span-bar { pointer-events: none; }   /* let the da
 .auto-row select { flex: 1 1 110px; min-width: 0; border: 1px solid var(--border-strong); border-radius: 6px; padding: 6px 8px; font-size: 13px; background: #fff; color: var(--text); }
 .auto-row .auto-word { font-size: 12px; color: var(--text-dim); }
 .auto-row.off select, .auto-row.off .auto-word { opacity: .45; }
+.it-url-row { display: flex; gap: 6px; margin-top: 8px; }
+.it-url-row input { flex: 1 1 auto; min-width: 0; font-size: 12px; padding: 6px 8px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: inherit; }
+.it-count { margin-left: auto; font-size: 12px; }
+.it-code-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 6px; }
+.it-code-row { display: flex; align-items: center; gap: 7px; font-size: 13px; padding: 4px 6px; border: 1px solid var(--border); border-radius: 8px; }
+.it-code-name { flex: 0 0 92px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.it-code-row input { flex: 1 1 auto; min-width: 0; font-size: 13px; padding: 4px 6px; border: 1px solid var(--border); border-radius: 6px; background: transparent; color: inherit; }
+.it-unknown { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; font-size: 12px; color: #b45309; }
+.it-unknown:empty { display: none; }
+.it-unknown .ico { width: 14px; height: 14px; }
+.it-unk-chip { background: #fef3c7; border-radius: 6px; padding: 1px 7px; font-weight: 600; }
+.it-log { display: flex; flex-direction: column; gap: 2px; max-height: 260px; overflow: auto; }
+.it-log-row { display: grid; grid-template-columns: 78px 120px 70px 1fr; gap: 6px; font-size: 12px; padding: 3px 4px; border-bottom: 1px solid var(--border); }
+.it-log-row.err { color: #dc2626; }
+.it-log-at { color: var(--muted); }
+.it-log-so { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.it-log-detail { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tm-it-badge { flex: 0 0 auto; display: flex; align-items: center; color: #0891b2; }
+.tm-it-badge .ico { width: 16px; height: 16px; }
 .auto-st-dot { width: 10px; height: 10px; border-radius: 50%; flex: 0 0 auto; display: inline-block; margin-right: 2px; }
 .auto-card { background: #fafbfc; border: 1px solid var(--border); border-radius: 8px; padding: 2px 0 6px; margin-bottom: 8px; }
 .auto-card .cl-tpl-row { background: transparent; margin-bottom: 0; }
@@ -3506,6 +3525,10 @@ function migrateState(s) {
   if (typeof s.settings.crossMention !== "boolean") s.settings.crossMention = false;   // @mention people of other departments
   // 🔒 block rules (off unless an admin turns them on)
   if (!s.settings.blockRules || typeof s.settings.blockRules !== "object") s.settings.blockRules = { subNeedChecklist: false, taskNeedSubs: false };
+  // 🔗 IT system link (Edge Function it-sync): enabled = this calendar receives new SOs; codes = { deptId: "IT code, …" }
+  if (!s.settings.itSync || typeof s.settings.itSync !== "object") s.settings.itSync = { enabled: false, codes: {}, unknown: [] };
+  if (!s.settings.itSync.codes || typeof s.settings.itSync.codes !== "object") s.settings.itSync.codes = {};
+  if (!Array.isArray(s.settings.itSync.unknown)) s.settings.itSync.unknown = [];
   if (!Array.isArray(s.settings.autoLockStatuses)) s.settings.autoLockStatuses = [];   // automation never changes these
   if (typeof s.settings.currentUser !== "string") s.settings.currentUser = "";
   if (typeof s.settings.myDept !== "string") s.settings.myDept = "";
@@ -5514,6 +5537,7 @@ function openTaskModal(taskId, defaults={}) {
       <div class="modal-body">
         <div class="field tm-title-row">
           <input type="text" class="title-input tm-so" data-f="so" placeholder="SO" />
+          ${task.ext && task.ext.src === "it" ? `<span class="tm-it-badge" title="เชื่อมกับระบบไอที">${ico("link")}</span>` : ""}
           <input type="text" class="title-input tm-name" data-f="title" placeholder="ชื่อโครงการ" />
         </div>
         <div class="tm-meta">
@@ -7060,6 +7084,7 @@ function openSettingsModal(initialTab = "statuses") {
           <button class="settings-nav-item" data-tab="fields">${ico("sliders")} ฟิลด์เพิ่มเติม</button>
           <button class="settings-nav-item" data-tab="checklist">${ico("list-check")} เช็คลิสต์ตู้</button>
           <button class="settings-nav-item" data-tab="automation">${ico("zap")} อัตโนมัติ</button>
+          <button class="settings-nav-item" data-tab="itsync">${ico("link")} เชื่อมระบบไอที</button>
           <button class="settings-nav-item" data-tab="display">${ico("monitor")} การแสดงผล</button>
           <button class="settings-nav-item" data-tab="notify">${ico("bell")} การแจ้งเตือน</button>
           <button class="settings-nav-item" data-tab="trash">${ico("trash")} ถังขยะ</button>
@@ -7077,7 +7102,7 @@ function openSettingsModal(initialTab = "statuses") {
   // non-admins: 🔔 การแจ้งเตือน (+ ถังขยะ for people allowed to delete tasks)
   const memberTabs = canFull() ? ["notify", "trash"] : ["notify"];
   if (!isAdmin()) navBtns.forEach(b => { if (!memberTabs.includes(b.dataset.tab)) b.remove(); });
-  const PANELS = { user: buildUserPanel, users: buildUsersAdminPanel, statuses: buildStatusesPanel, departments: buildDeptsPanel, fields: buildFieldsPanel, checklist: buildChecklistTemplatePanel, automation: buildAutomationPanel, display: buildDisplayPanel, notify: buildNotifyPanel, history: buildHistoryPanel, trash: buildTrashPanel, data: buildDataPanel };
+  const PANELS = { user: buildUserPanel, users: buildUsersAdminPanel, statuses: buildStatusesPanel, departments: buildDeptsPanel, fields: buildFieldsPanel, checklist: buildChecklistTemplatePanel, automation: buildAutomationPanel, itsync: buildItSyncPanel, display: buildDisplayPanel, notify: buildNotifyPanel, history: buildHistoryPanel, trash: buildTrashPanel, data: buildDataPanel };
 
   function showTab(tab) {
     if (!isAdmin() && !memberTabs.includes(tab)) tab = "notify";
@@ -7833,6 +7858,73 @@ function buildChecklistTemplatePanel(container) {
 }
 
 /* Settings → ⚡ อัตโนมัติ — "when <checklist condition> → set task status". Board-wide (state.settings). */
+/* ⚙ เชื่อมระบบไอที — the IT system pushes projects into the calendar through the Edge Function "it-sync"
+   (handoff/supabase-functions/it-sync). Here: which calendar receives new SOs, IT's department codes, recent log. */
+const IT_SYNC_URL = SUPABASE_URL + "/functions/v1/it-sync";
+function buildItSyncPanel(container) {
+  const cfg = state.settings.itSync || (state.settings.itSync = { enabled: false, codes: {}, unknown: [] });
+  if (!cfg.codes) cfg.codes = {};
+  if (!Array.isArray(cfg.unknown)) cfg.unknown = [];
+  const linked = (state.tasks || []).filter(t => t.ext && t.ext.src === "it").length;
+  const sec = document.createElement("div");
+  sec.className = "settings-section";
+  sec.innerHTML = `
+    <h4 class="settings-h">${ico("link")} เชื่อมระบบไอที</h4>
+    <label class="default-stage-row"><input type="checkbox" data-it-on ${cfg.enabled ? "checked" : ""} /><span class="default-stage-name">รับงานจากระบบไอทีเข้าปฏิทิน “${escapeHtml(boardNameOf(root.activeBoard))}”</span>${linked ? `<span class="muted it-count">${linked} งาน</span>` : ""}</label>
+    <div class="it-url-row"><input type="text" readonly value="${escapeHtml(IT_SYNC_URL)}" /><button type="button" class="btn" data-it-copy>${ico("copy")} คัดลอก</button></div>
+    <h4 class="settings-h" style="margin-top:16px">รหัสแผนกของระบบไอที</h4>
+    <div class="it-code-list" data-it-codes></div>
+    <div class="it-unknown" data-it-unknown></div>
+    <h4 class="settings-h" style="margin-top:16px">รับข้อมูลล่าสุด</h4>
+    <div class="it-log" data-it-log><div class="muted" style="font-size:12px">กำลังโหลด…</div></div>`;
+  container.appendChild(sec);
+
+  sec.querySelector("[data-it-on]").addEventListener("change", (e) => { cfg.enabled = e.target.checked; saveState(); });
+  sec.querySelector("[data-it-copy]").addEventListener("click", async () => {
+    try { await navigator.clipboard.writeText(IT_SYNC_URL); toast("คัดลอกแล้ว"); }
+    catch (_) { const i = sec.querySelector(".it-url-row input"); i.select(); }
+  });
+
+  const codesEl = sec.querySelector("[data-it-codes]");
+  (state.departments || []).forEach(d => {
+    const row = document.createElement("label");
+    row.className = "it-code-row";
+    row.innerHTML = `${deptIco(d)}<span class="it-code-name">${escapeHtml(d.name)}</span><input type="text" placeholder="${escapeHtml(d.name)}" />`;
+    const inp = row.querySelector("input");
+    inp.value = cfg.codes[d.id] || "";
+    inp.addEventListener("change", () => {
+      const v = inp.value.split(",").map(x => x.trim()).filter(Boolean).join(", ");
+      inp.value = v;
+      if (v) cfg.codes[d.id] = v; else delete cfg.codes[d.id];
+      saveState();
+    });
+    codesEl.appendChild(row);
+  });
+
+  const unkEl = sec.querySelector("[data-it-unknown]");
+  function renderUnknown() {
+    unkEl.innerHTML = cfg.unknown.length
+      ? `${ico("alert")} <span>รหัสแผนกที่ยังไม่รู้จัก:</span> ${cfg.unknown.map(u => `<span class="it-unk-chip">${escapeHtml(u)}</span>`).join("")} <button type="button" class="btn btn-ghost" data-it-clear>ล้าง</button>`
+      : "";
+    const b = unkEl.querySelector("[data-it-clear]");
+    if (b) b.addEventListener("click", () => { cfg.unknown = []; saveState(); renderUnknown(); });
+  }
+  renderUnknown();
+
+  const logEl = sec.querySelector("[data-it-log]");
+  const sb = getSupabase();
+  const ACT = { created: "สร้าง", updated: "อัปเดต", deleted: "ลบ", unchanged: "ไม่เปลี่ยน", error: "ผิดพลาด" };
+  if (!sb) { logEl.innerHTML = ""; return; }
+  sb.from("it_sync_log").select("*").order("at", { ascending: false }).limit(20).then(({ data, error }) => {
+    if (error) { logEl.innerHTML = `<div class="muted" style="font-size:12px">—</div>`; return; }
+    if (!data || !data.length) { logEl.innerHTML = `<div class="muted" style="font-size:12px">ยังไม่มีข้อมูลเข้ามา</div>`; return; }
+    logEl.innerHTML = data.map(r => {
+      const d = new Date(r.at);
+      const when = `${d.getDate()}/${d.getMonth() + 1} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+      return `<div class="it-log-row${r.ok ? "" : " err"}"><span class="it-log-at">${when}</span><span class="it-log-so">${escapeHtml(r.so || "—")}</span><span class="it-log-act">${escapeHtml(ACT[r.action] || r.action || "")}</span><span class="it-log-detail">${escapeHtml(r.detail || "")}</span></div>`;
+    }).join("");
+  }, () => { logEl.innerHTML = ""; });
+}
 function buildAutomationPanel(container) {
   if (!Array.isArray(state.settings.automations)) state.settings.automations = [];
   if (!state.settings.blockRules || typeof state.settings.blockRules !== "object") state.settings.blockRules = { subNeedChecklist: false, taskNeedSubs: false };
@@ -9023,7 +9115,7 @@ function renderMainView() {
 /* ----- Browser notifications (Notification API) — configurable per event type in ⚙ การแจ้งเตือน ----- */
 const NOTIF_SUPPORTED = typeof window !== "undefined" && "Notification" in window;
 // line icon set — one style everywhere (stroke = currentColor). ico("bell"), ico("trash", "ico ico-lg")
-const ICONS = {"star": "<polygon points=\"12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2\"/>", "zap": "<polygon points=\"13 2 3 14 12 14 11 22 21 10 12 10 13 2\"/>", "bell": "<path d=\"M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9\"/><path d=\"M10.3 21a1.94 1.94 0 0 0 3.4 0\"/>", "settings": "<circle cx=\"12\" cy=\"12\" r=\"3\"/><path d=\"M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z\"/>", "search": "<circle cx=\"11\" cy=\"11\" r=\"7\"/><path d=\"m21 21-4.3-4.3\"/>", "ruler": "<path d=\"M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.41 2.41 0 0 1 0-3.4l2.6-2.6a2.41 2.41 0 0 1 3.4 0Z\"/><path d=\"m14.5 12.5 2-2M11.5 9.5l2-2M8.5 6.5l2-2M17.5 15.5l2-2\"/>", "inbox": "<path d=\"M22 12h-6l-2 3h-4l-2-3H2\"/><path d=\"M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z\"/>", "trash": "<path d=\"M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6\"/>", "clipboard": "<rect x=\"8\" y=\"2\" width=\"8\" height=\"4\" rx=\"1\"/><path d=\"M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2M9 12h6M9 16h4\"/>", "printer": "<path d=\"M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2\"/><rect x=\"6\" y=\"14\" width=\"12\" height=\"8\" rx=\"1\"/>", "user": "<circle cx=\"12\" cy=\"8\" r=\"4\"/><path d=\"M4 21a8 8 0 0 1 16 0\"/>", "users": "<path d=\"M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2\"/><circle cx=\"9\" cy=\"7\" r=\"4\"/><path d=\"M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75\"/>", "tag": "<path d=\"M12.6 2.6A2 2 0 0 0 11.2 2H4a2 2 0 0 0-2 2v7.2a2 2 0 0 0 .6 1.4l8.7 8.7a2.4 2.4 0 0 0 3.4 0l6.6-6.6a2.4 2.4 0 0 0 0-3.4z\"/><circle cx=\"7.5\" cy=\"7.5\" r=\"1.5\"/>", "building": "<rect x=\"4\" y=\"2\" width=\"16\" height=\"20\" rx=\"2\"/><path d=\"M9 22v-4h6v4M8 6h.01M12 6h.01M16 6h.01M8 10h.01M12 10h.01M16 10h.01M8 14h.01M12 14h.01M16 14h.01\"/>", "sliders": "<path d=\"M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6\"/>", "list-check": "<path d=\"m3 17 2 2 4-4M3 7l2 2 4-4M13 6h8M13 12h8M13 18h8\"/>", "monitor": "<rect x=\"2\" y=\"3\" width=\"20\" height=\"14\" rx=\"2\"/><path d=\"M8 21h8M12 17v4\"/>", "history": "<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\"/><path d=\"M3 3v5h5M12 7v5l4 2\"/>", "restore": "<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\"/><path d=\"M3 3v5h5\"/>", "database": "<ellipse cx=\"12\" cy=\"5\" rx=\"9\" ry=\"3\"/><path d=\"M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5M3 12c0 1.66 4 3 9 3s9-1.34 9-3\"/>", "calendar": "<rect x=\"3\" y=\"4\" width=\"18\" height=\"18\" rx=\"2\"/><path d=\"M16 2v4M8 2v4M3 10h18\"/>", "download": "<path d=\"M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3\"/>", "upload": "<path d=\"M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12\"/>", "camera": "<path d=\"M14.5 4h-5L7.5 6.5H5A2 2 0 0 0 3 8.5v9a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2h-2.5z\"/><circle cx=\"12\" cy=\"12.5\" r=\"3.5\"/>", "clip": "<path d=\"M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48\"/>", "chart": "<path d=\"M3 3v18h18M18 17V9M13 17V5M8 17v-3\"/>", "edit": "<path d=\"M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z\"/><path d=\"m15 5 4 4\"/>", "flag": "<path d=\"M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1zM4 22v-7\"/>", "ban": "<circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"m4.9 4.9 14.2 14.2\"/>", "clock": "<circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"M12 6v6l4 2\"/>", "mail": "<rect x=\"2\" y=\"4\" width=\"20\" height=\"16\" rx=\"2\"/><path d=\"m22 7-10 5L2 7\"/>", "cloud": "<path d=\"M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z\"/>", "logout": "<path d=\"M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9\"/>", "check-circle": "<circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"m9 12 2 2 4-4\"/>", "check-square": "<rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"2\"/><path d=\"m9 12 2 2 4-4\"/>", "eye": "<path d=\"M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z\"/><circle cx=\"12\" cy=\"12\" r=\"3\"/>", "pen": "<path d=\"M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z\"/>", "crown": "<path d=\"m2 6 4 11h12l4-11-6 5-4-7-4 7-6-5zM6 21h12\"/>", "message": "<path d=\"M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z\"/>", "alert": "<path d=\"m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z\"/><path d=\"M12 9v4M12 17h.01\"/>", "x-circle": "<circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"m15 9-6 6M9 9l6 6\"/>", "send": "<path d=\"m22 2-7 20-4-9-9-4Z\"/><path d=\"M22 2 11 13\"/>", "copy": "<rect x=\"8\" y=\"8\" width=\"14\" height=\"14\" rx=\"2\"/><path d=\"M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2\"/>", "file": "<path d=\"M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z\"/><path d=\"M14 2v6h6\"/>", "file-text": "<path d=\"M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z\"/><path d=\"M14 2v6h6M16 13H8M16 17H8M10 9H8\"/>", "file-sheet": "<path d=\"M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z\"/><path d=\"M14 2v6h6M8 13h8M8 17h8M12 11v8\"/>", "image": "<rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"2\"/><circle cx=\"9\" cy=\"9\" r=\"2\"/><path d=\"m21 15-3.09-3.09a2 2 0 0 0-2.82 0L6 21\"/>", "archive": "<rect x=\"2\" y=\"3\" width=\"20\" height=\"5\" rx=\"1\"/><path d=\"M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8M10 12h4\"/>"};
+const ICONS = {"link": "<path d=\"M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71\"/><path d=\"M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71\"/>", "star": "<polygon points=\"12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2\"/>", "zap": "<polygon points=\"13 2 3 14 12 14 11 22 21 10 12 10 13 2\"/>", "bell": "<path d=\"M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9\"/><path d=\"M10.3 21a1.94 1.94 0 0 0 3.4 0\"/>", "settings": "<circle cx=\"12\" cy=\"12\" r=\"3\"/><path d=\"M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z\"/>", "search": "<circle cx=\"11\" cy=\"11\" r=\"7\"/><path d=\"m21 21-4.3-4.3\"/>", "ruler": "<path d=\"M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.41 2.41 0 0 1 0-3.4l2.6-2.6a2.41 2.41 0 0 1 3.4 0Z\"/><path d=\"m14.5 12.5 2-2M11.5 9.5l2-2M8.5 6.5l2-2M17.5 15.5l2-2\"/>", "inbox": "<path d=\"M22 12h-6l-2 3h-4l-2-3H2\"/><path d=\"M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z\"/>", "trash": "<path d=\"M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6\"/>", "clipboard": "<rect x=\"8\" y=\"2\" width=\"8\" height=\"4\" rx=\"1\"/><path d=\"M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2M9 12h6M9 16h4\"/>", "printer": "<path d=\"M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2\"/><rect x=\"6\" y=\"14\" width=\"12\" height=\"8\" rx=\"1\"/>", "user": "<circle cx=\"12\" cy=\"8\" r=\"4\"/><path d=\"M4 21a8 8 0 0 1 16 0\"/>", "users": "<path d=\"M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2\"/><circle cx=\"9\" cy=\"7\" r=\"4\"/><path d=\"M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75\"/>", "tag": "<path d=\"M12.6 2.6A2 2 0 0 0 11.2 2H4a2 2 0 0 0-2 2v7.2a2 2 0 0 0 .6 1.4l8.7 8.7a2.4 2.4 0 0 0 3.4 0l6.6-6.6a2.4 2.4 0 0 0 0-3.4z\"/><circle cx=\"7.5\" cy=\"7.5\" r=\"1.5\"/>", "building": "<rect x=\"4\" y=\"2\" width=\"16\" height=\"20\" rx=\"2\"/><path d=\"M9 22v-4h6v4M8 6h.01M12 6h.01M16 6h.01M8 10h.01M12 10h.01M16 10h.01M8 14h.01M12 14h.01M16 14h.01\"/>", "sliders": "<path d=\"M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6\"/>", "list-check": "<path d=\"m3 17 2 2 4-4M3 7l2 2 4-4M13 6h8M13 12h8M13 18h8\"/>", "monitor": "<rect x=\"2\" y=\"3\" width=\"20\" height=\"14\" rx=\"2\"/><path d=\"M8 21h8M12 17v4\"/>", "history": "<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\"/><path d=\"M3 3v5h5M12 7v5l4 2\"/>", "restore": "<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\"/><path d=\"M3 3v5h5\"/>", "database": "<ellipse cx=\"12\" cy=\"5\" rx=\"9\" ry=\"3\"/><path d=\"M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5M3 12c0 1.66 4 3 9 3s9-1.34 9-3\"/>", "calendar": "<rect x=\"3\" y=\"4\" width=\"18\" height=\"18\" rx=\"2\"/><path d=\"M16 2v4M8 2v4M3 10h18\"/>", "download": "<path d=\"M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3\"/>", "upload": "<path d=\"M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12\"/>", "camera": "<path d=\"M14.5 4h-5L7.5 6.5H5A2 2 0 0 0 3 8.5v9a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2h-2.5z\"/><circle cx=\"12\" cy=\"12.5\" r=\"3.5\"/>", "clip": "<path d=\"M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48\"/>", "chart": "<path d=\"M3 3v18h18M18 17V9M13 17V5M8 17v-3\"/>", "edit": "<path d=\"M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z\"/><path d=\"m15 5 4 4\"/>", "flag": "<path d=\"M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1zM4 22v-7\"/>", "ban": "<circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"m4.9 4.9 14.2 14.2\"/>", "clock": "<circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"M12 6v6l4 2\"/>", "mail": "<rect x=\"2\" y=\"4\" width=\"20\" height=\"16\" rx=\"2\"/><path d=\"m22 7-10 5L2 7\"/>", "cloud": "<path d=\"M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z\"/>", "logout": "<path d=\"M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9\"/>", "check-circle": "<circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"m9 12 2 2 4-4\"/>", "check-square": "<rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"2\"/><path d=\"m9 12 2 2 4-4\"/>", "eye": "<path d=\"M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z\"/><circle cx=\"12\" cy=\"12\" r=\"3\"/>", "pen": "<path d=\"M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z\"/>", "crown": "<path d=\"m2 6 4 11h12l4-11-6 5-4-7-4 7-6-5zM6 21h12\"/>", "message": "<path d=\"M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z\"/>", "alert": "<path d=\"m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z\"/><path d=\"M12 9v4M12 17h.01\"/>", "x-circle": "<circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"m15 9-6 6M9 9l6 6\"/>", "send": "<path d=\"m22 2-7 20-4-9-9-4Z\"/><path d=\"M22 2 11 13\"/>", "copy": "<rect x=\"8\" y=\"8\" width=\"14\" height=\"14\" rx=\"2\"/><path d=\"M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2\"/>", "file": "<path d=\"M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z\"/><path d=\"M14 2v6h6\"/>", "file-text": "<path d=\"M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z\"/><path d=\"M14 2v6h6M16 13H8M16 17H8M10 9H8\"/>", "file-sheet": "<path d=\"M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z\"/><path d=\"M14 2v6h6M8 13h8M8 17h8M12 11v8\"/>", "image": "<rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"2\"/><circle cx=\"9\" cy=\"9\" r=\"2\"/><path d=\"m21 15-3.09-3.09a2 2 0 0 0-2.82 0L6 21\"/>", "archive": "<rect x=\"2\" y=\"3\" width=\"20\" height=\"5\" rx=\"1\"/><path d=\"M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8M10 12h4\"/>"};
 const ICON_ATTR = 'viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"';
 function ico(name, cls = "ico") { return ICONS[name] ? `<svg class="${cls}" ${ICON_ATTR}>${ICONS[name]}</svg>` : ""; }
 // confirm dialogs used to take an emoji — map the old ones, or pass an icon name
