@@ -2026,6 +2026,11 @@ body.chip-dragging .task-chip.span-bar { pointer-events: none; }   /* let the da
 .auto-row select { flex: 1 1 110px; min-width: 0; border: 1px solid var(--border-strong); border-radius: 6px; padding: 6px 8px; font-size: 13px; background: #fff; color: var(--text); }
 .auto-row .auto-word { font-size: 12px; color: var(--text-dim); }
 .auto-row.off select, .auto-row.off .auto-word { opacity: .45; }
+.cu-body { margin-top: 10px; }
+.cu-stats { font-size: 13px; margin-bottom: 6px; }
+.cu-grid { display: grid; grid-template-columns: minmax(120px, max-content) minmax(140px, 220px); gap: 6px 10px; align-items: center; margin-top: 6px; }
+.cu-lbl { font-size: 13px; }
+.cu-grid select { font-size: 13px; padding: 4px 6px; border: 1px solid var(--border); border-radius: 6px; background: transparent; color: inherit; }
 .it-url-row { display: flex; gap: 6px; margin-top: 8px; }
 .it-url-row input { flex: 1 1 auto; min-width: 0; font-size: 12px; padding: 6px 8px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: inherit; }
 .it-count { margin-left: auto; font-size: 12px; }
@@ -8293,6 +8298,194 @@ function buildDataPanel(container) {
   container.appendChild(sec);
   sec.querySelector('[data-act="export"]').addEventListener("click", exportJson);
   sec.querySelector('[data-act="import"]').addEventListener("click", () => document.getElementById("fileImport").click());
+  buildClickUpImport(container);
+}
+
+/* ---------- นำเข้าจาก ClickUp (CSV export) — 2026-10-07 ----------
+   ClickUp: top-level task = โครงการ, subtask = ตู้. Leading job no. in the name (SO…, J.1164/24, 1297/23, 25013004) → SO;
+   "WH/MO/05175 …" in a subtask name → MO. Due date → project date + the chosen department's stage due.
+   Each imported task/cabinet carries ext:{src:"clickup", id} → importing the same file again skips what's already in
+   (also when it sits in the trash). Only ADDS tasks; nothing existing is changed. */
+function parseCsv(text) {
+  const rows = []; let row = [], f = "", q = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (q) {
+      if (c === '"') { if (text[i + 1] === '"') { f += '"'; i++; } else q = false; }
+      else f += c;
+    } else if (c === '"') q = true;
+    else if (c === ",") { row.push(f); f = ""; }
+    else if (c === "\n" || c === "\r") {
+      if (c === "\r" && text[i + 1] === "\n") i++;
+      row.push(f); rows.push(row); row = []; f = "";
+    } else f += c;
+  }
+  if (f !== "" || row.length) { row.push(f); rows.push(row); }
+  const head = (rows.shift() || []).map(h => h.replace(/^\uFEFF/, "").trim());
+  return rows.filter(r => r.length > 1).map(r => { const o = {}; head.forEach((h, i) => o[h] = r[i] ?? ""); return o; });
+}
+// job no. near the start of the name: SO26050090 · J.1164/24 · J.0359-24 · J.Nv 0002/25 · NV.010/26 · 1297/23 · 25013004
+const CU_JOB_RE = /(SO\s*-?\s*\d{6,}|(?:J|NV)\.?\s*(?:NV\.?\s*)?\d{3,8}(?:[\/-]\d{2})?|\d{3,5}\/\d{2}|\d{8})(?![\w\/])/i;
+function cuSplitJob(name) {
+  const m = name.match(CU_JOB_RE);
+  if (!m || m.index > 25) return { so: "", title: name };
+  const title = (name.slice(0, m.index) + " " + name.slice(m.index + m[0].length)).replace(/^[\s\t:,–\-\u0E00-\u0E7F]{0,1}(?=[\s:,–-])/, "").replace(/^[\s:,–-]+/, "").replace(/\s{2,}/g, " ").trim();
+  return { so: m[1].replace(/\s+/g, ""), title: title || name };
+}
+const CU_MO_RE = /^(WH\/MO\/\d{3,}|MO\s*-?\s*\d{4,})\b[\s\t:–-]*/i;
+function cuClean(v) { return String(v || "").replace(/[\u200b\u00a0]/g, " ").replace(/\t+/g, " ").replace(/ {2,}/g, " ").trim(); }
+function cuDay(ms) { const n = Number(ms); return n > 0 ? isoDate(new Date(n)) : null; }
+function cuJson(v, dflt) { try { const x = JSON.parse(v); return x == null ? dflt : x; } catch (_) { return dflt; } }
+function cuList(v) { return String(v || "").replace(/^\[|\]$/g, "").split(",").map(x => cuClean(x)).filter(Boolean); }
+function cuCommentDate(s) { const t = Date.parse(String(s || "").replace(/ GMT\+7$/, " GMT+0700")); return isNaN(t) ? null : t; }
+
+function buildClickUpImport(container) {
+  const sec = document.createElement("div");
+  sec.className = "settings-section";
+  sec.innerHTML = `
+    <h4 class="settings-h" style="margin-top:6px">นำเข้าจาก ClickUp (CSV)</h4>
+    <div class="row" style="gap:8px; flex-wrap:wrap; align-items:center">
+      <button class="btn" data-cu-pick>${ico("upload")} เลือกไฟล์ CSV</button>
+      <span class="muted" style="font-size:12px" data-cu-file></span>
+      <input type="file" accept=".csv,text/csv" hidden data-cu-input />
+    </div>
+    <div class="cu-body" data-cu-body hidden>
+      <div class="cu-stats" data-cu-stats></div>
+      <label class="default-stage-row"><input type="checkbox" data-cu-open checked /><span class="default-stage-name">เฉพาะงานที่ยังไม่ complete</span></label>
+      <div class="cu-grid">
+        <span class="cu-lbl">วันครบกำหนด → ด่านแผนก</span><select data-cu-dept></select>
+      </div>
+      <h4 class="settings-h" style="margin-top:12px; font-size:14px">สถานะ ClickUp → สถานะในแอป</h4>
+      <div class="cu-grid" data-cu-status></div>
+      <div class="row" style="gap:8px; margin-top:12px; align-items:center">
+        <button class="btn btn-primary" data-cu-go></button>
+        <span class="muted" style="font-size:12px" data-cu-skip></span>
+      </div>
+    </div>`;
+  container.appendChild(sec);
+  const $ = q => sec.querySelector(q);
+  let rows = null, statusMap = {};
+  $("[data-cu-pick]").addEventListener("click", () => $("[data-cu-input]").click());
+  $("[data-cu-input]").addEventListener("change", async (e) => {
+    const f = e.target.files[0]; if (!f) return;
+    rows = parseCsv(await f.text());
+    e.target.value = "";
+    if (!rows.length || !("Task ID" in rows[0]) || !("Parent ID" in rows[0])) { toast("ไฟล์นี้ไม่ใช่ CSV ที่ export จาก ClickUp"); rows = null; return; }
+    $("[data-cu-file]").textContent = f.name;
+    setup();
+  });
+
+  function setup() {
+    const depts = state.departments || [];
+    const qc = depts.find(d => /qc/i.test(d.name) || d.id === "d_qc");
+    $("[data-cu-dept]").innerHTML = `<option value="">— ไม่ใส่ด่าน —</option>` + depts.map(d =>
+      `<option value="${escapeHtml(d.id)}" ${qc && qc.id === d.id ? "selected" : ""}>${escapeHtml(d.name)}</option>`).join("");
+    // ClickUp statuses → app statuses (same name first; "complete" → the first "done" status)
+    const sts = state.statuses || [];
+    const names = [...new Set(rows.map(r => cuClean(r.Status)).filter(Boolean))];
+    statusMap = {};
+    names.forEach(n => {
+      const same = sts.find(x => x.name.trim().toLowerCase() === n.toLowerCase());
+      const done = /^(complete|closed|done)$/i.test(n) ? sts.find(x => x.isDone) : null;
+      statusMap[n] = (same || done || sts[0] || {}).id;
+    });
+    $("[data-cu-status]").innerHTML = names.map(n => `<span class="cu-lbl">${escapeHtml(n)}</span><select data-st="${escapeHtml(n)}">${
+      sts.map(x => `<option value="${escapeHtml(x.id)}" ${statusMap[n] === x.id ? "selected" : ""}>${escapeHtml(x.name)}</option>`).join("")}</select>`).join("");
+    sec.querySelectorAll("[data-st]").forEach(sel => sel.addEventListener("change", () => { statusMap[sel.dataset.st] = sel.value; }));
+    $("[data-cu-open]").onchange = refresh;
+    $("[data-cu-body]").hidden = false;
+    refresh();
+  }
+  const already = () => {
+    const ids = new Set();
+    const add = t => { if (t && t.ext && t.ext.src === "clickup") ids.add(t.ext.id); };
+    (state.tasks || []).forEach(add); (state.trash || []).forEach(x => add(x.task));
+    return ids;
+  };
+  function pick() {
+    const top = rows.filter(r => !r["Parent ID"] || r["Parent ID"] === "null");
+    const kids = new Map();
+    rows.filter(r => r["Parent ID"] && r["Parent ID"] !== "null").forEach(r => {
+      if (!kids.has(r["Parent ID"])) kids.set(r["Parent ID"], []); kids.get(r["Parent ID"]).push(r);
+    });
+    const isOpen = r => !/^(complete|closed|done)$/i.test(cuClean(r.Status));
+    const onlyOpen = $("[data-cu-open]").checked;
+    const have = already();
+    const chosen = top.filter(r => !onlyOpen || isOpen(r) || (kids.get(r["Task ID"]) || []).some(isOpen));
+    const todo = chosen.filter(r => !have.has(r["Task ID"]));
+    return { top, kids, chosen, todo, skipped: chosen.length - todo.length };
+  }
+  function refresh() {
+    const p = pick();
+    const subs = p.todo.reduce((n, r) => n + (p.kids.get(r["Task ID"]) || []).length, 0);
+    $("[data-cu-stats]").textContent = `ในไฟล์ ${p.top.length.toLocaleString()} โครงการ · ${(rows.length - p.top.length).toLocaleString()} ตู้`;
+    const go = $("[data-cu-go]");
+    go.textContent = `นำเข้า ${p.todo.length.toLocaleString()} โครงการ (${subs.toLocaleString()} ตู้) → ${boardNameOf(root.activeBoard)}`;
+    go.disabled = !p.todo.length;
+    $("[data-cu-skip]").textContent = p.skipped ? `นำเข้าแล้ว ${p.skipped} — ข้าม` : "";
+    if (p.todo.length > 400) $("[data-cu-skip]").textContent += (p.skipped ? " · " : "") + "จำนวนมาก แอปอาจช้าลง";
+  }
+
+  $("[data-cu-go]").addEventListener("click", async () => {
+    const p = pick();
+    if (!p.todo.length) return;
+    const subCount = p.todo.reduce((n, r) => n + (p.kids.get(r["Task ID"]) || []).length, 0);
+    const ok = await confirmDialog({ icon: "upload", title: "นำเข้าจาก ClickUp", message: `${p.todo.length} โครงการ · ${subCount} ตู้ → “${boardNameOf(root.activeBoard)}”`, confirmText: "นำเข้า", danger: false });
+    if (!ok) return;
+    if (!teamProfiles.size) { try { await loadTeam(); } catch (_) {} }
+    const people = [...teamProfiles.values()];
+    const byEmail = new Map(people.filter(x => x.email).map(x => [x.email.toLowerCase(), x]));
+    const byName = new Map(people.filter(x => x.display_name).map(x => [cuClean(x.display_name).toLowerCase(), x]));
+    const deptId = $("[data-cu-dept]").value || null;
+    const PR = { "1": "urgent", "2": "high", "3": "medium", "4": "low" };
+    const author = by => { const pp = byEmail.get(String(by || "").toLowerCase()); return pp ? personName(pp) : (String(by || "ClickUp").split("@")[0]); };
+    const comments = (r, prefix) => cuJson(r.Comments, []).filter(c => c && c.text).map(c => ({
+      id: uid("cm"), author: author(c.by), text: (prefix ? prefix + " " : "") + String(c.text).trim(), at: cuCommentDate(c.date) || Number(r["Date Created"]) || Date.now(),
+    }));
+    const attachNote = (r, prefix) => {
+      const a = cuJson(r.Attachments, []).filter(x => x && x.url);
+      return a.length ? [{ id: uid("ac"), type: "system", author: "ClickUp", text: `${prefix ? prefix + " " : ""}ไฟล์แนบใน ClickUp: ` + a.map(x => `${x.title || "ไฟล์"} ${x.url}`).join(" · ").slice(0, 1500), at: Number(r["Date Created"]) || Date.now() }] : [];
+    };
+    // checklist only for the department the dates go to (the task has no other stage); no department chosen → full template
+    const tpl = () => makeCabinetChecklist().filter(it => !deptId || it.deptId === deptId);
+    let nT = 0, nS = 0;
+    p.todo.forEach(r => {
+      const name = cuClean(r["Task Name"]);
+      const { so, title } = cuSplitJob(name);
+      const created = Number(r["Date Created"]) || Date.now();
+      const due = cuDay(r["Due Date"]), start = cuDay(r["Start Date"]);
+      const date = due || start || isoDate(new Date(created));
+      const stId = statusMap[cuClean(r.Status)] || state.statuses[0].id;
+      const taskDone = isStatusDone(getStatus(stId));
+      const subsRows = (p.kids.get(r["Task ID"]) || []).sort((a, b) => Number(a["Date Created"]) - Number(b["Date Created"]));
+      const subtasks = subsRows.map(sr => {
+        const sn = cuClean(sr["Task Name"]); const mm = sn.match(CU_MO_RE);
+        const sSt = statusMap[cuClean(sr.Status)] || state.statuses[0].id;
+        const done = isStatusDone(getStatus(sSt));
+        nS++;
+        return { id: uid("st"), text: ((mm ? sn.slice(mm[0].length) : sn).replace(/^\[|\]$/g, "").trim() || sn), mo: mm ? mm[1].toUpperCase() : "",
+          statusId: sSt, date: cuDay(sr["Due Date"]), deptDates: {}, checklist: tpl().map(it => ({ ...it, done })),
+          ext: { src: "clickup", id: sr["Task ID"] } };
+      });
+      const assignees = [...new Set([r, ...subsRows].flatMap(x => cuList(x.Assignees)))]
+        .map(n => byName.get(n.toLowerCase())).filter(Boolean).map(x => x.id);
+      const allComments = [...comments(r, ""), ...attachNote(r, "")];
+      subsRows.forEach((sr, i) => { const lbl = `[${subLabel(subtasks[i])}]`; allComments.push(...comments(sr, lbl), ...attachNote(sr, lbl)); });
+      allComments.sort((a, b) => a.at - b.at);
+      allComments.push({ id: uid("ac"), type: "system", author: currentUser(), text: "นำเข้าจาก ClickUp", at: Date.now() });
+      state.tasks.push({
+        id: uid("t"), title, so, description: cuClean(String(r["Task Content"] || "").replace(/\\n/g, "\n")).replace(/ ?\n ?/g, "\n"),
+        date, startDate: start && start < date ? start : null, statusId: stId, priority: PR[cuClean(r.Priority)] || "none",
+        labels: cuList(r.Tags), assignees, subtasks,
+        deptStages: deptId ? [{ deptId, due: date, done: taskDone, fields: {} }] : [],
+        comments: allComments, createdAt: created, updatedAt: Date.now(),
+        ext: { src: "clickup", id: r["Task ID"] },
+      });
+      nT++;
+    });
+    saveState(); renderAll(); refresh();
+    toast(`นำเข้าแล้ว ${nT} โครงการ · ${nS} ตู้`);
+  });
 }
 
 /* ---------- 🗑️ trash: deleted tasks are kept 30 days (per board, synced) ---------- */
