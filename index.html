@@ -878,6 +878,67 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
 
 /* prominent alert popup */
 .alert-overlay { z-index: 1200; }
+/* ===== alert popup, 2026-10-08 redesign (.am2) ===== */
+.alert-overlay:has(.am2) { backdrop-filter: blur(3px); }
+.alert-modal.am2 { max-width: 460px; width: 94%; border-top: none; border-radius: 18px; overflow: hidden; box-shadow: 0 24px 60px rgba(16,24,40,.28); animation: am2In .22s ease-out; }
+@keyframes am2In { from { opacity: 0; transform: translateY(10px) scale(.98); } to { opacity: 1; transform: none; } }
+.am2-head { display: flex; align-items: center; gap: 12px; padding: 16px 18px 12px; }
+.am2-bell { width: 38px; height: 38px; border-radius: 12px; display: grid; place-items: center; flex: 0 0 auto;
+  background: linear-gradient(135deg, var(--accent), #a78bfa); color: #fff; box-shadow: 0 6px 14px color-mix(in srgb, var(--accent) 35%, transparent); }
+.am2-bell .ico { width: 19px; height: 19px; animation: bellRing 1.4s ease-in-out 2; }
+.am2-title { flex: 1; font-size: 17px; font-weight: 800; color: var(--text); display: flex; align-items: center; gap: 8px; }
+.am2-count { background: var(--danger); color: #fff; font-size: 12px; font-weight: 800; min-width: 22px; height: 22px; line-height: 22px; border-radius: 11px; padding: 0 7px; text-align: center; }
+.am2-close { width: 32px; height: 32px; border-radius: 50%; border: none; background: var(--bg); color: var(--text-dim); font-size: 14px; cursor: pointer; flex: 0 0 auto; }
+.am2-close:hover { background: var(--border); color: var(--text); }
+.am2 .alert-list { padding: 4px 14px 16px; gap: 10px; }
+.am2 .alert-list[hidden] { display: none; }
+.am2-tabs { display: flex; gap: 4px; margin: 0 14px 10px; padding: 4px; background: var(--bg); border-radius: 11px; }
+.am2-tab { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px; border: none; background: transparent; color: var(--text-dim); font: inherit; font-size: 13px; font-weight: 700; padding: 7px 10px; border-radius: 8px; cursor: pointer; }
+.am2-tab .ico { width: 14px; height: 14px; }
+.am2-tab.on { background: var(--panel); color: var(--text); box-shadow: var(--shadow-sm); }
+.am2-tab .am2-count { min-width: 20px; height: 20px; line-height: 20px; font-size: 11px; }
+.am2-tab .am2-count[hidden] { display: none; }
+.am2-empty { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 26px 0; color: var(--text-faint); font-size: 13px; }
+.am2-empty .ico { width: 28px; height: 28px; }
+.alert-modal.am2 .alert-card.am2-card.am2-done { box-shadow: none; background: var(--bg); }
+.am2-done .am2-av { opacity: .75; }
+.am2-msg-clamp { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; background: var(--panel); }
+.am2-res { display: flex; align-items: center; gap: 5px; margin-top: 7px; font-size: 12px; font-weight: 600; color: #059669; }
+.am2-res .ico { width: 14px; height: 14px; flex: 0 0 auto; }
+.am2-res.rej { color: var(--danger); }
+.alert-modal.am2 .alert-card.am2-card { display: flex; gap: 11px; padding: 12px 13px; border: 1px solid var(--border); border-left: 1px solid var(--border); border-radius: 14px; background: var(--panel); box-shadow: var(--shadow-sm); transition: box-shadow .15s; }
+.alert-modal.am2 .alert-card.am2-card:hover { box-shadow: var(--shadow-md); }
+.am2-av { flex: 0 0 auto; }
+.am2-av .avatar, .am2-ini { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; overflow: hidden; font-weight: 700; font-size: 15px; }
+.am2-av .avatar img { width: 100%; height: 100%; object-fit: cover; }
+.am2-ini { background: color-mix(in srgb, var(--accent) 16%, var(--panel)); color: var(--accent); }
+.am2-body { flex: 1 1 auto; min-width: 0; }
+.am2-top { display: flex; align-items: baseline; gap: 8px; }
+.am2-who { font-weight: 700; font-size: 13.5px; color: var(--text); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.am2-time { margin-left: auto; font-size: 11.5px; color: var(--text-faint); white-space: nowrap; flex: 0 0 auto; }
+.am2-tags { display: flex; flex-wrap: wrap; gap: 5px; margin: 4px 0 6px; }
+.am2-kind, .am2-board { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; }
+.am2-kind .ico, .am2-board .ico { width: 12px; height: 12px; }
+.am2-mention .am2-kind { background: color-mix(in srgb, #8b5cf6 14%, transparent); color: #7c3aed; }
+.am2-personal .am2-kind { background: color-mix(in srgb, #2563eb 13%, transparent); color: #1d4ed8; }
+.am2-dept .am2-kind { background: color-mix(in srgb, #f59e0b 18%, transparent); color: #b45309; }
+:root[data-theme="dark"] .am2-mention .am2-kind { color: #c4b5fd; }
+:root[data-theme="dark"] .am2-personal .am2-kind { color: #93c5fd; }
+:root[data-theme="dark"] .am2-dept .am2-kind { color: #fcd34d; }
+.am2-board { background: var(--bg); color: var(--text-dim); }
+.am2-task { display: block; width: 100%; text-align: left; border: none; background: none; padding: 0; font: inherit; font-size: 14px; font-weight: 700; color: var(--text); cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.am2-task:hover { color: var(--accent); }
+.am2-so { font-size: 11px; font-weight: 700; color: var(--text-dim); background: var(--bg); border-radius: 5px; padding: 1px 6px; margin-right: 6px; }
+.am2-msg { margin-top: 6px; background: var(--bg); border-radius: 4px 12px 12px 12px; padding: 8px 11px; font-size: 13.5px; color: var(--text); white-space: pre-wrap; word-break: break-word; line-height: 1.5; }
+.am2-actions { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+.am2-btn { display: inline-flex; align-items: center; gap: 5px; border-radius: 9px; padding: 6px 13px; font: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer; border: 1px solid transparent; }
+.am2-btn .ico { width: 14px; height: 14px; }
+.am2-ack { background: var(--accent); color: #fff; }
+.am2-ack:hover { background: var(--accent-hover); }
+.am2-reject { background: transparent; color: var(--danger); border-color: color-mix(in srgb, var(--danger) 35%, transparent); }
+.am2-reject:hover { background: color-mix(in srgb, var(--danger) 8%, transparent); }
+.am2-open { margin-left: auto; background: transparent; color: var(--text-dim); border-color: var(--border-strong); }
+.am2-open:hover { color: var(--accent); border-color: var(--accent); }
 .alert-modal { max-width: 480px; width: 94%; border-top:5px solid var(--l-2563eb, #2563eb); }
 .alert-modal .modal-head { background:var(--b-eff4ff, #eff4ff); }
 .alert-modal .modal-head h3 { color:var(--t-2563eb, #2563eb); display: flex; align-items: center; gap: 8px; }
@@ -10946,23 +11007,96 @@ function buildAlertReplies(container, task, alertComment, persist) {
 }
 
 // prominent alert popup (urgent, on top of everything)
-function openAlertPopup(list) {
+// "5 นาทีที่แล้ว" / "2 ชม.ที่แล้ว" / "เมื่อวาน 16:05" / date — for the alert popup
+function relTimeTH(ts) {
+  if (!ts) return "";
+  const d = new Date(ts), now = new Date(), diff = (now - d) / 1000;
+  const hm = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  if (diff < 60) return "เมื่อสักครู่";
+  if (diff < 3600) return `${Math.floor(diff / 60)} นาทีที่แล้ว`;
+  if (isoDate(d) === isoDate(now)) return `${Math.floor(diff / 3600)} ชม.ที่แล้ว`;
+  if (isoDate(d) === addDaysIso(isoDate(now), -1)) return `เมื่อวาน ${hm}`;
+  return `${formatDateTH(isoDate(d))} ${hm}`;
+}
+// ★ 2026-10-08: the bell keeps a HISTORY — alerts to me / my department that were acknowledged or rejected, and
+//   @mentions of me I acknowledged. Last 30 days, every calendar I can open, newest first.
+function alertHistory() {
+  const me = currentProfile && currentProfile.id;
+  if (!me) return [];
+  const since = Date.now() - 30 * 86400000, out = [];
+  visibleBoardIds().forEach(bid => {
+    const ws = root.boards[bid];
+    if (!ws) return;
+    const my = myDeptIn(ws);
+    (ws.tasks || []).forEach(t => (t.comments || []).forEach(c => {
+      if ((c.at || 0) < since) return;
+      const alertMine = c.type === "alert" && c.ack && !sentByMe(c) && (c.toUser ? c.toUser === me : (!!my && c.toDept === my));
+      const mentionMine = Array.isArray(c.mentions) && c.mentions.includes(me) && (c.mentionAck || []).includes(me);
+      if (!alertMine && !mentionMine) return;
+      if (c.toUser && !iSeeTask(t, ws)) return;
+      out.push({ task: t, c, boardId: bid, kind: alertMine ? (c.toUser ? "personal" : "dept") : "mention" });
+    }));
+  });
+  return out.sort((a, b) => (b.c.at || 0) - (a.c.at || 0)).slice(0, 80);
+}
+function openAlertPopup(list, opts = {}) {
   list = (list || pendingAlerts()).slice();
-  if (!list.length) return;
+  if (!list.length && !opts.fromBell) return;
   document.querySelectorAll(".alert-overlay").forEach(n => n.remove());   // never two stacked popups
   const overlay = document.createElement("div");
   overlay.className = "overlay alert-overlay";
   overlay.innerHTML = `
-    <div class="modal alert-modal" role="alertdialog" aria-modal="true">
-      <div class="modal-head">
-        <h3><span class="alert-bell-ico">${ico("bell")}</span> มีการแจ้งเตือน <span data-count>${list.length}</span></h3>
-        <button class="btn btn-ghost" data-act="close" title="ปิดไว้ดูทีหลังที่กระดิ่ง">✕</button>
+    <div class="modal alert-modal am2" role="alertdialog" aria-modal="true">
+      <div class="am2-head">
+        <span class="am2-bell">${ico("bell")}</span>
+        <div class="am2-title">การแจ้งเตือน</div>
+        <button class="am2-close" data-act="close" title="ปิดไว้ดูทีหลังที่กระดิ่ง">✕</button>
+      </div>
+      <div class="am2-tabs">
+        <button type="button" class="am2-tab" data-tab="pending">ยังไม่รับทราบ<span class="am2-count" data-count${list.length ? "" : " hidden"}>${list.length}</span></button>
+        <button type="button" class="am2-tab" data-tab="history">${ico("history")} ประวัติ</button>
       </div>
       <div class="alert-list" data-list></div>
+      <div class="alert-list am2-hist" data-hist hidden></div>
     </div>`;
   document.body.appendChild(overlay);
   const listEl = overlay.querySelector("[data-list]");
   const countEl = overlay.querySelector("[data-count]");
+  const histEl = overlay.querySelector("[data-hist]");
+  const emptyPending = () => { listEl.innerHTML = `<div class="am2-empty">${ico("check-circle")}<span>ไม่มีการแจ้งเตือนค้าง</span></div>`; };
+  function showTab(tab) {
+    overlay.querySelectorAll(".am2-tab").forEach(b => b.classList.toggle("on", b.dataset.tab === tab));
+    listEl.hidden = tab !== "pending"; histEl.hidden = tab !== "history";
+    if (tab === "history") renderHistory();
+  }
+  overlay.querySelectorAll(".am2-tab").forEach(b => b.addEventListener("click", () => showTab(b.dataset.tab)));
+  function renderHistory() {
+    const items = alertHistory();
+    histEl.innerHTML = items.length ? "" : `<div class="am2-empty">${ico("history")}<span>ยังไม่มีประวัติใน 30 วัน</span></div>`;
+    items.forEach(({ task, c, boardId, kind }) => {
+      const bid = boardId || root.activeBoard, ws = root.boards[bid] || state;
+      const deptName = kind === "dept" ? ((getDeptIn(ws, c.toDept) || {}).name || c.toDept || "") : "";
+      const kindLabel = kind === "mention" ? `${ico("message")} กล่าวถึงคุณ` : kind === "personal" ? `${ico("user")} ถึงคุณ` : `${ico("bell")} แผนก ${escapeHtml(deptName)}`;
+      const who = c.author || "—";
+      const prof = [...teamProfiles.values()].find(p => p.display_name === who);
+      const res = kind === "mention" ? `${ico("check-circle")} รับทราบแล้ว`
+        : c.rejected ? `${ico("x-circle")} ปฏิเสธโดย ${escapeHtml(c.rejectedBy || "—")}${c.rejectReason ? " — " + escapeHtml(c.rejectReason) : ""} · ${escapeHtml(relTimeTH(c.rejectedAt))}`
+        : `${ico("check-circle")} รับทราบโดย ${escapeHtml(c.ackBy || "—")} · ${escapeHtml(relTimeTH(c.ackAt))}`;
+      const card = document.createElement("div");
+      card.className = "alert-card am2-card am2-done am2-" + kind;
+      card.innerHTML = `
+        <div class="am2-av">${prof ? avatarHtml(prof) : `<span class="am2-ini">${escapeHtml(who.slice(0, 1))}</span>`}</div>
+        <div class="am2-body">
+          <div class="am2-top"><span class="am2-who">${escapeHtml(who)}</span><span class="am2-time" title="${escapeHtml(formatDateTimeTH(c.at))}">${escapeHtml(relTimeTH(c.at))}</span></div>
+          <div class="am2-tags"><span class="am2-kind">${kindLabel}</span>${bid !== root.activeBoard ? `<span class="am2-board">${ico("calendar")} ${escapeHtml(boardNameOf(bid))}</span>` : ""}</div>
+          <button type="button" class="am2-task" data-open>${(task.so || "").trim() ? `<span class="am2-so">${escapeHtml(task.so.trim())}</span>` : ""}${escapeHtml(task.title || "(ไม่มีชื่องาน)")}</button>
+          ${c.text ? `<div class="am2-msg am2-msg-clamp">${mentionTextHtml(c)}</div>` : ""}
+          <div class="am2-res${c.rejected ? " rej" : ""}">${res}</div>
+        </div>`;
+      card.querySelector("[data-open]").addEventListener("click", () => { close(); if (bid !== root.activeBoard) setBoard(bid); openTaskModal(task.id); });
+      histEl.appendChild(card);
+    });
+  }
   function close(){ overlay.remove(); document.removeEventListener("keydown", onEsc, true); }
   function onEsc(e){ if (e.key === "Escape") close(); }
   overlay.querySelector('[data-act="close"]').addEventListener("click", close);
@@ -10976,26 +11110,39 @@ function openAlertPopup(list) {
       : c.toUser ? { name: personName(teamProfiles.get(c.toUser)) }
       : (getDeptIn(ws, c.toDept) || { name: c.toDept || "?" });
     const card = document.createElement("div");
-    card.className = "alert-card";
+    // ★ 2026-10-08 redesign: avatar · who + when · type pill · project · message bubble · actions
+    const kind = !isAlert ? "mention" : c.toUser ? "personal" : "dept";
+    const kindLabel = kind === "mention" ? `${ico("message")} กล่าวถึงคุณ` : kind === "personal" ? `${ico("user")} ถึงคุณ` : `${ico("bell")} แผนก ${escapeHtml(dept.name)}`;
+    const who = c.author || "—";
+    const prof = [...teamProfiles.values()].find(p => p.display_name === who);
+    card.className = "alert-card am2-card am2-" + kind;
     card.innerHTML = `
-      <div class="alert-card-top">
-        ${bid !== root.activeBoard ? `<span class="alert-board" title="อยู่ในปฏิทินนี้">${ico("calendar")} ${escapeHtml(boardNameOf(bid))}</span>` : ""}
-        <span class="alert-to">${isAlert ? ico("bell") + " " : ""}${escapeHtml(dept.name)}</span>
-        <span class="alert-from">จาก ${escapeHtml(c.author || "—")}</span>
-        <span class="alert-time">${formatDateTimeTH(c.at)}</span>
-      </div>
-      <div class="alert-task" data-open>${escapeHtml(task.title || "(ไม่มีชื่องาน)")}</div>
-      ${c.text ? `<div class="alert-text">${mentionTextHtml(c)}</div>` : ""}
-      ${attachmentsHtml(c, "alert-photo")}
-      ${isAlert ? `<div class="alert-replies" data-replies></div>` : ""}
-      <div class="alert-card-actions">
-        <button class="btn btn-sm btn-ack" data-ack>✓ รับทราบ</button>
-        ${isAlert ? `<button class="btn btn-sm btn-reject" data-reject>✕ ปฏิเสธ</button>` : ""}
-        <button class="btn btn-sm" data-open2>เปิดงาน</button>
+      <div class="am2-av">${prof ? avatarHtml(prof) : `<span class="am2-ini">${escapeHtml(who.slice(0, 1))}</span>`}</div>
+      <div class="am2-body">
+        <div class="am2-top">
+          <span class="am2-who">${escapeHtml(who)}</span>
+          <span class="am2-time" title="${escapeHtml(formatDateTimeTH(c.at))}">${escapeHtml(relTimeTH(c.at))}</span>
+        </div>
+        <div class="am2-tags">
+          <span class="am2-kind">${kindLabel}</span>
+          ${bid !== root.activeBoard ? `<span class="am2-board" title="อยู่ในปฏิทินนี้">${ico("calendar")} ${escapeHtml(boardNameOf(bid))}</span>` : ""}
+        </div>
+        <button type="button" class="am2-task" data-open>${(task.so || "").trim() ? `<span class="am2-so">${escapeHtml(task.so.trim())}</span>` : ""}${escapeHtml(task.title || "(ไม่มีชื่องาน)")}</button>
+        ${c.text ? `<div class="am2-msg">${mentionTextHtml(c)}</div>` : ""}
+        ${attachmentsHtml(c, "alert-photo")}
+        ${isAlert ? `<div class="alert-replies" data-replies></div>` : ""}
+        <div class="am2-actions">
+          <button class="am2-btn am2-ack" data-ack>${ico("check-circle")} รับทราบ</button>
+          ${isAlert ? `<button class="am2-btn am2-reject" data-reject>ปฏิเสธ</button>` : ""}
+          <button class="am2-btn am2-open" data-open2>เปิดงาน →</button>
+        </div>
       </div>`;
     // reply thread (c is the real stored comment here → saveState persists)
     if (isAlert) buildAlertReplies(card.querySelector("[data-replies]"), task, c, () => { saveState(); renderAll(); });
-    const resolveCard = () => { card.remove(); const left = listEl.querySelectorAll(".alert-card").length; countEl.textContent = left; if (!left) close(); };
+    const resolveCard = () => {
+      card.remove(); const left = listEl.querySelectorAll(".alert-card").length; countEl.textContent = left; countEl.hidden = !left;
+      if (!left) { if (opts.fromBell) { emptyPending(); showTab("history"); } else close(); }   // from the bell → land on the history
+    };
     card.querySelector("[data-ack]").addEventListener("click", () => {
       if (mentionPendingForMe(c)) ackMention(c);
       if (!isAlert) { task.updatedAt = Date.now(); saveState(); renderAll(); resolveCard(); return; }
@@ -11020,6 +11167,8 @@ function openAlertPopup(list) {
     wireAttachments(card);
     listEl.appendChild(card);
   });
+  if (!list.length) emptyPending();
+  showTab(list.length ? "pending" : "history");
 }
 // refresh the bell and pop unacknowledged alerts (called on open / board switch / dept change)
 function checkAlerts() {
@@ -11349,9 +11498,7 @@ window.addEventListener("beforeprint", () => { _themeBeforePrint = currentTheme(
 window.addEventListener("afterprint", () => { if (_themeBeforePrint === "dark") { document.documentElement.dataset.theme = "dark"; renderAll(); } _themeBeforePrint = null; });
 document.getElementById("sbUserBadge").addEventListener("click", openMyProfileModal);
 document.getElementById("btnBell").addEventListener("click", () => {
-  const list = pendingAlerts();
-  if (list.length) openAlertPopup(list);
-  else toast("ไม่มีการแจ้งเตือนค้าง (ทุกปฏิทิน)");
+  openAlertPopup(pendingAlerts(), { fromBell: true });   // nothing pending → opens on the history
 });
 // click a 🔔 pin on any chip / today-panel row → open the alert popup for that task (capture: beat the chip's own click)
 document.addEventListener("click", (e) => {
