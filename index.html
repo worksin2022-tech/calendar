@@ -4488,6 +4488,7 @@ function renderMonth() {
         const pos = it.position === "start" ? "start" : "mid";
         const chip = it.kind === "deptstage" ? renderDeptChip(it.task, it.stage, pos)
           : it.kind === "deptcab" ? renderDeptCabChip(it.task, it.stage, it.sub, pos)
+          : it.kind === "deptgroup" ? renderDeptChip(it.task, it.stage, pos, it.subs)
           : renderTaskChip(it.task, pos, true);
         chip.classList.add("span-bar");
         if (it.position !== "start") chip.classList.add("bar-cont-left");   // continues from last week
@@ -4499,6 +4500,8 @@ function renderMonth() {
     rest.forEach(item => {
       if (item.kind === "deptstage") {
         taskWrap.appendChild(renderDeptChip(item.task, item.stage));
+      } else if (item.kind === "deptgroup") {
+        taskWrap.appendChild(renderDeptChip(item.task, item.stage, "single", item.subs));
       } else if (item.kind === "deptcab") {
         taskWrap.appendChild(renderDeptCabChip(item.task, item.stage, item.sub));
       } else if (item.kind === "cabinet") {
@@ -4534,6 +4537,18 @@ function renderMonth() {
         return;
       }
       // dragging a per-cabinet department chip → set/move that cabinet's per-department date
+      if (dragDeptCab && Array.isArray(dragDeptCab.subIds)) {   // a project chip carrying one day's cabinets
+        const t = state.tasks.find(x => x.id === dragDeptCab.taskId);
+        const did = dragDeptCab.deptId;
+        const subsM = t ? (t.subtasks || []).filter(x => dragDeptCab.subIds.includes(x.id) && cabinetDeptDue(t, x, did) !== iso) : [];
+        if (!subsM.length) return;
+        for (const s of subsM) { const max = dateLimitViolation(t, did, iso, s); if (max) { toast(dateLimitMsg(did, max)); return; } }
+        subsM.forEach(s => { if (!s.deptDates) s.deptDates = {}; s.deptDates[did] = iso; });
+        logActivity(t, `เลื่อนวัน ${subsM.length} ตู้ (แผนก ${(getDept(did)||{}).name||""}) → ${formatDateTH(iso)}`);
+        t.updatedAt = Date.now();
+        saveState(); renderAll();
+        return;
+      }
       if (dragDeptCab) {
         const t = state.tasks.find(x => x.id === dragDeptCab.taskId);
         const s = t && (t.subtasks || []).find(x => x.id === dragDeptCab.subId);
@@ -4815,7 +4830,11 @@ function buildDeptItems(tasks, deptIds) {
       if (!stg) return;
       const subs = t.subtasks || [];
       if (byCab && subs.length) {
-        subs.forEach(sub => place(deptDueForView(t, sub, deptId), { kind: "deptcab", task: t, stage: stg, sub }, t.id + "|" + deptId + "|" + sub.id));
+        // ★ 2026-10-08: one PROJECT chip per day (same look as the normal department chip) carrying the cabinets due that
+        //   day — a project whose cabinets fall on 3 days shows 3 chips; the counts are that day's cabinets only
+        const byDay = new Map();
+        subs.forEach(sub => { const d = deptDueForView(t, sub, deptId); if (!d) return; if (!byDay.has(d)) byDay.set(d, []); byDay.get(d).push(sub); });
+        byDay.forEach((group, d) => place(d, { kind: "deptgroup", task: t, stage: stg, subs: group }, t.id + "|" + deptId + "|" + d));
       } else {
         place(stg.due || t.date, { kind: "deptstage", task: t, stage: stg }, t.id + "|" + deptId);
       }
@@ -4837,6 +4856,7 @@ function buildDeptItems(tasks, deptIds) {
   //   work still to do rises to the top; inside each group the old order (priority, then title) is kept
   const finished = it => it.kind === "deptstage" ? isDeptComplete(it.task, it.stage.deptId)
     : it.kind === "deptcab" ? cabDeptDone(it.task, it.sub, it.stage.deptId)
+    : it.kind === "deptgroup" ? it.subs.every(sb => cabDeptDone(it.task, sb, it.stage.deptId))
     : isStatusDone(getStatus(it.task.statusId));
   Object.values(out).forEach(arr => arr.sort((a,b) =>
     (finished(a) ? 1 : 0) - (finished(b) ? 1 : 0)
@@ -4846,12 +4866,14 @@ function buildDeptItems(tasks, deptIds) {
   return out;
 }
 
-function renderDeptChip(t, stage, position = "single") {
+function renderDeptChip(t, stage, position = "single", subs = null) {
   const deptId = stage.deptId;
   const isSpan = position !== "single";
+  const group = Array.isArray(subs);   // "แตกปฏิทินเป็นรายตู้": only the cabinets due on this chip's day
   const st = getStatus(t.statusId); // shared work status (synced across departments)
   const pr = getPriority(t.priority);
-  const deptDone = isDeptComplete(t, deptId);   // all cabinets' checklist for this dept ticked (or manual tick)
+  const deptDone = group ? subs.every(sb => cabDeptDone(t, sb, deptId))   // this day's cabinets all ticked for this dept
+    : isDeptComplete(t, deptId);   // all cabinets' checklist for this dept ticked (or manual tick)
   const chip = document.createElement("div");
   // same look as the all-departments chip: status colour stays even when done
   chip.className = "task-chip" + (isStatusDone(st) ? " done" : "") + (deptDone ? " dept-done" : "") + (isSpan ? " span-" + position : "");
@@ -4863,9 +4885,10 @@ function renderDeptChip(t, stage, position = "single") {
   // no date of its own → it's shown on (and inherits) the project's due date; say so in the tooltip
   const shownDue = stage.due || t.date;
   const dueNote = stage.due ? "" : " (ตามวันของโปรเจค — ยังไม่ได้ตั้งวันของแผนกนี้)";
-  chip.title = `[${dept ? dept.name : ""}] ${taskLabel(t)}\nสถานะงาน (รวม): ${st.name}\nแผนกนี้: ${deptDone ? "เสร็จแล้ว ✓" : "ยังไม่เสร็จ"}\n${stage.start ? `เริ่ม: ${formatDateTH(stage.start)}\n` : ""}กำหนด: ${formatDateTH(shownDue)}${dueNote}`;
+  chip.title = `[${dept ? dept.name : ""}] ${taskLabel(t)}\nสถานะงาน (รวม): ${st.name}\nแผนกนี้: ${deptDone ? "เสร็จแล้ว ✓" : "ยังไม่เสร็จ"}\n${stage.start ? `เริ่ม: ${formatDateTH(stage.start)}\n` : ""}`
+    + (group ? `ตู้วันนี้ ${subs.length}: ${subs.map(sb => subLabel(sb) + (cabDeptDone(t, sb, deptId) ? " ✓" : "")).join(", ")}` : `กำหนด: ${formatDateTH(shownDue)}${dueNote}`);
   // cabinet-status breakdown — coloured numeric badges (no status-name text), like the all view
-  const counts = subStatusCounts(t);
+  const counts = group ? subs.reduce((m, sb) => { m[sb.statusId] = (m[sb.statusId] || 0) + 1; return m; }, {}) : subStatusCounts(t);
   const breakdown = state.statuses.filter(s => counts[s.id]);
   const badges = breakdown.map(s =>
     `<span class="sub-badge" style="background:${s.color};color:${textOn(s.color)}">${counts[s.id]}</span>`).join("");
@@ -4886,13 +4909,14 @@ function renderDeptChip(t, stage, position = "single") {
   addStatusEdge(chip, t);
   chip.addEventListener("click", (e) => { e.stopPropagation(); openTaskModal(t.id, { focusDept: deptId }); });
   chip.addEventListener("dragstart", (e) => {
-    dragStage = { taskId: t.id, deptId };
-    dragTaskId = null; dragSub = null; dragDeptCab = null;
+    if (group) { dragDeptCab = { taskId: t.id, subIds: subs.map(sb => sb.id), deptId }; dragStage = null; }   // move this day's cabinets
+    else { dragStage = { taskId: t.id, deptId }; dragDeptCab = null; }
+    dragTaskId = null; dragSub = null;
     chip.classList.add("dragging");
     e.dataTransfer.effectAllowed = "move";
   });
   chip.addEventListener("dragend", () => {
-    dragStage = null;
+    dragStage = null; if (group) dragDeptCab = null;
     chip.classList.remove("dragging");
     document.querySelectorAll(".drop-target").forEach(el => el.classList.remove("drop-target"));
   });
