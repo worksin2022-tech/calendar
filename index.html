@@ -3116,6 +3116,22 @@ const DEFAULT_CHECKLIST = ["Busbar", "Wiring", "Nameplate", "Poly", "Cleaning"];
 const DEFAULT_DEPT_ICONS = { d_design: "✏️", d_prod: "🔧", d_qc: "🔍", d_deliver: "🚚" };
 // builds a fresh cabinet checklist from ALL departments' templates — each item is
 // tagged with its department (deptId). `departments` can be passed during migration.
+// ★ moving a project's due date by N days moves every department with it (stage start/due, cabinet date, per-department
+//   cabinet dates) — used by dragging the chip in the all-departments calendar AND by editing "จบ" in the popup (2026-10-08).
+//   Returns how many department dates moved.
+function shiftTaskDeptDates(t, diff) {
+  if (!t || !diff) return 0;
+  let moved = 0;
+  (t.deptStages || []).forEach(st => {
+    if (st.due) { st.due = addDaysIso(st.due, diff); moved++; }
+    if (st.start) st.start = addDaysIso(st.start, diff);
+  });
+  (t.subtasks || []).forEach(sb => {
+    if (sb.date) sb.date = addDaysIso(sb.date, diff);
+    if (sb.deptDates) Object.keys(sb.deptDates).forEach(k => { if (sb.deptDates[k]) sb.deptDates[k] = addDaysIso(sb.deptDates[k], diff); });
+  });
+  return moved;
+}
 function makeCabinetChecklist(departments) {
   const depts = departments || (typeof state !== "undefined" && state && state.departments) || [];
   const items = [];
@@ -4582,14 +4598,14 @@ function renderMonth() {
       const t = state.tasks.find(x => x.id === dragTaskId);
       if (t && t.date !== iso) {
         // shift due → new date, keep duration by shifting startDate the same amount
-        if (t.startDate) {
-          const diff = (fromIso(iso) - fromIso(t.date)) / 86400000;
-          const ns = fromIso(t.startDate);
-          ns.setDate(ns.getDate() + diff);
-          t.startDate = isoDate(ns);
-        }
+        const diff = Math.round((fromIso(iso) - fromIso(t.date)) / 86400000);
+        if (t.startDate) t.startDate = addDaysIso(t.startDate, diff);
+        // ★ 2026-10-08: moving the whole project moves every department with it by the same number of days
+        //   (stage start/due, each cabinet's own date and per-department dates) — otherwise the departments' calendars
+        //   kept the old days (e.g. project 06→07, QC 05→06, ส่งมอบ 06→07)
+        const moved = shiftTaskDeptDates(t, diff);
         t.date = iso;
-        logActivity(t, `เลื่อนวันครบกำหนด → ${formatDateTH(iso)}`);
+        logActivity(t, `เลื่อนวันครบกำหนด → ${formatDateTH(iso)}` + (moved ? ` (ทุกแผนกเลื่อน ${diff > 0 ? "+" : ""}${diff} วัน)` : ""));
         t.updatedAt = Date.now();
         saveState();
         renderAll();
@@ -5956,7 +5972,14 @@ function openTaskModal(taskId, defaults={}) {
     onChange: (iso) => {
       if (!iso) return;
       if (task.startDate && task.startDate > iso) { toast("วันครบกำหนดต้องไม่ก่อนวันเริ่ม"); dueField.setValue(task.date); return; }
-      task.date = iso; scheduleCommit(0);
+      // the departments move with the project's end date (same number of days)
+      const diff = task.date ? Math.round((fromIso(iso) - fromIso(task.date)) / 86400000) : 0;
+      task.date = iso;
+      if (diff && shiftTaskDeptDates(task, diff)) {
+        renderStages(); renderSubs();
+        toast(`ทุกแผนกเลื่อน ${diff > 0 ? "+" : ""}${diff} วันตาม`);
+      }
+      scheduleCommit(0);
     } });
   startField.title = "วันเริ่ม"; dueField.title = "วันครบกำหนด";
   modal.querySelector('[data-df="startDate"]').replaceWith(startField);
