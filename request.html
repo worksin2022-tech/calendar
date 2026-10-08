@@ -4,117 +4,199 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ยื่นขอแบบ — Avatar Electric</title>
+<meta name="theme-color" content="#6d5ce8">
 <style>
+  /* 2026-10-08 redesign — same fields / ids / submit logic as before */
   :root {
-    --accent: #2563eb; --danger: #f04438; --border: #e4e7ec; --border-strong: #d0d5dd;
-    --text: #1d2939; --text-dim: #475467; --text-faint: #98a2b3; --panel: #f9fafb;
+    --accent: #6d5ce8; --accent-2: #a78bfa; --accent-soft: #efecff;
+    --danger: #e5484d; --ok: #12b76a;
+    --bg: #f4f3fb; --panel: #ffffff; --field: #f7f7fb;
+    --border: #e7e6f0; --border-strong: #d6d4e4;
+    --text: #1d2033; --text-dim: #5b5f77; --text-faint: #9a9db3;
+    --shadow: 0 20px 50px rgba(48, 38, 120, .12), 0 2px 6px rgba(48, 38, 120, .06);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --accent: #8b7cf6; --accent-2: #c4b5fd; --accent-soft: #2a2550;
+      --bg: #0f1118; --panel: #181b26; --field: #11131c;
+      --border: #272b3a; --border-strong: #353a4d;
+      --text: #e8e9f2; --text-dim: #a5a9c0; --text-faint: #6f7390;
+      --shadow: 0 20px 50px rgba(0,0,0,.5);
+    }
   }
   * { box-sizing: border-box; }
+  html, body { margin: 0; }
   body {
-    margin: 0; font-family: "Segoe UI", "Sarabun", system-ui, sans-serif;
-    background: var(--panel); color: var(--text); padding: 20px 14px 60px;
+    font-family: "Sarabun", "Segoe UI", system-ui, -apple-system, sans-serif;
+    background: var(--bg); color: var(--text); min-height: 100vh; -webkit-font-smoothing: antialiased;
   }
-  .wrap { max-width: 480px; margin: 0 auto; }
-  .brand { text-align: center; margin-bottom: 18px; }
-  .brand h1 { font-size: 19px; margin: 0 0 2px; }
-  .brand p { font-size: 12px; color: var(--text-dim); margin: 0; }
-  .card { background: #fff; border: 1px solid var(--border); border-radius: 14px; padding: 18px 16px; box-shadow: 0 1px 3px rgba(16,24,40,.06); }
-  .field { margin-bottom: 16px; }
-  .field label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+  /* soft gradient band behind the card */
+  .hero-bg { position: fixed; inset: 0 0 auto 0; height: 260px; z-index: 0;
+    background: radial-gradient(120% 140% at 0% 0%, var(--accent) 0%, transparent 60%),
+                radial-gradient(120% 140% at 100% 0%, var(--accent-2) 0%, transparent 55%), var(--bg);
+    opacity: .9; }
+  .wrap { position: relative; z-index: 1; max-width: 520px; margin: 0 auto; padding: 28px 16px 48px; }
+  .hero { display: flex; align-items: center; gap: 14px; color: #fff; margin-bottom: 18px; }
+  .hero-ico { width: 52px; height: 52px; border-radius: 16px; display: grid; place-items: center; flex: 0 0 auto;
+    background: rgba(255,255,255,.22); border: 1px solid rgba(255,255,255,.35); backdrop-filter: blur(6px); }
+  .hero-ico svg { width: 26px; height: 26px; }
+  .hero h1 { margin: 0; font-size: 23px; font-weight: 800; letter-spacing: .2px; }
+  .hero p { margin: 2px 0 0; font-size: 13px; opacity: .92; }
+
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: 22px; padding: 22px 18px 18px; box-shadow: var(--shadow); animation: up .35s ease-out; }
+  @keyframes up { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+  .sec { margin-bottom: 18px; }
+  .sec-title { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 800; letter-spacing: .6px; text-transform: uppercase; color: var(--text-faint); margin: 0 0 10px; }
+  .sec-title::after { content: ""; flex: 1; height: 1px; background: var(--border); }
+  .field { margin-bottom: 12px; }
+  .field label { display: block; font-size: 13px; font-weight: 700; margin: 0 0 6px 2px; color: var(--text); }
   .req { color: var(--danger); }
-  .hint { font-size: 11.5px; color: var(--text-faint); margin-top: 4px; display: block; }
+  .hint { font-size: 11.5px; color: var(--text-faint); margin: 5px 0 0 2px; display: block; }
+
+  .inp { position: relative; }
+  .inp svg { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); width: 17px; height: 17px; color: var(--text-faint); pointer-events: none; transition: color .15s; }
+  .inp.ta svg { top: 15px; transform: none; }
   input[type=text], input[type=date], textarea {
-    width: 100%; padding: 11px 12px; border: 1px solid var(--border-strong); border-radius: 9px;
-    font-size: 15px; font-family: inherit; background: #fff; color: var(--text);
+    width: 100%; padding: 13px 14px 13px 40px; border: 1.5px solid var(--border); border-radius: 13px;
+    font-size: 15px; font-family: inherit; background: var(--field); color: var(--text);
+    transition: border-color .15s, box-shadow .15s, background .15s; -webkit-appearance: none; appearance: none;
   }
-  textarea { resize: vertical; min-height: 70px; }
-  input:focus, textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
-  .seg { display: flex; border: 1px solid var(--border-strong); border-radius: 10px; overflow: hidden; }
-  .seg button { flex: 1; border: none; background: #fff; padding: 12px 6px; font-size: 13.5px; font-weight: 600; color: var(--text-dim); cursor: pointer; }
-  .seg button + button { border-left: 1px solid var(--border-strong); }
-  .seg button.active { background: var(--accent); color: #fff; }
+  input[type=date] { min-height: 49px; }
+  textarea { resize: vertical; min-height: 92px; line-height: 1.5; }
+  input::placeholder, textarea::placeholder { color: var(--text-faint); }
+  input:focus, textarea:focus { outline: none; border-color: var(--accent); background: var(--panel); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 18%, transparent); }
+  .inp:focus-within svg { color: var(--accent); }
+
+  /* segmented control */
+  .seg { display: flex; gap: 4px; padding: 4px; background: var(--field); border: 1.5px solid var(--border); border-radius: 14px; }
+  .seg button { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 7px; border: none; background: transparent;
+    padding: 11px 8px; border-radius: 10px; font: inherit; font-size: 14px; font-weight: 700; color: var(--text-dim); cursor: pointer; transition: background .15s, color .15s, box-shadow .15s; }
+  .seg button svg { width: 16px; height: 16px; }
+  .seg button.active { background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #fff; box-shadow: 0 6px 16px color-mix(in srgb, var(--accent) 35%, transparent); }
+  .seg button:disabled { opacity: .45; cursor: not-allowed; font-weight: 600; }
+
   .field-row { display: flex; gap: 10px; }
   .field-row .field { flex: 1; min-width: 0; }
-  .photo-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-  .photo-btn { padding: 10px 14px; border-radius: 9px; border: 1px solid var(--border-strong); background: #fff; font-size: 13.5px; cursor: pointer; }
+  @media (max-width: 420px) { .field-row { flex-direction: column; gap: 0; } }
+
+  /* attach — dashed drop zone */
+  .photo-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .photo-btn { flex: 1 1 200px; display: flex; align-items: center; justify-content: center; gap: 9px; padding: 16px 14px; border-radius: 14px;
+    border: 1.5px dashed var(--border-strong); background: var(--field); color: var(--text-dim); font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; transition: border-color .15s, color .15s, background .15s; }
+  .photo-btn svg { width: 20px; height: 20px; }
+  .photo-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
   .photo-preview { position: relative; display: none; }
-  .photo-preview img { max-height: 64px; border-radius: 8px; border: 1px solid var(--border); display: block; }
+  .photo-preview img { height: 62px; width: 62px; object-fit: cover; border-radius: 12px; border: 1px solid var(--border); display: block; box-shadow: 0 4px 10px rgba(0,0,0,.08); }
   .photo-preview.show { display: inline-block; }
-  .photo-rm { position: absolute; top: -7px; right: -7px; width: 20px; height: 20px; border-radius: 50%; background: var(--danger); color: #fff; border: 2px solid #fff; font-size: 11px; cursor: pointer; }
-  .submit-btn { width: 100%; padding: 14px; border: none; border-radius: 10px; background: var(--accent); color: #fff; font-size: 15px; font-weight: 700; cursor: pointer; margin-top: 6px; }
-  .submit-btn:disabled { opacity: .55; cursor: default; }
-  .err { color: var(--danger); font-size: 12.5px; margin-top: 10px; min-height: 1em; }
-  .success { text-align: center; padding: 30px 10px; }
-  .success .ico { font-size: 44px; margin-bottom: 10px; }
-  .success h2 { font-size: 17px; margin: 0 0 8px; }
-  .success p { font-size: 13.5px; color: var(--text-dim); margin: 0 0 20px; }
-  .again-btn { padding: 10px 18px; border-radius: 9px; border: 1px solid var(--border-strong); background: #fff; font-size: 13.5px; cursor: pointer; }
+  .photo-rm { position: absolute; top: -7px; right: -7px; width: 22px; height: 22px; border-radius: 50%; background: var(--danger); color: #fff; border: 2px solid var(--panel); font-size: 11px; cursor: pointer; line-height: 1; }
+
+  .submit-btn { width: 100%; display: flex; align-items: center; justify-content: center; gap: 9px; padding: 15px; border: none; border-radius: 14px;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #fff; font: inherit; font-size: 16px; font-weight: 800; cursor: pointer; margin-top: 4px;
+    box-shadow: 0 10px 24px color-mix(in srgb, var(--accent) 35%, transparent); transition: transform .1s, box-shadow .15s, opacity .15s; }
+  .submit-btn svg { width: 18px; height: 18px; }
+  .submit-btn:active { transform: translateY(1px); }
+  .submit-btn:disabled { opacity: .6; cursor: default; }
+  .err { color: var(--danger); font-size: 13px; font-weight: 600; margin-top: 10px; min-height: 1em; text-align: center; }
+
+  .success { text-align: center; padding: 34px 14px 26px; }
+  .check { width: 76px; height: 76px; margin: 0 auto 14px; border-radius: 50%; display: grid; place-items: center;
+    background: color-mix(in srgb, var(--ok) 14%, transparent); color: var(--ok); animation: pop .4s ease-out; }
+  .check svg { width: 40px; height: 40px; }
+  .check path { stroke-dasharray: 30; stroke-dashoffset: 30; animation: draw .45s .15s ease-out forwards; }
+  @keyframes pop { from { transform: scale(.6); opacity: 0; } to { transform: none; opacity: 1; } }
+  @keyframes draw { to { stroke-dashoffset: 0; } }
+  .success h2 { font-size: 20px; margin: 0 0 8px; }
+  .success p { font-size: 14px; color: var(--text-dim); margin: 0 0 22px; line-height: 1.55; }
+  .again-btn { padding: 12px 20px; border-radius: 12px; border: 1.5px solid var(--border-strong); background: var(--panel); color: var(--text); font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }
+  .again-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .foot { text-align: center; font-size: 11.5px; color: var(--text-faint); margin-top: 16px; }
   .hidden { display: none !important; }
 </style>
 </head>
 <body>
+<div class="hero-bg"></div>
 <div class="wrap">
-  <div class="brand">
-    <h1>📐 ยื่นขอแบบ</h1>
-    <p>Avatar Electric — กรอกแล้วส่งได้เลย ไม่ต้องเข้าแอป ทีมเขียนแบบจะได้รับแจ้งเตือนทันที</p>
+  <div class="hero">
+    <div class="hero-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.41 2.41 0 0 1 0-3.4l2.6-2.6a2.41 2.41 0 0 1 3.4 0Z"/><path d="m14.5 12.5 2-2M11.5 9.5l2-2M8.5 6.5l2-2M17.5 15.5l2-2"/></svg></div>
+    <div>
+      <h1>ยื่นขอแบบ</h1>
+      <p>Avatar Electric · ทีมเขียนแบบได้รับแจ้งเตือนทันที</p>
+    </div>
   </div>
 
   <div class="card" id="formCard">
-    <div class="field">
-      <label>ประเภทแบบ</label>
+    <div class="sec">
+      <div class="sec-title">ประเภทแบบ</div>
       <div class="seg" id="kindSeg">
-        <button type="button" data-k="structure" class="active">เขียนแบบโครงสร้างตู้</button>
-        <button type="button" data-k="circuit">เขียนแบบวงจรไฟฟ้า</button>
+        <button type="button" data-k="structure" class="active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg>เขียนแบบวงจรไฟฟ้า</button>
+        <button type="button" data-k="circuit" disabled title="พักการใช้งานชั่วคราว">พักใช้งาน</button>
       </div>
-      <span class="hint" id="kindHint">งานก่อนได้งาน (เก็ง) — จะเข้าคิวเขียนแบบโครงสร้างของทีม</span>
+      <span class="hint" id="kindHint">จะเข้าคิวเขียนแบบวงจรไฟฟ้าของทีม</span>
     </div>
-    <div class="field">
-      <label>โครงการ / SO <span class="req">*</span></label>
-      <input type="text" id="fProject" placeholder="เช่น SO-1234 ตู้ MDB ลูกค้า A" autocomplete="off" />
-    </div>
-    <div class="field-row">
+
+    <div class="sec">
+      <div class="sec-title">ข้อมูลงาน</div>
       <div class="field">
-        <label>เลข DWG <span class="req">*</span></label>
-        <input type="text" id="fDwg" autocomplete="off" />
+        <label>โครงการ / SO <span class="req">*</span></label>
+        <div class="inp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9 22v-4h6v4M8 6h.01M12 6h.01M16 6h.01M8 10h.01M12 10h.01M16 10h.01"/></svg>
+          <input type="text" id="fProject" placeholder="เช่น SO26050090 ตู้ MDB ลูกค้า A" autocomplete="off" /></div>
       </div>
-      <div class="field">
-        <label>วันที่ต้องการให้จบ <span class="req">*</span></label>
-        <input type="date" id="fDue" />
-        <span class="hint">ไม่ต่ำกว่า 2 วันจากวันนี้</span>
-      </div>
-    </div>
-    <div class="field">
-      <label>รายละเอียดเกี่ยวกับงาน เช่น จำนวนตู้</label>
-      <textarea id="fDetail" placeholder="เช่น 3 ตู้ MDB, ..."></textarea>
-    </div>
-    <div class="field-row">
-      <div class="field">
-        <label>ชื่อผู้ยื่น <span class="req">*</span></label>
-        <input type="text" id="fSubmitter" autocomplete="off" />
+      <div class="field-row">
+        <div class="field">
+          <label>เลข DWG <span class="req">*</span></label>
+          <div class="inp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><path d="M14 2v6h6"/></svg>
+            <input type="text" id="fDwg" placeholder="เลขแบบ" autocomplete="off" /></div>
+        </div>
+        <div class="field">
+          <label>วันที่ต้องการให้จบ <span class="req">*</span></label>
+          <div class="inp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+            <input type="date" id="fDue" /></div>
+          <span class="hint">ไม่ต่ำกว่า 2 วันจากวันนี้</span>
+        </div>
       </div>
       <div class="field">
-        <label>ทีม Sales</label>
-        <input type="text" id="fSales" autocomplete="off" />
+        <label>รายละเอียดเกี่ยวกับงาน</label>
+        <div class="inp ta"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+          <textarea id="fDetail" placeholder="เช่น จำนวนตู้ 3 ตู้ MDB, ข้อกำหนดพิเศษ ..."></textarea></div>
       </div>
     </div>
-    <div class="field">
-      <label>แนบรูป (ถ้ามี)</label>
+
+    <div class="sec">
+      <div class="sec-title">ผู้ยื่น</div>
+      <div class="field-row">
+        <div class="field">
+          <label>ชื่อผู้ยื่น <span class="req">*</span></label>
+          <div class="inp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
+            <input type="text" id="fSubmitter" placeholder="ชื่อของคุณ" autocomplete="off" /></div>
+        </div>
+        <div class="field">
+          <label>ทีม Sales</label>
+          <div class="inp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            <input type="text" id="fSales" placeholder="ไม่บังคับ" autocomplete="off" /></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sec">
+      <div class="sec-title">แนบรูป</div>
       <div class="photo-row">
-        <button type="button" class="photo-btn" id="btnAttach">📎 แนบ / ถ่ายรูป</button>
-        <div class="photo-preview" id="photoPreview"><img id="photoImg" /><button type="button" class="photo-rm" id="photoRm">✕</button></div>
+        <button type="button" class="photo-btn" id="btnAttach"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7.5 6.5H5A2 2 0 0 0 3 8.5v9a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2h-2.5z"/><circle cx="12" cy="12.5" r="3.5"/></svg>ถ่าย / แนบรูป (ถ้ามี)</button>
+        <div class="photo-preview" id="photoPreview"><img id="photoImg" alt="" /><button type="button" class="photo-rm" id="photoRm">✕</button></div>
       </div>
       <input type="file" accept="image/*" capture="environment" id="fPhoto" class="hidden" />
     </div>
+
     <button type="button" class="submit-btn" id="btnSubmit">ส่งคำขอ</button>
     <div class="err" id="errMsg"></div>
   </div>
 
   <div class="card success hidden" id="successCard">
-    <div class="ico">✅</div>
+    <div class="check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg></div>
     <h2>ส่งคำขอเรียบร้อยแล้ว</h2>
-    <p>ทีมเขียนแบบจะได้รับแจ้งเตือน และจะติดต่อกลับหากต้องการข้อมูลเพิ่มเติม</p>
+    <p>ทีมเขียนแบบได้รับแจ้งเตือนแล้ว<br>จะติดต่อกลับหากต้องการข้อมูลเพิ่มเติม</p>
     <button type="button" class="again-btn" id="btnAgain">ยื่นคำขออีกรายการ</button>
   </div>
+  <div class="foot">Avatar Electric · Avatar Planning</div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
@@ -134,11 +216,14 @@ let pendingFile = null;
 
 const $ = (id) => document.getElementById(id);
 const kindHintText = {
-  structure: "งานก่อนได้งาน (เก็ง) — จะเข้าคิวเขียนแบบโครงสร้างของทีม",
+  structure: "จะเข้าคิวเขียนแบบวงจรไฟฟ้าของทีม",
   circuit: "งานที่ได้แล้ว — จะแนบเข้ากับโปรเจคในปฏิทินผลิต",
 };
+const SEND_LABEL = `ส่งคำขอ <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>`;
+$("btnSubmit").innerHTML = SEND_LABEL;
 
 document.querySelectorAll("#kindSeg button").forEach(b => b.addEventListener("click", () => {
+  if (b.disabled) return;
   kind = b.dataset.k;
   document.querySelectorAll("#kindSeg button").forEach(x => x.classList.toggle("active", x === b));
   $("kindHint").textContent = kindHintText[kind];
@@ -222,7 +307,7 @@ $("btnSubmit").addEventListener("click", async () => {
   } catch (e) {
     errEl.textContent = "ส่งไม่สำเร็จ: " + (e.message || "เกิดข้อผิดพลาด") + " — ลองใหม่อีกครั้ง";
   } finally {
-    btn.disabled = false; btn.textContent = "ส่งคำขอ";
+    btn.disabled = false; btn.innerHTML = SEND_LABEL;
   }
 });
 

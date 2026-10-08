@@ -891,6 +891,8 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
 .am2-close { width: 32px; height: 32px; border-radius: 50%; border: none; background: var(--bg); color: var(--text-dim); font-size: 14px; cursor: pointer; flex: 0 0 auto; }
 .am2-close:hover { background: var(--border); color: var(--text); }
 .am2 .alert-list { padding: 4px 14px 16px; gap: 10px; }
+.am2 .dr-import-loading { text-align: center; color: var(--text-faint); padding: 22px 0; font-size: 13px; }
+.dr-seg button.dr-off, .dr-seg button:disabled { opacity: .45; cursor: not-allowed; font-weight: 500; }
 .am2 .alert-list[hidden] { display: none; }
 .am2-tabs { display: flex; gap: 4px; margin: 0 14px 10px; padding: 4px; background: var(--bg); border-radius: 11px; }
 .am2-tab { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px; border: none; background: transparent; color: var(--text-dim); font: inherit; font-size: 13px; font-weight: 700; padding: 7px 10px; border-radius: 8px; cursor: pointer; }
@@ -1007,6 +1009,19 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
 .dr-seg button { border:none; background:var(--b-ffffff, #fff); padding: 8px 14px; font-size: 13px; font-weight: 600; color:var(--text-dim); cursor: pointer; white-space: nowrap; }
 .dr-seg button + button { border-left:1px solid var(--border-strong); }
 .dr-seg button.active { background:var(--accent); color:var(--t-ffffff, #fff); }
+/* ★ 2026-10-08: ยื่นขอแบบ popup — same modern look as request.html */
+.dr-modal { border-radius: 18px; overflow: hidden; }
+.dr-modal .modal-head h3 { display: flex; align-items: center; gap: 10px; font-size: 17px; font-weight: 800; }
+.dr-modal .modal-head h3 .ico { width: 36px; height: 36px; padding: 8px; border-radius: 11px; color: #fff; background: linear-gradient(135deg, var(--accent), #a78bfa); box-shadow: 0 6px 14px color-mix(in srgb, var(--accent) 32%, transparent); }
+.dr-modal .field > label { font-weight: 700; }
+.dr-modal input[type=text], .dr-modal textarea { border-radius: 11px; border: 1.5px solid var(--border); background: var(--bg); padding: 10px 12px; transition: border-color .15s, box-shadow .15s, background .15s; }
+.dr-modal input[type=text]:focus, .dr-modal textarea:focus { border-color: var(--accent); background: var(--panel); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 16%, transparent); outline: none; }
+.dr-modal .dr-seg { display: flex; gap: 4px; padding: 4px; border: 1.5px solid var(--border); border-radius: 13px; background: var(--bg); }
+.dr-modal .dr-seg button { flex: 1; border: none; border-radius: 9px; padding: 10px 12px; background: transparent; font-size: 13.5px; font-weight: 700; }
+.dr-modal .dr-seg button + button { border-left: none; }
+.dr-modal .dr-seg button.active { background: linear-gradient(135deg, var(--accent), #a78bfa); color: #fff; box-shadow: 0 6px 14px color-mix(in srgb, var(--accent) 30%, transparent); }
+.dr-modal [data-act="attach"], .dr-modal [data-act="attach-file"] { border-style: dashed; border-radius: 11px; padding: 9px 14px; }
+.dr-modal [data-act="submit"] { border: none; border-radius: 11px; padding: 10px 22px; font-weight: 800; background: linear-gradient(135deg, var(--accent), #a78bfa); box-shadow: 0 8px 18px color-mix(in srgb, var(--accent) 30%, transparent); }
 .dr-attach-hint { display: block; font-size: 12px; font-weight: 600; color:var(--t-027a48, #027a48); margin-top: 4px; }
 /* ยื่นขอแบบ + ดึงคำขอ: small, side by side on one row */
 #sbReqSection { flex-direction: row; gap: 6px; }
@@ -3630,7 +3645,7 @@ function defaultState() {
 
 // Multiple independent calendars ("boards") in one app — each board is a full workspace
 // (own statuses, departments, checklist templates, settings, tasks). Default: โรงงาน + ออกไซต์.
-const DEFAULT_BOARDS = [{ id: "factory", name: "โรงงาน" }, { id: "onsite", name: "ออกไซต์" }, { id: "drawing", name: "เขียนแบบโครงสร้าง" }];
+const DEFAULT_BOARDS = [{ id: "factory", name: "โรงงาน" }, { id: "onsite", name: "ออกไซต์" }, { id: "drawing", name: "เขียนแบบวงจรไฟฟ้า" }];
 
 /* ----- Service calendar: a separate app-within-the-app for the Service department -----
    Only people whose (admin-assigned) department is SERVICE_DEPT see it — and they see ONLY it.
@@ -3736,7 +3751,7 @@ function loadRoot() {
     if (parsed.boards && typeof parsed.boards === "object") {
       if (!Array.isArray(parsed.boardMeta) || !parsed.boardMeta.length) parsed.boardMeta = DEFAULT_BOARDS.map(b => ({ ...b }));
       // ensure the structure-drawing board exists (added for the drawing-request feature)
-      if (!parsed.boardMeta.some(b => b.id === "drawing")) parsed.boardMeta.push({ id: "drawing", name: "เขียนแบบโครงสร้าง" });
+      if (!parsed.boardMeta.some(b => b.id === "drawing")) parsed.boardMeta.push({ id: "drawing", name: "เขียนแบบวงจรไฟฟ้า" });
       ensureServiceBoard(parsed);   // Service calendar (needs its own departments/statuses, not defaultState)
       parsed.boardMeta.forEach(b => { if (!parsed.boards[b.id]) parsed.boards[b.id] = defaultState(); });
       Object.values(parsed.boards).forEach(ws => migrateState(ws));
@@ -3756,6 +3771,20 @@ function loadRoot() {
   }
 }
 // switch the active calendar (board) — repoints `state` and re-renders everything
+// ★ 2026-10-08: "เขียนแบบโครงสร้าง" became "เขียนแบบวงจรไฟฟ้า" — an old saved name is shown (and pushed) as the new one
+const BOARD_RENAMES = { drawing: { from: "เขียนแบบโครงสร้าง", to: "เขียนแบบวงจรไฟฟ้า" } };
+let _boardRenamed = false;
+function normalizeBoardNames() {
+  (root.boardMeta || []).forEach(b => { const r = BOARD_RENAMES[b.id]; if (r && b.name === r.from) { b.name = r.to; _boardRenamed = true; } });
+}
+async function pushBoardRenames() {   // admin: fix the name stored in the cloud once (other devices then load it)
+  if (!_boardRenamed || !isAdmin()) return;
+  const sb = getSupabase(); if (!sb) return;
+  for (const [id, r] of Object.entries(BOARD_RENAMES)) {
+    try { await sb.from("boards").update({ name: r.to }).eq("id", id).eq("name", r.from); } catch (_) {}
+  }
+  _boardRenamed = false;
+}
 function setBoard(id) {
   if (!root.boards[id] || id === root.activeBoard) return;
   if (!visibleBoardIds().includes(id)) return;   // e.g. non-Service users can't open the Service calendar
@@ -5625,7 +5654,7 @@ function attachAutocomplete(input, getItems, opts = {}) {
 
 /* ---------- Drawing request routing (shared by the in-app form AND requests imported from the
    public online form via Supabase) ----------
-   โครงสร้าง → สร้างงานใน board "เขียนแบบโครงสร้าง"; วงจร → ปฏิทินผลิต (active board) ที่ด่านเขียนแบบ,
+   kind "structure" → สร้างงานใน board drawing ("เขียนแบบวงจรไฟฟ้า" ตั้งแต่ 2026-10-08); kind "circuit" (พักใช้งาน) → ปฏิทินผลิต (active board) ที่ด่านเขียนแบบ,
    เลือก "สร้างใหม่" หรือ "แนบกับงานที่ยังไม่เขียนแบบ" (ชื่อโครงการตรงกับงานที่ยังไม่เขียนแบบเป๊ะ). แจ้งเตือนแผนกเขียนแบบ. */
 function buildReqTask(ws, project, due, detail, reqMeta, summary, photo, files, driveFolderId) {
   const dept = drawingDeptOf(ws);
@@ -5641,17 +5670,17 @@ function buildReqTask(ws, project, due, detail, reqMeta, summary, photo, files, 
 // routes one drawing request into a task. returns { boardName, attached, title } for the caller's toast/summary.
 function routeDrawingRequest({ kind, project, dwg, due, detail, submitter, sales, photo, files, driveFolderId }) {
   const reqMeta = { kind, dwgNo: dwg, submitter, salesTeam: sales, at: Date.now() };
-  const summary = [`📐 คำขอเขียนแบบ${kind === "structure" ? "โครงสร้างตู้" : "วงจรไฟฟ้า"}`, `เลข DWG: ${dwg}`, `ผู้ยื่น: ${submitter}${sales ? ` · Sales: ${sales}` : ""}`].concat(detail ? [detail] : []).join("\n");
+  const summary = [`📐 คำขอเขียนแบบวงจรไฟฟ้า${kind === "structure" ? "" : " (ปฏิทินผลิต)"}`, `เลข DWG: ${dwg}`, `ผู้ยื่น: ${submitter}${sales ? ` · Sales: ${sales}` : ""}`].concat(detail ? [detail] : []).join("\n");
 
   if (kind === "structure") {
     const ws = root.boards.drawing;
-    if (!ws) { toast("คุณไม่มีสิทธิ์เข้าปฏิทิน “เขียนแบบโครงสร้าง” — ให้ admin ติ๊กสิทธิ์ให้ก่อน"); return { boardName: "เขียนแบบโครงสร้าง", attached: false, title: project, denied: true }; }
+    if (!ws) { toast(`คุณไม่มีสิทธิ์เข้าปฏิทิน “${boardNameOf("drawing")}” — ให้ admin ติ๊กสิทธิ์ให้ก่อน`); return { boardName: boardNameOf("drawing"), attached: false, title: project, denied: true }; }
     const nt = buildReqTask(ws, project, due, detail, reqMeta, summary, photo, files, driveFolderId);
     ws.tasks.push(nt);
     saveState(); renderAll();
     pushForComment(nt, nt.comments[0], "drawing");
-    pushNotify("alert", "📐 คำขอเขียนแบบโครงสร้างใหม่", `${project} · DWG ${dwg}`, "dr-" + Date.now());
-    return { boardName: "เขียนแบบโครงสร้าง", attached: false, title: project };
+    pushNotify("alert", "📐 คำขอเขียนแบบวงจรไฟฟ้าใหม่", `${project} · DWG ${dwg}`, "dr-" + Date.now());
+    return { boardName: boardNameOf("drawing"), attached: false, title: project };
   }
   // circuit — active production board
   const dept = drawingDeptOf(state);
@@ -5704,10 +5733,11 @@ async function openImportRequestsModal() {
   const overlay = document.createElement("div");
   overlay.className = "overlay alert-overlay";
   overlay.innerHTML = `
-    <div class="modal alert-modal" role="dialog" aria-modal="true">
-      <div class="modal-head">
-        <h3>${ico("inbox")} คำขอจากฟอร์มออนไลน์ <span data-count>…</span></h3>
-        <button class="btn btn-ghost" data-act="close" title="ปิด">✕</button>
+    <div class="modal alert-modal am2" role="dialog" aria-modal="true">
+      <div class="am2-head">
+        <span class="am2-bell">${ico("inbox")}</span>
+        <div class="am2-title">คำขอจากฟอร์มออนไลน์<span class="am2-count" data-count>…</span></div>
+        <button class="am2-close" data-act="close" title="ปิด">✕</button>
       </div>
       <div class="alert-list" data-list><div class="dr-import-loading">กำลังโหลด...</div></div>
     </div>`;
@@ -5728,20 +5758,21 @@ async function openImportRequestsModal() {
   listEl.innerHTML = "";
   rows.forEach(row => {
     const card = document.createElement("div");
-    card.className = "alert-card";
-    const kindLabel = row.kind === "structure" ? "เขียนแบบโครงสร้างตู้" : "เขียนแบบวงจรไฟฟ้า";
+    card.className = "alert-card am2-card am2-dept";
+    const kindLabel = row.kind === "structure" ? "เขียนแบบวงจรไฟฟ้า" : "เขียนแบบวงจรไฟฟ้า (ปฏิทินผลิต)";
+    const who = row.submitter || "—", at = new Date(row.created_at).getTime();
     card.innerHTML = `
-      <div class="alert-card-top">
-        <span class="alert-to">${ico("ruler")} ${escapeHtml(kindLabel)}</span>
-        <span class="alert-from">จาก ${escapeHtml(row.submitter || "—")}${row.sales_team ? " · " + escapeHtml(row.sales_team) : ""}</span>
-        <span class="alert-time">${formatDateTimeTH(new Date(row.created_at).getTime())}</span>
-      </div>
-      <div class="alert-task">${escapeHtml(row.project || "(ไม่มีชื่อ)")} <span class="muted" style="font-weight:400">· DWG ${escapeHtml(row.dwg_no || "-")} · ครบ ${formatDateTH(row.due_date)}</span></div>
-      ${row.detail ? `<div class="alert-text">${escapeHtml(row.detail)}</div>` : ""}
-      ${row.photo_url ? `<img class="alert-photo" src="${row.photo_url}" alt="แนบรูป">` : ""}
-      <div class="alert-card-actions">
-        <button class="btn btn-sm btn-ack" data-import>${ico("inbox")} นำเข้า</button>
-        <button class="btn btn-sm btn-reject" data-reject>✕ ปฏิเสธ</button>
+      <div class="am2-av"><span class="am2-ini">${escapeHtml(who.slice(0, 1))}</span></div>
+      <div class="am2-body">
+        <div class="am2-top"><span class="am2-who">${escapeHtml(who)}${row.sales_team ? ` <span class="muted" style="font-weight:500">· ${escapeHtml(row.sales_team)}</span>` : ""}</span><span class="am2-time" title="${escapeHtml(formatDateTimeTH(at))}">${escapeHtml(relTimeTH(at))}</span></div>
+        <div class="am2-tags"><span class="am2-kind">${ico("ruler")} ${escapeHtml(kindLabel)}</span><span class="am2-board">DWG ${escapeHtml(row.dwg_no || "-")} · ครบ ${formatDateTH(row.due_date)}</span></div>
+        <div class="am2-task" style="cursor:default">${escapeHtml(row.project || "(ไม่มีชื่อ)")}</div>
+        ${row.detail ? `<div class="am2-msg">${escapeHtml(row.detail)}</div>` : ""}
+        ${row.photo_url ? `<img class="alert-photo" src="${row.photo_url}" alt="แนบรูป">` : ""}
+        <div class="am2-actions">
+          <button class="am2-btn am2-ack" data-import>${ico("inbox")} นำเข้า</button>
+          <button class="am2-btn am2-reject" data-reject>ปฏิเสธ</button>
+        </div>
       </div>`;
     const ph = card.querySelector(".alert-photo");
     if (ph) ph.addEventListener("click", () => openPhotoLightbox(row.photo_url));
@@ -5752,7 +5783,7 @@ async function openImportRequestsModal() {
       const sb = getSupabase();
       const { error } = await sb.from("drawing_requests").update({ status: "imported", imported_at: new Date().toISOString() }).eq("id", row.id);
       if (error) toast("นำเข้าในแอปแล้ว แต่อัปเดตสถานะบน Supabase ไม่สำเร็จ: " + error.message);
-      else toast(row.kind === "structure" ? `นำเข้า “${row.project}” เข้า board เขียนแบบโครงสร้างแล้ว` : (result.attached ? `แนบกับ “${result.title}” แล้ว` : `สร้างงานใหม่ “${row.project}” แล้ว`));
+      else toast(row.kind === "structure" ? `นำเข้า “${row.project}” เข้าปฏิทิน ${boardNameOf("drawing")} แล้ว` : (result.attached ? `แนบกับ “${result.title}” แล้ว` : `สร้างงานใหม่ “${row.project}” แล้ว`));
       refreshImportBadge();
       resolveCard();
     });
@@ -5772,7 +5803,7 @@ async function openImportRequestsModal() {
 
 /* ---------- Drawing request form (ยื่นขอแบบ) — in-app modal, uses routeDrawingRequest() above ---------- */
 function openDrawRequestModal() {
-  let kind = "circuit";                // structure | circuit — opens on วงจรไฟฟ้า (owner 2026-10-06)
+  let kind = "structure";              // structure = the drawing calendar (now เขียนแบบวงจรไฟฟ้า) · circuit = paused (2026-10-08)
   const overlay = document.createElement("div");
   overlay.className = "overlay";
   overlay.innerHTML = `
@@ -5785,8 +5816,8 @@ function openDrawRequestModal() {
         <div class="field">
           <label>ประเภทแบบ</label>
           <div class="dr-seg" data-kind>
-            <button type="button" data-k="structure">เขียนแบบโครงสร้างตู้</button>
-            <button type="button" data-k="circuit" class="active">เขียนแบบวงจรไฟฟ้า</button>
+            <button type="button" data-k="structure" class="active">เขียนแบบวงจรไฟฟ้า</button>
+            <button type="button" data-k="circuit" class="dr-off" disabled title="พักการใช้งานชั่วคราว">พักใช้งาน</button>
           </div>
           <span class="settings-toggle-sub" data-kind-hint></span>
         </div>
@@ -5834,7 +5865,7 @@ function openDrawRequestModal() {
   function refreshKind() {
     modal.querySelectorAll("[data-kind] button").forEach(b => b.classList.toggle("active", b.dataset.k === kind));
     if (kind === "structure") {
-      kindHint.textContent = "งานก่อนได้งาน (เก็ง) — จะสร้างใน board “เขียนแบบโครงสร้าง” แยกจากปฏิทินผลิต";
+      kindHint.textContent = `จะสร้างในปฏิทิน “${boardNameOf("drawing")}”`;
     } else {
       kindHint.textContent = "งานที่ได้แล้ว — อยู่ปฏิทินผลิต (board ปัจจุบัน). พิมพ์ชื่อใหม่ = สร้างงานใหม่ · เลือกจากรายการ = แนบกับงานที่ยังไม่เขียนแบบ";
     }
@@ -5846,7 +5877,7 @@ function openDrawRequestModal() {
     if (match) { attachHint.hidden = false; attachHint.textContent = "↳ จะแนบคำขอกับงานนี้ (เพิ่ม/ตั้งด่านเขียนแบบ)"; }
     else { attachHint.hidden = true; }
   }
-  modal.querySelectorAll("[data-kind] button").forEach(b => b.addEventListener("click", () => { kind = b.dataset.k; refreshKind(); }));
+  modal.querySelectorAll("[data-kind] button").forEach(b => b.addEventListener("click", () => { if (b.disabled) return; kind = b.dataset.k; refreshKind(); }));
   pf("project").addEventListener("input", checkAttach);
   refreshKind();
 
@@ -5892,7 +5923,7 @@ function openDrawRequestModal() {
     const result = routeDrawingRequest({ kind, project, dwg, due, detail, submitter, sales, photo: drive ? null : legacyPhoto(items), files });
     if (result.denied) return;
     if (files.length) queueUpload(files, null);
-    if (kind === "structure") toast(`ยื่นคำขอเขียนแบบโครงสร้าง “${project}” แล้ว (อยู่ใน board เขียนแบบโครงสร้าง)`);
+    if (kind === "structure") toast(`ยื่นคำขอเขียนแบบวงจรไฟฟ้า “${project}” แล้ว (อยู่ในปฏิทิน ${boardNameOf("drawing")})`);
     else if (result.attached) toast(`แนบคำขอเขียนแบบวงจรกับ “${result.title}” แล้ว`);
     else toast(`สร้างงานใหม่ + คำขอเขียนแบบวงจร “${project}” แล้ว`);
     close();
@@ -11427,6 +11458,7 @@ function openStarDrawer() {
 }
 
 function renderAll() {
+  normalizeBoardNames();
   ensureVisibleBoard();   // must run first: may repoint `state` (e.g. a user just moved into/out of Service)
   applyBranding();
   renderBoardSwitcher();
@@ -11705,6 +11737,7 @@ async function startApp() {
   if (_cloudReady) purgeExpiredTrash();   // 🗑️ entries past 30 days
   if (_cloudReady && syncLinkedDepts()) saveState();   // ออกไซต์ = โรงงาน's departments
   startPendingUsersWatch();   // red count of people waiting for approval (admins)
+  normalizeBoardNames(); pushBoardRenames();
   applyMyDeptDefaultView();   // open on the user's own department by default
   renderAll();
   // on app open: urgent department alerts take precedence over the routine status report.
