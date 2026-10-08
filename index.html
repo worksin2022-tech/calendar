@@ -558,7 +558,11 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
 }
 .legend-item:hover { background:color-mix(in srgb, var(--st-color) 22%, transparent); }
 .legend-item:hover .legend-name { opacity: 1; }
-.btn-settings { flex: 0 0 auto; font-weight: 600; }
+.btn-settings { flex: 0 0 auto; font-weight: 600; position: relative; }
+.set-badge, .nav-badge { background: var(--danger); color: #fff; font-size: 11px; font-weight: 700; line-height: 17px; min-width: 17px; height: 17px; padding: 0 4px; border-radius: 9px; text-align: center; }
+.set-badge { position: absolute; top: -6px; right: -6px; box-shadow: 0 0 0 2px var(--panel); }
+.nav-badge { margin-left: 8px; display: inline-block; vertical-align: middle; }
+.nav-badge[hidden] { display: none; }
 .btn-settings:hover { background:var(--b-eef0ff, #eef0ff); border-color:var(--accent); color:var(--accent); }
 
 .calendar {
@@ -1406,6 +1410,47 @@ body.chip-dragging .task-chip.span-bar { pointer-events: none; }   /* let the da
 .ta-del { margin-left: auto; border:none; background:transparent; color:var(--text-faint); cursor: pointer; font-size: 12px; opacity: 0; padding: 0 2px; }
 .ta-item:hover .ta-del { opacity: 1; }
 .ta-del:hover { color:var(--danger); }
+.ta-pin { border:none; background:transparent; color:var(--text-faint); cursor: pointer; padding: 0 2px; display: inline-flex; opacity: 0; }
+.ta-pin .ico { width: 13px; height: 13px; }
+.ta-item:hover .ta-pin, .ta-alert:hover .ta-pin, .ta-pin.on { opacity: 1; }
+.ta-pin.on { color: var(--accent); }
+.ta-pin:hover { color: var(--accent); }
+.ta-alert-head .ta-pin { margin-left: auto; }
+.ta-alert-head .ta-pin + .ta-del { margin-left: 0; }
+.ta-item-head .ta-pin { margin-left: auto; }
+.ta-item-head .ta-pin + .ta-del { margin-left: 0; }
+@media (hover: none) { .ta-pin, .ta-del { opacity: 1; } }
+/* pinned strip — sticks to the top of the feed */
+.ta-pins { position: sticky; top: -12px; z-index: 5; margin: -12px -14px 0; padding: 6px 14px 8px; background: var(--panel); border-bottom: 1px solid var(--border); box-shadow: var(--shadow-sm); }
+.ta-pins-head { display: flex; align-items: center; gap: 6px; width: 100%; border: none; background: transparent; color: var(--text); font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; padding: 2px 0; }
+.ta-pins-head .ico { width: 13px; height: 13px; color: var(--accent); }
+.ta-pins-n { background: var(--accent); color: #fff; border-radius: 9px; padding: 0 6px; font-size: 11px; }
+.ta-pins-caret { margin-left: auto; color: var(--text-dim); transition: transform .15s; }
+.ta-pins.closed .ta-pins-caret { transform: rotate(-90deg); }
+.ta-pins.closed .ta-pins-list { display: none; }
+.ta-pins-list { display: flex; flex-direction: column; gap: 4px; margin-top: 4px; max-height: 150px; overflow-y: auto; }
+.ta-pin-row { display: flex; align-items: flex-start; gap: 6px; border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: 6px; padding: 4px 7px; background: var(--bg); }
+.ta-pin-main { flex: 1 1 auto; min-width: 0; cursor: pointer; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; font-size: 12px; }
+.ta-pin-who { font-weight: 700; flex: 0 0 auto; }
+.ta-pin-text { color: var(--text); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; word-break: break-word; }
+.ta-pin-file { display: inline-flex; align-items: center; gap: 3px; background: var(--panel); border: 1px solid var(--border-strong); border-radius: 5px; padding: 0 6px; font-size: 11px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ta-pin-file .ico { width: 11px; height: 11px; }
+.ta-pin-x { border: none; background: transparent; color: var(--text-faint); cursor: pointer; font-size: 12px; flex: 0 0 auto; padding: 0 2px; }
+.ta-pin-x:hover { color: var(--danger); }
+@keyframes taFlash { 0% { background: color-mix(in srgb, var(--accent) 28%, transparent); } 100% { background: transparent; } }
+.ta-flash { animation: taFlash 1.4s ease-out; border-radius: 8px; }
+/* folded run of automatic entries */
+.ta-sysgrp { border: 1px dashed var(--border-strong); border-radius: 8px; background: var(--bg); }
+.ta-sysgrp-head { display: flex; align-items: center; gap: 6px; width: 100%; border: none; background: transparent; color: var(--text-dim); font: inherit; font-size: 12px; cursor: pointer; padding: 5px 8px; text-align: left; }
+.ta-sysgrp-caret { transition: transform .15s; flex: 0 0 auto; font-size: 10px; }
+.ta-sysgrp.open .ta-sysgrp-caret { transform: rotate(90deg); }
+.ta-sysgrp-n { background: var(--border-strong); color: var(--text); border-radius: 9px; padding: 0 6px; font-size: 11px; font-weight: 700; flex: 0 0 auto; }
+.ta-sysgrp-lbl { font-weight: 600; flex: 0 0 auto; }
+.ta-sysgrp-last { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-faint); }
+.ta-sysgrp.open .ta-sysgrp-last { display: none; }
+.ta-sysgrp.open .ta-sysgrp-head .ta-sys-time { display: none; }
+.ta-sysgrp-body { display: none; padding: 2px 8px 6px; flex-direction: column; gap: 3px; }
+.ta-sysgrp.open .ta-sysgrp-body { display: flex; }
 .ta-text { font-size: 13px; color:var(--text); white-space: pre-wrap; word-break: break-word; line-height: 1.5; }
 /* system (auto) activity entry */
 .ta-sys { display: flex; align-items: center; gap: 8px; font-size: 12px; color:var(--text-dim); padding: 1px 2px; }
@@ -2823,7 +2868,7 @@ async function confirmSignOut() {
 }
 async function signOutUser() {
   const sb = getSupabase();
-  if (sb) await sb.auth.signOut();
+  if (sb) await sb.auth.signOut({ scope: "local" });   // THIS device only — the default (global) revoked the same account's sessions on every other device
   currentProfile = null;
   location.reload();   // simplest clean reset back to the login screen
 }
@@ -6087,8 +6132,41 @@ function openTaskModal(taskId, defaults={}) {
   function addSub(text) {
     if (!canFull()) { permDenied("สิทธิ์ของคุณเพิ่มตู้ไม่ได้"); return; }
     task.subtasks = task.subtasks || [];
-    task.subtasks.push({ id: uid("st"), text, statusId: state.statuses[0]?.id, date: null, checklist: makeCabinetChecklist() });
+    // a new cabinet gets checklist items only for the departments this project is handed to (2026-10-08)
+    const staged = new Set((task.deptStages || []).map(s => s.deptId));
+    task.subtasks.push({ id: uid("st"), text, statusId: state.statuses[0]?.id, date: null,
+      checklist: makeCabinetChecklist((state.departments || []).filter(d => isServiceBoard() || staged.has(d.id))) });
     renderSubs(); scheduleCommit(1500);
+  }
+  /* ★ checklist follows the stages (2026-10-08): a department that is NOT handed the project has no checklist items on its
+     cabinets. Removing / changing a stage moves that department's items (ticks included) into task.checklistStash
+     (hidden, not deleted); adding the stage back restores them — a department added fresh gets its template.
+     Only runs on a stage add / remove / change — never on opening a task, so existing data isn't touched silently. */
+  function syncStageChecklists() {
+    if (isServiceBoard()) return;
+    const staged = new Set((task.deptStages || []).map(s => s.deptId));
+    const known = new Set((state.departments || []).map(d => d.id));
+    const stash = (task.checklistStash && typeof task.checklistStash === "object") ? task.checklistStash : {};
+    (task.subtasks || []).forEach(sub => {
+      if (!Array.isArray(sub.checklist)) sub.checklist = [];
+      const keep = [];
+      sub.checklist.forEach(it => {
+        if (known.has(it.deptId) && !staged.has(it.deptId)) {
+          const byDept = stash[it.deptId] || (stash[it.deptId] = {});
+          (byDept[sub.id] || (byDept[sub.id] = [])).push(it);
+        } else keep.push(it);
+      });
+      sub.checklist = keep;
+      staged.forEach(did => {
+        if (!known.has(did) || sub.checklist.some(i => i.deptId === did)) return;
+        const back = stash[did] && stash[did][sub.id];
+        if (back && back.length) { sub.checklist.push(...back); delete stash[did][sub.id]; return; }
+        (getDept(did).checklist || []).forEach(text => sub.checklist.push({ id: uid("cl"), text, done: false, deptId: did }));
+      });
+    });
+    Object.keys(stash).forEach(d => { if (!Object.keys(stash[d]).length) delete stash[d]; });
+    if (Object.keys(stash).length) task.checklistStash = stash; else delete task.checklistStash;
+    renderSubs();
   }
   renderSubs();
   modal.querySelector('[data-act="add-sub"]').addEventListener("click", () => { addSub(""); subWrap.lastChild?.querySelector('input[type=text]')?.focus(); });
@@ -6222,6 +6300,7 @@ function openTaskModal(taskId, defaults={}) {
       pop.querySelector(".stage-dept").addEventListener("change", (e) => {
         if (!canFull()) { permDenied("สิทธิ์ของคุณเปลี่ยนแผนกของด่านไม่ได้"); e.target.value = stg.deptId; return; }
         stg.deptId = e.target.value;
+        syncStageChecklists();
         renderStages(); scheduleCommit(0);
         chip = stageWrap.querySelector(`.stage-chip[data-dept-id="${CSS.escape(stg.deptId)}"]`) || chip;
         render();
@@ -6236,6 +6315,7 @@ function openTaskModal(taskId, defaults={}) {
         if (!canFull()) { permDenied("สิทธิ์ของคุณลบด่านแผนกไม่ได้"); return; }
         const idx = task.deptStages.indexOf(stg);
         if (idx >= 0) task.deptStages.splice(idx, 1);
+        syncStageChecklists();
         close(); renderStages(); scheduleCommit(0);
       });
     }
@@ -6426,6 +6506,7 @@ function openTaskModal(taskId, defaults={}) {
     const dept = (state.departments || []).find(d => !used.has(d.id)) || (state.departments || [])[0];
     if (!dept) { alert("ยังไม่มีแผนก — เพิ่มได้ที่ ⚙ ตั้งค่า › แผนก"); return; }
     task.deptStages.push({ deptId: dept.id, due: null, done: false });
+    syncStageChecklists();
     renderStages(); scheduleCommit(0);
   }
   renderStages();
@@ -6436,7 +6517,7 @@ function openTaskModal(taskId, defaults={}) {
   const commentInput = modal.querySelector('[data-comment]');
   // comments/acks/replies go through the same merge-commit (a comment posted elsewhere meanwhile is kept)
   function persistComments() { commitNow(); }
-  function renderFeed() {
+  function renderFeed(opts) {
     const attN = collectAttachments(task).length;
     modal.querySelectorAll("[data-att-count]").forEach(el => { el.textContent = attN ? String(attN) : ""; });
     const attBtn = modal.querySelector(".att-open-btn");
@@ -6445,28 +6526,53 @@ function openTaskModal(taskId, defaults={}) {
       feedEl.innerHTML = `<div class="ta-empty">ยังไม่มีความเคลื่อนไหว<br>เขียนอัพเดต หรือเปลี่ยนสถานะ/ติ๊กเสร็จ<br>แล้วระบบจะบันทึกให้ดูย้อนหลัง</div>`;
       return;
     }
+    const keepTop = opts && opts.keepScroll ? feedEl.scrollTop : null;
     feedEl.innerHTML = "";
     const sorted = [...task.comments].sort((a, b) => (a.at || 0) - (b.at || 0));
+    renderPinned(sorted);
+    // ★ runs of automatic entries (status / date / assignee changes…) fold into ONE line so people's own messages
+    //   aren't pushed out of sight; click the line to open the run (2026-10-08)
+    const sysRow = (c) => {
+      const sys = document.createElement("div");
+      sys.className = "ta-sys";
+      sys.dataset.cid = c.id;
+      sys.innerHTML = `
+        <span class="ta-sys-dot"></span>
+        <span class="ta-sys-text">${c.author ? `<span class="ta-sys-author">${escapeHtml(c.author)}</span> ` : ""}${escapeHtml(c.text)}</span>
+        <span class="ta-sys-time">${formatDateTimeTH(c.at)}</span>`;
+      return sys;
+    };
+    let run = [];
+    const flushRun = () => {
+      if (!run.length) return;
+      if (run.length === 1) { feedEl.appendChild(sysRow(run[0])); run = []; return; }
+      const key = run[0].id, last = run[run.length - 1], open = _sysOpen.has(key);
+      const grp = document.createElement("div");
+      grp.className = "ta-sysgrp" + (open ? " open" : "");
+      grp.innerHTML = `<button type="button" class="ta-sysgrp-head"><span class="ta-sysgrp-caret">▸</span><span class="ta-sysgrp-n">${run.length}</span><span class="ta-sysgrp-lbl">กิจกรรมอัตโนมัติ</span><span class="ta-sysgrp-last">${last.author ? escapeHtml(last.author) + " " : ""}${escapeHtml(last.text)}</span><span class="ta-sys-time">${formatDateTimeTH(last.at)}</span></button><div class="ta-sysgrp-body"></div>`;
+      const body = grp.querySelector(".ta-sysgrp-body");
+      run.forEach(c => body.appendChild(sysRow(c)));
+      grp.querySelector(".ta-sysgrp-head").addEventListener("click", () => {
+        const o = grp.classList.toggle("open");
+        if (o) _sysOpen.add(key); else _sysOpen.delete(key);
+      });
+      feedEl.appendChild(grp);
+      run = [];
+    };
     sorted.forEach((c) => {
-      if (c.type === "system") {
-        const sys = document.createElement("div");
-        sys.className = "ta-sys";
-        sys.innerHTML = `
-          <span class="ta-sys-dot"></span>
-          <span class="ta-sys-text">${c.author ? `<span class="ta-sys-author">${escapeHtml(c.author)}</span> ` : ""}${escapeHtml(c.text)}</span>
-          <span class="ta-sys-time">${formatDateTimeTH(c.at)}</span>`;
-        feedEl.appendChild(sys);
-        return;
-      }
+      if (c.type === "system") { run.push(c); return; }
+      flushRun();
       if (c.type === "alert") {
         const dept = alertTarget(c);
         const al = document.createElement("div");
         al.className = "ta-alert" + (c.ack ? " acked" : "");
+        al.dataset.cid = c.id;
         al.innerHTML = `
           <div class="ta-alert-head">
             <span class="ta-alert-badge">${ico("bell")} แจ้งเตือน → ${escapeHtml(dept.name)}</span>
             <span class="ta-author">${escapeHtml(c.author || "คุณ")}</span>
             <span class="ta-alert-time">${formatDateTimeTH(c.at)}</span>
+            <button class="ta-pin${c.pinned ? " on" : ""}" data-pin title="${c.pinned ? "เลิกปักหมุด" : "ปักหมุด"}">${ico("pin")}</button>
             <button class="ta-del" title="ลบ">✕</button>
           </div>
           ${c.text ? `<div class="ta-alert-text">${mentionTextHtml(c)}</div>` : ""}
@@ -6476,6 +6582,7 @@ function openTaskModal(taskId, defaults={}) {
             : (c.ack ? `<div class="ta-alert-ack">✓ รับทราบแล้วโดย ${escapeHtml(c.ackBy || "—")} · ${formatDateTimeTH(c.ackAt)}</div>` : "")}
           ${alertIsForMe(c) ? `<div class="ta-alert-btns"><button class="btn btn-sm btn-ack ta-alert-ackbtn" data-ackbtn>✓ รับทราบ</button><button class="btn btn-sm btn-reject" data-rejectbtn>✕ ปฏิเสธ</button></div>` : ""}
           <div class="alert-replies" data-replies></div>`;
+        al.querySelector("[data-pin]").addEventListener("click", () => togglePin(c));
         al.querySelector(".ta-del").addEventListener("click", () => {
           trashAttachments(c);
           task.comments = task.comments.filter(x => x.id !== c.id);
@@ -6507,18 +6614,21 @@ function openTaskModal(taskId, defaults={}) {
       const author = c.author || "คุณ";
       const item = document.createElement("div");
       item.className = "ta-item";
+      item.dataset.cid = c.id;
       item.innerHTML = `
         <div class="ta-avatar">${escapeHtml(author.slice(0,1))}</div>
         <div class="ta-item-body">
           <div class="ta-item-head">
             <span class="ta-author">${escapeHtml(author)}</span>
             <span class="ta-time">${formatDateTimeTH(c.at)}</span>
+            <button class="ta-pin${c.pinned ? " on" : ""}" data-pin title="${c.pinned ? "เลิกปักหมุด" : "ปักหมุด"}">${ico("pin")}</button>
             <button class="ta-del" title="ลบ">✕</button>
           </div>
           ${c.text ? `<div class="ta-text">${mentionTextHtml(c)}</div>` : ""}
           ${attachmentsHtml(c, "ta-photo")}
           ${mentionPendingForMe(c) ? `<div class="ta-mention-ack">${ico("message")} มีการกล่าวถึงคุณ <button type="button" class="btn btn-sm btn-ack" data-mack>✓ รับทราบ</button></div>` : ""}
         </div>`;
+      item.querySelector("[data-pin]").addEventListener("click", () => togglePin(c));
       item.querySelector(".ta-del").addEventListener("click", () => {
         trashAttachments(c);
         task.comments = task.comments.filter(x => x.id !== c.id);
@@ -6529,7 +6639,45 @@ function openTaskModal(taskId, defaults={}) {
       if (mack) mack.addEventListener("click", () => { ackMention(c); persistComments(); renderFeed(); renderBell(); });
       feedEl.appendChild(item);
     });
-    feedEl.scrollTop = feedEl.scrollHeight;
+    flushRun();
+    feedEl.scrollTop = keepTop !== null ? keepTop : feedEl.scrollHeight;
+  }
+  // ----- 📌 pinned messages / files: stick to the top of the Activity panel -----
+  const _sysOpen = new Set();
+  let _pinOpen = true;
+  function pinSnippet(c) {
+    const files = [...(Array.isArray(c.files) ? c.files : []), ...(c.photo ? [{ name: "รูปภาพ" }] : [])];
+    return { text: (c.text || "").trim(), files: files.map(f => f.name || "ไฟล์") };
+  }
+  function renderPinned(sorted) {
+    const pins = sorted.filter(c => c.pinned && c.type !== "system");
+    if (!pins.length) return;
+    const box = document.createElement("div");
+    box.className = "ta-pins" + (_pinOpen ? "" : " closed");
+    box.innerHTML = `<button type="button" class="ta-pins-head">${ico("pin")}<span>ปักหมุด</span><span class="ta-pins-n">${pins.length}</span><span class="ta-pins-caret">▾</span></button><div class="ta-pins-list"></div>`;
+    const list = box.querySelector(".ta-pins-list");
+    pins.forEach(c => {
+      const sn = pinSnippet(c);
+      const row = document.createElement("div");
+      row.className = "ta-pin-row";
+      row.innerHTML = `<div class="ta-pin-main"><span class="ta-pin-who">${escapeHtml(c.author || "")}</span>${sn.text ? `<span class="ta-pin-text">${escapeHtml(sn.text)}</span>` : ""}${sn.files.map(n => `<span class="ta-pin-file">${ico("clip")}${escapeHtml(n)}</span>`).join("")}</div><button type="button" class="ta-pin-x" title="เลิกปักหมุด">✕</button>`;
+      row.querySelector(".ta-pin-main").addEventListener("click", () => {
+        const el = feedEl.querySelector(`[data-cid="${CSS.escape(c.id)}"]`);
+        if (!el) return;
+        el.scrollIntoView({ block: "center", behavior: "smooth" });
+        el.classList.remove("ta-flash"); void el.offsetWidth; el.classList.add("ta-flash");
+      });
+      row.querySelector(".ta-pin-x").addEventListener("click", () => togglePin(c));
+      list.appendChild(row);
+    });
+    box.querySelector(".ta-pins-head").addEventListener("click", () => { _pinOpen = !_pinOpen; box.classList.toggle("closed", !_pinOpen); });
+    feedEl.appendChild(box);
+  }
+  function togglePin(c) {
+    if (!canComment()) { permDenied("สิทธิ์ของคุณปักหมุดไม่ได้"); return; }
+    if (c.pinned) { delete c.pinned; delete c.pinnedBy; delete c.pinnedAt; }
+    else { c.pinned = true; c.pinnedBy = currentUser(); c.pinnedAt = Date.now(); }
+    persistComments(); renderFeed({ keepScroll: true });
   }
   function autoGrow() {
     commentInput.style.height = "auto";
@@ -7400,6 +7548,33 @@ function renderTodayPanelDept(deptIds, today, pass) {
 
 /* ---------- Settings modal (single entry point for all settings) ----------
    Sections are modular — add a new nav button + build<X>Panel() to extend. */
+/* red count of people waiting for approval — on ⚙ and on the "จัดการผู้ใช้" tab (admins only, 2026-10-08) */
+let _pendingUsers = 0, _pendingTimer = null;
+function paintPendingUsers() {
+  const n = _pendingUsers;
+  const txt = n > 99 ? "99+" : String(n);
+  const gear = document.getElementById("btnSettings");
+  if (gear) {
+    let b = gear.querySelector(".set-badge");
+    if (n > 0) { if (!b) { b = document.createElement("span"); b.className = "set-badge"; gear.appendChild(b); } b.textContent = txt; }
+    else if (b) b.remove();
+  }
+  document.querySelectorAll(".settings-nav-item[data-tab=users] .nav-badge").forEach(b => { b.textContent = txt; b.hidden = n <= 0; });
+}
+async function refreshPendingUsers() {
+  if (!isAdmin()) return;
+  const sb = getSupabase(); if (!sb) return;
+  try {
+    const { count, error } = await sb.from("profiles").select("id", { count: "exact", head: true }).eq("approved", false).eq("blocked", false);
+    if (error || count === null || count === undefined) return;
+    _pendingUsers = count; paintPendingUsers();
+  } catch (_) {}
+}
+function startPendingUsersWatch() {
+  if (!isAdmin()) return;
+  refreshPendingUsers();
+  clearInterval(_pendingTimer); _pendingTimer = setInterval(() => { if (document.visibilityState === "visible") refreshPendingUsers(); }, 60000);
+}
 function openSettingsModal(initialTab = "statuses") {
   // ★ non-admins get ONE tab: 🔔 การแจ้งเตือน (their own device's push on/off). Everything else stays admin-only.
   if (!isAdmin() && !(initialTab === "trash" && canFull())) initialTab = "notify";
@@ -7414,7 +7589,7 @@ function openSettingsModal(initialTab = "statuses") {
       <div class="settings-layout">
         <nav class="settings-nav">
           <button class="settings-nav-item" data-tab="user">${ico("user")} ผู้ใช้</button>
-          <button class="settings-nav-item" data-tab="users">${ico("users")} จัดการผู้ใช้</button>
+          <button class="settings-nav-item" data-tab="users">${ico("users")} จัดการผู้ใช้<span class="nav-badge" hidden></span></button>
           <button class="settings-nav-item" data-tab="statuses">${ico("tag")} สถานะงาน</button>
           <button class="settings-nav-item" data-tab="departments">${ico("building")} แผนก</button>
           <button class="settings-nav-item" data-tab="fields">${ico("sliders")} ฟิลด์เพิ่มเติม</button>
@@ -7453,6 +7628,8 @@ function openSettingsModal(initialTab = "statuses") {
   overlay.addEventListener("click", (e) => { if (e.target === overlay) close(); });
   overlay.querySelectorAll('[data-act="close"]').forEach(b => b.addEventListener("click", close));
 
+  paintPendingUsers();
+  if (isAdmin()) refreshPendingUsers();
   showTab(initialTab);
 }
 
@@ -7532,6 +7709,7 @@ function buildUsersAdminPanel(container) {
     // the database guard silently keeps protected values (Owner / other admins) → tell the person why
     const kept = Object.keys(fields).some(k => JSON.stringify(data[0][k] ?? null) !== JSON.stringify(fields[k] ?? null));
     if (kept) { toast("ทำไม่ได้ — การจัดการ admin / Owner ทำได้เฉพาะ Owner"); return false; }
+    refreshPendingUsers();
     return true;
   };
 
@@ -9711,7 +9889,7 @@ function renderMainView() {
 /* ----- Browser notifications (Notification API) — configurable per event type in ⚙ การแจ้งเตือน ----- */
 const NOTIF_SUPPORTED = typeof window !== "undefined" && "Notification" in window;
 // line icon set — one style everywhere (stroke = currentColor). ico("bell"), ico("trash", "ico ico-lg")
-const ICONS = {"moon": "<path d=\"M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z\"/>", "sun": "<circle cx=\"12\" cy=\"12\" r=\"4\"/><path d=\"M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41\"/>", "link": "<path d=\"M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71\"/><path d=\"M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71\"/>", "star": "<polygon points=\"12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2\"/>", "zap": "<polygon points=\"13 2 3 14 12 14 11 22 21 10 12 10 13 2\"/>", "bell": "<path d=\"M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9\"/><path d=\"M10.3 21a1.94 1.94 0 0 0 3.4 0\"/>", "settings": "<circle cx=\"12\" cy=\"12\" r=\"3\"/><path d=\"M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z\"/>", "search": "<circle cx=\"11\" cy=\"11\" r=\"7\"/><path d=\"m21 21-4.3-4.3\"/>", "ruler": "<path d=\"M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.41 2.41 0 0 1 0-3.4l2.6-2.6a2.41 2.41 0 0 1 3.4 0Z\"/><path d=\"m14.5 12.5 2-2M11.5 9.5l2-2M8.5 6.5l2-2M17.5 15.5l2-2\"/>", "inbox": "<path d=\"M22 12h-6l-2 3h-4l-2-3H2\"/><path d=\"M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z\"/>", "trash": "<path d=\"M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6\"/>", "clipboard": "<rect x=\"8\" y=\"2\" width=\"8\" height=\"4\" rx=\"1\"/><path d=\"M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2M9 12h6M9 16h4\"/>", "printer": "<path d=\"M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2\"/><rect x=\"6\" y=\"14\" width=\"12\" height=\"8\" rx=\"1\"/>", "user": "<circle cx=\"12\" cy=\"8\" r=\"4\"/><path d=\"M4 21a8 8 0 0 1 16 0\"/>", "users": "<path d=\"M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2\"/><circle cx=\"9\" cy=\"7\" r=\"4\"/><path d=\"M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75\"/>", "tag": "<path d=\"M12.6 2.6A2 2 0 0 0 11.2 2H4a2 2 0 0 0-2 2v7.2a2 2 0 0 0 .6 1.4l8.7 8.7a2.4 2.4 0 0 0 3.4 0l6.6-6.6a2.4 2.4 0 0 0 0-3.4z\"/><circle cx=\"7.5\" cy=\"7.5\" r=\"1.5\"/>", "building": "<rect x=\"4\" y=\"2\" width=\"16\" height=\"20\" rx=\"2\"/><path d=\"M9 22v-4h6v4M8 6h.01M12 6h.01M16 6h.01M8 10h.01M12 10h.01M16 10h.01M8 14h.01M12 14h.01M16 14h.01\"/>", "sliders": "<path d=\"M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6\"/>", "list-check": "<path d=\"m3 17 2 2 4-4M3 7l2 2 4-4M13 6h8M13 12h8M13 18h8\"/>", "monitor": "<rect x=\"2\" y=\"3\" width=\"20\" height=\"14\" rx=\"2\"/><path d=\"M8 21h8M12 17v4\"/>", "history": "<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\"/><path d=\"M3 3v5h5M12 7v5l4 2\"/>", "restore": "<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\"/><path d=\"M3 3v5h5\"/>", "database": "<ellipse cx=\"12\" cy=\"5\" rx=\"9\" ry=\"3\"/><path d=\"M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5M3 12c0 1.66 4 3 9 3s9-1.34 9-3\"/>", "calendar": "<rect x=\"3\" y=\"4\" width=\"18\" height=\"18\" rx=\"2\"/><path d=\"M16 2v4M8 2v4M3 10h18\"/>", "download": "<path d=\"M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3\"/>", "upload": "<path d=\"M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12\"/>", "camera": "<path d=\"M14.5 4h-5L7.5 6.5H5A2 2 0 0 0 3 8.5v9a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2h-2.5z\"/><circle cx=\"12\" cy=\"12.5\" r=\"3.5\"/>", "clip": "<path d=\"M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48\"/>", "chart": "<path d=\"M3 3v18h18M18 17V9M13 17V5M8 17v-3\"/>", "edit": "<path d=\"M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z\"/><path d=\"m15 5 4 4\"/>", "flag": "<path d=\"M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1zM4 22v-7\"/>", "ban": "<circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"m4.9 4.9 14.2 14.2\"/>", "clock": "<circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"M12 6v6l4 2\"/>", "mail": "<rect x=\"2\" y=\"4\" width=\"20\" height=\"16\" rx=\"2\"/><path d=\"m22 7-10 5L2 7\"/>", "cloud": "<path d=\"M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z\"/>", "logout": "<path d=\"M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9\"/>", "check-circle": "<circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"m9 12 2 2 4-4\"/>", "check-square": "<rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"2\"/><path d=\"m9 12 2 2 4-4\"/>", "eye": "<path d=\"M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z\"/><circle cx=\"12\" cy=\"12\" r=\"3\"/>", "pen": "<path d=\"M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z\"/>", "crown": "<path d=\"m2 6 4 11h12l4-11-6 5-4-7-4 7-6-5zM6 21h12\"/>", "message": "<path d=\"M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z\"/>", "alert": "<path d=\"m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z\"/><path d=\"M12 9v4M12 17h.01\"/>", "x-circle": "<circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"m15 9-6 6M9 9l6 6\"/>", "send": "<path d=\"m22 2-7 20-4-9-9-4Z\"/><path d=\"M22 2 11 13\"/>", "copy": "<rect x=\"8\" y=\"8\" width=\"14\" height=\"14\" rx=\"2\"/><path d=\"M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2\"/>", "file": "<path d=\"M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z\"/><path d=\"M14 2v6h6\"/>", "file-text": "<path d=\"M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z\"/><path d=\"M14 2v6h6M16 13H8M16 17H8M10 9H8\"/>", "file-sheet": "<path d=\"M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z\"/><path d=\"M14 2v6h6M8 13h8M8 17h8M12 11v8\"/>", "image": "<rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"2\"/><circle cx=\"9\" cy=\"9\" r=\"2\"/><path d=\"m21 15-3.09-3.09a2 2 0 0 0-2.82 0L6 21\"/>", "archive": "<rect x=\"2\" y=\"3\" width=\"20\" height=\"5\" rx=\"1\"/><path d=\"M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8M10 12h4\"/>"};
+const ICONS = {"pin": "<path d=\"M12 17v5M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z\"/>", "moon": "<path d=\"M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z\"/>", "sun": "<circle cx=\"12\" cy=\"12\" r=\"4\"/><path d=\"M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41\"/>", "link": "<path d=\"M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71\"/><path d=\"M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71\"/>", "star": "<polygon points=\"12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2\"/>", "zap": "<polygon points=\"13 2 3 14 12 14 11 22 21 10 12 10 13 2\"/>", "bell": "<path d=\"M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9\"/><path d=\"M10.3 21a1.94 1.94 0 0 0 3.4 0\"/>", "settings": "<circle cx=\"12\" cy=\"12\" r=\"3\"/><path d=\"M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z\"/>", "search": "<circle cx=\"11\" cy=\"11\" r=\"7\"/><path d=\"m21 21-4.3-4.3\"/>", "ruler": "<path d=\"M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.41 2.41 0 0 1 0-3.4l2.6-2.6a2.41 2.41 0 0 1 3.4 0Z\"/><path d=\"m14.5 12.5 2-2M11.5 9.5l2-2M8.5 6.5l2-2M17.5 15.5l2-2\"/>", "inbox": "<path d=\"M22 12h-6l-2 3h-4l-2-3H2\"/><path d=\"M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z\"/>", "trash": "<path d=\"M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6\"/>", "clipboard": "<rect x=\"8\" y=\"2\" width=\"8\" height=\"4\" rx=\"1\"/><path d=\"M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2M9 12h6M9 16h4\"/>", "printer": "<path d=\"M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2\"/><rect x=\"6\" y=\"14\" width=\"12\" height=\"8\" rx=\"1\"/>", "user": "<circle cx=\"12\" cy=\"8\" r=\"4\"/><path d=\"M4 21a8 8 0 0 1 16 0\"/>", "users": "<path d=\"M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2\"/><circle cx=\"9\" cy=\"7\" r=\"4\"/><path d=\"M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75\"/>", "tag": "<path d=\"M12.6 2.6A2 2 0 0 0 11.2 2H4a2 2 0 0 0-2 2v7.2a2 2 0 0 0 .6 1.4l8.7 8.7a2.4 2.4 0 0 0 3.4 0l6.6-6.6a2.4 2.4 0 0 0 0-3.4z\"/><circle cx=\"7.5\" cy=\"7.5\" r=\"1.5\"/>", "building": "<rect x=\"4\" y=\"2\" width=\"16\" height=\"20\" rx=\"2\"/><path d=\"M9 22v-4h6v4M8 6h.01M12 6h.01M16 6h.01M8 10h.01M12 10h.01M16 10h.01M8 14h.01M12 14h.01M16 14h.01\"/>", "sliders": "<path d=\"M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6\"/>", "list-check": "<path d=\"m3 17 2 2 4-4M3 7l2 2 4-4M13 6h8M13 12h8M13 18h8\"/>", "monitor": "<rect x=\"2\" y=\"3\" width=\"20\" height=\"14\" rx=\"2\"/><path d=\"M8 21h8M12 17v4\"/>", "history": "<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\"/><path d=\"M3 3v5h5M12 7v5l4 2\"/>", "restore": "<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\"/><path d=\"M3 3v5h5\"/>", "database": "<ellipse cx=\"12\" cy=\"5\" rx=\"9\" ry=\"3\"/><path d=\"M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5M3 12c0 1.66 4 3 9 3s9-1.34 9-3\"/>", "calendar": "<rect x=\"3\" y=\"4\" width=\"18\" height=\"18\" rx=\"2\"/><path d=\"M16 2v4M8 2v4M3 10h18\"/>", "download": "<path d=\"M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3\"/>", "upload": "<path d=\"M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12\"/>", "camera": "<path d=\"M14.5 4h-5L7.5 6.5H5A2 2 0 0 0 3 8.5v9a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2h-2.5z\"/><circle cx=\"12\" cy=\"12.5\" r=\"3.5\"/>", "clip": "<path d=\"M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48\"/>", "chart": "<path d=\"M3 3v18h18M18 17V9M13 17V5M8 17v-3\"/>", "edit": "<path d=\"M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z\"/><path d=\"m15 5 4 4\"/>", "flag": "<path d=\"M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1zM4 22v-7\"/>", "ban": "<circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"m4.9 4.9 14.2 14.2\"/>", "clock": "<circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"M12 6v6l4 2\"/>", "mail": "<rect x=\"2\" y=\"4\" width=\"20\" height=\"16\" rx=\"2\"/><path d=\"m22 7-10 5L2 7\"/>", "cloud": "<path d=\"M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z\"/>", "logout": "<path d=\"M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9\"/>", "check-circle": "<circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"m9 12 2 2 4-4\"/>", "check-square": "<rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"2\"/><path d=\"m9 12 2 2 4-4\"/>", "eye": "<path d=\"M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z\"/><circle cx=\"12\" cy=\"12\" r=\"3\"/>", "pen": "<path d=\"M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z\"/>", "crown": "<path d=\"m2 6 4 11h12l4-11-6 5-4-7-4 7-6-5zM6 21h12\"/>", "message": "<path d=\"M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z\"/>", "alert": "<path d=\"m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z\"/><path d=\"M12 9v4M12 17h.01\"/>", "x-circle": "<circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"m15 9-6 6M9 9l6 6\"/>", "send": "<path d=\"m22 2-7 20-4-9-9-4Z\"/><path d=\"M22 2 11 13\"/>", "copy": "<rect x=\"8\" y=\"8\" width=\"14\" height=\"14\" rx=\"2\"/><path d=\"M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2\"/>", "file": "<path d=\"M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z\"/><path d=\"M14 2v6h6\"/>", "file-text": "<path d=\"M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z\"/><path d=\"M14 2v6h6M16 13H8M16 17H8M10 9H8\"/>", "file-sheet": "<path d=\"M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z\"/><path d=\"M14 2v6h6M8 13h8M8 17h8M12 11v8\"/>", "image": "<rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"2\"/><circle cx=\"9\" cy=\"9\" r=\"2\"/><path d=\"m21 15-3.09-3.09a2 2 0 0 0-2.82 0L6 21\"/>", "archive": "<rect x=\"2\" y=\"3\" width=\"20\" height=\"5\" rx=\"1\"/><path d=\"M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8M10 12h4\"/>"};
 const ICON_ATTR = 'viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"';
 function ico(name, cls = "ico") { return ICONS[name] ? `<svg class="${cls}" ${ICON_ATTR}>${ICONS[name]}</svg>` : ""; }
 // confirm dialogs used to take an emoji — map the old ones, or pass an icon name
@@ -11286,6 +11464,7 @@ async function startApp() {
   startRealtimeSync();   // slice 3: start listening for changes other devices push from this point on
   if (_cloudReady) purgeExpiredTrash();   // 🗑️ entries past 30 days
   if (_cloudReady && syncLinkedDepts()) saveState();   // ออกไซต์ = โรงงาน's departments
+  startPendingUsersWatch();   // red count of people waiting for approval (admins)
   applyMyDeptDefaultView();   // open on the user's own department by default
   renderAll();
   // on app open: urgent department alerts take precedence over the routine status report.
