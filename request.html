@@ -85,6 +85,13 @@
     border: 1.5px dashed var(--border-strong); background: var(--field); color: var(--text-dim); font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; transition: border-color .15s, color .15s, background .15s; }
   .photo-btn svg { width: 20px; height: 20px; }
   .photo-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+  .att-list { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+  .att-list:empty { display: none; }
+  .att-item { position: relative; }
+  .att-item img { height: 62px; width: 62px; object-fit: cover; border-radius: 12px; border: 1px solid var(--border); display: block; box-shadow: 0 4px 10px rgba(0,0,0,.08); }
+  .att-doc { height: 62px; max-width: 180px; display: flex; align-items: center; gap: 7px; padding: 0 12px; border-radius: 12px; border: 1px solid var(--border); background: var(--field); font-size: 12.5px; font-weight: 600; color: var(--text-dim); }
+  .att-doc span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .att-doc svg { width: 18px; height: 18px; flex: 0 0 auto; }
   .photo-preview { position: relative; display: none; }
   .photo-preview img { height: 62px; width: 62px; object-fit: cover; border-radius: 12px; border: 1px solid var(--border); display: block; box-shadow: 0 4px 10px rgba(0,0,0,.08); }
   .photo-preview.show { display: inline-block; }
@@ -180,10 +187,12 @@
     <div class="sec">
       <div class="sec-title">แนบรูป</div>
       <div class="photo-row">
-        <button type="button" class="photo-btn" id="btnAttach"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7.5 6.5H5A2 2 0 0 0 3 8.5v9a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2h-2.5z"/><circle cx="12" cy="12.5" r="3.5"/></svg>ถ่าย / แนบรูป (ถ้ามี)</button>
-        <div class="photo-preview" id="photoPreview"><img id="photoImg" alt="" /><button type="button" class="photo-rm" id="photoRm">✕</button></div>
+        <button type="button" class="photo-btn" id="btnAttach"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7.5 6.5H5A2 2 0 0 0 3 8.5v9a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2h-2.5z"/><circle cx="12" cy="12.5" r="3.5"/></svg>ถ่าย / แนบรูป</button>
+        <button type="button" class="photo-btn" id="btnAttachFile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>แนบไฟล์</button>
       </div>
-      <input type="file" accept="image/*" capture="environment" id="fPhoto" class="hidden" />
+      <div class="att-list" id="attList"></div>
+      <input type="file" accept="image/*" multiple id="fPhoto" class="hidden" />
+      <input type="file" multiple id="fFile" class="hidden" />
     </div>
 
     <button type="button" class="submit-btn" id="btnSubmit">ส่งคำขอ</button>
@@ -212,7 +221,8 @@ const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 });
 
 let kind = "structure";
-let pendingFile = null;
+let attached = [];   // [{ blob, name, mime, isImage, url }] — several photos / files (2026-10-09)
+const MAX_FILE = 25 * 1024 * 1024;
 
 const $ = (id) => document.getElementById(id);
 const kindHintText = {
@@ -236,44 +246,63 @@ const minDue = new Date(today); minDue.setDate(minDue.getDate() + 2);
 $("fDue").min = isoDate(minDue);
 $("fDue").value = isoDate(minDue);
 
-// photo: pick + client-side compress (canvas, max ~1000px, jpeg) to keep uploads small
-$("btnAttach").addEventListener("click", () => $("fPhoto").click());
-$("fPhoto").addEventListener("change", () => {
-  const file = $("fPhoto").files && $("fPhoto").files[0];
-  $("fPhoto").value = "";
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = () => {
-    const img = new Image();
-    img.onload = () => {
-      let { width, height } = img;
-      const scale = Math.min(1, 1000 / Math.max(width, height));
-      width = Math.max(1, Math.round(width * scale));
-      height = Math.max(1, Math.round(height * scale));
-      const canvas = document.createElement("canvas");
-      canvas.width = width; canvas.height = height;
-      canvas.getContext("2d").drawImage(img, 0, 0, width, height);
-      canvas.toBlob(blob => {
-        pendingFile = blob;
-        $("photoImg").src = URL.createObjectURL(blob);
-        $("photoPreview").classList.add("show");
-      }, "image/jpeg", 0.6);
+// photos: compress client-side (canvas, max ~1280px, jpeg) · other files: as they are (max 25MB each)
+function compress(file) {
+  return new Promise((res, rej) => {
+    const reader = new FileReader();
+    reader.onerror = rej;
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = rej;
+      img.onload = () => {
+        let { width, height } = img;
+        const scale = Math.min(1, 1280 / Math.max(width, height));
+        width = Math.max(1, Math.round(width * scale)); height = Math.max(1, Math.round(height * scale));
+        const canvas = document.createElement("canvas");
+        canvas.width = width; canvas.height = height;
+        canvas.getContext("2d").drawImage(img, 0, 0, width, height);
+        canvas.toBlob(blob => blob ? res(blob) : rej(new Error("compress")), "image/jpeg", 0.72);
+      };
+      img.src = reader.result;
     };
-    img.src = reader.result;
-  };
-  reader.readAsDataURL(file);
-});
-$("photoRm").addEventListener("click", () => {
-  pendingFile = null;
-  $("photoPreview").classList.remove("show");
-});
+    reader.readAsDataURL(file);
+  });
+}
+const DOC_ICO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><path d="M14 2v6h6"/></svg>';
+function esc(t) { return String(t).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
+function renderAtt() {
+  $("attList").innerHTML = attached.map((a, i) => `<div class="att-item">${a.isImage ? `<img src="${a.url}" alt="">` : `<div class="att-doc">${DOC_ICO}<span>${esc(a.name)}</span></div>`}<button type="button" class="photo-rm" data-rm="${i}">✕</button></div>`).join("");
+  $("attList").querySelectorAll("[data-rm]").forEach(b => b.addEventListener("click", () => { attached.splice(+b.dataset.rm, 1); renderAtt(); }));
+}
+async function addFiles(list) {
+  const errEl = $("errMsg");
+  for (const f of Array.from(list || [])) {
+    if (f.type.startsWith("image/") && !/svg/i.test(f.type)) {
+      try {
+        const blob = await compress(f);
+        attached.push({ blob, name: (f.name || "photo").replace(/\.[^.]+$/, "") + ".jpg", mime: "image/jpeg", isImage: true, url: URL.createObjectURL(blob) });
+        continue;
+      } catch (_) { /* not decodable here (e.g. HEIC) → send the original as a file */ }
+    }
+    if (f.size > MAX_FILE) { errEl.textContent = `ไฟล์ “${f.name}” ใหญ่เกิน 25MB`; continue; }
+    attached.push({ blob: f, name: f.name || "file", mime: f.type || "application/octet-stream", isImage: false });
+  }
+  renderAtt();
+}
+$("btnAttach").addEventListener("click", () => $("fPhoto").click());
+$("btnAttachFile").addEventListener("click", () => $("fFile").click());
+["fPhoto", "fFile"].forEach(id => $(id).addEventListener("change", async () => {
+  const files = Array.from($(id).files || []); $(id).value = "";
+  await addFiles(files);
+}));
 
-async function uploadPhoto(blob) {
-  const path = `req-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.jpg`;
-  const { error } = await sb.storage.from("drawing-photos").upload(path, blob, { contentType: "image/jpeg" });
+async function uploadOne(a, i) {
+  const ext = ((a.name.match(/\.([a-z0-9]{1,6})$/i) || [, a.isImage ? "jpg" : "bin"])[1]).toLowerCase();
+  const path = `req-${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${i}.${ext}`;
+  const { error } = await sb.storage.from("drawing-photos").upload(path, a.blob, { contentType: a.mime });
   if (error) throw error;
   const { data } = sb.storage.from("drawing-photos").getPublicUrl(path);
-  return data.publicUrl;
+  return { name: a.name, url: data.publicUrl, mime: a.mime, size: a.blob.size };
 }
 
 $("btnSubmit").addEventListener("click", async () => {
@@ -295,12 +324,17 @@ $("btnSubmit").addEventListener("click", async () => {
   const btn = $("btnSubmit");
   btn.disabled = true; btn.textContent = "กำลังส่ง...";
   try {
-    let photoUrl = null;
-    if (pendingFile) photoUrl = await uploadPhoto(pendingFile);
-    const { error } = await sb.from("drawing_requests").insert({
-      kind, project, dwg_no: dwg, due_date: due, detail: detail || null,
-      submitter, sales_team: sales || null, photo_url: photoUrl, status: "pending",
-    });
+    const files = [];
+    for (let i = 0; i < attached.length; i++) {
+      btn.textContent = `กำลังอัปโหลด ${i + 1}/${attached.length}...`;
+      files.push(await uploadOne(attached[i], i));
+    }
+    btn.textContent = "กำลังส่ง...";
+    const photoUrl = (files.find(f => f.mime.startsWith("image/")) || {}).url || null;   // first photo (older app versions read this)
+    const row = { kind, project, dwg_no: dwg, due_date: due, detail: detail || null,
+      submitter, sales_team: sales || null, photo_url: photoUrl, status: "pending" };
+    let { error } = await sb.from("drawing_requests").insert({ ...row, files });
+    if (error && /files/i.test(error.message || "")) ({ error } = await sb.from("drawing_requests").insert(row));   // column not added yet → first photo only
     if (error) throw error;
     $("formCard").classList.add("hidden");
     $("successCard").classList.remove("hidden");
@@ -315,7 +349,7 @@ $("btnAgain").addEventListener("click", () => {
   $("fProject").value = ""; $("fDwg").value = ""; $("fDetail").value = "";
   $("fSubmitter").value = ""; $("fSales").value = "";
   $("fDue").value = isoDate(minDue);
-  pendingFile = null; $("photoPreview").classList.remove("show");
+  attached = []; renderAtt();
   kind = "structure";
   document.querySelectorAll("#kindSeg button").forEach(x => x.classList.toggle("active", x.dataset.k === "structure"));
   $("kindHint").textContent = kindHintText.structure;

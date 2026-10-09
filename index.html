@@ -5729,6 +5729,18 @@ async function refreshImportBadge() {
   if (rows.length) { badge.textContent = rows.length > 99 ? "99+" : rows.length; badge.hidden = false; }
   else { badge.hidden = true; }
 }
+// files of a queued drawing request: the slice-10 list, or the single old photo_url
+function reqFiles(row) {
+  const list = Array.isArray(row.files) ? row.files.filter(f => f && f.url) : [];
+  return list.length ? list : (row.photo_url ? [{ name: "รูปภาพ.jpg", url: row.photo_url, mime: "image/jpeg" }] : []);
+}
+function reqFilesHtml(row) {
+  const fs = reqFiles(row);
+  if (!fs.length) return "";
+  const imgs = fs.filter(f => /^image\//.test(f.mime || "")), docs = fs.filter(f => !/^image\//.test(f.mime || ""));
+  return (imgs.length ? `<div class="att-imgs">${imgs.map(f => `<img class="alert-photo" src="${escapeHtml(f.url)}" alt="${escapeHtml(f.name || "")}" loading="lazy">`).join("")}</div>` : "")
+    + (docs.length ? `<div class="att-files">${docs.map(f => `<a class="att-file" href="${escapeHtml(f.url)}" target="_blank" rel="noopener">${fileIcon(f.name)}<span class="att-fname">${escapeHtml(f.name || "ไฟล์")}</span>${f.size ? `<span class="att-fsize">${fmtBytes(f.size)}</span>` : ""}</a>`).join("")}</div>` : "");
+}
 async function openImportRequestsModal() {
   const overlay = document.createElement("div");
   overlay.className = "overlay alert-overlay";
@@ -5768,17 +5780,33 @@ async function openImportRequestsModal() {
         <div class="am2-tags"><span class="am2-kind">${ico("ruler")} ${escapeHtml(kindLabel)}</span><span class="am2-board">DWG ${escapeHtml(row.dwg_no || "-")} · ครบ ${formatDateTH(row.due_date)}</span></div>
         <div class="am2-task" style="cursor:default">${escapeHtml(row.project || "(ไม่มีชื่อ)")}</div>
         ${row.detail ? `<div class="am2-msg">${escapeHtml(row.detail)}</div>` : ""}
-        ${row.photo_url ? `<img class="alert-photo" src="${row.photo_url}" alt="แนบรูป">` : ""}
+        ${reqFilesHtml(row)}
         <div class="am2-actions">
           <button class="am2-btn am2-ack" data-import>${ico("inbox")} นำเข้า</button>
           <button class="am2-btn am2-reject" data-reject>ปฏิเสธ</button>
         </div>
       </div>`;
-    const ph = card.querySelector(".alert-photo");
-    if (ph) ph.addEventListener("click", () => openPhotoLightbox(row.photo_url));
+    card.querySelectorAll(".alert-photo").forEach(ph => ph.addEventListener("click", () => openPhotoLightbox(ph.src)));
     const resolveCard = () => { card.remove(); const left = listEl.querySelectorAll(".alert-card").length; countEl.textContent = left; if (!left) listEl.innerHTML = `<div class="dr-import-loading">ไม่มีคำขอใหม่ค้างอยู่</div>`; };
     card.querySelector("[data-import]").addEventListener("click", async () => {
-      const result = routeDrawingRequest({ kind: row.kind, project: row.project, dwg: row.dwg_no, due: row.due_date, detail: row.detail || "", submitter: row.submitter, sales: row.sales_team || "", photo: row.photo_url || null });
+      // several files (slice 10): copy them into Google Drive → attached to the task like any other file.
+      // No Drive / a file can't be fetched → its link goes into the request text instead (nothing is lost).
+      const rf = reqFiles(row);
+      let files = [], photo = rf.length ? null : (row.photo_url || null), extra = "";
+      if (rf.length && driveConfigured()) {
+        const items = [], failed = [];
+        for (const f of rf) {
+          try { const b = await (await fetch(f.url)).blob(); items.push({ isImage: false, name: f.name || "ไฟล์", mime: f.mime || b.type, file: b }); }
+          catch (_) { failed.push(f); }
+        }
+        files = pendingEntries(items, `คำขอแบบ · ${row.project}`);
+        if (failed.length) extra = "\nไฟล์แนบ: " + failed.map(f => `${f.name} ${f.url}`).join(" · ");
+      } else if (rf.length) {
+        photo = (rf.find(f => /^image\//.test(f.mime || "")) || {}).url || null;
+        extra = "\nไฟล์แนบ: " + rf.map(f => `${f.name} ${f.url}`).join(" · ");
+      }
+      const result = routeDrawingRequest({ kind: row.kind, project: row.project, dwg: row.dwg_no, due: row.due_date, detail: (row.detail || "") + extra, submitter: row.submitter, sales: row.sales_team || "", photo, files });
+      if (!result.denied && files.length) queueUpload(files, null);
       if (result.denied) return;   // no access to the structure calendar → leave the request pending
       const sb = getSupabase();
       const { error } = await sb.from("drawing_requests").update({ status: "imported", imported_at: new Date().toISOString() }).eq("id", row.id);
@@ -5804,6 +5832,9 @@ async function openImportRequestsModal() {
 /* ---------- Drawing request form (ยื่นขอแบบ) — in-app modal, uses routeDrawingRequest() above ---------- */
 function openDrawRequestModal() {
   let kind = "structure";              // structure = the drawing calendar (now เขียนแบบวงจรไฟฟ้า) · circuit = paused (2026-10-08)
+  // ★ 2026-10-09: no access to the drawing calendar → the SAME in-app form sends a request to the queue (drawing_requests,
+  //   like the online form) — the drawing team takes it in with "ดึงคำขอจากฟอร์ม". Needs no calendar access. 1 photo max.
+  const queued = true;   // ★ 2026-10-09 (owner): EVERY request waits in the queue — the drawing team reviews and takes it in
   const overlay = document.createElement("div");
   overlay.className = "overlay";
   overlay.innerHTML = `
@@ -5865,7 +5896,7 @@ function openDrawRequestModal() {
   function refreshKind() {
     modal.querySelectorAll("[data-kind] button").forEach(b => b.classList.toggle("active", b.dataset.k === kind));
     if (kind === "structure") {
-      kindHint.textContent = `จะสร้างในปฏิทิน “${boardNameOf("drawing")}”`;
+      kindHint.textContent = queued ? "ส่งคำขอให้ทีมเขียนแบบรับเข้าปฏิทิน" : `จะสร้างในปฏิทิน “${boardNameOf("drawing")}”`;
     } else {
       kindHint.textContent = "งานที่ได้แล้ว — อยู่ปฏิทินผลิต (board ปัจจุบัน). พิมพ์ชื่อใหม่ = สร้างงานใหม่ · เลือกจากรายการ = แนบกับงานที่ยังไม่เขียนแบบ";
     }
@@ -5889,10 +5920,10 @@ function openDrawRequestModal() {
   // attachments (photos + files → Google Drive; same pipeline as the task composer)
   const photoInput = modal.querySelector("[data-photo-input]");
   const fileInput = modal.querySelector("[data-file-input]");
-  const attachList = createAttachList(modal.querySelector("[data-photo-preview]"));
+  const attachList = createAttachList(modal.querySelector("[data-photo-preview]"), { anyFile: queued });
   modal.querySelector('[data-act="attach"]').addEventListener("click", () => photoInput.click());
   modal.querySelector('[data-act="attach-file"]').addEventListener("click", () => {
-    if (!driveConfigured()) { toast("แนบไฟล์ได้เมื่อตั้งค่าโฟลเดอร์ Google Drive แล้ว — ตอนนี้แนบได้เฉพาะรูป"); return; }
+    if (!queued && !driveConfigured()) { toast("แนบไฟล์ได้เมื่อตั้งค่าโฟลเดอร์ Google Drive แล้ว — ตอนนี้แนบได้เฉพาะรูป"); return; }
     fileInput.click();
   });
   [photoInput, fileInput].forEach(inp => inp.addEventListener("change", () => {
@@ -5918,6 +5949,7 @@ function openDrawRequestModal() {
     if (due < addDaysIso(todayIso(), 2)) return toast("วันที่ต้องการให้จบต้องไม่ต่ำกว่า 2 วันจากวันนี้");
 
     const items = attachList.items;
+    if (queued) { sendQueued({ project, dwg, due, detail, submitter, sales, items }); return; }
     const drive = driveConfigured();
     const files = drive ? pendingEntries(items, `คำขอแบบ · ${project}`) : [];
     const result = routeDrawingRequest({ kind, project, dwg, due, detail, submitter, sales, photo: drive ? null : legacyPhoto(items), files });
@@ -5928,6 +5960,44 @@ function openDrawRequestModal() {
     else toast(`สร้างงานใหม่ + คำขอเขียนแบบวงจร “${project}” แล้ว`);
     close();
   });
+
+  // queue mode: photo → storage bucket drawing-photos, row → drawing_requests (status pending)
+  async function sendQueued({ project, dwg, due, detail, submitter, sales, items }) {
+    const sb = getSupabase();
+    if (!sb) return toast("ไม่มีอินเทอร์เน็ต — ลองใหม่");
+    const btn = modal.querySelector('[data-act="submit"]');
+    btn.disabled = true; btn.textContent = "กำลังส่ง…";
+    try {
+      // every photo / file → Supabase Storage (public bucket drawing-photos); the list goes in drawing_requests.files
+      const files = [];
+      for (let i = 0; i < items.length; i++) {
+        const it = items[i];
+        btn.textContent = `กำลังอัปโหลด ${i + 1}/${items.length}…`;
+        const blob = it.isImage ? dataUrlToBlob(it.preview) : it.file;
+        const ext = ((it.name || "").match(/\.([a-z0-9]{1,6})$/i) || [, it.isImage ? "jpg" : "bin"])[1].toLowerCase();
+        const path = `req-${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${i}.${ext}`;
+        const up = await sb.storage.from("drawing-photos").upload(path, blob, { contentType: it.mime || blob.type || "application/octet-stream" });
+        if (up.error) throw up.error;
+        files.push({ name: it.name, url: sb.storage.from("drawing-photos").getPublicUrl(path).data.publicUrl, mime: it.mime || blob.type || "", size: blob.size });
+      }
+      btn.textContent = "กำลังส่ง…";
+      const photoUrl = (files.find(f => /^image\//.test(f.mime)) || {}).url || null;   // first photo — old requests / old importers use it
+      const row = { kind: "structure", project, dwg_no: dwg, due_date: due, detail: detail || null,
+        submitter, sales_team: sales || null, photo_url: photoUrl, status: "pending" };
+      let { error } = await sb.from("drawing_requests").insert({ ...row, files });
+      if (error && /files/i.test(error.message || "")) {   // supabase-slice10.sql not run yet → keep the request, first photo only
+        ({ error } = await sb.from("drawing_requests").insert(row));
+        if (!error && files.length > 1) toast("ส่งแล้ว แต่เก็บได้แค่รูปแรก — ให้ admin รัน supabase-slice10.sql");
+      }
+      if (error) throw error;
+      toast(`ส่งคำขอเขียนแบบ “${project}” แล้ว — ทีมเขียนแบบจะรับเข้าปฏิทิน`);
+      refreshImportBadge();
+      close();
+    } catch (e) {
+      toast("ส่งคำขอไม่สำเร็จ: " + (e.message || e));
+      btn.disabled = false; btn.textContent = "ยื่นคำขอ";
+    }
+  }
 
   setTimeout(() => pf("project").focus(), 40);
 }
@@ -10222,7 +10292,7 @@ function dataUrlToBlob(dataUrl) {
   return new Blob([arr], { type: mime });
 }
 // pending attachments of one composer. items: { isImage, name, mime, preview? (jpeg dataUrl), file? }
-function createAttachList(previewEl) {
+function createAttachList(previewEl, opts = {}) {
   let items = [];
   function render() {
     previewEl.hidden = !items.length;
@@ -10232,7 +10302,7 @@ function createAttachList(previewEl) {
     previewEl.querySelectorAll("[data-rm]").forEach(b => b.addEventListener("click", () => { items.splice(+b.dataset.rm, 1); render(); }));
   }
   async function add(fileList) {
-    const drive = driveConfigured();
+    const drive = opts.anyFile || driveConfigured();   // anyFile: the request queue keeps files in Supabase Storage, no Drive needed
     for (const f of Array.from(fileList || [])) {
       if (f.type.startsWith("image/") && !/svg/i.test(f.type)) {
         if (!drive && items.some(x => x.isImage)) { toast("ยังไม่ได้ตั้งค่า Google Drive — แนบได้ครั้งละ 1 รูป"); continue; }
@@ -11476,23 +11546,25 @@ function applySidebarPerm() {
   const full = canFull();
   const set = (id, show) => { const el = document.getElementById(id); if (el) el.style.display = show ? "" : "none"; };
   set("btnQuickAdd", full);
-  set("btnDrawReq", canSeeDeptButton("drawReqDepts"));
+  set("btnDrawReq", canSeeDrawReq());
   set("btnImportReq", canSeeDeptButton("importReqDepts"));
   // no request buttons for this person → drop the empty block too (otherwise it leaves a gap above "งานที่ต้องเสร็จ")
-  set("sbReqSection", canSeeDeptButton("drawReqDepts") || canSeeDeptButton("importReqDepts"));
+  set("sbReqSection", canSeeDrawReq() || canSeeDeptButton("importReqDepts"));
 }
 // may the current user see a department-restricted action button (settings key = an array of dept ids)?
 // ★ 2026-10-06 (owner): admins NO LONGER see it automatically — same rule for everyone: (a) full rights AND
 //   (b) my department is TICKED in ⚙ การแสดงผล. Nothing ticked = nobody sees it.
-function canSeeDeptButton(settingKey) {
+function canSeeDeptButton(settingKey, anyTier = false) {
   if (root.activeBoard === SERVICE_BOARD) return false;   // drawing-request flow is factory-only — hidden on Service even for admins
-  if (!canFull()) return false;
+  if (!anyTier && !canFull()) return false;
   const my = myDeptId();
   const allow = (state.settings && state.settings[settingKey]) || [];
   return !!my && allow.includes(my);
 }
 function canSeeImportReq() { return canSeeDeptButton("importReqDepts"); }
-function canSeeDrawReq() { return canSeeDeptButton("drawReqDepts"); }
+// ★ 2026-10-08 (owner): ยื่นขอแบบ = a REQUEST, not editing — any permission tier (ดูอย่างเดียว / คอมเมนต์ too) of a department
+//   ticked in ⚙ การแสดงผล → "ปุ่มยื่นขอแบบแสดงกับแผนก" gets it. Importing requests (ดึงคำขอจากฟอร์ม) still needs full rights.
+function canSeeDrawReq() { return canSeeDeptButton("drawReqDepts", true); }
 
 document.getElementById("btnSettings").addEventListener("click", () => openSettingsModal(isAdmin() ? "statuses" : "notify"));
 // 🌙 theme: per device (localStorage), light by default; printing always uses the light theme
@@ -11570,7 +11642,10 @@ document.getElementById("tpDayBtn").addEventListener("click", () => { if (tpDayO
 document.getElementById("tpReport").addEventListener("click", openStatusReport);   // manual open — ignores the auto-show frequency
 document.getElementById("tpPrint").addEventListener("click", openWorkOrderPrint);
 document.getElementById("btnQuickAdd").addEventListener("click", () => { if (!canFull()) return permDenied("สิทธิ์ของคุณเพิ่มงานใหม่ไม่ได้"); openTaskModal(null); });
-document.getElementById("btnDrawReq").addEventListener("click", () => { if (!canSeeDrawReq()) return permDenied("สิทธิ์ของคุณยื่นขอแบบไม่ได้ (จำกัดเฉพาะบางแผนก)"); openDrawRequestModal(); });
+document.getElementById("btnDrawReq").addEventListener("click", () => {
+  if (!canSeeDrawReq()) return permDenied("สิทธิ์ของคุณยื่นขอแบบไม่ได้ (จำกัดเฉพาะบางแผนก)");
+  openDrawRequestModal();   // no access to the drawing calendar → the same form sends a queued request (see below)
+});
 document.getElementById("btnImportReq").addEventListener("click", () => { if (!canSeeImportReq()) return permDenied("สิทธิ์ของคุณดึงคำขอไม่ได้ (จำกัดเฉพาะบางแผนก)"); openImportRequestsModal(); });
 (() => {
   const searchEl = document.getElementById("searchInput");
