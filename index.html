@@ -5668,7 +5668,7 @@ function buildReqTask(ws, project, due, detail, reqMeta, summary, photo, files, 
   };
 }
 // routes one drawing request into a task. returns { boardName, attached, title } for the caller's toast/summary.
-function routeDrawingRequest({ kind, project, dwg, due, detail, submitter, sales, photo, files, driveFolderId }) {
+function routeDrawingRequest({ kind, project, dwg, due, detail, submitter, sales, photo, files, driveFolderId, imported }) {
   const reqMeta = { kind, dwgNo: dwg, submitter, salesTeam: sales, at: Date.now() };
   const summary = [`📐 คำขอเขียนแบบวงจรไฟฟ้า${kind === "structure" ? "" : " (ปฏิทินผลิต)"}`, `เลข DWG: ${dwg}`, `ผู้ยื่น: ${submitter}${sales ? ` · Sales: ${sales}` : ""}`].concat(detail ? [detail] : []).join("\n");
 
@@ -5676,10 +5676,13 @@ function routeDrawingRequest({ kind, project, dwg, due, detail, submitter, sales
     const ws = root.boards.drawing;
     if (!ws) { toast(`คุณไม่มีสิทธิ์เข้าปฏิทิน “${boardNameOf("drawing")}” — ให้ admin ติ๊กสิทธิ์ให้ก่อน`); return { boardName: boardNameOf("drawing"), attached: false, title: project, denied: true }; }
     const nt = buildReqTask(ws, project, due, detail, reqMeta, summary, photo, files, driveFolderId);
+    // ★ 2026-10-09: taken in through "ดึงคำขอจากฟอร์ม" = the drawing team already saw it → the request note is
+    //   acknowledged by whoever imported it (no "รับทราบ" to press, no push to their own department)
+    if (imported) Object.assign(nt.comments[0], { ack: true, ackBy: currentUser(), ackAt: Date.now() });
     ws.tasks.push(nt);
     saveState(); renderAll();
-    pushForComment(nt, nt.comments[0], "drawing");
-    pushNotify("alert", "📐 คำขอเขียนแบบวงจรไฟฟ้าใหม่", `${project} · DWG ${dwg}`, "dr-" + Date.now());
+    if (!imported) pushForComment(nt, nt.comments[0], "drawing");
+    if (!imported) pushNotify("alert", "📐 คำขอเขียนแบบวงจรไฟฟ้าใหม่", `${project} · DWG ${dwg}`, "dr-" + Date.now());
     return { boardName: boardNameOf("drawing"), attached: false, title: project };
   }
   // circuit — active production board
@@ -5693,8 +5696,9 @@ function routeDrawingRequest({ kind, project, dwg, due, detail, submitter, sales
     }
     if (!Array.isArray(existing.comments)) existing.comments = [];
     const ac = { id: uid("al"), type: "alert", author: submitter, toDept: dept && dept.id, text: summary, photo: photo || null, ...(files && files.length ? { files } : {}), at: Date.now(), ack: false };
+    if (imported) Object.assign(ac, { ack: true, ackBy: currentUser(), ackAt: Date.now() });
     existing.comments.push(ac);
-    pushForComment(existing, ac);
+    if (!imported) pushForComment(existing, ac);
     if (driveFolderId && !existing.driveFolderId) existing.driveFolderId = driveFolderId;
     existing.request = reqMeta; existing.updatedAt = Date.now();
     saveState(); renderAll();
@@ -5702,9 +5706,10 @@ function routeDrawingRequest({ kind, project, dwg, due, detail, submitter, sales
     return { boardName: (root.boardMeta.find(b => b.id === root.activeBoard) || {}).name, attached: true, title: existing.title };
   }
   const nt = buildReqTask(state, project, due, detail, reqMeta, summary, photo, files, driveFolderId);
+  if (imported) Object.assign(nt.comments[0], { ack: true, ackBy: currentUser(), ackAt: Date.now() });
   state.tasks.push(nt);
   saveState(); renderAll();
-  pushForComment(nt, nt.comments[0]);
+  if (!imported) pushForComment(nt, nt.comments[0]);
   pushNotify("alert", "📐 ขอเขียนแบบวงจร (งานใหม่)", `${project} · DWG ${dwg}`, "dr-" + Date.now());
   return { boardName: (root.boardMeta.find(b => b.id === root.activeBoard) || {}).name, attached: false, title: project };
 }
@@ -5805,7 +5810,7 @@ async function openImportRequestsModal() {
         photo = (rf.find(f => /^image\//.test(f.mime || "")) || {}).url || null;
         extra = "\nไฟล์แนบ: " + rf.map(f => `${f.name} ${f.url}`).join(" · ");
       }
-      const result = routeDrawingRequest({ kind: row.kind, project: row.project, dwg: row.dwg_no, due: row.due_date, detail: (row.detail || "") + extra, submitter: row.submitter, sales: row.sales_team || "", photo, files });
+      const result = routeDrawingRequest({ kind: row.kind, project: row.project, dwg: row.dwg_no, due: row.due_date, detail: (row.detail || "") + extra, submitter: row.submitter, sales: row.sales_team || "", photo, files, imported: true });
       if (!result.denied && files.length) queueUpload(files, null);
       if (result.denied) return;   // no access to the structure calendar → leave the request pending
       const sb = getSupabase();
