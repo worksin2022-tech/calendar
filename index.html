@@ -299,6 +299,12 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
 .tm-title-row .tm-name { flex: 1 1 0; min-width: 0; }
 .extra-input { flex: 1; min-width: 0; border:1px solid var(--border-strong); border-radius:6px; padding: 5px 8px; font: inherit; font-size: 12.5px; background:var(--b-ffffff, #fff); }
 .extra-input:focus { outline:none; border-color:var(--accent); }
+.extra-row .datefield.req-date { flex: 1; min-width: 0; }
+.req-dt { flex: 1; min-width: 0; display: flex; gap: 6px; }
+.req-dt .datefield { flex: 1; min-width: 0; }
+.req-dt .req-time { flex: 0 0 64px; text-align: center; }
+.extra-rows.cols-2 .extra-row.req-wide { grid-column: 1 / -1; }
+.req-wide .req-dt { flex: 0 1 260px; }
 .extra-link-open { flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border:1px solid var(--border-strong); border-radius:6px; color:var(--accent); text-decoration: none; font-weight: 700; }
 .extra-link-open.off { color:var(--text-faint); pointer-events: none; opacity: .5; }
 .cf-type-row { margin: 6px 0 2px; }
@@ -640,6 +646,36 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
 .dash-wrap { flex: 1; min-height: 0; overflow-y: auto; background:var(--b-f7f8fa, #f7f8fa); }
 .dash-inner { max-width: 1100px; margin: 0 auto; padding: 18px 20px 40px; }
 .dash-h { font-size: 14px; font-weight: 700; color:var(--text); margin: 20px 2px 10px; }
+/* ★ 2026-10-09 dashboard statistics (per person + drawing stats) */
+.dash-period { display: inline-flex; gap: 4px; margin-left: 8px; vertical-align: middle; font-weight: 400; }
+.dash-period .dept-chip { font-size: 11.5px; padding: 2px 9px; }
+.dash-2col { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px; margin-top: 12px; }
+.dash-box { background:var(--panel); border:1px solid var(--border); border-radius:12px; padding: 12px 14px; }
+.dash-box-h { font-size: 13px; font-weight: 700; color:var(--text); margin-bottom: 10px; }
+.dash-mini { width: 100%; border-collapse: collapse; font-size: 12.5px; color:var(--text); }
+.dash-mini th { text-align: right; font-weight: 600; color:var(--text-dim); padding: 4px 8px; border-bottom:1px solid var(--border); white-space: nowrap; }
+.dash-mini td { text-align: right; padding: 6px 8px; border-bottom:1px solid var(--border); }
+.dash-mini th:first-child, .dash-mini td:first-child { text-align: left; }
+.dash-mini tr:last-child td { border-bottom: 0; }
+.dash-mini tr[data-person] { cursor: pointer; }
+.dash-mini tr[data-person]:hover td { background: color-mix(in srgb, var(--accent) 6%, transparent); }
+.dash-mini tr.active td { background: color-mix(in srgb, var(--accent) 14%, transparent); }
+.dash-mini td.od { color: var(--danger); font-weight: 700; }
+.dash-mini tr.muted-row td { color:var(--text-dim); }
+.dash-person { display: inline-flex; align-items: center; gap: 7px; }
+.dash-person-x { border: 0; background: none; color:var(--text-dim); cursor: pointer; font-size: 12px; padding: 0 2px; }
+.dash-empty-sm { font-size: 12.5px; color:var(--text-dim); padding: 6px 0; }
+.dash-mchart { display: flex; align-items: flex-end; gap: 8px; height: 120px; padding-top: 14px; }
+.dash-mcol { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; height: 100%; }
+.dash-mbars { flex: 1; display: flex; align-items: flex-end; justify-content: center; gap: 3px; width: 100%; }
+.dash-mbar { width: 13px; min-height: 2px; border-radius: 3px 3px 0 0; position: relative; }
+.dash-mbar.in { background: #60a5fa; }
+.dash-mbar.dn { background: #10b981; }
+.dash-mbar span { position: absolute; top: -15px; left: 50%; transform: translateX(-50%); font-size: 10px; color:var(--text-dim); }
+.dash-mlbl { font-size: 11px; color:var(--text-dim); }
+.dash-legend { display: flex; gap: 14px; font-size: 11px; color:var(--text-dim); margin-top: 8px; }
+.dash-legend i { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; }
+.dash-box, .dash-2col { break-inside: avoid; }
 .dash-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
 .dash-stat { background:var(--b-ffffff, #fff); border:1px solid var(--border); border-radius:12px; padding: 14px 16px; }
 .dash-stat-num { font-size: 26px; font-weight: 800; line-height: 1; color:var(--text); }
@@ -3729,6 +3765,8 @@ let view = { year: new Date().getFullYear(), month: new Date().getMonth() }; // 
 let tpDayOffset = 0; // "ต้องเสร็จวันนี้" panel: 0 = today, +1 = tomorrow, -1 = yesterday ...
 let viewMode = "calendar"; // main view: "calendar" (month grid) | "gantt" (timeline) | "dashboard"
 let dashDept = null;       // dashboard department filter (null = ทุกแผนก)
+let dashPeriod = "month";  // drawing stats period: month | 3m | year | all
+let dashPerson = null;      // dashboard: show only this assignee's projects ("__none" = not assigned)
 let dragTaskId = null;
 let dragSub = null; // { taskId, subId } when dragging a cabinet chip
 let dragStage = null; // { taskId, deptId } when dragging a department-stage chip
@@ -4446,6 +4484,16 @@ function taskStage(t, deptId) {
   return (t.deptStages || []).find(st => st.deptId === deptId) || null;
 }
 function isStatusDone(st) { return !!(st && st.isDone); }
+// ★ 2026-10-09 วันที่จบงานจริง (task.actualEnd): filled with today when the task turns done (only if empty);
+//   back to not-done → cleared again, but only when it was filled automatically (a date typed by hand stays).
+//   every calendar (owner 2026-10-09: for the dashboard stats) — the box itself shows only on the drawing calendar. true = changed
+function stampActualEnd(t, oldStatusId) {
+  if (!t) return false;
+  const was = isStatusDone(getStatus(oldStatusId)), now = isStatusDone(getStatus(t.statusId));
+  if (now && !was && !t.actualEnd) { t.actualEnd = todayIso(); t.actualEndAuto = true; return true; }
+  if (!now && was && t.actualEndAuto) { delete t.actualEnd; delete t.actualEndAuto; return true; }
+  return false;
+}
 function subtaskDone(st) {
   const s = getStatus(st.statusId);
   return isStatusDone(s);
@@ -5591,6 +5639,8 @@ function duplicateTask(src) {
   c.comments = [];
   c.assignees = [];         // a copy is a new job — assign it fresh (and notify) from its own popup
   delete c.driveFolderId;   // a copy has no attachments — never share (and later trash) the original's Drive folder
+  delete c.actualEnd;       // วันที่จบงานจริง belongs to the original job
+  delete c.actualEndAuto;
   c.createdAt = Date.now();
   c.updatedAt = Date.now();
   (c.subtasks || []).forEach(s => {
@@ -5668,8 +5718,8 @@ function buildReqTask(ws, project, due, detail, reqMeta, summary, photo, files, 
   };
 }
 // routes one drawing request into a task. returns { boardName, attached, title } for the caller's toast/summary.
-function routeDrawingRequest({ kind, project, dwg, due, detail, submitter, sales, photo, files, driveFolderId, imported }) {
-  const reqMeta = { kind, dwgNo: dwg, submitter, salesTeam: sales, at: Date.now() };
+function routeDrawingRequest({ kind, project, dwg, due, detail, submitter, sales, photo, files, driveFolderId, imported, sentAt }) {
+  const reqMeta = { kind, dwgNo: dwg, submitter, salesTeam: sales, at: sentAt || Date.now() };
   const summary = [`📐 คำขอเขียนแบบวงจรไฟฟ้า${kind === "structure" ? "" : " (ปฏิทินผลิต)"}`, `เลข DWG: ${dwg}`, `ผู้ยื่น: ${submitter}${sales ? ` · Sales: ${sales}` : ""}`].concat(detail ? [detail] : []).join("\n");
 
   if (kind === "structure") {
@@ -5810,7 +5860,7 @@ async function openImportRequestsModal() {
         photo = (rf.find(f => /^image\//.test(f.mime || "")) || {}).url || null;
         extra = "\nไฟล์แนบ: " + rf.map(f => `${f.name} ${f.url}`).join(" · ");
       }
-      const result = routeDrawingRequest({ kind: row.kind, project: row.project, dwg: row.dwg_no, due: row.due_date, detail: (row.detail || "") + extra, submitter: row.submitter, sales: row.sales_team || "", photo, files, imported: true });
+      const result = routeDrawingRequest({ kind: row.kind, project: row.project, dwg: row.dwg_no, due: row.due_date, detail: (row.detail || "") + extra, submitter: row.submitter, sales: row.sales_team || "", photo, files, imported: true, sentAt: row.created_at ? new Date(row.created_at).getTime() : null });
       if (!result.denied && files.length) queueUpload(files, null);
       if (result.denied) return;   // no access to the structure calendar → leave the request pending
       const sb = getSupabase();
@@ -6637,9 +6687,12 @@ function openTaskModal(taskId, defaults={}) {
       if (!stg.fields || typeof stg.fields !== "object") stg.fields = {};
       cards.push({ stg, list: deptFields(stg.deptId), head: `${deptIco(dept)}ข้อมูลเพิ่มเติม · ${escapeHtml(dept.name)}` });
     });
-    paintMore(cards.length > 0);
-    if (cards.length === 0) { extraBlock.style.display = "none"; return; }
+    // ★ 2026-10-09: drawing calendar → "ข้อมูลคำขอแบบ" card (task.request + task.actualEnd), also on any task made from a request
+    const showReq = root.activeBoard === "drawing" || !!task.request;
+    paintMore(cards.length > 0 || showReq);
+    if (cards.length === 0 && !showReq) { extraBlock.style.display = "none"; return; }
     extraBlock.style.display = "";
+    if (showReq) extraWrap.appendChild(buildRequestCard());
     cards.forEach(({ stg, list, head }) => {
       const card = document.createElement("div");
       card.className = "extra-card";
@@ -6729,6 +6782,80 @@ function openTaskModal(taskId, defaults={}) {
       extraWrap.appendChild(card);
     });
   }
+  // "ข้อมูลคำขอแบบ": the request's own data (filled automatically from the request form) + the real finish date
+  function buildRequestCard() {
+    const card = document.createElement("div");
+    card.className = "extra-card";
+    card.innerHTML = `<div class="extra-card-head">${ico("ruler")}ข้อมูลคำขอแบบ</div><div class="extra-rows cols-2"></div>`;
+    const rowsEl = card.querySelector(".extra-rows");
+    const req = () => { if (!task.request || typeof task.request !== "object") task.request = {}; return task.request; };
+    const guard = () => { if (canFull()) return true; permDenied("สิทธิ์ของคุณแก้ข้อมูลนี้ไม่ได้"); return false; };
+    const row = (name) => {
+      const r = document.createElement("div");
+      r.className = "extra-row";
+      r.innerHTML = `<span class="extra-row-name" title="${escapeHtml(name)}">${escapeHtml(name)}</span>`;
+      rowsEl.appendChild(r);
+      return r;
+    };
+    // วันที่จบงานจริง
+    const endDf = createDateField({ value: task.actualEnd || null, allowClear: true, extraClass: "req-date", onChange: (iso) => {
+      if (!guard()) { endDf.setValue(task.actualEnd || null); return; }
+      if (iso) task.actualEnd = iso; else delete task.actualEnd;
+      delete task.actualEndAuto;
+      scheduleCommit(0);
+    } });
+    row("วันที่จบงานจริง").appendChild(endDf);
+    // text fields (autocomplete from earlier requests)
+    [["submitter", "ชื่อผู้ยื่น"], ["salesTeam", "ทีม Sales"], ["dwgNo", "เลข DWG"]].forEach(([key, name]) => {
+      const r = row(name);
+      const inp = document.createElement("input");
+      inp.type = "text"; inp.className = "extra-input"; inp.placeholder = "พิมพ์…"; inp.autocomplete = "off";
+      inp.value = (task.request && task.request[key]) || "";
+      inp.addEventListener("input", () => {
+        if (!guard()) { inp.value = (task.request && task.request[key]) || ""; return; }
+        const v = inp.value.trim();
+        if (v) req()[key] = v; else if (task.request) delete task.request[key];
+        scheduleCommit(1200);
+      });
+      r.appendChild(inp);
+      if (key !== "dwgNo") attachAutocomplete(inp, () => pastRequestValues(key));
+    });
+    // วันที่ยื่นขอแบบ = date + time (request.at, ms)
+    const atOf = () => (task.request && task.request.at) || null;
+    const hm = (ts) => { const d = new Date(ts); return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`; };
+    const r2 = row("วันที่ยื่นขอแบบ");
+    r2.classList.add("req-wide");
+    const box = document.createElement("div");
+    box.className = "req-dt";
+    const timeInp = document.createElement("input");
+    timeInp.type = "text"; timeInp.className = "extra-input req-time"; timeInp.placeholder = "00:00"; timeInp.inputMode = "numeric"; timeInp.maxLength = 5;
+    const setAt = (iso, time) => {
+      if (!iso) { if (task.request) delete task.request.at; }
+      else {
+        const [y, m, d] = iso.split("-").map(Number);
+        const [hh, mm] = (time || "00:00").split(":").map(Number);
+        req().at = new Date(y, m - 1, d, hh || 0, mm || 0).getTime();
+      }
+      scheduleCommit(0);
+    };
+    const subDf = createDateField({ value: atOf() ? isoDate(new Date(atOf())) : null, allowClear: true, extraClass: "req-date", onChange: (iso) => {
+      if (!guard()) { subDf.setValue(atOf() ? isoDate(new Date(atOf())) : null); return; }
+      setAt(iso, timeInp.value);
+      if (!iso) timeInp.value = "";
+    } });
+    timeInp.value = atOf() ? hm(atOf()) : "";
+    timeInp.addEventListener("change", () => {
+      if (!guard()) { timeInp.value = atOf() ? hm(atOf()) : ""; return; }
+      const mt = timeInp.value.trim().match(/^(\d{1,2})[:.]?(\d{2})?$/);
+      const okT = mt && +mt[1] < 24 && +(mt[2] || 0) < 60;
+      timeInp.value = okT ? `${pad2(+mt[1])}:${pad2(+(mt[2] || 0))}` : (atOf() ? hm(atOf()) : "");
+      const iso = subDf.getValue();
+      if (iso && okT) setAt(iso, timeInp.value);
+    });
+    box.append(subDf, timeInp);
+    r2.appendChild(box);
+    return card;
+  }
   const moreEl = modal.querySelector("[data-more]");
   let moreTouched = false;
   moreEl.addEventListener("toggle", () => { moreTouched = true; });
@@ -6739,7 +6866,8 @@ function openTaskModal(taskId, defaults={}) {
     modal.querySelector("[data-more-label]").textContent = parts.join(" · ");
     const filled = !!(task.description || "").trim() || (task.labels || []).length > 0
       || (task.deptStages || []).some(st => st.fields && Object.keys(st.fields).length && (!modalDept || st.deptId === modalDept))
-      || !!(task.fields && Object.keys(task.fields).length && sharedFields().length);
+      || !!(task.fields && Object.keys(task.fields).length && sharedFields().length)
+      || !!task.actualEnd || !!(task.request && (task.request.dwgNo || task.request.submitter));
     if (!moreTouched && filled) moreEl.open = true;
   }
   function addStage() {
@@ -7082,6 +7210,7 @@ function openTaskModal(taskId, defaults={}) {
     if (canTick()) {
       diffTaskActivity(base, local).forEach(text => logActivity(local, text));   // only MY changes (base → mine)
       autoFired = runAutomations(local, automationSnapshot(base), base);   // ⚡ (a status picked by hand wins)
+      if (stampActualEnd(local, base.statusId)) autoFired = true;   // repaint the วันที่จบงานจริง box
       notifyAssigneeChanges(base, local);
       notifyTaskDiff(base, local);
     }
@@ -7443,6 +7572,13 @@ function diffTaskActivity(before, after) {
     logs.push(after.startDate ? `ตั้งวันเริ่ม → ${formatDateTH(after.startDate)}` : "ลบวันเริ่ม");
   if (before.priority !== after.priority)
     logs.push(`เปลี่ยนความสำคัญ → ${getPriority(after.priority).label}`);
+  // ข้อมูลคำขอแบบ
+  const brq = before.request || {}, arq = after.request || {};
+  [["submitter", "ชื่อผู้ยื่น"], ["salesTeam", "ทีม Sales"], ["dwgNo", "เลข DWG"]].forEach(([k, name]) => {
+    if ((brq[k] || "") !== (arq[k] || "")) logs.push(arq[k] ? `${name}: ${arq[k]}` : `ล้าง ${name}`);
+  });
+  if ((brq.at || 0) !== (arq.at || 0)) logs.push(arq.at ? `วันที่ยื่นขอแบบ → ${formatDateTimeTH(arq.at)}` : "ล้างวันที่ยื่นขอแบบ");
+  if ((before.actualEnd || "") !== (after.actualEnd || "")) logs.push(after.actualEnd ? `วันที่จบงานจริง → ${formatDateTH(after.actualEnd)}` : "ล้างวันที่จบงานจริง");
   // shared (all-department) fields
   sharedFields().forEach(f => {
     const bv = (before.fields || {})[f.id] || null, av = (after.fields || {})[f.id] || null;
@@ -9654,8 +9790,10 @@ function renderDashboard() {
   });
   const maxN = Math.max(1, ...buckets.map(b => b.n));
 
+  if (dashPerson && dashPerson !== "__none" && !tasks.some(t => (t.assignees || []).includes(dashPerson))) dashPerson = null;
+  const ofPerson = t => !dashPerson || (dashPerson === "__none" ? !(t.assignees || []).length : (t.assignees || []).includes(dashPerson));
   const prRank = { urgent: 4, high: 3, medium: 2, low: 1, none: 0 };
-  const sorted = tasks.slice().sort((a, b) =>
+  const sorted = tasks.filter(ofPerson).sort((a, b) =>
     (isComp(a) - isComp(b)) || ((dueOf(a) || "9999").localeCompare(dueOf(b) || "9999")) || (prRank[b.priority] || 0) - (prRank[a.priority] || 0));
 
   const filterHtml = `
@@ -9713,7 +9851,7 @@ function renderDashboard() {
     return `<div class="dt-people">${ids.slice(0, 2).map(id => { const p = teamProfiles.get(id); return `<span class="dt-person">${avatarHtml(p)}${escapeHtml(personName(p))}</span>`; }).join("")}${ids.length > 2 ? `<span class="dt-more">+${ids.length - 2} คน</span>` : ""}</div>`;
   };
   const cardsHtml = sorted.length ? `
-    <div class="dash-h">โปรเจค${dep ? "ในแผนกนี้" : "ทั้งหมด"} (${sorted.length})</div>
+    <div class="dash-h">โปรเจค${dep ? "ในแผนกนี้" : "ทั้งหมด"}${dashPerson ? ` · ${escapeHtml(dashPerson === "__none" ? "ยังไม่มอบหมาย" : personName(teamProfiles.get(dashPerson)))} <button class="dash-person-x dash-print-hide" data-person-clear title="แสดงทุกคน">✕</button>` : ""} (${sorted.length})</div>
     <div class="dash-table-card">
       <table class="dash-table">
         <thead><tr>
@@ -9747,9 +9885,104 @@ function renderDashboard() {
       </table>
     </div>` : `<div class="dash-empty">ไม่มีโปรเจค${dep ? "ในแผนกนี้" : "ในปฏิทินนี้"}</div>`;
 
-  wrap.innerHTML = `<div class="dash-inner">${filterHtml}${statHtml}${workloadHtml}${deptHtml}${cardsHtml}</div>`;
+  // ★ 2026-10-09 สถิติ: รายคน (ทุกปฏิทิน) + สถิติงานเขียนแบบ (ปฏิทินเขียนแบบ). "เสร็จ" ตามช่วงเวลา/เวลาเฉลี่ย/ทันกำหนด
+  //   ใช้ task.actualEnd (วันที่จบงานจริง) — ปฏิทินที่ยังไม่มีงานไหนมีวันจบจริง ตารางรายคนนับแค่ ค้าง/เลย/เสร็จ ตามสถานะ
+  const isDrawing = root.activeBoard === "drawing";
+  const hasEnd = tasks.some(t => t.actualEnd);
+  const pStart = (() => {
+    const n = new Date();
+    if (dashPeriod === "month") return isoDate(new Date(n.getFullYear(), n.getMonth(), 1));
+    if (dashPeriod === "3m") return isoDate(new Date(n.getFullYear(), n.getMonth() - 2, 1));
+    if (dashPeriod === "year") return isoDate(new Date(n.getFullYear(), 0, 1));
+    return null;
+  })();
+  const inPer = iso => !!iso && (!pStart || iso >= pStart);
+  const subIso = t => (t.request && t.request.at) ? isoDate(new Date(t.request.at)) : (t.createdAt ? isoDate(new Date(t.createdAt)) : null);
+  const daysTo = t => { const a = subIso(t); return a && t.actualEnd ? Math.max(0, Math.round((fromIso(t.actualEnd) - fromIso(a)) / 86400000)) : null; };
+  const avgDays = list => { const v = list.map(daysTo).filter(x => x != null); return v.length ? (v.reduce((a, b) => a + b, 0) / v.length).toFixed(1) : "—"; };
+  const onTimePct = list => { const v = list.filter(t => dueOf(t)).map(t => t.actualEnd <= dueOf(t)); return v.length ? Math.round(v.filter(Boolean).length / v.length * 100) + "%" : "—"; };
+  const isOver = t => { if (isComp(t)) return false; const d = dueOf(t); return !!d && d < today; };
+  const periodBtns = `<span class="dash-period dash-print-hide">${[["month", "เดือนนี้"], ["3m", "3 เดือน"], ["year", "ปีนี้"], ["all", "ทั้งหมด"]]
+    .map(([k, l]) => `<button class="dept-chip${dashPeriod === k ? " active" : ""}" data-dp="${k}">${l}</button>`).join("")}</span>`;
+  const periodName = { month: "เดือนนี้", "3m": "3 เดือน", year: "ปีนี้", all: "ทั้งหมด" }[dashPeriod];
+
+  let drawHtml = "";
+  if (isDrawing) {
+    const reqIn = tasks.filter(t => inPer(subIso(t)));
+    const dn = tasks.filter(t => inPer(t.actualEnd));
+    const MS = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
+    const n0 = new Date(), months = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(n0.getFullYear(), n0.getMonth() - i, 1), key = isoDate(d).slice(0, 7);
+      months.push({ label: MS[d.getMonth()], inN: tasks.filter(t => (subIso(t) || "").startsWith(key)).length, dnN: tasks.filter(t => (t.actualEnd || "").startsWith(key)).length });
+    }
+    const mMax = Math.max(1, ...months.map(m => Math.max(m.inN, m.dnN)));
+    const sales = new Map();
+    reqIn.forEach(t => { const k = (t.request && t.request.salesTeam) || "ไม่ระบุ"; if (!sales.has(k)) sales.set(k, []); sales.get(k).push(t); });
+    const salesRows = [...sales.entries()].sort((a, b) => b[1].length - a[1].length);
+    drawHtml = `
+    <div class="dash-h">สถิติงานเขียนแบบ · ${periodName} ${periodBtns}</div>
+    <div class="dash-stats">
+      <div class="dash-stat"><div class="dash-stat-num">${reqIn.length}</div><div class="dash-stat-lbl">คำขอเข้า</div></div>
+      <div class="dash-stat green"><div class="dash-stat-num">${dn.length}</div><div class="dash-stat-lbl">เสร็จแล้ว</div></div>
+      <div class="dash-stat accent"><div class="dash-stat-num">${avgDays(dn)}</div><div class="dash-stat-lbl">เฉลี่ย ยื่น→เสร็จ (วัน)</div></div>
+      <div class="dash-stat green"><div class="dash-stat-num">${onTimePct(dn)}</div><div class="dash-stat-lbl">ทันกำหนด</div></div>
+      <div class="dash-stat danger"><div class="dash-stat-num">${tasks.filter(t => !isComp(t)).length} / ${tasks.filter(isOver).length}</div><div class="dash-stat-lbl">ค้าง / เลยกำหนด</div></div>
+    </div>
+    <div class="dash-2col">
+      <div class="dash-box">
+        <div class="dash-box-h">รายเดือน · คำขอเข้า / เสร็จ</div>
+        <div class="dash-mchart">${months.map(m => `
+          <div class="dash-mcol"><div class="dash-mbars">
+            <div class="dash-mbar in" style="height:${Math.round(m.inN / mMax * 100)}%" title="คำขอเข้า ${m.inN}"><span>${m.inN || ""}</span></div>
+            <div class="dash-mbar dn" style="height:${Math.round(m.dnN / mMax * 100)}%" title="เสร็จ ${m.dnN}"><span>${m.dnN || ""}</span></div>
+          </div><div class="dash-mlbl">${m.label}</div></div>`).join("")}
+        </div>
+        <div class="dash-legend"><span><i style="background:#60a5fa"></i>คำขอเข้า</span><span><i style="background:#10b981"></i>เสร็จ</span></div>
+      </div>
+      <div class="dash-box">
+        <div class="dash-box-h">รายทีม Sales · ${periodName}</div>
+        ${salesRows.length ? `<table class="dash-mini"><thead><tr><th>ทีม</th><th>คำขอ</th><th>เสร็จ</th><th>เฉลี่ย (วัน)</th></tr></thead><tbody>
+          ${salesRows.map(([k, list]) => { const d = list.filter(t => t.actualEnd); return `<tr><td>${escapeHtml(k)}</td><td>${list.length}</td><td>${d.length}</td><td>${avgDays(d)}</td></tr>`; }).join("")}
+        </tbody></table>` : `<div class="dash-empty-sm">ไม่มีคำขอในช่วงนี้</div>`}
+      </div>
+    </div>`;
+  }
+
+  // per person (assignees) — a task given to 2 people counts fully for both
+  const people = new Map();
+  let noneOpen = 0, noneOver = 0;
+  tasks.forEach(t => {
+    const ids = [...new Set(t.assignees || [])];
+    if (!ids.length) { if (!isComp(t)) noneOpen++; if (isOver(t)) noneOver++; return; }
+    ids.forEach(id => { if (!people.has(id)) people.set(id, []); people.get(id).push(t); });
+  });
+  let personHtml = "";
+  if (people.size || noneOpen) {
+    const rows = [...people.entries()].map(([id, list]) => {
+      const p = teamProfiles.get(id);
+      const done = hasEnd ? list.filter(t => inPer(t.actualEnd)) : list.filter(isComp);
+      return { id, p, name: p ? personName(p) : "(ผู้ใช้ที่ไม่อยู่แล้ว)", open: list.filter(t => !isComp(t)).length, over: list.filter(isOver).length, done };
+    }).sort((a, b) => (b.open - a.open) || (b.over - a.over) || a.name.localeCompare(b.name, "th"));
+    personHtml = `
+    <div class="dash-h">งานรายคน${scopeLbl}${hasEnd ? ` · ${periodName} ${isDrawing ? "" : periodBtns}` : ""}</div>
+    <div class="dash-box">
+      <table class="dash-mini dash-people"><thead><tr><th>ผู้รับผิดชอบ</th><th>ค้าง</th><th>เลยกำหนด</th><th>เสร็จ</th>${hasEnd ? "<th>เฉลี่ย (วัน)</th><th>ทันกำหนด</th>" : ""}</tr></thead><tbody>
+        ${rows.map(r => `<tr data-person="${escapeHtml(r.id)}" class="${dashPerson === r.id ? "active" : ""}">
+          <td><span class="dash-person">${r.p ? avatarHtml(r.p) : ""}${escapeHtml(r.name)}</span></td>
+          <td>${r.open}</td><td class="${r.over ? "od" : ""}">${r.over}</td><td>${r.done.length}</td>
+          ${hasEnd ? `<td>${avgDays(r.done)}</td><td>${onTimePct(r.done.filter(t => t.actualEnd))}</td>` : ""}</tr>`).join("")}
+        ${noneOpen ? `<tr data-person="__none" class="muted-row${dashPerson === "__none" ? " active" : ""}"><td>ยังไม่มอบหมาย</td><td>${noneOpen}</td><td class="${noneOver ? "od" : ""}">${noneOver}</td><td></td>${hasEnd ? "<td></td><td></td>" : ""}</tr>` : ""}
+      </tbody></table>
+    </div>`;
+  }
+
+  wrap.innerHTML = `<div class="dash-inner">${filterHtml}${statHtml}${drawHtml}${personHtml}${workloadHtml}${deptHtml}${cardsHtml}</div>`;
   wrap.querySelectorAll("[data-df]").forEach(b => b.addEventListener("click", () => { dashDept = b.dataset.df || null; renderDashboard(); }));
   wrap.querySelector('[data-act="print"]')?.addEventListener("click", () => window.print());
+  wrap.querySelectorAll("[data-dp]").forEach(b => b.addEventListener("click", () => { dashPeriod = b.dataset.dp; renderDashboard(); }));
+  wrap.querySelectorAll("tr[data-person]").forEach(r => r.addEventListener("click", () => { dashPerson = dashPerson === r.dataset.person ? null : r.dataset.person; renderDashboard(); }));
+  wrap.querySelector("[data-person-clear]")?.addEventListener("click", () => { dashPerson = null; renderDashboard(); });
   wrap.querySelectorAll(".dash-table tbody tr[data-id]").forEach(c => c.addEventListener("click", () => openProjectDashboard(c.dataset.id)));
 }
 
@@ -10199,6 +10432,7 @@ function pushNotify(type, title, body, tag) { /* own action → no notification 
 function savedByMe(row) { return !!(row && currentProfile && row.updated_by && row.updated_by === currentProfile.display_name); }
 // status / done changes on a task (or one of its cabinets)
 function notifyStatusChange(t, sub, oldId, newId) {
+  if (!sub) stampActualEnd(t, oldId);
   if (oldId === newId || !taskRelevantToMe(t)) return;
   const ns = getStatus(newId), os = getStatus(oldId);
   const what = sub ? ` · ตู้ “${sub.text || "-"}”` : "";   // task level = just the title; cabinet adds its name
