@@ -2773,13 +2773,13 @@ function canSeePerson(p) {
   if (!p) return false;
   if (!myViewDeptId()) return true;
   if (currentProfile && p.id === currentProfile.id) return true;
-  return p.dept_id === myDeptId();
+  return sameDept(p.dept_id, myDeptId());
 }
 // can person p see task t on their department calendar? (no department / PM department = every task) — personal
 // notifications (assignment, @mention) only go to people who can actually see the task: no cross-department alerts
 function personSeesTask(p, t, ws) {
   if (!p || !t) return false;
-  const d = p.dept_id && getDeptIn(ws || state, p.dept_id);
+  const d = p.dept_id && getDeptIn(ws || state, deptIdIn(ws || state, p.dept_id));
   if (!d || d.seeAll) return true;
   return (t.deptStages || []).some(s => s.deptId === d.id);
 }
@@ -2834,9 +2834,9 @@ function openAssignPicker(anchor, selectedIds, onChange) {
     if (!teamProfiles.size) { listEl.innerHTML = `<div class="asg-empty">กำลังโหลดรายชื่อ…</div>`; return; }
     if (!people.length) { listEl.innerHTML = `<div class="asg-empty">ไม่พบรายชื่อ</div>`; return; }
     // this board's departments first (in board order), then any other department, then "no department"
-    const order = [...(state.departments || []), ...allDepartments().filter(d => !(state.departments || []).some(x => x.id === d.id))];
-    const groups = order.map(d => ({ name: d.name, ppl: people.filter(p => p.dept_id === d.id) }))
-      .concat([{ name: "ไม่ระบุแผนก", ppl: people.filter(p => !p.dept_id || !order.some(d => d.id === p.dept_id)) }])
+    const order = [...(state.departments || []), ...allDepartments().filter(d => !(state.departments || []).some(x => sameDept(x.id, d.id)))];
+    const groups = order.map(d => ({ name: d.name, ppl: people.filter(p => sameDept(p.dept_id, d.id)) }))
+      .concat([{ name: "ไม่ระบุแผนก", ppl: people.filter(p => !p.dept_id || !order.some(d => sameDept(p.dept_id, d.id))) }])
       .filter(g => g.ppl.length);
     const me = currentProfile && currentProfile.id;
     listEl.innerHTML = groups.map(g => `<div class="asg-group">${escapeHtml(g.name)}</div>` + g.ppl
@@ -2892,7 +2892,7 @@ function renderUserBadge() {
   if (!el || !currentProfile) return;
   el.title = "แก้ไขโปรไฟล์ของฉัน";
   el.classList.add("sbu-card");
-  const dept = getDept(myDeptId());   // show the DEPARTMENT under the name (name only, no icon)
+  const dept = getDept(myDeptId()) || deptAnywhere(currentProfile.dept_id) || null;   // show the DEPARTMENT under the name (name only, no icon)
   el.innerHTML = avatarHtml(currentProfile) +
     `<span class="sbu-text">` +
       `<span class="sbu-name" title="${escapeHtml(currentProfile.email || "")}">${escapeHtml(currentProfile.display_name || currentProfile.email || "")}</span>` +
@@ -3148,7 +3148,7 @@ function openMyProfileModal() {
   const q = s => overlay.querySelector(s);
   const nameInput = q("[data-name]");
   nameInput.value = currentProfile.display_name || "";
-  const dept = currentProfile.dept_id ? getDept(currentProfile.dept_id) : null;
+  const dept = currentProfile.dept_id ? (getDept(myDeptId()) || deptAnywhere(currentProfile.dept_id)) : null;
   q("[data-deptname]").textContent = dept ? dept.name : (currentProfile.dept_id || "— ไม่ระบุ —");
   const paint = () => {
     const nm = (nameInput.value || currentProfile.email || "?").trim();
@@ -3507,9 +3507,39 @@ function toast(msg, action) {
 // ★ "my department". The admin-assigned one on the signed-in profile wins (it's per-PERSON and
 // applies to every board); the old per-board setting is the fallback for anyone with none assigned.
 // Returns a valid department id for the ACTIVE board, or "" when there's none.
+// ★ 2026-10-11 (owner): ONE department per person on every calendar. Departments are stored per calendar (own ids —
+//   e.g. "Electrical Design" on โรงงาน and on เขียนแบบ have different ids), so: SAME NAME = SAME DEPARTMENT.
+//   Nothing in the saved data is re-keyed; ids are translated when read.
+function deptNameKey(name) { return String(name || "").trim().toLowerCase(); }
+function deptAnywhere(id) {   // the department with this id on any calendar (โรงงาน first)
+  if (!id || !root || !root.boards) return null;
+  for (const b of (root.boardMeta || [])) { const d = ((root.boards[b.id] || {}).departments || []).find(x => x.id === id); if (d) return d; }
+  return null;
+}
+// this department's id ON calendar ws (same id, else the department there with the same name), or ""
+function deptIdIn(ws, id) {
+  if (!id || !ws) return "";
+  const list = ws.departments || [];
+  if (list.some(d => d.id === id)) return id;
+  const src = deptAnywhere(id), k = src && deptNameKey(src.name);
+  const hit = k ? list.find(d => deptNameKey(d.name) === k) : null;
+  return hit ? hit.id : "";
+}
+function sameDept(a, b) {
+  if (!a || !b) return false;
+  if (a === b) return true;
+  const da = deptAnywhere(a), db = deptAnywhere(b);
+  return !!(da && db && deptNameKey(da.name) && deptNameKey(da.name) === deptNameKey(db.name));
+}
+// the first id carrying this department's name (โรงงาน first) — one entry per department in pickers
+function canonicalDeptId(id) {
+  const d = deptAnywhere(id); if (!d) return id || "";
+  const hit = allDepartments().find(x => deptNameKey(x.name) === deptNameKey(d.name));
+  return hit ? hit.id : id;
+}
 function myDeptId() {
-  const fromProfile = currentProfile && currentProfile.dept_id;
-  if (fromProfile && getDept(fromProfile)) return fromProfile;
+  const fromProfile = currentProfile && deptIdIn(state, currentProfile.dept_id);
+  if (fromProfile) return fromProfile;
   const fromBoard = state.settings && state.settings.myDept;
   return (fromBoard && getDept(fromBoard)) ? fromBoard : "";
 }
@@ -4336,8 +4366,8 @@ function notifyRemoteBoardChange(ws, newTasks, oldTasksById) {
   });
   // my department in the REMOTE board: the profile's admin-assigned one wins (per-person, all boards),
   // else that board's own setting — same precedence as myDeptId(), which only covers the active board
-  const profDept = currentProfile && currentProfile.dept_id;
-  const myDept = (profDept && getDeptIn(ws, profDept)) ? profDept : (getDeptIn(ws, ws.settings.myDept) ? ws.settings.myDept : "");
+  const profDept = currentProfile && deptIdIn(ws, currentProfile.dept_id);
+  const myDept = profDept || (getDeptIn(ws, ws.settings.myDept) ? ws.settings.myDept : "");
   // ★ no department set = admin/planner mode → receive no cross-device notifications either (matches
   //   the local rule in taskRelevantToMe/pendingAlerts). Exception: "notify me about everything" mode.
   const fire = (type, title, body, tag) => { if (type === "alert" || notify[type]) sysNotify(title, { body: body || "", tag, renotify: true }); };
@@ -8071,7 +8101,7 @@ function openSettingsModal(initialTab = "statuses") {
    department picker). Everyone-facing profile editing lives on the sidebar badge, since this whole
    settings modal is admin-only; managing OTHER people is the separate 👥 จัดการผู้ใช้ tab below. */
 function buildUserPanel(container) {
-  const assigned = currentProfile && currentProfile.dept_id && getDept(currentProfile.dept_id);
+  const assigned = currentProfile && currentProfile.dept_id && (getDept(myDeptId()) || deptAnywhere(currentProfile.dept_id));
   const sec = document.createElement("div");
   sec.className = "settings-section";
   sec.innerHTML = `
@@ -8127,7 +8157,7 @@ function buildUsersAdminPanel(container) {
   // opened from the Service calendar → list only Service people (+ unassigned newcomers so a Service
   // admin can still approve new staff) and only offer the Service department
   const svcOnly = root.activeBoard === SERVICE_BOARD;
-  const allDepts = svcOnly ? allDepartments().filter(d => d.id === SERVICE_DEPT) : allDepartments();
+  const allDepts = svcOnly ? allDepartments().filter(d => d.id === SERVICE_DEPT) : allDepartments().filter((d, i, arr) => arr.findIndex(x => deptNameKey(x.name) === deptNameKey(d.name)) === i);
   const deptOptions = `<option value="">— ไม่ระบุแผนก —</option>` +
     allDepts.map(d => `<option value="${d.id}">${escapeHtml(d.name)}</option>`).join("");
   const sb = getSupabase();
@@ -8171,7 +8201,7 @@ function buildUsersAdminPanel(container) {
   // shared role/dept dropdown handlers (active + pending rows have them; blocked rows don't)
   function wireRoleDept(row, p, isMe) {
     row.querySelector("[data-role]").value = p.role || "member";
-    row.querySelector("[data-dept]").value = p.dept_id || "";
+    row.querySelector("[data-dept]").value = canonicalDeptId(p.dept_id) || "";
     row.querySelector("[data-role]").addEventListener("change", async (e) => {
       const v = e.target.value, who = p.display_name || p.email || "";
       if (await patch(p.id, { role: v })) { p.role = v; if (isMe) currentProfile.role = v; toast(`ตั้ง ${who} เป็น ${v} แล้ว`); load(); }   // reload → perm dropdown enable-state follows role
@@ -8193,7 +8223,7 @@ function buildUsersAdminPanel(container) {
         if (isMe) { currentProfile.dept_id = v || null; renderAll(); checkAlerts(); }   // my own dept changed → views follow immediately
         toast("บันทึกแผนกแล้ว");
         load();   // re-group: the person moves under their new department's heading
-      } else e.target.value = p.dept_id || "";
+      } else e.target.value = canonicalDeptId(p.dept_id) || "";
     });
   }
 
@@ -8338,7 +8368,7 @@ function buildUsersAdminPanel(container) {
     // 2) approved users grouped BY DEPARTMENT (department order, then a "no department" group last)
     const byDept = new Map();
     active.forEach(u => {
-      const k = (u.dept_id && allDepts.some(d => d.id === u.dept_id)) ? u.dept_id : "";
+      const k = (u.dept_id && allDepts.some(d => d.id === canonicalDeptId(u.dept_id))) ? canonicalDeptId(u.dept_id) : "";
       if (!byDept.has(k)) byDept.set(k, []);
       byDept.get(k).push(u);
     });
@@ -8589,6 +8619,18 @@ function buildDeptsPanel(container) {
       const [icoInput, nameInput, upBtn, downBtn, delBtn] = row.children;
       icoInput.addEventListener("input", () => { dpt.icon = icoInput.value.trim() || "🏷️"; saveState(); renderDefaults(); renderAll(); });
       nameInput.addEventListener("input", () => { dpt.name = nameInput.value; saveState(); renderDefaults(); renderAll(); });
+      // ★ 2026-10-11 same name = same department → renaming it renames it on the other calendars too
+      let nameBefore = dpt.name;
+      nameInput.addEventListener("focus", () => { nameBefore = dpt.name; });
+      nameInput.addEventListener("change", () => {
+        const from = deptNameKey(nameBefore), to = (dpt.name || "").trim();
+        nameBefore = dpt.name;
+        if (!from || !to || from === deptNameKey(to)) return;
+        let n = 0;
+        (root.boardMeta || []).forEach(b => { const ws = root.boards[b.id]; if (!ws || ws === state) return;
+          (ws.departments || []).forEach(d => { if (deptNameKey(d.name) === from) { d.name = to; n++; } }); });
+        if (n) { saveState(); renderAll(); toast(`เปลี่ยนชื่อแผนกในปฏิทินอื่นด้วย (${n})`); }
+      });
       upBtn.addEventListener("click", () => { if (i>0){ [state.departments[i-1],state.departments[i]]=[state.departments[i],state.departments[i-1]]; saveState(); renderRows(); renderDefaults(); renderAll(); } });
       downBtn.addEventListener("click", () => { if (i<state.departments.length-1){ [state.departments[i+1],state.departments[i]]=[state.departments[i],state.departments[i+1]]; saveState(); renderRows(); renderDefaults(); renderAll(); } });
       delBtn.addEventListener("click", async () => {
@@ -9074,8 +9116,12 @@ function buildDisplayPanel(container) {
     const wrap = sec.querySelector(wrapSel);
     if (!wrap) return;
     if (!Array.isArray(state.settings[settingKey])) state.settings[settingKey] = [];
-    wrap.innerHTML = (state.departments || []).map(d =>
-      `<label class="perm-dept-row"><input type="checkbox" value="${d.id}" ${state.settings[settingKey].includes(d.id) ? "checked" : ""}> ${deptIco(d)}${escapeHtml(d.name)}</label>`).join("")
+    const here = new Set((state.departments || []).map(d => d.id));
+    const others = [];   // departments that exist only on other calendars (e.g. Sales on โรงงาน) — tagged with that calendar's name
+    (root.boardMeta || []).forEach(b => { if (b.id === root.activeBoard || b.id === SERVICE_BOARD) return;
+      ((root.boards[b.id] || {}).departments || []).forEach(d => { if (!here.has(d.id) && !(state.departments || []).some(x => sameDept(x.id, d.id)) && !others.some(o => sameDept(o.d.id, d.id))) others.push({ d, board: b.name }); }); });
+    const row = (d, tag) => `<label class="perm-dept-row"><input type="checkbox" value="${d.id}" ${state.settings[settingKey].includes(d.id) ? "checked" : ""}> ${deptIco(d)}${escapeHtml(d.name)}${tag ? ` <span class="muted" style="font-size:11px">· ${escapeHtml(tag)}</span>` : ""}</label>`;
+    wrap.innerHTML = (state.departments || []).map(d => row(d, "")).join("") + others.map(o => row(o.d, o.board)).join("")
       || `<span class="settings-toggle-sub">ยังไม่มีแผนก</span>`;
     wrap.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.addEventListener("change", () => {
       const set = new Set(state.settings[settingKey]);
@@ -11296,8 +11342,8 @@ function alertTarget(c) {
 }
 // my department in ANY board (same precedence as myDeptId(), which only covers the active board)
 function myDeptIn(ws) {
-  const pd = currentProfile && currentProfile.dept_id;
-  if (pd && getDeptIn(ws, pd)) return pd;
+  const pd = currentProfile && deptIdIn(ws, currentProfile.dept_id);
+  if (pd) return pd;
   const bd = ws.settings && ws.settings.myDept;
   return (bd && getDeptIn(ws, bd)) ? bd : "";
 }
@@ -11834,9 +11880,12 @@ function applySidebarPerm() {
 function canSeeDeptButton(settingKey, anyTier = false) {
   if (root.activeBoard === SERVICE_BOARD) return false;   // drawing-request flow is factory-only — hidden on Service even for admins
   if (!anyTier && !canFull()) return false;
-  const my = myDeptId();
+  // ★ 2026-10-11: departments belong to a calendar, and the profile's dept_id is one of them (e.g. a Sales department on
+  //   the factory calendar). On the drawing calendar that id isn't a department there, so myDeptId() is "" — fall back to
+  //   the profile's own id so a department of ANOTHER calendar can be ticked here (⚙ การแสดงผล lists every calendar's departments)
+  const my = myDeptId() || (currentProfile && currentProfile.dept_id) || "";
   const allow = (state.settings && state.settings[settingKey]) || [];
-  return !!my && allow.includes(my);
+  return !!my && allow.some(id => sameDept(id, my));
 }
 function canSeeImportReq() { return canSeeDeptButton("importReqDepts"); }
 // ★ 2026-10-08 (owner): ยื่นขอแบบ = a REQUEST, not editing — any permission tier (ดูอย่างเดียว / คอมเมนต์ too) of a department
