@@ -292,8 +292,46 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
 .chip-star { width: 11px; height: 11px; flex: 0 0 auto; color:var(--t-d97706, #d97706); fill: #fbbf24; }
 .chip-so-row { display: flex; align-items: center; gap: 6px; min-width: 0; margin-bottom: -1px; }
 .chip-so-row .as-stack { margin-left: auto; flex: 0 0 auto; }
+.chip-avt { background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); }
+.chip-title-row .chip-so + .chip-so, .chip-so-row .chip-so + .chip-so { margin-left: -2px; }
 .chip-so { flex: 0 1 auto; min-width: 0; max-width: 100%; height: 15px; line-height: 15px; padding: 0 5px; border-radius:4px; background:rgba(16,24,40,.07); color:var(--text-dim); font-size: 10px; font-weight: 600; letter-spacing: .2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.tp-so { flex: 0 0 auto; padding: 0 6px; height: 18px; line-height: 18px; border-radius:4px; background:var(--b-eef0f3, #eef0f3); color:var(--text-dim); font-size: 10.5px; font-weight: 600; }
+.tp-so { flex: 0 1 auto; min-width: 0; max-width: 34%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 0 6px; height: 18px; line-height: 18px; border-radius:4px; background:var(--b-eef0f3, #eef0f3); color:var(--text-dim); font-size: 10.5px; font-weight: 600; }
+/* ★ 2026-10-11 workflow bar at the top of the project popup */
+.tm-flow { position: relative; flex: 1 1 auto; min-width: 0; max-width: 560px; margin: -6px 18px; padding: 0; }   /* in the popup header (owner 2026-10-11: no extra row) */
+.tf-track { position: absolute; top: 10px; left: calc(100% / var(--n) / 2); right: calc(100% / var(--n) / 2); height: 3px; border-radius: 3px; background: var(--border); }
+.tf-fill { height: 100%; border-radius: 3px; background: linear-gradient(90deg, #10b981, var(--accent)); transition: width .5s ease; }
+.tf-steps { position: relative; display: flex; }
+.tf-step { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 2px; text-align: center; cursor: default; }
+.tf-dot { width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px;
+  background: var(--panel); border: 2px solid var(--border-strong); color: var(--text-dim); box-sizing: border-box; transition: transform .2s; }
+.tf-dot .ico { width: 12px; height: 12px; }
+.tf-step.next .tf-ico { opacity: .55; filter: grayscale(1); }
+.tf-step.done .tf-dot { background: #10b981; border-color: #10b981; color: #fff; }
+.tf-step.cur .tf-dot { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, var(--panel)); transform: scale(1.12); animation: tfPulse 1.8s ease-out infinite; }
+.tf-step.cur.over .tf-dot { border-color: #ef4444; background: color-mix(in srgb, #ef4444 12%, var(--panel)); animation-name: tfPulseRed; }
+.shift-dialog { max-width: 440px; width: 100%; }
+.shift-list { display: flex; flex-direction: column; gap: 2px; margin: 10px 0 4px; text-align: left; max-height: 280px; overflow: auto; }
+.shift-row { display: flex; align-items: center; gap: 10px; padding: 7px 10px; border-radius: 8px; cursor: pointer; }
+.shift-row:hover { background: var(--b-f3f4f6, #f3f4f6); }
+.shift-row input { width: 16px; height: 16px; margin: 0; flex: 0 0 auto; cursor: pointer; }
+.shift-name { flex: 1 1 auto; min-width: 0; display: inline-flex; align-items: center; gap: 6px; font-size: 13.5px; font-weight: 600; color: var(--text); }
+.shift-name .ico { width: 15px; height: 15px; color: var(--text-dim); }
+.shift-dates { flex: 0 0 auto; font-size: 12px; color: var(--text-dim); white-space: nowrap; }
+.shift-dates b { color: var(--accent); }
+.shift-quick { display: flex; gap: 4px; justify-content: flex-start; margin-bottom: 6px; }
+@keyframes tfPulse { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 45%, transparent); } 100% { box-shadow: 0 0 0 9px transparent; } }
+@keyframes tfPulseRed { 0% { box-shadow: 0 0 0 0 rgba(239,68,68,.45); } 100% { box-shadow: 0 0 0 9px transparent; } }
+@media (prefers-reduced-motion: reduce) { .tf-step.cur .tf-dot { animation: none; } .tf-fill { transition: none; } }
+.tf-name { font-size: 10.5px; line-height: 1.2; font-weight: 600; color: var(--text); max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 2px; }
+.tf-step.next .tf-name { color: var(--text-dim); font-weight: 500; }
+.tf-step.cur .tf-name { color: var(--accent); }
+.tf-step.mine .tf-name { text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--accent) 50%, transparent); text-underline-offset: 3px; }
+.tf-date { display: none; }   /* header is tight — the date is in the tooltip */
+.tf-step.done .tf-date { color: #10b981; font-weight: 600; }
+.tf-date.soon { color: #d97706; font-weight: 600; }
+.tf-date.over { color: #ef4444; font-weight: 700; }
+@media print { .tm-flow { display: none !important; } }
+@media (max-width: 640px) { .tm-flow .tf-name { display: none; } .tm-flow { margin: 0 8px; } }
 .field.tm-title-row { flex-direction: row; gap: 8px; }
 .tm-title-row .tm-so { flex: 0 0 calc((100% - 8px) / 5); min-width: 0; }   /* SO = 1/4 of the name field */
 .tm-title-row .tm-name { flex: 1 1 0; min-width: 0; }
@@ -1646,15 +1684,15 @@ body.chip-dragging .task-chip.span-bar { pointer-events: none; }   /* let the da
 }
 .subtask-row:hover { background:var(--b-fafbfc, #fafbfc); }
 .subtask-main { display: flex; align-items: center; gap: 8px; }
-/* per-cabinet checklist progress bar */
-.subtask-progress {
-  height: 5px;
-  background:var(--b-eef0f3, #eef0f3);
-  border-radius:3px;
-  overflow: hidden;
-  margin: 0 2px 0 26px; /* align under the name, past the status dot */
-}
+/* per-cabinet checklist progress — ★ 2026-10-11 (owner): ~1/4 of the old full-width bar, on the cabinet's own line
+   (before the checklist count) with the % beside it → one line per cabinet instead of two */
+.subtask-progress { flex: 0 1 15%; max-width: 150px; min-width: 64px; display: flex; align-items: center; gap: 6px; }
+.subtask-row .subtask-main > .tm-date { flex: 0 0 132px; }   /* same width with/without a date → the columns line up */
+.subtask-progress-track { flex: 1 1 auto; min-width: 30px; height: 6px; background:var(--b-eef0f3, #eef0f3); border-radius:3px; overflow: hidden; }
 .subtask-progress-bar { height: 100%; width: 0%; background:var(--accent); border-radius:3px; transition: width .2s; }
+.subtask-progress-pct { flex: 0 0 32px; font-size: 11px; font-weight: 600; color:var(--text-dim); text-align: right; font-variant-numeric: tabular-nums; }
+.subtask-progress-pct.full { color: #10b981; }
+@media (max-width: 640px) { .subtask-progress { display: none; } }
 .subtask-cl-btn {
   flex: 0 0 auto;
   display: inline-flex; align-items: center; gap: 4px;
@@ -2428,7 +2466,7 @@ body.chip-dragging .task-chip.span-bar { pointer-events: none; }   /* let the da
 }
 .tp-group-head:hover { background:var(--b-f3f4f6, #f3f4f6); }
 .tp-group-title {
-  flex: 1; min-width: 0;
+  flex: 1; min-width: min(45%, 9em);   /* SO / AVT tags shrink first, the name keeps room */
   font-weight: 600; font-size: 13px;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
@@ -3248,18 +3286,74 @@ function warnStagePastProjectEnd(t, stg) {
   toast(`⚠️ กำหนดจบของ ${(getDept(stg.deptId) || {}).name || "แผนก"} (${formatDateTH(stg.due)}) เลยวันจบโครงการ (${formatDateTH(t.date)})`);
   return true;
 }
-function shiftTaskDeptDates(t, diff) {
+// pick = { depts: Set of department ids to move, cabinets: move each cabinet's own date } — no pick = everything (old behaviour)
+function shiftTaskDeptDates(t, diff, pick) {
   if (!t || !diff) return 0;
+  const on = id => !pick || pick.depts.has(id);
   let moved = 0;
   (t.deptStages || []).forEach(st => {
+    if (!on(st.deptId)) return;
     if (st.due) { st.due = addDaysIso(st.due, diff); moved++; }
     if (st.start) st.start = addDaysIso(st.start, diff);
   });
   (t.subtasks || []).forEach(sb => {
-    if (sb.date) sb.date = addDaysIso(sb.date, diff);
-    if (sb.deptDates) Object.keys(sb.deptDates).forEach(k => { if (sb.deptDates[k]) sb.deptDates[k] = addDaysIso(sb.deptDates[k], diff); });
+    if (sb.date && (!pick || pick.cabinets)) sb.date = addDaysIso(sb.date, diff);
+    if (sb.deptDates) Object.keys(sb.deptDates).forEach(k => { if (sb.deptDates[k] && on(k)) sb.deptDates[k] = addDaysIso(sb.deptDates[k], diff); });
   });
   return moved;
+}
+// ★ 2026-10-11 (owner): moving the project's end date no longer drags every department along silently — ask first and
+//   let the user tick which departments (and the cabinets' own dates) move by the same number of days.
+//   Resolves { depts:Set, cabinets:bool } · null = cancel the whole change. Nothing to move → resolves an empty pick at once.
+function askShiftDepts(t, diff) {
+  const stages = (t.deptStages || []).filter(st => st.due || st.start);
+  const hasCab = (t.subtasks || []).some(sb => sb.date);
+  if (!stages.length && !hasCab) return Promise.resolve({ depts: new Set(), cabinets: false });
+  const fmt = iso => iso ? formatDateTH(iso) : "—";
+  const sign = (diff > 0 ? "+" : "") + diff;
+  return new Promise(resolve => {
+    const overlay = document.createElement("div");
+    overlay.className = "overlay confirm-overlay";
+    overlay.innerHTML = `
+      <div class="confirm-dialog shift-dialog" role="alertdialog" aria-modal="true">
+        <div class="confirm-icon">${ico("calendar")}</div>
+        <div class="confirm-title">เลื่อนวันครบกำหนด ${sign} วัน</div>
+        <div class="confirm-msg">เลือกแผนกที่จะเลื่อนตาม</div>
+        <div class="shift-list">
+          ${stages.map(st => { const d = getDept(st.deptId) || { name: "?" }; return `
+            <label class="shift-row"><input type="checkbox" data-dept="${escapeHtml(st.deptId)}" checked />
+              <span class="shift-name">${deptIco(d)}${escapeHtml(d.name)}</span>
+              <span class="shift-dates">${fmt(st.due)} → <b>${fmt(st.due && addDaysIso(st.due, diff))}</b></span></label>`; }).join("")}
+          ${hasCab ? `<label class="shift-row"><input type="checkbox" data-cab checked /><span class="shift-name">${ico("archive")}วันของตู้</span><span class="shift-dates">${(t.subtasks || []).filter(sb => sb.date).length} ตู้</span></label>` : ""}
+        </div>
+        <div class="shift-quick"><button type="button" class="btn btn-ghost btn-sm" data-all>เลือกทั้งหมด</button><button type="button" class="btn btn-ghost btn-sm" data-none>ไม่เลือก</button></div>
+        <div class="confirm-actions">
+          <button class="btn" data-act="cancel">ยกเลิก</button>
+          <button class="btn btn-primary" data-act="ok">ตกลง</button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    const boxes = () => [...overlay.querySelectorAll("input[type=checkbox]")];
+    overlay.querySelector("[data-all]").addEventListener("click", () => boxes().forEach(b => { b.checked = true; }));
+    overlay.querySelector("[data-none]").addEventListener("click", () => boxes().forEach(b => { b.checked = false; }));
+    function close(val) { overlay.remove(); document.removeEventListener("keydown", onKey, true); resolve(val); }
+    const pickNow = () => ({ depts: new Set(boxes().filter(b => b.dataset.dept && b.checked).map(b => b.dataset.dept)),
+      cabinets: !!overlay.querySelector("[data-cab]:checked") });
+    function onKey(e) {
+      if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); close(null); }
+      else if (e.key === "Enter") { e.preventDefault(); e.stopPropagation(); close(pickNow()); }
+    }
+    overlay.querySelector('[data-act="cancel"]').addEventListener("click", () => close(null));
+    overlay.querySelector('[data-act="ok"]').addEventListener("click", () => close(pickNow()));
+    overlay.addEventListener("mousedown", (e) => { if (e.target === overlay) close(null); });
+    document.addEventListener("keydown", onKey, true);
+    setTimeout(() => overlay.querySelector('[data-act="ok"]').focus(), 30);
+  });
+}
+function shiftPickLabel(t, pick) {
+  const n = (t.deptStages || []).filter(st => (st.due || st.start) && pick.depts.has(st.deptId)).length;
+  const all = (t.deptStages || []).filter(st => st.due || st.start).length;
+  return n === 0 ? "" : n === all ? "ทุกแผนก" : (t.deptStages || []).filter(st => pick.depts.has(st.deptId)).map(st => (getDept(st.deptId) || {}).name).filter(Boolean).join(", ");
 }
 function makeCabinetChecklist(departments) {
   const depts = departments || (typeof state !== "undefined" && state && state.departments) || [];
@@ -3588,6 +3682,20 @@ function textOn(hex) {
 }
 
 /* ----- SO (project) / MO (cabinet) numbers — task.so / sub.mo, shown in front of the name ----- */
+// ★ 2026-10-11 AVT (drawing) number = the same number as "เลข DWG" of a drawing request. Stored in task.avt; a task that only
+//   has the older request.dwgNo still shows it. Writing keeps request.dwgNo in step (when the task has a request).
+function taskAvt(t) { return String((t && (t.avt || (t.request && t.request.dwgNo))) || "").trim(); }
+function setTaskAvt(t, v) {
+  v = String(v || "").trim();
+  if (v) t.avt = v; else delete t.avt;
+  if (t.request) { if (v) t.request.dwgNo = v; else delete t.request.dwgNo; }
+}
+// AVT + SO tags in front of a chip's name (AVT first — owner 2026-10-11)
+function chipRefTags(t) {
+  const so = (t.so || "").trim(), avt = taskAvt(t);
+  return (avt ? `<span class="chip-so chip-avt" title="AVT ${escapeHtml(avt)}">${escapeHtml(avt)}</span>` : "")
+    + (so ? `<span class="chip-so" title="SO ${escapeHtml(so)}">${escapeHtml(so)}</span>` : "");
+}
 function taskLabel(t) { const so = ((t && t.so) || "").trim(); return so ? `${so} ${t.title || ""}` : ((t && t.title) || ""); }
 function subLabel(s) { const mo = ((s && s.mo) || "").trim(), nm = (s && s.text) || "(ไม่มีชื่อตู้)"; return mo ? `${mo} ${nm}` : nm; }
 /* ----- ⭐ starred projects, PER PERSON — keys "boardId:taskId".
@@ -4786,16 +4894,21 @@ function renderMonth() {
       if (t && t.date !== iso) {
         // shift due → new date, keep duration by shifting startDate the same amount
         const diff = Math.round((fromIso(iso) - fromIso(t.date)) / 86400000);
-        if (t.startDate) t.startDate = addDaysIso(t.startDate, diff);
-        // ★ 2026-10-08: moving the whole project moves every department with it by the same number of days
-        //   (stage start/due, each cabinet's own date and per-department dates) — otherwise the departments' calendars
-        //   kept the old days (e.g. project 06→07, QC 05→06, ส่งมอบ 06→07)
-        const moved = shiftTaskDeptDates(t, diff);
-        t.date = iso;
-        logActivity(t, `เลื่อนวันครบกำหนด → ${formatDateTH(iso)}` + (moved ? ` (ทุกแผนกเลื่อน ${diff > 0 ? "+" : ""}${diff} วัน)` : ""));
-        t.updatedAt = Date.now();
-        saveState();
-        renderAll();
+        const taskId = t.id;
+        // ★ 2026-10-11: ask which departments move along (was: all of them, silently — 2026-10-08)
+        askShiftDepts(t, diff).then(pick => {
+          if (!pick) return;   // cancelled → nothing moves
+          const tt = state.tasks.find(x => x.id === taskId);
+          if (!tt || tt.date === iso) return;
+          if (tt.startDate) tt.startDate = addDaysIso(tt.startDate, diff);
+          const moved = shiftTaskDeptDates(tt, diff, pick);
+          const who = shiftPickLabel(tt, pick);
+          tt.date = iso;
+          logActivity(tt, `เลื่อนวันครบกำหนด → ${formatDateTH(iso)}` + (moved && who ? ` (${who} เลื่อน ${diff > 0 ? "+" : ""}${diff} วัน)` : ""));
+          tt.updatedAt = Date.now();
+          saveState();
+          renderAll();
+        });
       }
     });
 
@@ -4838,7 +4951,7 @@ function renderTaskChip(t, position = "single", showLabel = true) {
   const fieldHtml = fchips.map(f =>
     `<span class="chip-field" title="${escapeHtml(f.name)}: ${escapeHtml(f.label)}">${escapeHtml(f.label)}</span>`).join("");
   const inlineFields = position !== "single" && fchips.length ? fieldHtml : "";
-  const soTag = (t.so || "").trim() ? `<span class="chip-so" title="SO ${escapeHtml(t.so)}">${escapeHtml(t.so.trim())}</span>` : "";
+  const soTag = chipRefTags(t);
   const noDept = !isServiceBoard() && !(t.deptStages || []).length && (state.departments || []).length
     ? `<span class="chip-nodept" title="ยังไม่ได้เลือกแผนกที่ได้รับมอบหมาย">ไม่มีแผนก</span>` : "";
   const badgeRow = (badges || flag || inlineFields || noDept) ? `<div class="task-substatus">${noDept}${badges}${flag}${inlineFields}</div>` : "";
@@ -5101,7 +5214,7 @@ function renderDeptChip(t, stage, position = "single", subs = null) {
   const doneBadge = deptDone ? `<span class="dept-done-badge">✓ เสร็จ</span>` : "";
   // when several departments are in view, mark which dept this chip belongs to
   const deptDot = activeViewDepts().length > 1 ? deptIco(dept) : "";
-  const soTag = (t.so || "").trim() ? `<span class="chip-so" title="SO ${escapeHtml(t.so)}">${escapeHtml(t.so.trim())}</span>` : "";
+  const soTag = chipRefTags(t);
   const badgeRow = (badges || flag || doneBadge) ? `<div class="task-substatus">${badges}${flag}${doneBadge}</div>` : "";
   // selected custom-field values for this department, flagged to show on chips
   const fchips = [...sharedFieldChips(t), ...stageFieldChips(t, deptId)];
@@ -5213,7 +5326,7 @@ function matchesFilter(filter) {
     if (filter.mine && !isMyTask(t)) return false;
     if (filter.priority && filter.priority !== "all" && t.priority !== filter.priority) return false;
     if (filter.search) {
-      const hay = ((t.so || "") + " " + t.title + " " + (t.description||"") + " " + (t.labels||[]).join(" ") + " " + (t.subtasks || []).map(s => (s.mo || "") + " " + (s.text || "")).join(" ")).toLowerCase();
+      const hay = ((t.so || "") + " " + taskAvt(t) + " " + t.title + " " + (t.description||"") + " " + (t.labels||[]).join(" ") + " " + (t.subtasks || []).map(s => (s.mo || "") + " " + (s.text || "")).join(" ")).toLowerCase();
       if (!hay.includes(filter.search)) return false;
     }
     return true;
@@ -5745,7 +5858,7 @@ function attachAutocomplete(input, getItems, opts = {}) {
 function buildReqTask(ws, project, due, detail, reqMeta, summary, photo, files, driveFolderId) {
   const dept = drawingDeptOf(ws);
   return {
-    id: uid("t"), title: project, ...(reqMeta.so ? { so: reqMeta.so } : {}), description: detail, date: due, startDate: null,
+    id: uid("t"), title: project, ...(reqMeta.so ? { so: reqMeta.so } : {}), ...(reqMeta.dwgNo ? { avt: String(reqMeta.dwgNo).trim() } : {}), description: detail, date: due, startDate: null,
     statusId: (ws.statuses[0] || {}).id, priority: "none", labels: ["คำขอแบบ"], subtasks: [],
     deptStages: dept ? [{ deptId: dept.id, due, done: false, fields: {} }] : [],
     comments: [{ id: uid("al"), type: "alert", author: reqMeta.submitter, toDept: dept && dept.id, text: summary, photo: photo || null, ...(files && files.length ? { files } : {}), at: Date.now(), ack: false }],
@@ -5800,6 +5913,7 @@ function routeDrawingRequest({ kind, project, so, dwg, due, detail, submitter, s
     if (!imported) pushForComment(existing, ac);
     if (driveFolderId && !existing.driveFolderId) existing.driveFolderId = driveFolderId;
     existing.request = reqMeta; existing.updatedAt = Date.now();
+    if (dwg && !existing.avt) existing.avt = String(dwg).trim();
     saveState(); renderAll();
     pushNotify("alert", "📐 ขอเขียนแบบวงจร", `${existing.title} · DWG ${dwg}`, "dr-" + existing.id);
     return { boardName: (root.boardMeta.find(b => b.id === root.activeBoard) || {}).name, attached: true, title: existing.title };
@@ -6140,6 +6254,7 @@ function openTaskModal(taskId, defaults={}) {
     <div class="modal wide task-modal" role="dialog" aria-modal="true">
       <div class="modal-head">
         <h3>${isNew ? "เพิ่มงาน" + escapeHtml(boardName) : "โครงการ"}</h3>
+        <div class="tm-flow" data-flow hidden></div>
         <div class="row" style="gap:6px">
           ${isNew ? "" : `<button class="btn btn-ghost btn-sm tm-star${isStarred(task) ? " on" : ""}" data-act="star" title="ติดดาว">${ico("star")}</button>`}
           ${isNew ? "" : '<button class="btn btn-ghost btn-sm" data-act="dashboard" title="ดูแดชบอร์ดของโปรเจคนี้">' + ico("chart") + ' แดชบอร์ด</button>'}
@@ -6149,6 +6264,7 @@ function openTaskModal(taskId, defaults={}) {
       <div class="task-split">
       <div class="modal-body">
         <div class="field tm-title-row">
+          <input type="text" class="title-input tm-so" data-f="avt" placeholder="AVT" />
           <input type="text" class="title-input tm-so" data-f="so" placeholder="SO" />
           ${task.ext && task.ext.src === "it" ? `<span class="tm-it-badge" title="เชื่อมกับระบบไอที">${ico("link")}</span>` : ""}
           <input type="text" class="title-input tm-name" data-f="title" placeholder="ชื่อโครงการ" />
@@ -6242,6 +6358,8 @@ function openTaskModal(taskId, defaults={}) {
   modal.querySelector('[data-f="title"]').value = task.title;
   modal.querySelector('[data-f="so"]').value = task.so || "";
   modal.querySelector('[data-f="so"]').addEventListener("input", (e) => { task.so = e.target.value; scheduleCommit(created ? 800 : 600); });
+  modal.querySelector('[data-f="avt"]').value = taskAvt(task);
+  modal.querySelector('[data-f="avt"]').addEventListener("input", (e) => { setTaskAvt(task, e.target.value); scheduleCommit(created ? 800 : 600); });
   modal.querySelector('[data-act="star"]')?.addEventListener("click", (e) => {
     const on = toggleStar(task);
     e.currentTarget.classList.toggle("on", on);
@@ -6266,15 +6384,22 @@ function openTaskModal(taskId, defaults={}) {
     onChange: (iso) => {
       if (!iso) return;
       if (task.startDate && task.startDate > iso) { toast("วันครบกำหนดต้องไม่ก่อนวันเริ่ม"); dueField.setValue(task.date); return; }
-      // the departments move with the project's end date (same number of days)
+      // ★ 2026-10-11: ask which departments move with the project's end date (same number of days) — was: all, silently
       const diff = task.date ? Math.round((fromIso(iso) - fromIso(task.date)) / 86400000) : 0;
-      task.date = iso;
-      if (diff && shiftTaskDeptDates(task, diff)) {
-        renderSubs();
-        toast(`ทุกแผนกเลื่อน ${diff > 0 ? "+" : ""}${diff} วันตาม`);
-      }
-      renderStages();
-      scheduleCommit(0);
+      if (!diff) { task.date = iso; renderStages(); scheduleCommit(0); return; }
+      const oldDate = task.date;
+      askShiftDepts(task, diff).then(pick => {
+        if (!pick) { dueField.setValue(oldDate); return; }   // cancelled → the end date stays
+        if (task.date !== oldDate) return;   // changed again meanwhile
+        task.date = iso;
+        if (shiftTaskDeptDates(task, diff, pick)) {
+          renderSubs();
+          const who = shiftPickLabel(task, pick);
+          if (who) toast(`${who} เลื่อน ${diff > 0 ? "+" : ""}${diff} วันตาม`);
+        } else if (pick.cabinets) renderSubs();
+        renderStages();
+        scheduleCommit(0);
+      });
     } });
   startField.title = "วันเริ่ม"; dueField.title = "วันครบกำหนด";
   modal.querySelector('[data-df="startDate"]').replaceWith(startField);
@@ -6378,6 +6503,7 @@ function openTaskModal(taskId, defaults={}) {
     btn.classList.toggle("full", p.total > 0 && p.done === p.total);
   }
   function renderSubs() {
+    if (modal._flowReady) renderFlow();   // a cabinet checklist tick can finish a department (not during setup: renderFlow's helpers come later)
     subWrap.innerHTML = "";
     const subCount = modal.querySelector("[data-sub-count]");
     if (subCount) subCount.textContent = (task.subtasks || []).length ? `(${task.subtasks.length})` : "";
@@ -6392,11 +6518,11 @@ function openTaskModal(taskId, defaults={}) {
           <button type="button" class="subtask-dot" aria-label="เปลี่ยนสถานะ"></button>
           <input type="text" class="sub-mo" value="${escapeHtml(s.mo || "")}" placeholder="MO" />
           <input type="text" class="sub-name" value="${escapeHtml(s.text)}" placeholder="ชื่อตู้" />
+          <div class="subtask-progress" title="ความคืบหน้า checklist"><div class="subtask-progress-track"><div class="subtask-progress-bar"></div></div><span class="subtask-progress-pct"></span></div>
           <button type="button" class="subtask-cl-btn" title="Checklist ของตู้นี้ (ชี้เมาส์หรือคลิก)">${ico("check-square")} <span class="cl-count">${prog.done}/${prog.total}</span></button>
           <span class="subtask-date-mount" title="วันที่ของตู้นี้ (ไม่ใส่ = ตามวันโปรเจค)"></span>
           <button class="subtask-del" title="ลบ">✕</button>
         </div>
-        <div class="subtask-progress" title="ความคืบหน้า checklist"><div class="subtask-progress-bar"></div></div>
       `;
       const dotBtn = row.querySelector(".subtask-dot");
       const txt = row.querySelector('input.sub-name');
@@ -6433,6 +6559,8 @@ function openTaskModal(taskId, defaults={}) {
         const p = checklistProgress(s, modalDept);
         progBar.style.width = p.pct + "%";
         progBar.style.background = p.pct === 100 ? "#10b981" : "var(--accent)";
+        const pctEl = row.querySelector(".subtask-progress-pct");
+        if (pctEl) { pctEl.textContent = p.total ? p.pct + "%" : "—"; pctEl.classList.toggle("full", p.pct === 100); }
         paintClBtn(clBtn, s);
       };
       paintProg();
@@ -6551,7 +6679,34 @@ function openTaskModal(taskId, defaults={}) {
             : stg.start ? `<span class="stage-chip-date">${stageStartLabel(stg, null)}</span>` : `<span class="stage-chip-date none">—</span>`)
       + (done ? `<span class="stage-chip-ok">✓</span>` : prog);
   }
+  // ★ 2026-10-11 (owner): workflow bar at the top — which department step the project is at.
+  //   Steps = the project's department stages in order; done = that department is complete; "now" = the first not done.
+  function renderFlow() {   // (looked up here: renderSubs runs earlier in openTaskModal than this point)
+    const flowEl = modal.querySelector("[data-flow]");
+    if (!flowEl) return;
+    const stages = isServiceBoard() ? [] : (task.deptStages || []).filter(st => getDept(st.deptId));
+    if (stages.length < 2) { flowEl.hidden = true; flowEl.innerHTML = ""; return; }
+    const done = stages.map(st => isDeptComplete(task, st.deptId));
+    const cur = done.indexOf(false);   // -1 = every step done
+    const n = stages.length, my = myViewDeptId();
+    const pct = cur === -1 ? 100 : Math.round(cur / (n - 1) * 100);
+    flowEl.hidden = false;
+    flowEl.style.setProperty("--n", n);
+    flowEl.innerHTML = `<div class="tf-track"><div class="tf-fill" style="width:${pct}%"></div></div><div class="tf-steps">` + stages.map((st, i) => {
+      const d = getDept(st.deptId);
+      const info = stageDueInfo(st.due, done[i]);
+      const state = done[i] ? "done" : (i === cur ? "cur" : "next");
+      const over = info && info.cls === "over";
+      const tip = `${d.name} — ${done[i] ? "เสร็จแล้ว" : i === cur ? "กำลังทำ" : "ยังไม่ถึง"}${st.due ? " · กำหนด " + formatDateTH(st.due) : ""}`;
+      return `<div class="tf-step ${state}${over ? " over" : ""}${my && sameDept(my, st.deptId) ? " mine" : ""}" title="${escapeHtml(tip)}">
+        <span class="tf-dot">${done[i] ? ico("check") : `<span class="tf-ico">${escapeHtml(d.icon || "•")}</span>`}</span>
+        <span class="tf-name">${escapeHtml(d.name)}</span>
+        <span class="tf-date${info && info.cls ? " " + info.cls : ""}">${done[i] ? "เสร็จ" : (info ? escapeHtml(info.label) : "—")}</span>
+      </div>`;
+    }).join("") + `</div>`;
+  }
   function renderStages() {
+    renderFlow();
     stageWrap.innerHTML = "";
     // ★ 2026-10-08: a project with no department shows on no department's calendar → mark the section until one is picked
     modal.querySelector("[data-stage-field]")?.classList.toggle("need-stage", needsStage());
@@ -6680,6 +6835,7 @@ function openTaskModal(taskId, defaults={}) {
       chip.classList.toggle("done", isDeptComplete(task, stg.deptId));
       chip.classList.toggle("no-date", !stg.due);
       chip.classList.toggle("past-end", stagePastEnd(stg));
+      renderFlow();   // the workflow bar at the top follows (done / date / department)
     }
     render();
     document.body.appendChild(pop);
@@ -6862,7 +7018,7 @@ function openTaskModal(taskId, defaults={}) {
     } });
     row("วันที่จบงานจริง").appendChild(endDf);
     // text fields (autocomplete from earlier requests)
-    [["submitter", "ชื่อผู้ยื่น"], ["salesTeam", "ทีม Sales"], ["dwgNo", "เลข DWG"]].forEach(([key, name]) => {
+    [["submitter", "ชื่อผู้ยื่น"], ["salesTeam", "ทีม Sales"]].forEach(([key, name]) => {
       const r = row(name);
       if (key === "salesTeam") {
         const sel = document.createElement("select");
@@ -6949,6 +7105,7 @@ function openTaskModal(taskId, defaults={}) {
     renderStages(); scheduleCommit(0);
   }
   renderStages();
+  modal._flowReady = true;
 
   // ----- Activity / comments panel (right side) -----
   if (!Array.isArray(task.comments)) task.comments = [];
@@ -7325,6 +7482,7 @@ function openTaskModal(taskId, defaults={}) {
     const titleEl = modal.querySelector('[data-f="title"]'), descEl = modal.querySelector('[data-f="description"]'), soEl = modal.querySelector('[data-f="so"]');
     if (ae !== titleEl) titleEl.value = task.title || "";
     if (ae !== soEl) soEl.value = task.so || "";
+    const avtEl = modal.querySelector('[data-f="avt"]'); if (avtEl && ae !== avtEl) avtEl.value = taskAvt(task);
     if (ae !== descEl) descEl.value = task.description || "";
     startField.setValue(task.startDate || null);
     dueField.setValue(task.date || null);
@@ -7467,7 +7625,7 @@ function applyTaskModalPerm(modal) {
     if (canTick()) modal.querySelectorAll('.subtask-cl-btn').forEach(b => { b.disabled = false; b.classList.remove("perm-off"); });
   } else if (!full) {
     // edit tier → keep dates/status/checklist; disable structural fields only
-    ['[data-f="title"]', '[data-f="so"]', 'select[data-priority]', '[data-f="description"]', '[data-act="add-stage"]', '[data-act="add-sub"]']
+    ['[data-f="title"]', '[data-f="so"]', '[data-f="avt"]', 'select[data-priority]', '[data-f="description"]', '[data-act="add-stage"]', '[data-act="add-sub"]']
       .forEach(sel => modal.querySelectorAll(sel).forEach(off));
     modal.querySelectorAll('[data-labels] input, [data-labels] .label-chip button, [data-extra-fields] select, [data-subtasks] input[type="text"], [data-subtasks] .subtask-del, [data-stages] .stage-dept, [data-stages] .subtask-del').forEach(off);
   }
@@ -7642,7 +7800,8 @@ function diffTaskActivity(before, after) {
     logs.push(`เปลี่ยนความสำคัญ → ${getPriority(after.priority).label}`);
   // ข้อมูลคำขอแบบ
   const brq = before.request || {}, arq = after.request || {};
-  [["submitter", "ชื่อผู้ยื่น"], ["salesTeam", "ทีม Sales"], ["dwgNo", "เลข DWG"]].forEach(([k, name]) => {
+  if (taskAvt(before) !== taskAvt(after)) logs.push(taskAvt(after) ? `AVT → ${taskAvt(after)}` : "ลบ AVT");
+  [["submitter", "ชื่อผู้ยื่น"], ["salesTeam", "ทีม Sales"]].forEach(([k, name]) => {
     if ((brq[k] || "") !== (arq[k] || "")) logs.push(arq[k] ? `${name}: ${arq[k]}` : `ล้าง ${name}`);
   });
   if ((brq.at || 0) !== (arq.at || 0)) logs.push(arq.at ? `วันที่ยื่นขอแบบ → ${formatDateTimeTH(arq.at)}` : "ล้างวันที่ยื่นขอแบบ");
@@ -7765,7 +7924,7 @@ function renderTpGroup(entry, today) {
   head.className = "tp-group-head";
   head.innerHTML = `
     <button type="button" class="subtask-dot" style="--st-color:${st.color}" title="สถานะโปรเจค: ${escapeHtml(st.name)}"></button>
-    <span class="tp-group-title">${pr.id !== "none" ? priFlag(pr) + " " : ""}${escapeHtml(t.title)}</span>${(t.so || "").trim() ? `<span class="tp-so">${escapeHtml(t.so.trim())}</span>` : ""}
+    <span class="tp-group-title">${pr.id !== "none" ? priFlag(pr) + " " : ""}${escapeHtml(t.title)}</span>${taskAvt(t) ? `<span class="tp-so" title="AVT ${escapeHtml(taskAvt(t))}">${escapeHtml(taskAvt(t))}</span>` : ""}${(t.so || "").trim() ? `<span class="tp-so" title="SO ${escapeHtml(t.so.trim())}">${escapeHtml(t.so.trim())}</span>` : ""}
     ${alertPin(t)}
     <span class="tp-group-badge">${prog.done}/${prog.total}</span>
   `;
@@ -7898,7 +8057,7 @@ function renderTodayPanelDept(deptIds, today, pass) {
     head.innerHTML = `
       ${headControl}
       <button type="button" class="subtask-dot" style="--st-color:${st.color}" title="สถานะงาน (รวม): ${escapeHtml(st.name)}"></button>
-      <span class="tp-group-title">${pr.id!=="none"?priFlag(pr)+" ":""}${escapeHtml(t.title)}</span>${(t.so || "").trim() ? `<span class="tp-so">${escapeHtml(t.so.trim())}</span>` : ""}
+      <span class="tp-group-title">${pr.id!=="none"?priFlag(pr)+" ":""}${escapeHtml(t.title)}</span>${taskAvt(t) ? `<span class="tp-so" title="AVT ${escapeHtml(taskAvt(t))}">${escapeHtml(taskAvt(t))}</span>` : ""}${(t.so || "").trim() ? `<span class="tp-so" title="SO ${escapeHtml(t.so.trim())}">${escapeHtml(t.so.trim())}</span>` : ""}
       ${alertPin(t)}
       ${fchips}
       ${deptDone ? `<span class="dept-done-badge" title="แผนก ${escapeHtml(dn)} เสร็จแล้ว${usesChecklist ? " (ติ๊ก checklist ครบทุกตู้)" : ""}">✓ เสร็จ</span>` : ""}
@@ -9310,6 +9469,7 @@ function buildClickUpImport(container) {
       <div class="cu-grid" data-cu-status></div>
       <div class="row" style="gap:8px; margin-top:12px; align-items:center">
         <button class="btn btn-primary" data-cu-go></button>
+        <button class="btn" data-cu-fill hidden></button>
         <span class="muted" style="font-size:12px" data-cu-skip></span>
       </div>
     </div>`;
@@ -9394,7 +9554,7 @@ function buildClickUpImport(container) {
     $("[data-cu-ownwrap]").hidden = !Object.keys(ownMap).length;
     $("[data-cu-own]").innerHTML = Object.keys(ownMap).map(n => `<span class="cu-lbl">${escapeHtml(n)} <span class="muted">(${rows.filter(r => cuClean(r._owner) === n).length})</span></span><select data-own="${escapeHtml(n)}"><option value="">— ไม่ใส่ —</option>${
       profs.slice().sort((a, b) => personName(a).localeCompare(personName(b), "th")).map(p => `<option value="${escapeHtml(p.id)}" ${ownMap[n] === p.id ? "selected" : ""}>${escapeHtml(personName(p))}</option>`).join("")}</select>`).join("");
-    sec.querySelectorAll("[data-own]").forEach(sel => sel.addEventListener("change", () => { ownMap[sel.dataset.own] = sel.value; }));
+    sec.querySelectorAll("[data-own]").forEach(sel => sel.addEventListener("change", () => { ownMap[sel.dataset.own] = sel.value; refreshFill(); }));
     statusMap = {};
     $("[data-cu-kind]").onchange = renderMaps;
     renderMaps();
@@ -9422,7 +9582,38 @@ function buildClickUpImport(container) {
     const todo = chosen.filter(r => !have.has(r["Task ID"]));
     return { top, kids, chosen, todo, skipped: chosen.length - todo.length };
   }
+  // ★ 2026-10-11 re-import the same file later (e.g. people who signed up since) → fill what the tasks already in are MISSING.
+  //   Only adds: a person not yet on the task, a request field that is empty, an empty real end date. Nothing is replaced.
+  function fillPlan() {
+    const byExt = new Map();
+    (state.tasks || []).forEach(t => { if (t.ext && t.ext.src === "clickup") byExt.set(t.ext.id, t); });
+    const plan = [];
+    (rows || []).filter(isTop).forEach(r => {
+      const t = byExt.get(r["Task ID"]); if (!t) return;
+      const ch = {};
+      const who = ownMap[cuClean(r._owner)];
+      if (who && !(t.assignees || []).includes(who)) ch.assignee = who;
+      const req = t.request || {};
+      const add = {};
+      if (!req.dwgNo && !taskAvt(t) && cuClean(r._dwg)) add.dwgNo = cuDwg(r._dwg);
+      if (!req.submitter && cuClean(r._submitter)) add.submitter = cuClean(r._submitter);
+      if (!req.salesTeam && cuClean(r._sales)) add.salesTeam = salesTeamKey(cuClean(r._sales));
+      const at = cuTextTime(r._sub) || (Number(r._sub) > 0 ? Number(r._sub) : null);
+      if (!req.at && at) add.at = at;
+      if (Object.keys(add).length) ch.request = add;
+      const end = cuDay(r._end);
+      if (!t.actualEnd && end) ch.actualEnd = end;
+      if (Object.keys(ch).length) plan.push({ t, ch });
+    });
+    return plan;
+  }
+  function refreshFill() {
+    const plan = fillPlan(), b = $("[data-cu-fill]");
+    b.hidden = !plan.length;
+    b.textContent = `เติมข้อมูลที่ขาดให้งานที่นำเข้าแล้ว (${plan.length} งาน)`;
+  }
   function refresh() {
+    refreshFill();
     const p = pick();
     const subs = p.todo.reduce((n, r) => n + (p.kids.get(r["Task ID"]) || []).length, 0);
     const unit = kind() === "people" ? "คน" : "ตู้";
@@ -9433,6 +9624,28 @@ function buildClickUpImport(container) {
     $("[data-cu-skip]").textContent = p.skipped ? `นำเข้าแล้ว ${p.skipped} — ข้าม` : "";
     if (p.todo.length > 400) $("[data-cu-skip]").textContent += (p.skipped ? " · " : "") + "จำนวนมาก แอปอาจช้าลง";
   }
+
+  $("[data-cu-fill]").addEventListener("click", async () => {
+    const plan = fillPlan();
+    if (!plan.length) return;
+    const nP = plan.filter(x => x.ch.assignee).length, nR = plan.filter(x => x.ch.request).length, nE = plan.filter(x => x.ch.actualEnd).length;
+    const parts = [nP && `ผู้รับผิดชอบ ${nP}`, nR && `ข้อมูลคำขอแบบ ${nR}`, nE && `วันที่จบงานจริง ${nE}`].filter(Boolean).join(" · ");
+    const ok = await confirmDialog({ icon: "upload", title: "เติมข้อมูลที่ขาด", message: `${plan.length} งาน — ${parts}\nเติมเฉพาะช่องที่ยังว่าง ไม่แก้ข้อมูลที่มีอยู่`, confirmText: "เติมข้อมูล" });
+    if (!ok) return;
+    plan.forEach(({ t, ch }) => {
+      if (ch.assignee) {
+        if (!Array.isArray(t.assignees)) t.assignees = [];
+        t.assignees.push(ch.assignee);
+        logActivity(t, `มอบหมายงานให้ ${personName(teamProfiles.get(ch.assignee))} (นำเข้า ClickUp)`);
+      }
+      if (ch.request) t.request = { ...(t.request || { kind: "structure" }), ...ch.request };
+      if (ch.request && ch.request.dwgNo && !t.avt) t.avt = ch.request.dwgNo;
+      if (ch.actualEnd) t.actualEnd = ch.actualEnd;
+      t.updatedAt = Date.now();
+    });
+    saveState(); renderAll(); refresh();
+    toast(`เติมข้อมูลแล้ว ${plan.length} งาน`);
+  });
 
   $("[data-cu-go]").addEventListener("click", async () => {
     const p = pick();
@@ -9526,6 +9739,7 @@ function buildClickUpImport(container) {
         deptStages: deptId ? [{ deptId, due: date, done: taskDone, fields: {} }] : [],
         comments: allComments, createdAt: created, updatedAt: Date.now(),
         ...(Object.keys(request).length ? { request: { kind: "structure", ...request } } : {}),
+        ...(request.dwgNo ? { avt: request.dwgNo } : {}),
         ...(actualEnd ? { actualEnd } : {}),
         ext: { src: "clickup", id: r["Task ID"] },
       });
@@ -10538,7 +10752,7 @@ function renderMainView() {
 /* ----- Browser notifications (Notification API) — configurable per event type in ⚙ การแจ้งเตือน ----- */
 const NOTIF_SUPPORTED = typeof window !== "undefined" && "Notification" in window;
 // line icon set — one style everywhere (stroke = currentColor). ico("bell"), ico("trash", "ico ico-lg")
-const ICONS = {"pin": "<path d=\"M12 17v5M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z\"/>", "moon": "<path d=\"M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z\"/>", "sun": "<circle cx=\"12\" cy=\"12\" r=\"4\"/><path d=\"M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41\"/>", "link": "<path d=\"M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71\"/><path d=\"M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71\"/>", "star": "<polygon points=\"12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2\"/>", "zap": "<polygon points=\"13 2 3 14 12 14 11 22 21 10 12 10 13 2\"/>", "bell": "<path d=\"M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9\"/><path d=\"M10.3 21a1.94 1.94 0 0 0 3.4 0\"/>", "settings": "<circle cx=\"12\" cy=\"12\" r=\"3\"/><path d=\"M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z\"/>", "search": "<circle cx=\"11\" cy=\"11\" r=\"7\"/><path d=\"m21 21-4.3-4.3\"/>", "ruler": "<path d=\"M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.41 2.41 0 0 1 0-3.4l2.6-2.6a2.41 2.41 0 0 1 3.4 0Z\"/><path d=\"m14.5 12.5 2-2M11.5 9.5l2-2M8.5 6.5l2-2M17.5 15.5l2-2\"/>", "inbox": "<path d=\"M22 12h-6l-2 3h-4l-2-3H2\"/><path d=\"M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z\"/>", "trash": "<path d=\"M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6\"/>", "clipboard": "<rect x=\"8\" y=\"2\" width=\"8\" height=\"4\" rx=\"1\"/><path d=\"M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2M9 12h6M9 16h4\"/>", "printer": "<path d=\"M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2\"/><rect x=\"6\" y=\"14\" width=\"12\" height=\"8\" rx=\"1\"/>", "user": "<circle cx=\"12\" cy=\"8\" r=\"4\"/><path d=\"M4 21a8 8 0 0 1 16 0\"/>", "users": "<path d=\"M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2\"/><circle cx=\"9\" cy=\"7\" r=\"4\"/><path d=\"M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75\"/>", "tag": "<path d=\"M12.6 2.6A2 2 0 0 0 11.2 2H4a2 2 0 0 0-2 2v7.2a2 2 0 0 0 .6 1.4l8.7 8.7a2.4 2.4 0 0 0 3.4 0l6.6-6.6a2.4 2.4 0 0 0 0-3.4z\"/><circle cx=\"7.5\" cy=\"7.5\" r=\"1.5\"/>", "building": "<rect x=\"4\" y=\"2\" width=\"16\" height=\"20\" rx=\"2\"/><path d=\"M9 22v-4h6v4M8 6h.01M12 6h.01M16 6h.01M8 10h.01M12 10h.01M16 10h.01M8 14h.01M12 14h.01M16 14h.01\"/>", "sliders": "<path d=\"M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6\"/>", "list-check": "<path d=\"m3 17 2 2 4-4M3 7l2 2 4-4M13 6h8M13 12h8M13 18h8\"/>", "monitor": "<rect x=\"2\" y=\"3\" width=\"20\" height=\"14\" rx=\"2\"/><path d=\"M8 21h8M12 17v4\"/>", "history": "<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\"/><path d=\"M3 3v5h5M12 7v5l4 2\"/>", "restore": "<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\"/><path d=\"M3 3v5h5\"/>", "database": "<ellipse cx=\"12\" cy=\"5\" rx=\"9\" ry=\"3\"/><path d=\"M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5M3 12c0 1.66 4 3 9 3s9-1.34 9-3\"/>", "calendar": "<rect x=\"3\" y=\"4\" width=\"18\" height=\"18\" rx=\"2\"/><path d=\"M16 2v4M8 2v4M3 10h18\"/>", "download": "<path d=\"M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3\"/>", "upload": "<path d=\"M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12\"/>", "camera": "<path d=\"M14.5 4h-5L7.5 6.5H5A2 2 0 0 0 3 8.5v9a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2h-2.5z\"/><circle cx=\"12\" cy=\"12.5\" r=\"3.5\"/>", "clip": "<path d=\"M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48\"/>", "chart": "<path d=\"M3 3v18h18M18 17V9M13 17V5M8 17v-3\"/>", "edit": "<path d=\"M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z\"/><path d=\"m15 5 4 4\"/>", "flag": "<path d=\"M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1zM4 22v-7\"/>", "ban": "<circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"m4.9 4.9 14.2 14.2\"/>", "clock": "<circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"M12 6v6l4 2\"/>", "mail": "<rect x=\"2\" y=\"4\" width=\"20\" height=\"16\" rx=\"2\"/><path d=\"m22 7-10 5L2 7\"/>", "cloud": "<path d=\"M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z\"/>", "logout": "<path d=\"M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9\"/>", "check-circle": "<circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"m9 12 2 2 4-4\"/>", "check-square": "<rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"2\"/><path d=\"m9 12 2 2 4-4\"/>", "eye": "<path d=\"M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z\"/><circle cx=\"12\" cy=\"12\" r=\"3\"/>", "pen": "<path d=\"M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z\"/>", "crown": "<path d=\"m2 6 4 11h12l4-11-6 5-4-7-4 7-6-5zM6 21h12\"/>", "message": "<path d=\"M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z\"/>", "alert": "<path d=\"m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z\"/><path d=\"M12 9v4M12 17h.01\"/>", "x-circle": "<circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"m15 9-6 6M9 9l6 6\"/>", "send": "<path d=\"m22 2-7 20-4-9-9-4Z\"/><path d=\"M22 2 11 13\"/>", "copy": "<rect x=\"8\" y=\"8\" width=\"14\" height=\"14\" rx=\"2\"/><path d=\"M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2\"/>", "file": "<path d=\"M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z\"/><path d=\"M14 2v6h6\"/>", "file-text": "<path d=\"M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z\"/><path d=\"M14 2v6h6M16 13H8M16 17H8M10 9H8\"/>", "file-sheet": "<path d=\"M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z\"/><path d=\"M14 2v6h6M8 13h8M8 17h8M12 11v8\"/>", "image": "<rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"2\"/><circle cx=\"9\" cy=\"9\" r=\"2\"/><path d=\"m21 15-3.09-3.09a2 2 0 0 0-2.82 0L6 21\"/>", "archive": "<rect x=\"2\" y=\"3\" width=\"20\" height=\"5\" rx=\"1\"/><path d=\"M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8M10 12h4\"/>"};
+const ICONS = {"check": "<path d=\"M20 6 9 17l-5-5\"/>", "pin": "<path d=\"M12 17v5M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z\"/>", "moon": "<path d=\"M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z\"/>", "sun": "<circle cx=\"12\" cy=\"12\" r=\"4\"/><path d=\"M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41\"/>", "link": "<path d=\"M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71\"/><path d=\"M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71\"/>", "star": "<polygon points=\"12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2\"/>", "zap": "<polygon points=\"13 2 3 14 12 14 11 22 21 10 12 10 13 2\"/>", "bell": "<path d=\"M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9\"/><path d=\"M10.3 21a1.94 1.94 0 0 0 3.4 0\"/>", "settings": "<circle cx=\"12\" cy=\"12\" r=\"3\"/><path d=\"M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z\"/>", "search": "<circle cx=\"11\" cy=\"11\" r=\"7\"/><path d=\"m21 21-4.3-4.3\"/>", "ruler": "<path d=\"M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.41 2.41 0 0 1 0-3.4l2.6-2.6a2.41 2.41 0 0 1 3.4 0Z\"/><path d=\"m14.5 12.5 2-2M11.5 9.5l2-2M8.5 6.5l2-2M17.5 15.5l2-2\"/>", "inbox": "<path d=\"M22 12h-6l-2 3h-4l-2-3H2\"/><path d=\"M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z\"/>", "trash": "<path d=\"M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6\"/>", "clipboard": "<rect x=\"8\" y=\"2\" width=\"8\" height=\"4\" rx=\"1\"/><path d=\"M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2M9 12h6M9 16h4\"/>", "printer": "<path d=\"M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2\"/><rect x=\"6\" y=\"14\" width=\"12\" height=\"8\" rx=\"1\"/>", "user": "<circle cx=\"12\" cy=\"8\" r=\"4\"/><path d=\"M4 21a8 8 0 0 1 16 0\"/>", "users": "<path d=\"M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2\"/><circle cx=\"9\" cy=\"7\" r=\"4\"/><path d=\"M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75\"/>", "tag": "<path d=\"M12.6 2.6A2 2 0 0 0 11.2 2H4a2 2 0 0 0-2 2v7.2a2 2 0 0 0 .6 1.4l8.7 8.7a2.4 2.4 0 0 0 3.4 0l6.6-6.6a2.4 2.4 0 0 0 0-3.4z\"/><circle cx=\"7.5\" cy=\"7.5\" r=\"1.5\"/>", "building": "<rect x=\"4\" y=\"2\" width=\"16\" height=\"20\" rx=\"2\"/><path d=\"M9 22v-4h6v4M8 6h.01M12 6h.01M16 6h.01M8 10h.01M12 10h.01M16 10h.01M8 14h.01M12 14h.01M16 14h.01\"/>", "sliders": "<path d=\"M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6\"/>", "list-check": "<path d=\"m3 17 2 2 4-4M3 7l2 2 4-4M13 6h8M13 12h8M13 18h8\"/>", "monitor": "<rect x=\"2\" y=\"3\" width=\"20\" height=\"14\" rx=\"2\"/><path d=\"M8 21h8M12 17v4\"/>", "history": "<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\"/><path d=\"M3 3v5h5M12 7v5l4 2\"/>", "restore": "<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\"/><path d=\"M3 3v5h5\"/>", "database": "<ellipse cx=\"12\" cy=\"5\" rx=\"9\" ry=\"3\"/><path d=\"M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5M3 12c0 1.66 4 3 9 3s9-1.34 9-3\"/>", "calendar": "<rect x=\"3\" y=\"4\" width=\"18\" height=\"18\" rx=\"2\"/><path d=\"M16 2v4M8 2v4M3 10h18\"/>", "download": "<path d=\"M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3\"/>", "upload": "<path d=\"M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12\"/>", "camera": "<path d=\"M14.5 4h-5L7.5 6.5H5A2 2 0 0 0 3 8.5v9a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2h-2.5z\"/><circle cx=\"12\" cy=\"12.5\" r=\"3.5\"/>", "clip": "<path d=\"M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48\"/>", "chart": "<path d=\"M3 3v18h18M18 17V9M13 17V5M8 17v-3\"/>", "edit": "<path d=\"M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z\"/><path d=\"m15 5 4 4\"/>", "flag": "<path d=\"M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1zM4 22v-7\"/>", "ban": "<circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"m4.9 4.9 14.2 14.2\"/>", "clock": "<circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"M12 6v6l4 2\"/>", "mail": "<rect x=\"2\" y=\"4\" width=\"20\" height=\"16\" rx=\"2\"/><path d=\"m22 7-10 5L2 7\"/>", "cloud": "<path d=\"M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z\"/>", "logout": "<path d=\"M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9\"/>", "check-circle": "<circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"m9 12 2 2 4-4\"/>", "check-square": "<rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"2\"/><path d=\"m9 12 2 2 4-4\"/>", "eye": "<path d=\"M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z\"/><circle cx=\"12\" cy=\"12\" r=\"3\"/>", "pen": "<path d=\"M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z\"/>", "crown": "<path d=\"m2 6 4 11h12l4-11-6 5-4-7-4 7-6-5zM6 21h12\"/>", "message": "<path d=\"M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z\"/>", "alert": "<path d=\"m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z\"/><path d=\"M12 9v4M12 17h.01\"/>", "x-circle": "<circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"m15 9-6 6M9 9l6 6\"/>", "send": "<path d=\"m22 2-7 20-4-9-9-4Z\"/><path d=\"M22 2 11 13\"/>", "copy": "<rect x=\"8\" y=\"8\" width=\"14\" height=\"14\" rx=\"2\"/><path d=\"M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2\"/>", "file": "<path d=\"M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z\"/><path d=\"M14 2v6h6\"/>", "file-text": "<path d=\"M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z\"/><path d=\"M14 2v6h6M16 13H8M16 17H8M10 9H8\"/>", "file-sheet": "<path d=\"M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z\"/><path d=\"M14 2v6h6M8 13h8M8 17h8M12 11v8\"/>", "image": "<rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"2\"/><circle cx=\"9\" cy=\"9\" r=\"2\"/><path d=\"m21 15-3.09-3.09a2 2 0 0 0-2.82 0L6 21\"/>", "archive": "<rect x=\"2\" y=\"3\" width=\"20\" height=\"5\" rx=\"1\"/><path d=\"M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8M10 12h4\"/>"};
 const ICON_ATTR = 'viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"';
 function ico(name, cls = "ico") { return ICONS[name] ? `<svg class="${cls}" ${ICON_ATTR}>${ICONS[name]}</svg>` : ""; }
 // confirm dialogs used to take an emoji — map the old ones, or pass an icon name
