@@ -79,6 +79,10 @@
   .field-row { display: flex; gap: 10px; }
   .field-row .field { flex: 1; min-width: 0; }
   @media (max-width: 420px) { .field-row { flex-direction: column; gap: 0; } }
+  .field-row.so-row { flex-direction: row; gap: 10px; }
+  .field-row.so-row .so-field { flex: 0 0 20%; }
+  .so-field input[type=text] { padding-left: 12px; }
+  .so-field .inp svg { display: none; }
 
   /* attach — dashed drop zone */
   .photo-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
@@ -144,11 +148,11 @@
 
     <div class="sec">
       <div class="sec-title">ข้อมูลงาน</div>
-      <div class="field-row">
-      <div class="field">
+      <div class="field-row so-row">
+      <div class="field so-field">
         <label>SO</label>
         <div class="inp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h16M4 15h16M10 3 8 21M16 3l-2 18"/></svg>
-          <input type="text" id="fSo" placeholder="เช่น SO26050090" autocomplete="off" /></div>
+          <input type="text" id="fSo" placeholder="SO" autocomplete="off" /></div>
       </div>
       <div class="field">
         <label>โครงการ <span class="req">*</span></label>

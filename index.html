@@ -5956,8 +5956,8 @@ function openDrawRequestModal() {
           </div>
           <span class="settings-toggle-sub" data-kind-hint></span>
         </div>
-        <div class="field-row">
-          <div class="field" style="flex:0 0 32%"><label>SO</label><input type="text" data-f="so" autocomplete="off" /></div>
+        <div class="field-row" style="grid-template-columns:1fr 4fr">
+          <div class="field" style="min-width:0"><label>SO</label><input type="text" data-f="so" autocomplete="off" /></div>
           <div class="field"><label>โครงการ <span class="dr-req">*</span></label>
             <input type="text" data-f="project" autocomplete="off" />
             <span class="dr-attach-hint" data-attach-hint hidden></span></div>
@@ -9829,6 +9829,10 @@ function renderDashboard() {
   document.getElementById("monthLabel").textContent = "แดชบอร์ด";
   const today = todayIso();
   const allTasks = state.tasks.filter(matchesFilter(currentFilter()));
+  // ★ 2026-10-11 (owner): department staff see ONLY their own department here (like the calendar) — a department with
+  //   "เห็นงานทั้งหมด (PM)" or no department (planner/admin) keeps the free department filter
+  const lockDept = isServiceBoard() ? "" : myViewDeptId();
+  if (lockDept) dashDept = lockDept;
   if (dashDept && !getDept(dashDept)) dashDept = null;   // validate filter
   const dep = dashDept;
 
@@ -9856,7 +9860,7 @@ function renderDashboard() {
       else if (stg.due && stg.due < today) projOverdue++;
     });
     return { d, done: dd, total: dt, pct: dt ? Math.round(dd / dt * 100) : 0, using, projDone, projOverdue };
-  }).filter(r => r.using > 0);
+  }).filter(r => r.using > 0 && (!lockDept || r.d.id === lockDept));
 
   // workload by week — incomplete in-scope projects bucketed by (scoped) due date
   const buckets = [
@@ -9883,8 +9887,9 @@ function renderDashboard() {
   const filterHtml = `
     <div class="dash-filter">
       <span class="dash-filter-lbl">กรองแผนก:</span>
+      ${lockDept ? `<span class="dept-chip active">${deptIco(getDept(lockDept))}${escapeHtml((getDept(lockDept) || {}).name || "")}</span>` : `
       <button class="dept-chip${!dep ? ' active' : ''}" data-df="">ทุกแผนก</button>
-      ${(state.departments || []).map(d => `<button class="dept-chip${dep === d.id ? ' active' : ''}" data-df="${d.id}">${deptIco(d)}${escapeHtml(d.name)}</button>`).join("")}
+      ${(state.departments || []).map(d => `<button class="dept-chip${dep === d.id ? ' active' : ''}" data-df="${d.id}">${deptIco(d)}${escapeHtml(d.name)}</button>`).join("")}`}
       <button class="btn btn-sm dash-print-hide" data-act="print" title="พิมพ์ / บันทึกเป็น PDF" style="margin-left:auto">${ico("printer")} พิมพ์ / PDF</button>
     </div>`;
 
@@ -10039,7 +10044,7 @@ function renderDashboard() {
   tasks.forEach(t => {
     const ids = [...new Set(t.assignees || [])];
     if (!ids.length) { if (!isComp(t)) noneOpen++; if (isOver(t)) noneOver++; return; }
-    ids.forEach(id => { if (!people.has(id)) people.set(id, []); people.get(id).push(t); });
+    ids.forEach(id => { if (lockDept && !canSeePerson(teamProfiles.get(id))) return; if (!people.has(id)) people.set(id, []); people.get(id).push(t); });
   });
   let personHtml = "";
   if (people.size || noneOpen) {
@@ -10371,10 +10376,18 @@ function renderGantt() {
   const dayIdx = iso => Math.round((fromIso(iso) - rangeStart) / 86400000);
 
   const prRank = { urgent:4, high:3, medium:2, low:1, none:0 };
-  const rows = state.tasks.filter(matchesFilter(filter)).map(t => {
+  // ★ 2026-10-11 (owner): department staff see only their own department — projects that have its stage, drawn with that
+  //   department's dates (its start/due; no due → the project's). PM ("เห็นงานทั้งหมด") / no department → every project as before
+  const gDept = isServiceBoard() ? "" : myViewDeptId();
+  const rows = state.tasks.filter(matchesFilter(filter)).filter(t => !gDept || taskStage(t, gDept)).map(t => {
+    if (gDept) {
+      const stg = taskStage(t, gDept);
+      const due = stg.due || t.date;
+      return { t, start: (stg.start && stg.start < due) ? stg.start : due, due };
+    }
     const start = (t.startDate && t.startDate < t.date) ? t.startDate : t.date;
     return { t, start, due: t.date };
-  }).filter(x => x.start <= reIso && x.due >= rsIso)               // intersects this month
+  }).filter(x => x.start && x.due && x.start <= reIso && x.due >= rsIso)               // intersects this month
     .sort((a,b) => a.start.localeCompare(b.start)
       || (prRank[b.t.priority]||0)-(prRank[a.t.priority]||0)
       || a.t.title.localeCompare(b.t.title, "th"));
@@ -10405,6 +10418,7 @@ function renderGantt() {
     // dept-due dots grouped by day; spread same-day dots horizontally so none hides another
     const byDay = {};
     (t.deptStages || []).forEach(stg => {
+      if (gDept && stg.deptId !== gDept) return;   // own department only
       if (!stg.due || stg.due < rsIso || stg.due > reIso) return;
       const di = dayIdx(stg.due);
       (byDay[di] = byDay[di] || []).push(stg);
@@ -10438,7 +10452,7 @@ function renderGantt() {
   wrap.innerHTML = `
     <div class="g-scroll">
       <div class="g-inner" style="--g-dayarea:${N*DAYW}px;--g-label:170px">
-        <div class="g-head"><div class="g-corner">โปรเจค</div><div class="g-days">${daysHtml}</div></div>
+        <div class="g-head"><div class="g-corner">โปรเจค${gDept ? ` · ${escapeHtml((getDept(gDept) || {}).name || "")}` : ""}</div><div class="g-days">${daysHtml}</div></div>
         <div class="g-rows">${rowsHtml}</div>
       </div>
     </div>`;
