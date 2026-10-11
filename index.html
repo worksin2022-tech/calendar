@@ -332,6 +332,24 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
 .tf-date.over { color: #ef4444; font-weight: 700; }
 @media print { .tm-flow { display: none !important; } }
 @media (max-width: 640px) { .tm-flow .tf-name { display: none; } .tm-flow { margin: 0 8px; } }
+.m-seg { display: flex; gap: 4px; margin-top: 10px; padding: 4px; border-radius: 11px; background: var(--bg); border: 1px solid var(--border); }
+.m-seg button { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 5px; border: 0; background: transparent; border-radius: 8px; padding: 8px 4px; font: inherit; font-size: 13.5px; font-weight: 600; color: var(--text-dim); cursor: pointer; white-space: nowrap; }
+.m-seg button .ico { width: 15px; height: 15px; }
+.m-seg button b { font-weight: 700; opacity: .7; }
+.m-seg button.on { background: var(--panel); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+.m-seg button.on b { color: var(--accent); opacity: 1; }
+.m-title-row { display: flex; align-items: flex-start; gap: 8px; }
+.m-title-row .m-title { flex: 1 1 auto; min-width: 0; }
+.m-title-row .as-stack { flex: 0 0 auto; margin-top: 2px; }
+.m-boardtag { font-size: 10.5px; font-weight: 700; padding: 1px 7px; border-radius: 6px; background: color-mix(in srgb, #f59e0b 18%, transparent); color: #b45309; }
+.m-own { display: flex; align-items: center; gap: 8px; margin-top: 10px; padding-top: 9px; border-top: 1px solid var(--border); font-size: 13px; min-width: 0; }
+.m-own-av { display: inline-flex; flex: 0 0 auto; }
+.m-own-av .avatar { width: 26px; height: 26px; font-size: 11.5px; border: 2px solid var(--panel); box-sizing: content-box; }
+.m-own-av .avatar + .avatar { margin-left: -9px; }
+.m-own-names { font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.m-own-dept { color: var(--text-dim); font-size: 12px; white-space: nowrap; }
+.m-own.none { color: var(--text-dim); }
+.m-own-q { width: 26px; height: 26px; border-radius: 50%; border: 1.5px dashed var(--border-strong); display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; flex: 0 0 auto; }
 /* ★ 2026-10-11 phone: งานวันนี้ header */
 .m-search[hidden], .m-daynav[hidden], .m-daysum[hidden] { display: none; }
 .m-daynav { display: flex; align-items: center; gap: 6px; margin-top: 10px; padding: 4px; border-radius: 12px; background: var(--bg); border: 1px solid var(--border); }
@@ -12313,6 +12331,43 @@ function openStarDrawer() {
 const M_MQ = window.matchMedia("(max-width: 640px)");
 let mTab = "mine";            // mine | today | me   (★ ปฏิทิน tab → งานวันนี้, owner 2026-10-11)
 let mDay = 0;                 // งานวันนี้: day offset from today
+// ★ 2026-10-11 (owner): [ทั้งแผนก | มอบหมายให้ฉัน] on งานแผนก + งานวันนี้ — "มอบหมายให้ฉัน" = tasks with me in assignees
+//   on EVERY calendar I can open (e.g. ออกไซต์ too). Remembered on this device.
+function mMine() { try { return localStorage.getItem("qc_m_mine") === "1"; } catch (_) { return false; } }
+function mSetMine(on) { try { localStorage.setItem("qc_m_mine", on ? "1" : "0"); } catch (_) {} }
+// run fn with `state` pointing at another calendar (its statuses / departments / automations), then put it back
+function mWithBoard(bid, fn) {
+  if (!bid || bid === root.activeBoard || !root.boards[bid]) return fn();
+  const prev = state; state = root.boards[bid];
+  try { return fn(); } finally { state = prev; }
+}
+// my own department on calendar bid ("" = none / a "เห็นงานทั้งหมด" department / Service)
+function mOwnDeptIn(bid) {
+  if (bid === SERVICE_BOARD) return "";
+  const ws = root.boards[bid]; if (!ws) return "";
+  const id = myDeptIn(ws), d = id && getDeptIn(ws, id);
+  return d && !d.seeAll ? id : "";
+}
+function mSearchHit(t) {
+  const q = mSearch.trim().toLowerCase(); if (!q) return true;
+  return [taskAvt(t), t.so, t.title, ...(t.subtasks || []).map(x => (x.mo || "") + " " + (x.text || ""))].join(" ").toLowerCase().includes(q);
+}
+// tasks assigned to me on every calendar I can open → { t, due, dep, bid, done }
+function mMineItems() {
+  const me = currentProfile && currentProfile.id; if (!me) return [];
+  const out = [];
+  visibleBoardIds().forEach(bid => {
+    const ws = root.boards[bid]; if (!ws) return;
+    const own = mOwnDeptIn(bid);
+    mWithBoard(bid, () => (ws.tasks || []).forEach(t => {
+      if (!(t.assignees || []).includes(me)) return;
+      const dep = own && taskStage(t, own) ? own : "";
+      const due = dep ? ((taskStage(t, dep) || {}).due || t.date) : t.date;
+      out.push({ t, due, dep, bid, done: dep ? isDeptComplete(t, dep) : projectComplete(t) });
+    }));
+  });
+  return out;
+}
 const mOpen = new Set();      // expanded projects
 const mOpenSub = new Set();   // expanded cabinets
 const mKeep = new Set();      // finished while on screen → stays (as done) until the list is left, so it doesn't vanish under the finger
@@ -12363,9 +12418,22 @@ function mDayItems(dayIso) {
     .sort((a, b) => (a.done - b.done) || (a.t.title || "").localeCompare(b.t.title || "", "th"));
 }
 const M_DOW = ["อา.", "จ.", "อ.", "พ.", "พฤ.", "ศ.", "ส."];
+// ★ 2026-10-11 owner row on a phone card: photo + name (+ department when one person). Same rule as everywhere else
+//   (owner chose rule 1): staff see only people of their own department — assigned to others only → no row at all.
+function mOwnersHtml(t) {
+  const all = (t.assignees || []).filter(id => teamProfiles.has(id));
+  if (!(t.assignees || []).length) return `<div class="m-own none"><span class="m-own-q">?</span><span>ยังไม่มอบหมาย</span></div>`;
+  const ppl = all.map(id => teamProfiles.get(id)).filter(canSeePerson);
+  if (!ppl.length) return "";
+  const shown = ppl.slice(0, 3), more = ppl.length - shown.length;
+  const d = ppl.length === 1 && deptAnywhere(ppl[0].dept_id);
+  return `<div class="m-own"><span class="m-own-av">${shown.map(p => avatarHtml(p)).join("")}</span>`
+    + `<span class="m-own-names">${escapeHtml(shown.map(personName).join(", "))}${more ? ` +${more}` : ""}</span>`
+    + (d ? `<span class="m-own-dept">· ${escapeHtml(d.name)}</span>` : "") + `</div>`;
+}
 // cabinets that have something to tick here (department items, or all items when no department is chosen)
 function mCabs(t, dep) { return (t.subtasks || []).filter(x => checklistProgress(x, dep || null).total > 0); }
-function mCardHtml(t, due, dep) {
+function mCardHtml(t, due, dep, bid) {
   const open = mOpen.has(t.id);
   const done = dep ? isDeptComplete(t, dep) : projectComplete(t);
   const cabs = mCabs(t, dep);
@@ -12396,12 +12464,14 @@ function mCardHtml(t, due, dep) {
     body = `<div class="m-body">${rows || (manual ? "" : `<div class="m-empty-sm">ไม่มีเช็คลิสต์</div>`)}${manual}
       <button type="button" class="m-open-full" data-full="1">${ico("message")} รายละเอียด · คอมเมนต์ · รูป</button></div>`;
   }
-  return `<div class="m-card mg-${g}${open ? " open" : ""}" data-t="${escapeHtml(t.id)}">
+  const other = bid && bid !== root.activeBoard ? `<span class="m-boardtag">${escapeHtml(boardNameOf(bid))}</span>` : "";
+  return `<div class="m-card mg-${g}${open ? " open" : ""}" data-t="${escapeHtml(t.id)}" data-b="${escapeHtml(bid || root.activeBoard)}" data-dep="${escapeHtml(dep || "")}">
     <div class="m-card-head" data-toggle="1">
-      ${refs ? `<div class="m-refs">${refs}</div>` : ""}
-      <div class="m-title">${escapeHtml(t.title || "(ไม่มีชื่องาน)")}</div>
+      ${refs || other ? `<div class="m-refs">${other}${refs}</div>` : ""}
+      <div class="m-title-row"><div class="m-title">${escapeHtml(t.title || "(ไม่มีชื่องาน)")}</div></div>
       <div class="m-meta"><span class="m-due">${done ? "✓ เสร็จแล้ว" : escapeHtml(mDueLabel(due))}</span><span class="m-st" style="--st:${st.color}">${escapeHtml(st.name)}</span></div>
       <div class="m-prog"><div class="m-track"><div class="m-bar" style="width:${pct}%"></div></div><span class="m-prog-n">${cabs.length ? `${cabDone}/${cabs.length} ตู้` : (done ? "เสร็จ" : "")}</span></div>
+      ${mOwnersHtml(t)}
     </div>${body}
   </div>`;
 }
@@ -12412,7 +12482,8 @@ function mEnsureRoot() {
   el.id = "mobileRoot";
   el.innerHTML = `
     <div class="m-top">
-      <div class="m-top-row"><span class="m-h" data-mh>งานของฉัน</span><span class="m-board" data-mboard></span><span class="m-deptwrap" data-mdept></span></div>
+      <div class="m-top-row"><span class="m-h" data-mh>งานแผนก</span><span class="m-board" data-mboard></span><span class="m-deptwrap" data-mdept></span></div>
+      <div class="m-seg" data-mseg><button type="button" data-mmine="0">ทั้งแผนก <b data-mcnt0></b></button><button type="button" data-mmine="1">${ico("user")} มอบหมายให้ฉัน <b data-mcnt1></b></button></div>
       <label class="m-search" data-msearchwrap>${ico("search")}<input type="search" data-msearch placeholder="ค้นหา AVT / SO / ชื่องาน" autocomplete="off" /></label>
       <div class="m-daynav" data-mdaynav hidden>
         <button type="button" data-mday="-1" aria-label="วันก่อนหน้า">‹</button>
@@ -12423,7 +12494,7 @@ function mEnsureRoot() {
     </div>
     <div class="m-list" data-mlist></div>
     <nav class="m-nav">
-      <button type="button" data-mtab="mine">${ico("list-check")}<span>งานของฉัน</span></button>
+      <button type="button" data-mtab="mine">${ico("list-check")}<span>งานแผนก</span></button>
       <button type="button" data-mtab="today">${ico("calendar")}<span>งานวันนี้</span></button>
       <button type="button" data-mtab="bell">${ico("bell")}<span>แจ้งเตือน</span><b class="m-badge" data-mbadge hidden></b></button>
       <button type="button" data-mtab="me">${ico("user")}<span>ฉัน</span></button>
@@ -12437,6 +12508,10 @@ function mEnsureRoot() {
     mKeep.clear(); mTab = tab; window.scrollTo(0, 0); renderMobile();
   });
   el.querySelector("[data-mlist]").addEventListener("click", mListClick);
+  el.querySelector("[data-mseg]").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-mmine]"); if (!b) return;
+    mSetMine(b.dataset.mmine === "1"); mKeep.clear(); window.scrollTo(0, 0); renderMobile();
+  });
   el.querySelector("[data-mdaynav]").addEventListener("click", (e) => {
     const b = e.target.closest("[data-mday]"); if (!b) return;
     const v = Number(b.dataset.mday); mDay = v === 0 ? 0 : mDay + v; mKeep.clear(); renderMobile();
@@ -12445,8 +12520,9 @@ function mEnsureRoot() {
 }
 function mListClick(e) {
   const card = e.target.closest(".m-card");
-  const t = card && state.tasks.find(x => x.id === card.dataset.t);
-  const dep = mDept();
+  const bid = (card && card.dataset.b) || root.activeBoard;
+  const t = card && ((root.boards[bid] || {}).tasks || []).find(x => x.id === card.dataset.t);
+  const dep = card ? (card.dataset.dep || "") : mDept();
   if (e.target.closest("[data-mpick]") || e.target.closest(".m-me")) return;   // "ฉัน" page handles its own
   if (!t) return;
   const item = e.target.closest("[data-item]");
@@ -12455,24 +12531,28 @@ function mListClick(e) {
     const [sid, iid] = item.dataset.item.split("|");
     const sub = (t.subtasks || []).find(x => x.id === sid), it = sub && (sub.checklist || []).find(i => i.id === iid);
     if (!it) return;
-    const snap = automationSnapshot(t), was = isDeptComplete(t, it.deptId);
-    it.done = !it.done;
-    const now = isDeptComplete(t, it.deptId), dn = (getDept(it.deptId) || {}).name || "";
-    if (!was && now) logActivity(t, `✓ แผนก ${dn} เสร็จ`); else if (was && !now) logActivity(t, `ยกเลิกเสร็จ แผนก ${dn}`);
-    if (now) mKeep.add(t.id);
-    runAutomations(t, snap);   // ⚡ same automations as ticking on the desktop
+    mWithBoard(bid, () => {   // that calendar's departments / automations
+      const snap = automationSnapshot(t), was = isDeptComplete(t, it.deptId);
+      it.done = !it.done;
+      const now = isDeptComplete(t, it.deptId), dn = (getDept(it.deptId) || {}).name || "";
+      if (!was && now) logActivity(t, `✓ แผนก ${dn} เสร็จ`); else if (was && !now) logActivity(t, `ยกเลิกเสร็จ แผนก ${dn}`);
+      if (now && (!dep || it.deptId === dep)) mKeep.add(t.id);
+      runAutomations(t, snap);   // ⚡ same automations as ticking on the desktop
+    });
     t.updatedAt = Date.now(); saveState(); renderAll();
     return;
   }
   if (e.target.closest("[data-deptdone]")) {
     if (!canEdit()) { permDenied("สิทธิ์ของคุณติ๊กเสร็จไม่ได้"); return; }
-    const stg = taskStage(t, dep); if (!stg) return;
-    const snap = automationSnapshot(t), dn = (getDept(dep) || {}).name || "";
-    stg.done = !stg.done;
-    logActivity(t, stg.done ? `✓ แผนก ${dn} เสร็จ` : `ยกเลิกเสร็จ แผนก ${dn}`);
-    if (stg.done) mKeep.add(t.id);
-    runAutomations(t, snap);
-    if (stg.done && taskRelevantToMe(t)) pushNotify("done", "✅ แผนกเสร็จ", `${t.title} · ${dn}`, "dd-" + t.id + dep);
+    const stg = mWithBoard(bid, () => taskStage(t, dep)); if (!stg) return;
+    mWithBoard(bid, () => {
+      const snap = automationSnapshot(t), dn = (getDept(dep) || {}).name || "";
+      stg.done = !stg.done;
+      logActivity(t, stg.done ? `✓ แผนก ${dn} เสร็จ` : `ยกเลิกเสร็จ แผนก ${dn}`);
+      if (stg.done) mKeep.add(t.id);
+      runAutomations(t, snap);
+      if (stg.done && taskRelevantToMe(t)) pushNotify("done", "✅ แผนกเสร็จ", `${t.title} · ${dn}`, "dd-" + t.id + dep);
+    });
     t.updatedAt = Date.now(); saveState(); renderAll();
     return;
   }
@@ -12481,15 +12561,29 @@ function mListClick(e) {
     e.stopPropagation();
     if (!canEdit()) { permDenied("สิทธิ์ของคุณเปลี่ยนสถานะไม่ได้"); return; }
     const sub = (t.subtasks || []).find(x => x.id === dot.dataset.substatus);
-    if (sub) openStatusPopover(dot, sub.statusId, (id) => applyStatusChange(t, sub, id));
+    if (!sub) return;
+    if (bid === root.activeBoard) { openStatusPopover(dot, sub.statusId, (id) => applyStatusChange(t, sub, id)); return; }
+    // a task of another calendar: pick from ITS statuses, write + log there, then save/render as usual
+    mWithBoard(bid, () => openStatusPopover(dot, sub.statusId, (id) => {
+      let ok = false;
+      mWithBoard(bid, () => {
+        const oldId = sub.statusId;
+        if (oldId === id || statusBlocked(t, sub, id)) return;
+        sub.statusId = id; ok = true;
+        const ns = getStatus(id);
+        logActivity(t, (isStatusDone(ns) && !isStatusDone(getStatus(oldId))) ? `ตู้ “${sub.text || "(ไม่มีชื่อ)"}” เสร็จ` : `ตู้ “${sub.text || "(ไม่มีชื่อ)"}” → ${ns.name}`);
+        notifyStatusChange(t, sub, oldId, id);
+      });
+      if (ok) { t.updatedAt = Date.now(); saveState(); renderAll(); }
+    }));
     return;
   }
-  if (e.target.closest("[data-full]")) { openTaskModal(t.id); return; }
+  if (e.target.closest("[data-full]")) { if (bid !== root.activeBoard) setBoard(bid); openTaskModal(t.id); return; }
   const sh = e.target.closest("[data-sub]");
   if (sh) { const id = sh.dataset.sub; if (mOpenSub.has(id)) mOpenSub.delete(id); else mOpenSub.add(id); renderMobile(); return; }
   if (e.target.closest("[data-toggle]")) {
     if (mOpen.has(t.id)) mOpen.delete(t.id);
-    else { mOpen.add(t.id); const cabs = mCabs(t, dep); if (cabs.length === 1) mOpenSub.add(cabs[0].id); }   // one cabinet → open it too
+    else { mOpen.add(t.id); const cabs = mWithBoard(bid, () => mCabs(t, dep)); if (cabs.length === 1) mOpenSub.add(cabs[0].id); }   // one cabinet → open it too
     renderMobile();
   }
 }
@@ -12530,13 +12624,16 @@ function renderMobile() {
   const n = pendingAlerts().length, badge = el.querySelector("[data-mbadge]");
   badge.hidden = !n; badge.textContent = n > 99 ? "99+" : String(n);
   el.querySelector(".m-top").hidden = mTab === "me";
-  el.querySelector("[data-mh]").textContent = mTab === "today" ? "งานวันนี้" : "งานของฉัน";
+  el.querySelector("[data-mh]").textContent = mTab === "today" ? "งานวันนี้" : "งานแผนก";
   el.querySelector("[data-msearchwrap]").hidden = mTab !== "mine";
   el.querySelector("[data-mdaynav]").hidden = mTab !== "today";
   el.querySelector("[data-mdaysum]").hidden = mTab !== "today";
   el.querySelector("[data-mboard]").textContent = boardNameOf(root.activeBoard);
   const dw = el.querySelector("[data-mdept]");
-  if (mCanPick()) {
+  const mine = mMine();
+  el.querySelectorAll("[data-mmine]").forEach(b => b.classList.toggle("on", (b.dataset.mmine === "1") === mine));
+  if (mine) dw.innerHTML = "";
+  else if (mCanPick()) {
     const cur = mDept();
     dw.innerHTML = `<select data-mpick><option value="">ทุกแผนก</option>${(state.departments || []).map(d => `<option value="${escapeHtml(d.id)}"${d.id === cur ? " selected" : ""}>${escapeHtml(d.name)}</option>`).join("")}</select>`;
     dw.querySelector("select").addEventListener("change", (e) => { mSetPickedDept(e.target.value); mKeep.clear(); renderMobile(); });
@@ -12555,23 +12652,35 @@ function renderMobile() {
   }
   if (mTab === "today") {
     const dep = mDept(), day = new Date(); day.setDate(day.getDate() + mDay);
-    const iso = isoDate(day), list2 = mDayItems(iso);
+    const iso = isoDate(day);
+    const deptDay = mDayItems(iso).map(x => ({ ...x, dep, bid: root.activeBoard }));
+    const mineDay = mMineItems().filter(x => x.due === iso && mSearchHit(x.t)).sort((a, b) => (a.done - b.done) || (a.t.title || "").localeCompare(b.t.title || "", "th"));
+    el.querySelector("[data-mcnt0]").textContent = deptDay.length;
+    el.querySelector("[data-mcnt1]").textContent = mineDay.length;
+    const list2 = mine ? mineDay : deptDay;
     el.querySelector("[data-mdayname]").textContent = mDay === 0 ? "วันนี้" : mDay === 1 ? "พรุ่งนี้" : mDay === -1 ? "เมื่อวาน" : `${mDay > 0 ? "อีก " + mDay : -mDay} วัน${mDay > 0 ? "" : "ก่อน"}`;
     el.querySelector("[data-mdaydate]").textContent = `${M_DOW[day.getDay()]} ${day.getDate()} ${M_MON[day.getMonth()]} ${day.getFullYear() + 543}`;
     const nDone = list2.filter(x => x.done).length;
     el.querySelector("[data-mdaysum]").innerHTML = list2.length ? `<span class="ok">เสร็จ ${nDone}</span><span>ค้าง ${list2.length - nDone}</span>` : "";
-    list.innerHTML = list2.length ? list2.map(x => mCardHtml(x.t, x.due, dep)).join("") : `<div class="m-empty">ไม่มีงานครบกำหนด${mDay === 0 ? "วันนี้" : "วันนั้น"}</div>`;
+    list.innerHTML = list2.length ? list2.map(x => mWithBoard(x.bid, () => mCardHtml(x.t, x.due, x.dep, x.bid))).join("")
+      : `<div class="m-empty">${mine ? "ไม่มีงานที่มอบหมายให้คุณ" : "ไม่มีงานครบกำหนด"}${mDay === 0 ? "วันนี้" : "วันนั้น"}</div>`;
     window.scrollTo(0, y);
     return;
   }
-  const dep = mDept(), items = mItems();
+  const dep = mDept();
+  const deptItems = mItems().map(x => ({ ...x, dep, bid: root.activeBoard }));
+  const mineItems = mMineItems().filter(x => (!x.done || mKeep.has(x.t.id)) && mSearchHit(x.t))
+    .sort((a, b) => (a.due || "9999").localeCompare(b.due || "9999") || (a.t.title || "").localeCompare(b.t.title || "", "th"));
+  el.querySelector("[data-mcnt0]").textContent = deptItems.length;
+  el.querySelector("[data-mcnt1]").textContent = mineItems.length;
+  const items = mine ? mineItems : deptItems;
   if (!items.length) {
-    list.innerHTML = `<div class="m-empty">${mSearch ? "ไม่พบงานที่ค้นหา" : "ไม่มีงานค้าง" + (dep ? ` ของแผนก ${escapeHtml((getDept(dep) || {}).name || "")}` : "")}</div>`;
+    list.innerHTML = `<div class="m-empty">${mSearch ? "ไม่พบงานที่ค้นหา" : mine ? "ยังไม่มีงานที่มอบหมายให้คุณ" : "ไม่มีงานค้าง" + (dep ? ` ของแผนก ${escapeHtml((getDept(dep) || {}).name || "")}` : "")}</div>`;
   } else {
     const by = {};
     items.forEach(x => { const g = mGroupOf(x.due); (by[g] = by[g] || []).push(x); });
     list.innerHTML = M_GROUPS.filter(([g]) => by[g]).map(([g, name]) =>
-      `<div class="m-group mg-${g}"><div class="m-group-h">${name} <span>${by[g].length}</span></div>${by[g].map(x => mCardHtml(x.t, x.due, dep)).join("")}</div>`).join("");
+      `<div class="m-group mg-${g}"><div class="m-group-h">${name} <span>${by[g].length}</span></div>${by[g].map(x => mWithBoard(x.bid, () => mCardHtml(x.t, x.due, x.dep, x.bid))).join("")}</div>`).join("");
   }
   window.scrollTo(0, y);
 }
