@@ -9261,7 +9261,22 @@ function cuSplitJob(name) {
 }
 const CU_MO_RE = /^(WH\/MO\/\d{3,}|MO\s*-?\s*\d{4,})\b[\s\t:–-]*/i;
 function cuClean(v) { return String(v || "").replace(/\\n/g, " ").replace(/[\u200b\u00a0]/g, " ").replace(/\t+/g, " ").replace(/ {2,}/g, " ").trim(); }
-function cuDay(ms) { const n = Number(ms); return n > 0 ? isoDate(new Date(n)) : null; }
+// ★ 2026-10-11 a ClickUp VIEW export writes dates as text: "Wednesday, June 3rd 2026, 3:50:10 pm +07:00" / "Friday, June 5th 2026"
+const CU_MONTHS = { jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5, jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11 };
+function cuTextTime(v) {
+  const m = String(v || "").match(/([A-Za-z]{3})[a-z]*\s+(\d{1,2})(?:st|nd|rd|th)?,?\s+(\d{4})(?:,?\s+(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(am|pm)?)?/i);
+  if (!m || !(m[1].toLowerCase() in CU_MONTHS)) return null;
+  let h = Number(m[4] || 0); const ap = (m[7] || "").toLowerCase();
+  if (ap === "pm" && h < 12) h += 12; if (ap === "am" && h === 12) h = 0;
+  return new Date(Number(m[3]), CU_MONTHS[m[1].toLowerCase()], Number(m[2]), h, Number(m[5] || 0), Number(m[6] || 0)).getTime();
+}
+function cuDay(ms) {
+  const n = Number(ms); if (n > 0) return isoDate(new Date(n));
+  const t = cuTextTime(ms); return t ? isoDate(new Date(t)) : null;
+}
+// custom-field columns of the drawing list ("📐 เลข DWG (short text)" …) → short keys, matched by their Thai name
+const CU_FIELDS = [["_dwg", "เลข DWG"], ["_sales", "ทีม Sales"], ["_sub", "วันที่ยื่นขอแบบ"], ["_end", "วันที่จบงานจริง"], ["_submitter", "ชื่อผู้ยื่น"], ["_owner", "ผู้รับผิดชอบ"]];
+function cuDwg(v) { const t = cuClean(v); const m = t.match(/AVT\.?\s*(\d{4,})/i); return m ? "AVT" + m[1] : t; }
 function cuJson(v, dflt) { try { const x = JSON.parse(v); return x == null ? dflt : x; } catch (_) { return dflt; } }
 function cuList(v) { return String(v || "").replace(/^\[|\]$/g, "").split(",").map(x => cuClean(x)).filter(Boolean); }
 function cuCommentDate(s) { const t = Date.parse(String(s || "").replace(/ GMT\+7$/, " GMT+0700")); return isNaN(t) ? null : t; }
@@ -9274,7 +9289,7 @@ function buildClickUpImport(container) {
     <div class="row" style="gap:8px; flex-wrap:wrap; align-items:center">
       <button class="btn" data-cu-pick>${ico("upload")} เลือกไฟล์ CSV</button>
       <span class="muted" style="font-size:12px" data-cu-file></span>
-      <input type="file" accept=".csv,text/csv" hidden data-cu-input />
+      <input type="file" accept=".csv,text/csv" multiple hidden data-cu-input />
     </div>
     <div class="cu-body" data-cu-body hidden>
       <div class="cu-stats" data-cu-stats></div>
@@ -9287,6 +9302,10 @@ function buildClickUpImport(container) {
         <h4 class="settings-h" style="margin-top:12px; font-size:14px">แผนกของคน (สถานะ subtask) → แผนกในแอป</h4>
         <div class="cu-grid" data-cu-ppl></div>
       </div>
+      <div data-cu-ownwrap hidden>
+        <h4 class="settings-h" style="margin-top:12px; font-size:14px">ผู้รับผิดชอบ ClickUp → คนในแอป</h4>
+        <div class="cu-grid" data-cu-own></div>
+      </div>
       <h4 class="settings-h" style="margin-top:12px; font-size:14px">สถานะ ClickUp → สถานะในแอป</h4>
       <div class="cu-grid" data-cu-status></div>
       <div class="row" style="gap:8px; margin-top:12px; align-items:center">
@@ -9296,22 +9315,37 @@ function buildClickUpImport(container) {
     </div>`;
   container.appendChild(sec);
   const $ = q => sec.querySelector(q);
-  let rows = null, statusMap = {}, pplMap = {};
+  let rows = null, statusMap = {}, pplMap = {}, ownMap = {};
   const isTop = r => !r["Parent ID"] || r["Parent ID"] === "null";
   const kind = () => $("[data-cu-kind]").value;   // "cab" = subtask is a cabinet · "people" = subtask is a person sent out (status = their department)
   $("[data-cu-pick]").addEventListener("click", () => $("[data-cu-input]").click());
   $("[data-cu-input]").addEventListener("change", async (e) => {
-    const f = e.target.files[0]; if (!f) return;
-    rows = parseCsv(await f.text());
+    const files = Array.from(e.target.files || []); if (!files.length) return;
     e.target.value = "";
-    if (!rows.length || !("Task ID" in rows[0]) || !("Parent ID" in rows[0])) { toast("ไฟล์นี้ไม่ใช่ CSV ที่ export จาก ClickUp"); rows = null; return; }
-    $("[data-cu-file]").textContent = f.name;
+    // ★ 2026-10-11 several exports at once (e.g. the full export + "view" exports carrying the custom fields; done / not done)
+    //   → merged by Task ID: a later file fills in what the earlier ones left empty
+    const byId = new Map();
+    for (const f of files) {
+      const part = parseCsv(await f.text());
+      if (!part.length || !("Task ID" in part[0])) { toast(`“${f.name}” ไม่ใช่ CSV ที่ export จาก ClickUp`); rows = null; return; }
+      part.forEach(r => {
+        Object.keys(r).forEach(k => { const hit = CU_FIELDS.find(([, th]) => k.includes(th)); if (hit) r[hit[0]] = r[k]; });
+        const cur = byId.get(r["Task ID"]);
+        if (!cur) { byId.set(r["Task ID"], r); return; }
+        Object.keys(r).forEach(k => { if (String(r[k] || "").trim() && !String(cur[k] || "").trim()) cur[k] = r[k]; });
+      });
+    }
+    rows = [...byId.values()];
+    // a view export of finished tasks has no Status column → a real end date means it's done
+    rows.forEach(r => { if (!cuClean(r.Status) && cuClean(r._end)) r.Status = "complete"; });
+    $("[data-cu-file]").textContent = files.length > 1 ? `${files.length} ไฟล์ · ${rows.length} งาน` : files[0].name;
+    if (!teamProfiles.size) { try { await loadTeam(); } catch (_) {} }
     setup();
   });
 
   function setup() {
     const depts = state.departments || [];
-    const qc = depts.find(d => /qc/i.test(d.name) || d.id === "d_qc");
+    const qc = depts.find(d => /qc/i.test(d.name) || d.id === "d_qc") || (depts.length === 1 ? depts[0] : null);
     $("[data-cu-dept]").innerHTML = `<option value="">— ไม่ใส่ด่าน —</option>` + depts.map(d =>
       `<option value="${escapeHtml(d.id)}" ${qc && qc.id === d.id ? "selected" : ""}>${escapeHtml(d.name)}</option>`).join("");
     // subtasks whose statuses are mostly "แผนก …" = people sent to a site (งานนอก list), not cabinets
@@ -9347,6 +9381,20 @@ function buildClickUpImport(container) {
       sec.querySelectorAll("[data-st]").forEach(sel => sel.addEventListener("change", () => { statusMap[sel.dataset.st] = sel.value; }));
       refresh();
     };
+    // ผู้รับผิดชอบ (a custom drop-down of nicknames) → a person, guessed by name ("ขวัญ" ↔ "ขวัญ" / "พี่ขวัญ" / "ขวัญใจ …")
+    ownMap = {};
+    const nk = n => cuClean(n).toLowerCase().replace(/^(พี่|น้อง|คุณ)\s*/, "");
+    const profs = [...teamProfiles.values()].filter(p => p.dept_id !== SERVICE_DEPT);
+    [...new Set(rows.map(r => cuClean(r._owner)).filter(Boolean))].forEach(n => {
+      const k = nk(n);
+      const p = profs.find(x => nk(x.display_name) === k) || profs.find(x => nk(x.display_name).split(/\s+/)[0] === k)
+        || profs.find(x => k.length >= 2 && nk(x.display_name).startsWith(k));
+      ownMap[n] = p ? p.id : "";
+    });
+    $("[data-cu-ownwrap]").hidden = !Object.keys(ownMap).length;
+    $("[data-cu-own]").innerHTML = Object.keys(ownMap).map(n => `<span class="cu-lbl">${escapeHtml(n)} <span class="muted">(${rows.filter(r => cuClean(r._owner) === n).length})</span></span><select data-own="${escapeHtml(n)}"><option value="">— ไม่ใส่ —</option>${
+      profs.slice().sort((a, b) => personName(a).localeCompare(personName(b), "th")).map(p => `<option value="${escapeHtml(p.id)}" ${ownMap[n] === p.id ? "selected" : ""}>${escapeHtml(personName(p))}</option>`).join("")}</select>`).join("");
+    sec.querySelectorAll("[data-own]").forEach(sel => sel.addEventListener("change", () => { ownMap[sel.dataset.own] = sel.value; }));
     statusMap = {};
     $("[data-cu-kind]").onchange = renderMaps;
     renderMaps();
@@ -9416,7 +9464,7 @@ function buildClickUpImport(container) {
     p.todo.forEach(r => {
       const name = cuClean(r["Task Name"]);
       const { so, title } = cuSplitJob(name);
-      const created = Number(r["Date Created"]) || Date.now();
+      const created = Number(r["Date Created"]) || cuTextTime(r._sub) || Date.now();
       const due = cuDay(r["Due Date"]), start = cuDay(r["Start Date"]);
       const date = due || start || isoDate(new Date(created));
       const stId = statusMap[cuClean(r.Status)] || state.statuses[0].id;
@@ -9457,8 +9505,16 @@ function buildClickUpImport(container) {
           statusId: sSt, date: cuDay(sr["Due Date"]), deptDates: {}, checklist: tpl().map(it => ({ ...it, done })),
           ext: { src: "clickup", id: sr["Task ID"] } };
       });
-      const assignees = [...new Set([r, ...subsRows].flatMap(x => cuList(x.Assignees)))]
-        .map(n => byName.get(n.toLowerCase())).filter(Boolean).map(x => x.id);
+      const assignees = [...new Set([...[r, ...subsRows].flatMap(x => cuList(x.Assignees))
+        .map(n => byName.get(n.toLowerCase())).filter(Boolean).map(x => x.id), ...(ownMap[cuClean(r._owner)] ? [ownMap[cuClean(r._owner)]] : [])])];
+      // ★ drawing-request custom fields → the "ข้อมูลคำขอแบบ" card + วันที่จบงานจริง (dashboard stats)
+      const subAt = cuTextTime(r._sub) || (Number(r._sub) > 0 ? Number(r._sub) : null);
+      const request = {};
+      if (cuClean(r._dwg)) request.dwgNo = cuDwg(r._dwg);
+      if (cuClean(r._submitter)) request.submitter = cuClean(r._submitter);
+      if (cuClean(r._sales)) request.salesTeam = salesTeamKey(cuClean(r._sales));
+      if (subAt) request.at = subAt;
+      const actualEnd = cuDay(r._end);
       const allComments = [...comments(r, ""), ...attachNote(r, "")];
       subsRows.forEach((sr, i) => { const lbl = `[${subLabel(subtasks[i])}]`; allComments.push(...comments(sr, lbl), ...attachNote(sr, lbl)); });
       allComments.sort((a, b) => a.at - b.at);
@@ -9469,6 +9525,8 @@ function buildClickUpImport(container) {
         labels: cuList(r.Tags), assignees, subtasks,
         deptStages: deptId ? [{ deptId, due: date, done: taskDone, fields: {} }] : [],
         comments: allComments, createdAt: created, updatedAt: Date.now(),
+        ...(Object.keys(request).length ? { request: { kind: "structure", ...request } } : {}),
+        ...(actualEnd ? { actualEnd } : {}),
         ext: { src: "clickup", id: r["Task ID"] },
       });
       nT++;
