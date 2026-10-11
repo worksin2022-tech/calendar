@@ -56,15 +56,16 @@
   .inp { position: relative; }
   .inp svg { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); width: 17px; height: 17px; color: var(--text-faint); pointer-events: none; transition: color .15s; }
   .inp.ta svg { top: 15px; transform: none; }
-  input[type=text], input[type=date], textarea {
+  input[type=text], input[type=date], textarea, select {
     width: 100%; padding: 13px 14px 13px 40px; border: 1.5px solid var(--border); border-radius: 13px;
     font-size: 15px; font-family: inherit; background: var(--field); color: var(--text);
     transition: border-color .15s, box-shadow .15s, background .15s; -webkit-appearance: none; appearance: none;
   }
   input[type=date] { min-height: 49px; }
+  select { min-height: 49px; cursor: pointer; background-image: linear-gradient(45deg, transparent 50%, var(--text-faint) 50%), linear-gradient(135deg, var(--text-faint) 50%, transparent 50%); background-position: calc(100% - 20px) 21px, calc(100% - 15px) 21px; background-size: 5px 5px; background-repeat: no-repeat; padding-right: 36px; }
   textarea { resize: vertical; min-height: 92px; line-height: 1.5; }
   input::placeholder, textarea::placeholder { color: var(--text-faint); }
-  input:focus, textarea:focus { outline: none; border-color: var(--accent); background: var(--panel); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 18%, transparent); }
+  input:focus, textarea:focus, select:focus { outline: none; border-color: var(--accent); background: var(--panel); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 18%, transparent); }
   .inp:focus-within svg { color: var(--accent); }
 
   /* segmented control */
@@ -143,10 +144,17 @@
 
     <div class="sec">
       <div class="sec-title">ข้อมูลงาน</div>
+      <div class="field-row">
       <div class="field">
-        <label>โครงการ / SO <span class="req">*</span></label>
+        <label>SO</label>
+        <div class="inp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h16M4 15h16M10 3 8 21M16 3l-2 18"/></svg>
+          <input type="text" id="fSo" placeholder="เช่น SO26050090" autocomplete="off" /></div>
+      </div>
+      <div class="field">
+        <label>โครงการ <span class="req">*</span></label>
         <div class="inp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9 22v-4h6v4M8 6h.01M12 6h.01M16 6h.01M8 10h.01M12 10h.01M16 10h.01"/></svg>
-          <input type="text" id="fProject" placeholder="เช่น SO26050090 ตู้ MDB ลูกค้า A" autocomplete="off" /></div>
+          <input type="text" id="fProject" placeholder="ชื่อโครงการ" autocomplete="off" /></div>
+      </div>
       </div>
       <div class="field-row">
         <div class="field">
@@ -179,7 +187,7 @@
         <div class="field">
           <label>ทีม Sales</label>
           <div class="inp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-            <input type="text" id="fSales" placeholder="ไม่บังคับ" autocomplete="off" /></div>
+            <select id="fSales"><option value="">เลือกทีม</option><option>TEAM A</option><option>TEAM B</option><option>TEAM C</option><option>TEAM E</option><option>TEAM F</option><option>TEAM G</option><option>TEAM H</option><option>OTHER</option></select></div>
         </div>
       </div>
     </div>
@@ -307,6 +315,7 @@ async function uploadOne(a, i) {
 
 $("btnSubmit").addEventListener("click", async () => {
   const project = $("fProject").value.trim();
+  const so = $("fSo").value.trim();
   const dwg = $("fDwg").value.trim();
   const due = $("fDue").value;
   const detail = $("fDetail").value.trim();
@@ -315,7 +324,7 @@ $("btnSubmit").addEventListener("click", async () => {
   const errEl = $("errMsg");
   errEl.textContent = "";
 
-  if (!project) return errEl.textContent = "กรุณาใส่ชื่อโครงการ / SO";
+  if (!project) return errEl.textContent = "กรุณาใส่ชื่อโครงการ";
   if (!dwg) return errEl.textContent = "กรุณาใส่เลข DWG";
   if (!submitter) return errEl.textContent = "กรุณาใส่ชื่อผู้ยื่น";
   if (!due) return errEl.textContent = "กรุณาเลือกวันที่ต้องการให้จบ";
@@ -331,10 +340,19 @@ $("btnSubmit").addEventListener("click", async () => {
     }
     btn.textContent = "กำลังส่ง...";
     const photoUrl = (files.find(f => f.mime.startsWith("image/")) || {}).url || null;   // first photo (older app versions read this)
-    const row = { kind, project, dwg_no: dwg, due_date: due, detail: detail || null,
+    const row = { kind, project, ...(so ? { so } : {}), dwg_no: dwg, due_date: due, detail: detail || null,
       submitter, sales_team: sales || null, photo_url: photoUrl, status: "pending" };
-    let { error } = await sb.from("drawing_requests").insert({ ...row, files });
-    if (error && /files/i.test(error.message || "")) ({ error } = await sb.from("drawing_requests").insert(row));   // column not added yet → first photo only
+    // columns not added yet (slice10 files / slice11 so) → keep the request: first photo only / SO goes in front of the project name
+    const payload = { ...row, files };
+    let error = null;
+    for (let n = 0; n < 3; n++) {
+      ({ error } = await sb.from("drawing_requests").insert(payload));
+      if (!error) break;
+      const msg = error.message || "";
+      if (payload.so !== undefined && /\bso\b/i.test(msg)) { payload.project = `${so} ${project}`; delete payload.so; }
+      else if ("files" in payload && /files/i.test(msg)) delete payload.files;
+      else break;
+    }
     if (error) throw error;
     $("formCard").classList.add("hidden");
     $("successCard").classList.remove("hidden");
@@ -346,7 +364,7 @@ $("btnSubmit").addEventListener("click", async () => {
 });
 
 $("btnAgain").addEventListener("click", () => {
-  $("fProject").value = ""; $("fDwg").value = ""; $("fDetail").value = "";
+  $("fProject").value = ""; $("fSo").value = ""; $("fDwg").value = ""; $("fDetail").value = "";
   $("fSubmitter").value = ""; $("fSales").value = "";
   $("fDue").value = isoDate(minDue);
   attached = []; renderAtt();

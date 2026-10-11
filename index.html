@@ -5715,7 +5715,7 @@ function attachAutocomplete(input, getItems, opts = {}) {
 function buildReqTask(ws, project, due, detail, reqMeta, summary, photo, files, driveFolderId) {
   const dept = drawingDeptOf(ws);
   return {
-    id: uid("t"), title: project, description: detail, date: due, startDate: null,
+    id: uid("t"), title: project, ...(reqMeta.so ? { so: reqMeta.so } : {}), description: detail, date: due, startDate: null,
     statusId: (ws.statuses[0] || {}).id, priority: "none", labels: ["คำขอแบบ"], subtasks: [],
     deptStages: dept ? [{ deptId: dept.id, due, done: false, fields: {} }] : [],
     comments: [{ id: uid("al"), type: "alert", author: reqMeta.submitter, toDept: dept && dept.id, text: summary, photo: photo || null, ...(files && files.length ? { files } : {}), at: Date.now(), ack: false }],
@@ -5723,10 +5723,23 @@ function buildReqTask(ws, project, due, detail, reqMeta, summary, photo, files, 
     ...(driveFolderId ? { driveFolderId } : {}),
   };
 }
+// ★ 2026-10-11 ทีม Sales = ตัวเลือกตายตัว (ใช้รวมสถิติในแดชบอร์ด). ค่าเก่าที่พิมพ์เอง ("ทีม B") ยังอยู่ครบ — ไม่แก้ข้อมูลเดิม
+const SALES_TEAMS = ["TEAM A", "TEAM B", "TEAM C", "TEAM E", "TEAM F", "TEAM G", "TEAM H", "OTHER"];
+function salesTeamKey(v) {   // for grouping only: "ทีม b" / "team B" → "TEAM B"
+  const t = String(v || "").trim(); if (!t) return "";
+  const m = t.match(/^(?:ทีม|team)\s*([a-z])$/i);
+  return m ? "TEAM " + m[1].toUpperCase() : t;
+}
+function salesOptionsHtml(cur) {
+  const c = String(cur || "");
+  const list = (c && !SALES_TEAMS.includes(c) && !SALES_TEAMS.includes(salesTeamKey(c))) ? [c, ...SALES_TEAMS] : SALES_TEAMS;
+  const sel = SALES_TEAMS.includes(c) ? c : (SALES_TEAMS.includes(salesTeamKey(c)) ? salesTeamKey(c) : c);
+  return `<option value="">— เลือกทีม —</option>` + list.map(x => `<option value="${escapeHtml(x)}"${x === sel ? " selected" : ""}>${escapeHtml(x)}</option>`).join("");
+}
 // routes one drawing request into a task. returns { boardName, attached, title } for the caller's toast/summary.
-function routeDrawingRequest({ kind, project, dwg, due, detail, submitter, sales, photo, files, driveFolderId, imported, sentAt }) {
-  const reqMeta = { kind, dwgNo: dwg, submitter, salesTeam: sales, at: sentAt || Date.now() };
-  const summary = [`📐 คำขอเขียนแบบวงจรไฟฟ้า${kind === "structure" ? "" : " (ปฏิทินผลิต)"}`, `เลข DWG: ${dwg}`, `ผู้ยื่น: ${submitter}${sales ? ` · Sales: ${sales}` : ""}`].concat(detail ? [detail] : []).join("\n");
+function routeDrawingRequest({ kind, project, so, dwg, due, detail, submitter, sales, photo, files, driveFolderId, imported, sentAt }) {
+  const reqMeta = { kind, dwgNo: dwg, submitter, salesTeam: sales, at: sentAt || Date.now(), ...(so ? { so } : {}) };
+  const summary = [`📐 คำขอเขียนแบบวงจรไฟฟ้า${kind === "structure" ? "" : " (ปฏิทินผลิต)"}`, ...(so ? [`SO: ${so}`] : []), `เลข DWG: ${dwg}`, `ผู้ยื่น: ${submitter}${sales ? ` · Sales: ${sales}` : ""}`].concat(detail ? [detail] : []).join("\n");
 
   if (kind === "structure") {
     const ws = root.boards.drawing;
@@ -5839,7 +5852,7 @@ async function openImportRequestsModal() {
       <div class="am2-body">
         <div class="am2-top"><span class="am2-who">${escapeHtml(who)}${row.sales_team ? ` <span class="muted" style="font-weight:500">· ${escapeHtml(row.sales_team)}</span>` : ""}</span><span class="am2-time" title="${escapeHtml(formatDateTimeTH(at))}">${escapeHtml(relTimeTH(at))}</span></div>
         <div class="am2-tags"><span class="am2-kind">${ico("ruler")} ${escapeHtml(kindLabel)}</span><span class="am2-board">DWG ${escapeHtml(row.dwg_no || "-")} · ครบ ${formatDateTH(row.due_date)}</span></div>
-        <div class="am2-task" style="cursor:default">${escapeHtml(row.project || "(ไม่มีชื่อ)")}</div>
+        <div class="am2-task" style="cursor:default">${row.so ? `<span class="muted" style="font-weight:600">${escapeHtml(row.so)}</span> ` : ""}${escapeHtml(row.project || "(ไม่มีชื่อ)")}</div>
         ${row.detail ? `<div class="am2-msg">${escapeHtml(row.detail)}</div>` : ""}
         ${reqFilesHtml(row)}
         <div class="am2-actions">
@@ -5866,7 +5879,7 @@ async function openImportRequestsModal() {
         photo = (rf.find(f => /^image\//.test(f.mime || "")) || {}).url || null;
         extra = "\nไฟล์แนบ: " + rf.map(f => `${f.name} ${f.url}`).join(" · ");
       }
-      const result = routeDrawingRequest({ kind: row.kind, project: row.project, dwg: row.dwg_no, due: row.due_date, detail: (row.detail || "") + extra, submitter: row.submitter, sales: row.sales_team || "", photo, files, imported: true, sentAt: row.created_at ? new Date(row.created_at).getTime() : null });
+      const result = routeDrawingRequest({ kind: row.kind, project: row.project, so: row.so || "", dwg: row.dwg_no, due: row.due_date, detail: (row.detail || "") + extra, submitter: row.submitter, sales: row.sales_team || "", photo, files, imported: true, sentAt: row.created_at ? new Date(row.created_at).getTime() : null });
       if (!result.denied && files.length) queueUpload(files, null);
       if (result.denied) return;   // no access to the structure calendar → leave the request pending
       const sb = getSupabase();
@@ -5913,10 +5926,11 @@ function openDrawRequestModal() {
           </div>
           <span class="settings-toggle-sub" data-kind-hint></span>
         </div>
-        <div class="field">
-          <label>โครงการ / SO <span class="dr-req">*</span></label>
-          <input type="text" data-f="project" placeholder="พิมพ์ชื่อโครงการ หรือเลือกงานที่มีอยู่ ▾" autocomplete="off" />
-          <span class="dr-attach-hint" data-attach-hint hidden></span>
+        <div class="field-row">
+          <div class="field" style="flex:0 0 32%"><label>SO</label><input type="text" data-f="so" autocomplete="off" /></div>
+          <div class="field"><label>โครงการ <span class="dr-req">*</span></label>
+            <input type="text" data-f="project" autocomplete="off" />
+            <span class="dr-attach-hint" data-attach-hint hidden></span></div>
         </div>
         <div class="field-row">
           <div class="field"><label>เลข DWG <span class="dr-req">*</span></label><input type="text" data-f="dwg" autocomplete="off" /></div>
@@ -5925,7 +5939,7 @@ function openDrawRequestModal() {
         <div class="field"><label>รายละเอียดเกี่ยวกับงาน เช่น จำนวนตู้</label><textarea data-f="detail" placeholder="เช่น 3 ตู้ MDB, ..."></textarea></div>
         <div class="field-row">
           <div class="field"><label>ชื่อผู้ยื่น <span class="dr-req">*</span></label><input type="text" data-f="submitter" autocomplete="off" /></div>
-          <div class="field"><label>ทีม Sales</label><input type="text" data-f="sales" autocomplete="off" /></div>
+          <div class="field"><label>ทีม Sales</label><select data-f="sales">${salesOptionsHtml("")}</select></div>
         </div>
         <div class="field">
           <label>แนบรูป / ไฟล์</label>
@@ -5976,7 +5990,6 @@ function openDrawRequestModal() {
   // styled app dropdowns (replace native datalist)
   attachAutocomplete(pf("project"), () => kind === "circuit" ? undrawnJobs().map(t => t.title).filter(Boolean) : [], { onPick: checkAttach });
   attachAutocomplete(pf("submitter"), () => pastRequestValues("submitter"));
-  attachAutocomplete(pf("sales"), () => pastRequestValues("salesTeam"));
 
   // attachments (photos + files → Google Drive; same pipeline as the task composer)
   const photoInput = modal.querySelector("[data-photo-input]");
@@ -5998,22 +6011,23 @@ function openDrawRequestModal() {
 
   modal.querySelector('[data-act="submit"]').addEventListener("click", () => {
     const project = pf("project").value.trim();
+    const so = pf("so").value.trim();
     const dwg = pf("dwg").value.trim();
     const due = dueField.getValue();
     const detail = pf("detail").value.trim();
     const submitter = pf("submitter").value.trim();
     const sales = pf("sales").value.trim();
-    if (!project) return toast("กรุณาใส่ชื่อโครงการ / SO");
+    if (!project) return toast("กรุณาใส่ชื่อโครงการ");
     if (!dwg) return toast("กรุณาใส่เลข DWG");
     if (!submitter) return toast("กรุณาใส่ชื่อผู้ยื่น");
     if (!due) return toast("กรุณาเลือกวันที่ต้องการให้จบ");
     if (due < addDaysIso(todayIso(), 2)) return toast("วันที่ต้องการให้จบต้องไม่ต่ำกว่า 2 วันจากวันนี้");
 
     const items = attachList.items;
-    if (queued) { sendQueued({ project, dwg, due, detail, submitter, sales, items }); return; }
+    if (queued) { sendQueued({ project, so, dwg, due, detail, submitter, sales, items }); return; }
     const drive = driveConfigured();
     const files = drive ? pendingEntries(items, `คำขอแบบ · ${project}`) : [];
-    const result = routeDrawingRequest({ kind, project, dwg, due, detail, submitter, sales, photo: drive ? null : legacyPhoto(items), files });
+    const result = routeDrawingRequest({ kind, project, so, dwg, due, detail, submitter, sales, photo: drive ? null : legacyPhoto(items), files });
     if (result.denied) return;
     if (files.length) queueUpload(files, null);
     if (kind === "structure") toast(`ยื่นคำขอเขียนแบบวงจรไฟฟ้า “${project}” แล้ว (อยู่ในปฏิทิน ${boardNameOf("drawing")})`);
@@ -6023,7 +6037,7 @@ function openDrawRequestModal() {
   });
 
   // queue mode: photo → storage bucket drawing-photos, row → drawing_requests (status pending)
-  async function sendQueued({ project, dwg, due, detail, submitter, sales, items }) {
+  async function sendQueued({ project, so, dwg, due, detail, submitter, sales, items }) {
     const sb = getSupabase();
     if (!sb) return toast("ไม่มีอินเทอร์เน็ต — ลองใหม่");
     const btn = modal.querySelector('[data-act="submit"]');
@@ -6045,10 +6059,16 @@ function openDrawRequestModal() {
       const photoUrl = (files.find(f => /^image\//.test(f.mime)) || {}).url || null;   // first photo — old requests / old importers use it
       const row = { kind: "structure", project, dwg_no: dwg, due_date: due, detail: detail || null,
         submitter, sales_team: sales || null, photo_url: photoUrl, status: "pending" };
-      let { error } = await sb.from("drawing_requests").insert({ ...row, files });
-      if (error && /files/i.test(error.message || "")) {   // supabase-slice10.sql not run yet → keep the request, first photo only
-        ({ error } = await sb.from("drawing_requests").insert(row));
-        if (!error && files.length > 1) toast("ส่งแล้ว แต่เก็บได้แค่รูปแรก — ให้ admin รัน supabase-slice10.sql");
+      // ★ 2026-10-11 so column (supabase-slice11.sql). Not run yet → SO goes in front of the project name instead, nothing is lost
+      const payload = { ...row, files, ...(so ? { so } : {}) };
+      let error = null, firstTry = true;
+      for (let n = 0; n < 3; n++) {
+        ({ error } = await sb.from("drawing_requests").insert(payload));
+        if (!error) break;
+        const msg = error.message || "";
+        if (payload.so !== undefined && /\bso\b/i.test(msg)) { payload.project = `${so} ${project}`; delete payload.so; }
+        else if ("files" in payload && /files/i.test(msg)) { delete payload.files; if (files.length > 1) toast("ส่งแล้ว แต่เก็บได้แค่รูปแรก — ให้ admin รัน supabase-slice10.sql"); }
+        else break;
       }
       if (error) throw error;
       toast(`ส่งคำขอเขียนแบบ “${project}” แล้ว — ทีมเขียนแบบจะรับเข้าปฏิทิน`);
@@ -6814,6 +6834,18 @@ function openTaskModal(taskId, defaults={}) {
     // text fields (autocomplete from earlier requests)
     [["submitter", "ชื่อผู้ยื่น"], ["salesTeam", "ทีม Sales"], ["dwgNo", "เลข DWG"]].forEach(([key, name]) => {
       const r = row(name);
+      if (key === "salesTeam") {
+        const sel = document.createElement("select");
+        sel.className = "extra-input";
+        sel.innerHTML = salesOptionsHtml((task.request && task.request.salesTeam) || "");
+        sel.addEventListener("change", () => {
+          if (!guard()) { sel.innerHTML = salesOptionsHtml((task.request && task.request.salesTeam) || ""); return; }
+          if (sel.value) req().salesTeam = sel.value; else if (task.request) delete task.request.salesTeam;
+          scheduleCommit(0);
+        });
+        r.appendChild(sel);
+        return;
+      }
       const inp = document.createElement("input");
       inp.type = "text"; inp.className = "extra-input"; inp.placeholder = "พิมพ์…"; inp.autocomplete = "off";
       inp.value = (task.request && task.request[key]) || "";
@@ -9924,7 +9956,7 @@ function renderDashboard() {
     }
     const mMax = Math.max(1, ...months.map(m => Math.max(m.inN, m.dnN)));
     const sales = new Map();
-    reqIn.forEach(t => { const k = (t.request && t.request.salesTeam) || "ไม่ระบุ"; if (!sales.has(k)) sales.set(k, []); sales.get(k).push(t); });
+    reqIn.forEach(t => { const k = salesTeamKey(t.request && t.request.salesTeam) || "ไม่ระบุ"; if (!sales.has(k)) sales.set(k, []); sales.get(k).push(t); });
     const salesRows = [...sales.entries()].sort((a, b) => b[1].length - a[1].length);
     drawHtml = `
     <div class="dash-h">สถิติงานเขียนแบบ · ${periodName} ${periodBtns}</div>
