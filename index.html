@@ -350,6 +350,41 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
 .m-own-dept { color: var(--text-dim); font-size: 12px; white-space: nowrap; }
 .m-own.none { color: var(--text-dim); }
 .m-own-q { width: 26px; height: 26px; border-radius: 50%; border: 1.5px dashed var(--border-strong); display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; flex: 0 0 auto; }
+.m-top-row .m-h { flex: 0 0 auto; }
+.m-boards { flex: 1 1 auto; min-width: 0; display: flex; gap: 3px; padding: 3px; border-radius: 10px; background: var(--bg); border: 1px solid var(--border); overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+.m-boards::-webkit-scrollbar { display: none; }
+.m-boards[hidden] { display: none; }
+.m-boards button { flex: 0 0 auto; border: 0; background: transparent; border-radius: 7px; padding: 6px 11px; font: inherit; font-size: 13px; font-weight: 600; color: var(--text-dim); white-space: nowrap; cursor: pointer; }
+.m-boards button.on { background: var(--panel); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+.m-top-row .m-deptwrap { flex: 0 0 auto; }
+.m-mydept { white-space: nowrap; }
+.m-flow { position: relative; margin: 10px 0 2px; }
+.m-flow-track { position: absolute; top: 7px; left: calc(100% / var(--n) / 2); right: calc(100% / var(--n) / 2); height: 2px; background: var(--border); border-radius: 2px; }
+.m-flow-fill { height: 100%; background: #10b981; border-radius: 2px; }
+.m-flow-steps { position: relative; display: flex; }
+.m-flow-step { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.m-flow-dot { width: 16px; height: 16px; border-radius: 50%; box-sizing: border-box; border: 2px solid var(--border-strong); background: var(--panel); display: inline-flex; align-items: center; justify-content: center; color: #fff; }
+.m-flow-dot .ico { width: 10px; height: 10px; stroke-width: 3.5; }
+.m-flow-step.done .m-flow-dot { background: #10b981; border-color: #10b981; }
+.m-flow-step.cur .m-flow-dot { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 18%, var(--panel)); }
+.m-flow-name { font-size: 10.5px; color: var(--text-dim); max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 2px; }
+.m-flow-step.cur .m-flow-name { color: var(--accent); font-weight: 700; }
+.m-flow-step.next .m-flow-name { opacity: .7; }
+.m-own-add { margin-left: auto; flex: 0 0 auto; border: 1px dashed color-mix(in srgb, var(--accent) 60%, transparent); background: transparent; color: var(--accent); border-radius: 999px; padding: 5px 11px; font: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer; }
+.m-own.none[data-assign] { cursor: pointer; }
+.m-asg-ov { position: fixed; inset: 0; z-index: 1300; background: rgba(15,18,24,.45); display: flex; align-items: flex-end; }
+.m-asg { width: 100%; max-height: 82dvh; display: flex; flex-direction: column; background: var(--panel); border-radius: 18px 18px 0 0; padding: 8px 14px calc(14px + env(safe-area-inset-bottom)); box-shadow: 0 -8px 30px rgba(0,0,0,.2); }
+.m-asg-grip { width: 38px; height: 4px; border-radius: 2px; background: var(--border-strong); margin: 0 auto 10px; }
+.m-asg-h { font-size: 16px; font-weight: 700; }
+.m-asg-sub { font-size: 12.5px; color: var(--text-dim); margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.m-asg-list { flex: 1 1 auto; overflow-y: auto; margin: 8px -4px; }
+.m-asg-g { font-size: 12px; font-weight: 700; color: var(--text-dim); margin: 10px 6px 4px; }
+.m-asg-row { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 50px; padding: 6px; border: 0; border-radius: 10px; background: transparent; font: inherit; font-size: 15px; color: var(--text); text-align: left; cursor: pointer; }
+.m-asg-row:active { background: var(--bg); }
+.m-asg-row .avatar { width: 32px; height: 32px; font-size: 13px; }
+.m-asg-n { flex: 1 1 auto; min-width: 0; }
+.m-asg-row.on .m-box { background: #10b981; border-color: #10b981; }
+.m-asg-done { flex: 0 0 auto; border: 0; border-radius: 12px; padding: 13px; background: var(--accent); color: #fff; font: inherit; font-size: 15px; font-weight: 700; cursor: pointer; }
 /* ★ 2026-10-11 phone: งานวันนี้ header */
 .m-search[hidden], .m-daynav[hidden], .m-daysum[hidden] { display: none; }
 .m-daynav { display: flex; align-items: center; gap: 6px; margin-top: 10px; padding: 4px; border-radius: 12px; background: var(--bg); border: 1px solid var(--border); }
@@ -12418,18 +12453,75 @@ function mDayItems(dayIso) {
     .sort((a, b) => (a.done - b.done) || (a.t.title || "").localeCompare(b.t.title || "", "th"));
 }
 const M_DOW = ["อา.", "จ.", "อ.", "พ.", "พฤ.", "ศ.", "ส."];
+// ★ 2026-10-11 department steps on a phone card (same meaning as the bar on the desktop popup): ✓ done · ● now · ○ later
+function mFlowHtml(t) {
+  if (isServiceBoard()) return "";
+  const stages = (t.deptStages || []).filter(st => getDept(st.deptId));
+  if (stages.length < 2) return "";
+  const done = stages.map(st => isDeptComplete(t, st.deptId)), cur = done.indexOf(false), n = stages.length;
+  const pct = cur === -1 ? 100 : Math.round(cur / (n - 1) * 100);
+  return `<div class="m-flow" style="--n:${n}"><div class="m-flow-track"><div class="m-flow-fill" style="width:${pct}%"></div></div><div class="m-flow-steps">${stages.map((st, i) => {
+    const d = getDept(st.deptId), state_ = done[i] ? "done" : i === cur ? "cur" : "next";
+    return `<div class="m-flow-step ${state_}"><span class="m-flow-dot">${done[i] ? ico("check") : ""}</span><span class="m-flow-name">${escapeHtml(d.name)}</span></div>`;
+  }).join("")}</div></div>`;
+}
 // ★ 2026-10-11 owner row on a phone card: photo + name (+ department when one person). Same rule as everywhere else
 //   (owner chose rule 1): staff see only people of their own department — assigned to others only → no row at all.
 function mOwnersHtml(t) {
   const all = (t.assignees || []).filter(id => teamProfiles.has(id));
-  if (!(t.assignees || []).length) return `<div class="m-own none"><span class="m-own-q">?</span><span>ยังไม่มอบหมาย</span></div>`;
+  const add = canEdit() ? `<button type="button" class="m-own-add" data-assign="1">＋ มอบหมาย</button>` : "";
+  if (!(t.assignees || []).length) return `<div class="m-own none"${add ? ` data-assign="1"` : ""}><span class="m-own-q">?</span><span>ยังไม่มอบหมาย</span>${add}</div>`;
   const ppl = all.map(id => teamProfiles.get(id)).filter(canSeePerson);
-  if (!ppl.length) return "";
+  if (!ppl.length) return add ? `<div class="m-own">${add}</div>` : "";
   const shown = ppl.slice(0, 3), more = ppl.length - shown.length;
   const d = ppl.length === 1 && deptAnywhere(ppl[0].dept_id);
   return `<div class="m-own"><span class="m-own-av">${shown.map(p => avatarHtml(p)).join("")}</span>`
     + `<span class="m-own-names">${escapeHtml(shown.map(personName).join(", "))}${more ? ` +${more}` : ""}</span>`
-    + (d ? `<span class="m-own-dept">· ${escapeHtml(d.name)}</span>` : "") + `</div>`;
+    + (d ? `<span class="m-own-dept">· ${escapeHtml(d.name)}</span>` : "") + add + `</div>`;
+}
+// bottom sheet: tick people to assign (same candidates + rules as the desktop picker: assignCandidates → own department only).
+// People already assigned whom this user can't see stay assigned. Done → notifyAssigneeChanges (Activity + personal alerts).
+function mOpenAssign(t, bid) {
+  if (!canEdit()) { permDenied("สิทธิ์ของคุณมอบหมายงานไม่ได้"); return; }
+  const cands = mWithBoard(bid, () => assignCandidates());
+  const candIds = new Set(cands.map(p => p.id));
+  const picked = new Set((t.assignees || []).filter(id => candIds.has(id)));
+  const me = currentProfile && currentProfile.id;
+  const ov = document.createElement("div");
+  ov.className = "m-asg-ov";
+  ov.innerHTML = `<div class="m-asg" role="dialog" aria-modal="true">
+    <div class="m-asg-grip"></div>
+    <div class="m-asg-h">มอบหมายงาน</div><div class="m-asg-sub">${escapeHtml(t.title || "")}</div>
+    <label class="m-search">${ico("search")}<input type="search" data-q placeholder="ค้นหาชื่อ" autocomplete="off" /></label>
+    <div class="m-asg-list" data-list></div>
+    <button type="button" class="m-asg-done" data-done>เสร็จ</button></div>`;
+  document.body.appendChild(ov);
+  const listEl = ov.querySelector("[data-list]"), q = ov.querySelector("[data-q]");
+  const order = mWithBoard(bid, () => [...(state.departments || []), ...allDepartments().filter(d => !(state.departments || []).some(x => sameDept(x.id, d.id)))]);
+  function paint() {
+    const k = q.value.trim().toLowerCase();
+    const ppl = cands.filter(p => !k || personName(p).toLowerCase().includes(k));
+    const groups = order.map(d => ({ name: d.name, ppl: ppl.filter(p => sameDept(p.dept_id, d.id)) }))
+      .concat([{ name: "ไม่ระบุแผนก", ppl: ppl.filter(p => !p.dept_id || !order.some(d => sameDept(p.dept_id, d.id))) }]).filter(g => g.ppl.length);
+    listEl.innerHTML = groups.length ? groups.map(g => `<div class="m-asg-g">${escapeHtml(g.name)}</div>` + g.ppl.map(p =>
+      `<button type="button" class="m-asg-row${picked.has(p.id) ? " on" : ""}" data-p="${escapeHtml(p.id)}">${avatarHtml(p)}<span class="m-asg-n">${escapeHtml(personName(p))}${p.id === me ? " (คุณ)" : ""}</span><span class="m-box">${picked.has(p.id) ? ico("check") : ""}</span></button>`).join("")).join("")
+      : `<div class="m-empty-sm">ไม่พบรายชื่อ</div>`;
+  }
+  paint();
+  q.addEventListener("input", paint);
+  listEl.addEventListener("click", (e) => { const b = e.target.closest("[data-p]"); if (!b) return; const id = b.dataset.p; if (picked.has(id)) picked.delete(id); else picked.add(id); paint(); });
+  const close = () => ov.remove();
+  ov.addEventListener("mousedown", (e) => { if (e.target === ov) close(); });
+  ov.querySelector("[data-done]").addEventListener("click", () => {
+    const keep = (t.assignees || []).filter(id => !candIds.has(id));   // people I can't see stay as they were
+    const next = [...keep, ...cands.map(p => p.id).filter(id => picked.has(id))];
+    const before = { assignees: (t.assignees || []).slice() };
+    close();
+    if (before.assignees.length === next.length && before.assignees.every(id => next.includes(id))) return;
+    mWithBoard(bid, () => { t.assignees = next; notifyAssigneeChanges(before, t); });
+    t.updatedAt = Date.now(); saveState(); renderAll();
+    toast("บันทึกการมอบหมายแล้ว");
+  });
 }
 // cabinets that have something to tick here (department items, or all items when no department is chosen)
 function mCabs(t, dep) { return (t.subtasks || []).filter(x => checklistProgress(x, dep || null).total > 0); }
@@ -12469,6 +12561,7 @@ function mCardHtml(t, due, dep, bid) {
     <div class="m-card-head" data-toggle="1">
       ${refs || other ? `<div class="m-refs">${other}${refs}</div>` : ""}
       <div class="m-title-row"><div class="m-title">${escapeHtml(t.title || "(ไม่มีชื่องาน)")}</div></div>
+      ${mFlowHtml(t)}
       <div class="m-meta"><span class="m-due">${done ? "✓ เสร็จแล้ว" : escapeHtml(mDueLabel(due))}</span><span class="m-st" style="--st:${st.color}">${escapeHtml(st.name)}</span></div>
       <div class="m-prog"><div class="m-track"><div class="m-bar" style="width:${pct}%"></div></div><span class="m-prog-n">${cabs.length ? `${cabDone}/${cabs.length} ตู้` : (done ? "เสร็จ" : "")}</span></div>
       ${mOwnersHtml(t)}
@@ -12482,7 +12575,7 @@ function mEnsureRoot() {
   el.id = "mobileRoot";
   el.innerHTML = `
     <div class="m-top">
-      <div class="m-top-row"><span class="m-h" data-mh>งานแผนก</span><span class="m-board" data-mboard></span><span class="m-deptwrap" data-mdept></span></div>
+      <div class="m-top-row"><span class="m-h" data-mh>งานแผนก</span><div class="m-boards" data-mboards></div><span class="m-deptwrap" data-mdept></span></div>
       <div class="m-seg" data-mseg><button type="button" data-mmine="0">ทั้งแผนก <b data-mcnt0></b></button><button type="button" data-mmine="1">${ico("user")} มอบหมายให้ฉัน <b data-mcnt1></b></button></div>
       <label class="m-search" data-msearchwrap>${ico("search")}<input type="search" data-msearch placeholder="ค้นหา AVT / SO / ชื่องาน" autocomplete="off" /></label>
       <div class="m-daynav" data-mdaynav hidden>
@@ -12508,6 +12601,10 @@ function mEnsureRoot() {
     mKeep.clear(); mTab = tab; window.scrollTo(0, 0); renderMobile();
   });
   el.querySelector("[data-mlist]").addEventListener("click", mListClick);
+  el.querySelector("[data-mboards]").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-mb]"); if (!b || b.dataset.mb === root.activeBoard) return;
+    mKeep.clear(); mOpen.clear(); mOpenSub.clear(); window.scrollTo(0, 0); setBoard(b.dataset.mb);
+  });
   el.querySelector("[data-mseg]").addEventListener("click", (e) => {
     const b = e.target.closest("[data-mmine]"); if (!b) return;
     mSetMine(b.dataset.mmine === "1"); mKeep.clear(); window.scrollTo(0, 0); renderMobile();
@@ -12578,6 +12675,7 @@ function mListClick(e) {
     }));
     return;
   }
+  if (e.target.closest("[data-assign]")) { e.stopPropagation(); mOpenAssign(t, bid); return; }
   if (e.target.closest("[data-full]")) { if (bid !== root.activeBoard) setBoard(bid); openTaskModal(t.id); return; }
   const sh = e.target.closest("[data-sub]");
   if (sh) { const id = sh.dataset.sub; if (mOpenSub.has(id)) mOpenSub.delete(id); else mOpenSub.add(id); renderMobile(); return; }
@@ -12628,7 +12726,20 @@ function renderMobile() {
   el.querySelector("[data-msearchwrap]").hidden = mTab !== "mine";
   el.querySelector("[data-mdaynav]").hidden = mTab !== "today";
   el.querySelector("[data-mdaysum]").hidden = mTab !== "today";
-  el.querySelector("[data-mboard]").textContent = boardNameOf(root.activeBoard);
+  // ★ 2026-10-11 calendars = one sliding segment on the title row (owner: "ช่องเดียวกันแล้วสไลด์ไปได้", same row)
+  const bw = el.querySelector("[data-mboards]");
+  const boards = (root.boardMeta || []).filter(b => visibleBoardIds().includes(b.id));
+  bw.hidden = boards.length < 2;
+  const sig = boards.map(b => b.id + ":" + b.name).join("|") + "#" + root.activeBoard;
+  if (bw.dataset.sig !== sig) {
+    bw.dataset.sig = sig;
+    bw.innerHTML = boards.map(b => `<button type="button" data-mb="${escapeHtml(b.id)}" class="${b.id === root.activeBoard ? "on" : ""}">${escapeHtml(b.name)}</button>`).join("");
+    const on = bw.querySelector(".on");
+    if (on) setTimeout(() => {   // bring the chosen calendar to the middle of the strip (after layout; rAF can stall in a background tab)
+      const a = bw.getBoundingClientRect(), b = on.getBoundingClientRect();
+      bw.scrollLeft += (b.left + b.width / 2) - (a.left + a.width / 2);
+    }, 0);
+  }
   const dw = el.querySelector("[data-mdept]");
   const mine = mMine();
   el.querySelectorAll("[data-mmine]").forEach(b => b.classList.toggle("on", (b.dataset.mmine === "1") === mine));
