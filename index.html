@@ -2507,7 +2507,7 @@ body.chip-dragging .task-chip.span-bar { pointer-events: none; }   /* let the da
     <p class="login-sub">เข้าสู่ระบบด้วยอีเมลบริษัท — ไม่ต้องใช้รหัสผ่าน</p>
     <div class="field" id="loginEmailField">
       <label>อีเมล</label>
-      <input type="text" id="loginEmail" placeholder="name@company.com" autocomplete="email" />
+      <input type="text" id="loginEmail" placeholder="อีเมลของคุณ" autocomplete="email" />
     </div>
     <button type="button" class="btn btn-primary login-btn" id="btnSendMagicLink">ส่งรหัสเข้าสู่ระบบ</button>
     <div class="login-msg" id="loginMsg"></div>
@@ -5158,6 +5158,12 @@ function renderDeptCabChip(t, stage, sub, position = "single") {
 const MINE_KEY = "qc_filter_mine";
 function mineFilterOn() { try { return localStorage.getItem(MINE_KEY) === "1"; } catch (_) { return false; } }
 function setMineFilter(on) { try { localStorage.setItem(MINE_KEY, on ? "1" : "0"); } catch (_) {} }
+// ★ 2026-10-11 ด่วน/สูง filter is personal (this screen only) — it used to live in state.settings (synced), so one person's click
+//   hid tasks on everyone's screen while their button still showed "ทั้งหมด". The old settings value is left untouched, just unused.
+let priFilterVal = "all";   // not saved anywhere: every app open starts at "ทั้งหมด" (owner 2026-10-11)
+function priFilter() { return priFilterVal; }
+function setPriFilter(v) { priFilterVal = v || "all"; }
+function paintPriFilter() { const v = priFilter(); document.querySelectorAll("#priorityFilter [data-pri]").forEach(x => x.classList.toggle("active", x.dataset.pri === v)); }
 // mine = assigned to me, or any comment that mentions me / is a personal alert to me
 function isMyTask(t) {
   const me = currentProfile && currentProfile.id;
@@ -5168,7 +5174,7 @@ function isMyTask(t) {
 function currentFilter() {
   return {
     search: (document.getElementById("searchInput").value || "").trim().toLowerCase(),
-    priority: state.settings.filterPriority || "all",
+    priority: priFilter(),
     mine: mineFilterOn(),
   };
 }
@@ -11975,14 +11981,13 @@ document.getElementById("btnImportReq").addEventListener("click", () => { if (!c
 document.getElementById("priorityFilter").addEventListener("click", (e) => {
   const b = e.target.closest("[data-pri]");
   if (!b) return;
-  document.querySelectorAll("#priorityFilter [data-pri]").forEach(x => x.classList.remove("active"));
-  b.classList.add("active");
-  state.settings.filterPriority = b.dataset.pri;
-  saveState();
+  setPriFilter(b.dataset.pri);
+  paintPriFilter();
   renderMainView();
   renderTodayPanel();
 });
 
+paintPriFilter();
 function paintMineBtn() { const b = document.getElementById("btnMine"); if (b) b.classList.toggle("active", mineFilterOn()); }
 document.getElementById("btnMine").addEventListener("click", () => {
   setMineFilter(!mineFilterOn());
