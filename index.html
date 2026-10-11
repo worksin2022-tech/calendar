@@ -12607,14 +12607,19 @@ function mCardHtml(t, due, dep, bid) {
   const over = !done && g === "over";
   const ringCol = done ? "#10b981" : over ? "#ef4444" : "var(--accent)";
   const R = 19, C = 2 * Math.PI * R;
-  const ringTxt = done && (!cabs.length || pct === 100) ? ico("check") : cabs.length ? `${pct}%` : "—";
-  const ring = `<div class="m-ring${done ? " full" : ""}"><svg viewBox="0 0 46 46" aria-hidden="true"><circle cx="23" cy="23" r="${R}" class="m-ring-bg"/>${pct > 0 ? `<circle cx="23" cy="23" r="${R}" class="m-ring-fg" style="stroke:${ringCol}" stroke-dasharray="${(C * pct / 100).toFixed(1)} ${C.toFixed(1)}"/>` : ""}</svg><span class="m-ring-t">${ringTxt}</span><span class="m-ring-sub">${cabs.length ? `ตู้ ${cabDone}/${cabs.length}` : "ไม่มีตู้"}</span></div>`;
+  // ★ 2026-10-12 (owner): the ring counts CHECKLIST ITEMS ticked (this department's; all departments when none chosen) —
+  //   shows work has started even before a whole cabinet is finished. Cabinets done moved to the step line.
+  const items = dep ? deptProgress(t, dep) : (t.subtasks || []).reduce((a, x) => { const p = checklistProgress(x, null); return { done: a.done + p.done, total: a.total + p.total }; }, { done: 0, total: 0 });
+  const iPct = items.total ? Math.round(items.done / items.total * 100) : (done ? 100 : 0);
+  const ringTxt = done && (!items.total || iPct === 100) ? ico("check") : items.total ? `${iPct}%` : "—";
+  const ring = `<div class="m-ring${done ? " full" : ""}"><svg viewBox="0 0 46 46" aria-hidden="true"><circle cx="23" cy="23" r="${R}" class="m-ring-bg"/>${iPct > 0 ? `<circle cx="23" cy="23" r="${R}" class="m-ring-fg" style="stroke:${ringCol}" stroke-dasharray="${(C * iPct / 100).toFixed(1)} ${C.toFixed(1)}"/>` : ""}</svg><span class="m-ring-t">${ringTxt}</span><span class="m-ring-sub">${items.total ? `${items.done}/${items.total}` : "ไม่มีเช็คลิสต์"}</span></div>`;
   const stages = isServiceBoard() ? [] : (t.deptStages || []).filter(x => getDept(x.deptId));
   const sDone = stages.map(x => isDeptComplete(t, x.deptId)), cur = sDone.indexOf(false);
   const curOver = cur >= 0 && (() => { const d = stages[cur].due || t.date; return d && d < todayIso(); })();
   const segs = stages.length >= 2 ? `<div class="m-segbar">${stages.map((x, i) => `<span class="${sDone[i] ? "done" : i === cur ? (curOver ? "cur over" : "cur") : ""}" title="${escapeHtml((getDept(x.deptId) || {}).name || "")}"></span>`).join("")}</div>` : "";
   const stepTxt = !stages.length ? "" : cur === -1 ? `<span class="m-step ok">ครบทุกแผนก</span>`
     : `<span class="m-step${curOver ? " over" : ""}">ขั้น ${escapeHtml((getDept(stages[cur].deptId) || {}).name || "")}</span>${stages.length >= 2 ? `<span class="m-step-n">(${cur + 1}/${stages.length})</span>` : ""}`;
+  const cabTxt = cabs.length ? `<span class="m-step-n">· ตู้ ${cabDone}/${cabs.length}</span>` : "";
   const canAsg = canEdit();
   const vis = (t.assignees || []).filter(id => teamProfiles.has(id)).map(id => teamProfiles.get(id)).filter(canSeePerson);
   const owners = vis.length
@@ -12628,7 +12633,7 @@ function mCardHtml(t, due, dep, bid) {
         <div class="m-title">${escapeHtml(t.title || "(ไม่มีชื่องาน)")}</div>
         ${refs || other ? `<div class="m-refs">${other}${refs}</div>` : ""}
         ${segs}
-        <div class="m-e1-foot">${stepTxt}${owners}</div>
+        <div class="m-e1-foot">${stepTxt}${cabTxt}${owners}</div>
       </div></div>
     </div>${body}
   </div>`;
