@@ -332,6 +332,63 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
 .tf-date.over { color: #ef4444; font-weight: 700; }
 @media print { .tm-flow { display: none !important; } }
 @media (max-width: 640px) { .tm-flow .tf-name { display: none; } .tm-flow { margin: 0 8px; } }
+/* ★ 2026-10-11 phone: งานวันนี้ header */
+.m-search[hidden], .m-daynav[hidden], .m-daysum[hidden] { display: none; }
+.m-daynav { display: flex; align-items: center; gap: 6px; margin-top: 10px; padding: 4px; border-radius: 12px; background: var(--bg); border: 1px solid var(--border); }
+.m-daynav button { border: 0; background: var(--panel); border-radius: 9px; height: 40px; min-width: 44px; font: inherit; font-size: 22px; line-height: 1; color: var(--text); cursor: pointer; }
+.m-daynav .m-daylbl { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; background: transparent; font-size: 14px; }
+.m-daynav .m-daylbl b { font-size: 15px; }
+.m-daynav .m-daylbl span { font-size: 11.5px; color: var(--text-dim); }
+.m-daysum { display: flex; gap: 6px; margin-top: 8px; }
+.m-daysum span { flex: 1; text-align: center; padding: 6px; border-radius: 9px; font-size: 12.5px; font-weight: 700; background: var(--bg); color: var(--text-dim); }
+.m-daysum span.ok { background: color-mix(in srgb, #10b981 14%, transparent); color: #10b981; }
+/* ★ 2026-10-11 phone: task popup as a full-screen sheet */
+.m-sheet-ov { padding: 0 !important; align-items: stretch !important; }
+.modal.m-sheet { width: 100vw !important; max-width: none !important; height: 100dvh !important; max-height: none !important; border-radius: 0 !important; margin: 0 !important; display: flex; flex-direction: column; }
+.m-sheet .modal-head { display: none; }
+.m-sheet-bar { display: flex; align-items: center; gap: 8px; padding: 8px 10px; padding-top: calc(8px + env(safe-area-inset-top)); border-bottom: 1px solid var(--border); background: var(--panel); flex: 0 0 auto; }
+.m-sheet-back { border: 0; background: transparent; font-size: 30px; line-height: 1; width: 40px; height: 40px; color: var(--text); cursor: pointer; }
+.m-sheet-ttl { flex: 1; min-width: 0; }
+.m-sheet-refs { font-size: 11.5px; font-weight: 600; color: var(--accent); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.m-sheet-name { font-size: 16px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.m-sheet-att { border: 0; background: transparent; width: 40px; height: 40px; color: var(--text-dim); cursor: pointer; }
+.m-sheet-att .ico { width: 20px; height: 20px; }
+.m-sheet-tabs { display: flex; gap: 4px; margin: 8px 12px; padding: 4px; border-radius: 11px; background: var(--bg); flex: 0 0 auto; }
+.m-sheet-tabs button { flex: 1; border: 0; background: transparent; border-radius: 8px; padding: 8px; font: inherit; font-size: 14px; font-weight: 600; color: var(--text-dim); cursor: pointer; }
+.m-sheet-tabs button.on { background: var(--panel); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+.m-sheet .task-split { flex: 1 1 auto; min-height: 0; flex-direction: column; }
+.m-sheet.m-tab-chat .task-split > .modal-body { display: none; }
+.m-sheet.m-tab-chat .modal-foot { display: none; }
+.m-sheet.m-tab-info .task-activity { display: none; }
+.m-sheet .task-split > .modal-body { overflow-y: auto; padding: 12px 14px 20px; }
+.m-sheet .task-activity { flex: 1 1 auto; border-left: 0; background: var(--panel); }
+.m-sheet .ta-head { display: none; }
+.m-sheet .ta-feed { padding: 12px; gap: 10px; }
+.m-sheet .ta-item { max-width: 86%; }
+.m-sheet .ta-item .ta-item-body { background: var(--bg); border-radius: 14px 14px 14px 4px; padding: 8px 11px; }
+.m-sheet .ta-item.mine { align-self: flex-end; flex-direction: row-reverse; }
+.m-sheet .ta-item.mine .ta-avatar { display: none; }
+.m-sheet .ta-item.mine .ta-item-body { background: var(--accent); color: #fff; border-radius: 14px 14px 4px 14px; }
+.m-sheet .ta-item.mine .ta-time, .m-sheet .ta-item.mine .ta-author, .m-sheet .ta-item.mine .ta-pin, .m-sheet .ta-item.mine .ta-del { color: rgba(255,255,255,.8); }
+.m-sheet .ta-item.mine .ta-text a { color: #fff; }
+.m-sheet .ta-text { font-size: 15px; }
+.m-sheet .ta-compose { padding: 8px 10px; padding-bottom: calc(8px + env(safe-area-inset-bottom)); }
+.m-sheet .ta-input { font-size: 16px !important; min-height: 44px; border-radius: 22px; padding: 10px 14px; }
+.m-sheet .ta-compose-actions { gap: 8px; }
+.m-sheet .ta-attach { width: 42px; height: 42px; border-radius: 50%; }
+.m-sheet .ta-alert-dept { font-size: 14px; height: 38px; border-radius: 19px; }
+.m-sheet .modal-foot { padding-bottom: calc(10px + env(safe-area-inset-bottom)); }
+.m-sheet input[type=text], .m-sheet textarea, .m-sheet select { font-size: 16px; }   /* no iOS zoom on focus */
+.m-sheet [data-act="send-comment"] { height: 42px; min-width: 64px; border-radius: 21px; font-size: 15px; font-weight: 700; }
+.m-sheet .ta-alert-dept { flex: 1 1 auto; min-width: 0; }
+/* iPhone zooms into any text box under 16px when it gets focus → on phones every input is 16px (owner 2026-10-11) */
+@media (max-width: 640px) { input, select, textarea { font-size: 16px !important; } }
+.m-sheet .tm-title-row { flex-wrap: wrap; }
+.m-sheet .tm-title-row .tm-so { flex: 1 1 calc(50% - 4px); }
+.m-sheet .tm-title-row .tm-name { flex: 1 1 100%; }
+.m-sheet .subtask-main { flex-wrap: wrap; row-gap: 4px; }
+.m-sheet .subtask-row input.sub-mo { flex: 0 0 auto; width: 120px; }
+.m-sheet .subtask-row input.sub-name { flex: 1 1 calc(100% - 160px); min-width: 140px; }
 /* ===== ★ 2026-10-11 มุมมองมือถือ "งานของฉัน" (≤640px) ===== */
 body.m-mode #appRoot, body.m-mode #sideTabs { display: none !important; }
 #mobileRoot { min-height: 100vh; background: var(--bg); color: var(--text); padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
@@ -345,7 +402,7 @@ body.m-mode #appRoot, body.m-mode #sideTabs { display: none !important; }
 .m-deptwrap select { font: inherit; font-size: 13px; padding: 5px 8px; border-radius: 8px; border: 1px solid var(--border-strong); background: var(--panel); color: var(--text); max-width: 46vw; }
 .m-search { display: flex; align-items: center; gap: 8px; margin-top: 10px; padding: 0 12px; height: 40px; border-radius: 10px; background: var(--bg); border: 1px solid var(--border); }
 .m-search .ico { width: 16px; height: 16px; color: var(--text-dim); flex: 0 0 auto; }
-.m-search input { flex: 1; min-width: 0; border: 0; background: transparent; font: inherit; font-size: 15px; color: var(--text); outline: none; }
+.m-search input { flex: 1; min-width: 0; border: 0; background: transparent; font: inherit; font-size: 16px; color: var(--text); outline: none; }
 .m-list { padding: 10px 12px 16px; }
 .m-group { margin-bottom: 14px; }
 .m-group-h { font-size: 12.5px; font-weight: 700; color: var(--text-dim); margin: 2px 4px 8px; }
@@ -6441,6 +6498,32 @@ function openTaskModal(taskId, defaults={}) {
   document.body.appendChild(overlay);
 
   const modal = overlay.querySelector(".modal");
+  // ★ 2026-10-11 phone: full-screen sheet — back arrow + AVT · SO · name, tabs "คอมเมนต์" (first) / "รายละเอียดงาน",
+  //   chat-style feed, composer pinned at the bottom. Same popup, same logic — only the layout changes.
+  if (isMobileMode()) {
+    overlay.classList.add("m-sheet-ov");
+    modal.classList.add("m-sheet", isNew ? "m-tab-info" : "m-tab-chat");
+    const head = modal.querySelector(".modal-head");
+    const refs = [taskAvt(task), (task.so || "").trim()].filter(Boolean).join(" · ");
+    const bar = document.createElement("div");
+    bar.className = "m-sheet-bar";
+    bar.innerHTML = `<button type="button" class="m-sheet-back" data-act="close" aria-label="กลับ">‹</button>
+      <div class="m-sheet-ttl">${refs ? `<div class="m-sheet-refs">${escapeHtml(refs)}</div>` : ""}<div class="m-sheet-name">${escapeHtml(task.title || (isNew ? "งานใหม่" : "(ไม่มีชื่องาน)"))}</div></div>
+      ${isNew ? "" : `<button type="button" class="m-sheet-att" data-act="attachments" aria-label="ไฟล์แนบ">${ico("clip")}</button>`}`;
+    head.after(bar);
+    const tabs = document.createElement("div");
+    tabs.className = "m-sheet-tabs";
+    tabs.innerHTML = `<button type="button" data-mst="chat">คอมเมนต์</button><button type="button" data-mst="info">รายละเอียดงาน</button>`;
+    bar.after(tabs);
+    const paintTabs = () => tabs.querySelectorAll("[data-mst]").forEach(b => b.classList.toggle("on", modal.classList.contains("m-tab-" + b.dataset.mst)));
+    tabs.addEventListener("click", (e) => {
+      const b = e.target.closest("[data-mst]"); if (!b) return;
+      modal.classList.remove("m-tab-chat", "m-tab-info"); modal.classList.add("m-tab-" + b.dataset.mst); paintTabs();
+      if (b.dataset.mst === "chat") { const f = modal.querySelector("[data-feed]"); if (f) f.scrollTop = f.scrollHeight; }
+    });
+    paintTabs();
+    const ta = modal.querySelector("[data-comment]"); if (ta) ta.placeholder = "พิมพ์ข้อความ…";
+  }
   modal.querySelector('[data-f="title"]').value = task.title;
   modal.querySelector('[data-f="so"]').value = task.so || "";
   modal.querySelector('[data-f="so"]').addEventListener("input", (e) => { task.so = e.target.value; scheduleCommit(created ? 800 : 600); });
@@ -7295,7 +7378,7 @@ function openTaskModal(taskId, defaults={}) {
       }
       const author = c.author || "คุณ";
       const item = document.createElement("div");
-      item.className = "ta-item";
+      item.className = "ta-item" + (c.author && c.author === currentUser() ? " mine" : "");
       item.dataset.cid = c.id;
       item.innerHTML = `
         <div class="ta-avatar">${escapeHtml(author.slice(0,1))}</div>
@@ -12228,7 +12311,8 @@ function openStarDrawer() {
    Same data / permissions / automations as the desktop — this is only another way to show it. "เปิดแบบคอม" switches back.
    People with no department (or a "เห็นงานทั้งหมด" department) pick which department to look at (per calendar, this device). */
 const M_MQ = window.matchMedia("(max-width: 640px)");
-let mTab = "mine";            // mine | cal | me
+let mTab = "mine";            // mine | today | me   (★ ปฏิทิน tab → งานวันนี้, owner 2026-10-11)
+let mDay = 0;                 // งานวันนี้: day offset from today
 const mOpen = new Set();      // expanded projects
 const mOpenSub = new Set();   // expanded cabinets
 const mKeep = new Set();      // finished while on screen → stays (as done) until the list is left, so it doesn't vanish under the finger
@@ -12270,6 +12354,15 @@ function mItems() {
   }).map(t => ({ t, due: dep ? ((taskStage(t, dep) || {}).due || t.date) : t.date }))
     .sort((a, b) => (a.due || "9999").localeCompare(b.due || "9999") || (a.t.title || "").localeCompare(b.t.title || "", "th"));
 }
+// งานวันนี้: what is due on the chosen day for this department (finished ones too — shown as done, after the open ones)
+function mDayItems(dayIso) {
+  const dep = mDept();
+  return (state.tasks || []).map(t => ({ t, due: dep ? (taskStage(t, dep) ? ((taskStage(t, dep) || {}).due || t.date) : null) : t.date }))
+    .filter(x => x.due === dayIso)
+    .map(x => ({ ...x, done: dep ? isDeptComplete(x.t, dep) : projectComplete(x.t) }))
+    .sort((a, b) => (a.done - b.done) || (a.t.title || "").localeCompare(b.t.title || "", "th"));
+}
+const M_DOW = ["อา.", "จ.", "อ.", "พ.", "พฤ.", "ศ.", "ส."];
 // cabinets that have something to tick here (department items, or all items when no department is chosen)
 function mCabs(t, dep) { return (t.subtasks || []).filter(x => checklistProgress(x, dep || null).total > 0); }
 function mCardHtml(t, due, dep) {
@@ -12319,13 +12412,19 @@ function mEnsureRoot() {
   el.id = "mobileRoot";
   el.innerHTML = `
     <div class="m-top">
-      <div class="m-top-row"><span class="m-h">งานของฉัน</span><span class="m-board" data-mboard></span><span class="m-deptwrap" data-mdept></span></div>
-      <label class="m-search">${ico("search")}<input type="search" data-msearch placeholder="ค้นหา AVT / SO / ชื่องาน" autocomplete="off" /></label>
+      <div class="m-top-row"><span class="m-h" data-mh>งานของฉัน</span><span class="m-board" data-mboard></span><span class="m-deptwrap" data-mdept></span></div>
+      <label class="m-search" data-msearchwrap>${ico("search")}<input type="search" data-msearch placeholder="ค้นหา AVT / SO / ชื่องาน" autocomplete="off" /></label>
+      <div class="m-daynav" data-mdaynav hidden>
+        <button type="button" data-mday="-1" aria-label="วันก่อนหน้า">‹</button>
+        <button type="button" class="m-daylbl" data-mday="0"><b data-mdayname></b><span data-mdaydate></span></button>
+        <button type="button" data-mday="1" aria-label="วันถัดไป">›</button>
+      </div>
+      <div class="m-daysum" data-mdaysum hidden></div>
     </div>
     <div class="m-list" data-mlist></div>
     <nav class="m-nav">
       <button type="button" data-mtab="mine">${ico("list-check")}<span>งานของฉัน</span></button>
-      <button type="button" data-mtab="cal">${ico("calendar")}<span>ปฏิทิน</span></button>
+      <button type="button" data-mtab="today">${ico("calendar")}<span>งานวันนี้</span></button>
       <button type="button" data-mtab="bell">${ico("bell")}<span>แจ้งเตือน</span><b class="m-badge" data-mbadge hidden></b></button>
       <button type="button" data-mtab="me">${ico("user")}<span>ฉัน</span></button>
     </nav>`;
@@ -12338,6 +12437,10 @@ function mEnsureRoot() {
     mKeep.clear(); mTab = tab; window.scrollTo(0, 0); renderMobile();
   });
   el.querySelector("[data-mlist]").addEventListener("click", mListClick);
+  el.querySelector("[data-mdaynav]").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-mday]"); if (!b) return;
+    const v = Number(b.dataset.mday); mDay = v === 0 ? 0 : mDay + v; mKeep.clear(); renderMobile();
+  });
   return el;
 }
 function mListClick(e) {
@@ -12412,21 +12515,25 @@ function renderMobile() {
   const el = on ? mEnsureRoot() : document.getElementById("mobileRoot");
   // floating pill: back to the phone list from the calendar, or back to the phone view after "เปิดแบบคอม"
   let pill = document.getElementById("mPill");
-  const wantPill = appOn && M_MQ.matches && (mForceDesktop() || mTab === "cal");
+  const wantPill = appOn && M_MQ.matches && mForceDesktop();
   if (wantPill && !pill) {
     pill = document.createElement("button"); pill.id = "mPill"; pill.type = "button";
     pill.addEventListener("click", () => { mSetForceDesktop(false); mTab = "mine"; window.scrollTo(0, 0); renderAll(); });
     document.body.appendChild(pill);
   }
-  if (pill) { pill.hidden = !wantPill; pill.innerHTML = `${ico("list-check")} งานของฉัน`; }
-  document.body.classList.toggle("m-mode", on && mTab !== "cal");
+  if (pill) { pill.hidden = !wantPill; pill.innerHTML = `${ico("list-check")} มุมมองมือถือ`; }
+  document.body.classList.toggle("m-mode", on);
   if (!el) return;
-  el.hidden = !(on && mTab !== "cal");
+  el.hidden = !on;
   if (el.hidden) return;
   el.querySelectorAll("[data-mtab]").forEach(b => b.classList.toggle("on", b.dataset.mtab === mTab));
   const n = pendingAlerts().length, badge = el.querySelector("[data-mbadge]");
   badge.hidden = !n; badge.textContent = n > 99 ? "99+" : String(n);
-  el.querySelector(".m-top").hidden = mTab !== "mine";
+  el.querySelector(".m-top").hidden = mTab === "me";
+  el.querySelector("[data-mh]").textContent = mTab === "today" ? "งานวันนี้" : "งานของฉัน";
+  el.querySelector("[data-msearchwrap]").hidden = mTab !== "mine";
+  el.querySelector("[data-mdaynav]").hidden = mTab !== "today";
+  el.querySelector("[data-mdaysum]").hidden = mTab !== "today";
   el.querySelector("[data-mboard]").textContent = boardNameOf(root.activeBoard);
   const dw = el.querySelector("[data-mdept]");
   if (mCanPick()) {
@@ -12444,6 +12551,17 @@ function renderMobile() {
     list.querySelector("[data-mtheme]").addEventListener("click", () => setTheme(currentTheme() === "dark" ? "light" : "dark"));
     list.querySelector("[data-mdesktop]").addEventListener("click", () => { mSetForceDesktop(true); renderAll(); });
     list.querySelector("[data-mlogout]").addEventListener("click", () => confirmSignOut());
+    return;
+  }
+  if (mTab === "today") {
+    const dep = mDept(), day = new Date(); day.setDate(day.getDate() + mDay);
+    const iso = isoDate(day), list2 = mDayItems(iso);
+    el.querySelector("[data-mdayname]").textContent = mDay === 0 ? "วันนี้" : mDay === 1 ? "พรุ่งนี้" : mDay === -1 ? "เมื่อวาน" : `${mDay > 0 ? "อีก " + mDay : -mDay} วัน${mDay > 0 ? "" : "ก่อน"}`;
+    el.querySelector("[data-mdaydate]").textContent = `${M_DOW[day.getDay()]} ${day.getDate()} ${M_MON[day.getMonth()]} ${day.getFullYear() + 543}`;
+    const nDone = list2.filter(x => x.done).length;
+    el.querySelector("[data-mdaysum]").innerHTML = list2.length ? `<span class="ok">เสร็จ ${nDone}</span><span>ค้าง ${list2.length - nDone}</span>` : "";
+    list.innerHTML = list2.length ? list2.map(x => mCardHtml(x.t, x.due, dep)).join("") : `<div class="m-empty">ไม่มีงานครบกำหนด${mDay === 0 ? "วันนี้" : "วันนั้น"}</div>`;
+    window.scrollTo(0, y);
     return;
   }
   const dep = mDept(), items = mItems();
