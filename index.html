@@ -332,6 +332,92 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
 .tf-date.over { color: #ef4444; font-weight: 700; }
 @media print { .tm-flow { display: none !important; } }
 @media (max-width: 640px) { .tm-flow .tf-name { display: none; } .tm-flow { margin: 0 8px; } }
+/* ===== ★ 2026-10-11 มุมมองมือถือ "งานของฉัน" (≤640px) ===== */
+body.m-mode #appRoot, body.m-mode #sideTabs { display: none !important; }
+#mobileRoot { min-height: 100vh; background: var(--bg); color: var(--text); padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
+#mobileRoot[hidden] { display: none; }
+.m-top { position: sticky; top: 0; z-index: 5; background: var(--panel); border-bottom: 1px solid var(--border); padding: 12px 14px 10px; padding-top: calc(12px + env(safe-area-inset-top)); }
+.m-top[hidden] { display: none; }
+.m-top-row { display: flex; align-items: center; gap: 8px; }
+.m-h { font-size: 18px; font-weight: 700; }
+.m-board { font-size: 12px; color: var(--text-dim); flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.m-mydept { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 999px; background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); }
+.m-deptwrap select { font: inherit; font-size: 13px; padding: 5px 8px; border-radius: 8px; border: 1px solid var(--border-strong); background: var(--panel); color: var(--text); max-width: 46vw; }
+.m-search { display: flex; align-items: center; gap: 8px; margin-top: 10px; padding: 0 12px; height: 40px; border-radius: 10px; background: var(--bg); border: 1px solid var(--border); }
+.m-search .ico { width: 16px; height: 16px; color: var(--text-dim); flex: 0 0 auto; }
+.m-search input { flex: 1; min-width: 0; border: 0; background: transparent; font: inherit; font-size: 15px; color: var(--text); outline: none; }
+.m-list { padding: 10px 12px 16px; }
+.m-group { margin-bottom: 14px; }
+.m-group-h { font-size: 12.5px; font-weight: 700; color: var(--text-dim); margin: 2px 4px 8px; }
+.m-group-h span { font-weight: 600; opacity: .8; }
+.m-group.mg-over .m-group-h { color: #ef4444; }
+.m-group.mg-today .m-group-h { color: var(--accent); }
+.m-card { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; margin-bottom: 10px; overflow: hidden; }
+.m-card.mg-over { border-color: color-mix(in srgb, #ef4444 45%, var(--border)); }
+.m-card.mg-today { border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); }
+.m-card.mg-done { opacity: .75; border-color: color-mix(in srgb, #10b981 50%, var(--border)); }
+.m-card-head { padding: 12px 14px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.m-refs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 3px; }
+.m-ref { font-size: 11px; font-weight: 600; color: var(--text-dim); }
+.m-ref:first-child { color: var(--accent); }
+.m-title { font-size: 15.5px; font-weight: 700; line-height: 1.3; }
+.m-meta { display: flex; align-items: center; gap: 8px; margin-top: 5px; font-size: 12.5px; }
+.m-due { color: var(--text-dim); font-weight: 600; }
+.m-card.mg-over .m-due { color: #ef4444; }
+.m-card.mg-today .m-due { color: var(--accent); }
+.m-card.mg-done .m-due { color: #10b981; }
+.m-st { margin-left: auto; font-size: 11px; font-weight: 700; padding: 2px 9px; border-radius: 999px; color: var(--st); background: color-mix(in srgb, var(--st) 14%, transparent); white-space: nowrap; }
+.m-prog { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+.m-track { flex: 1; height: 6px; border-radius: 3px; background: var(--b-eef0f3, #eef0f3); overflow: hidden; }
+.m-bar { height: 100%; border-radius: 3px; background: var(--accent); transition: width .3s; }
+.m-card.mg-over .m-bar { background: #ef4444; }
+.m-card.mg-done .m-bar { background: #10b981; }
+.m-prog-n { font-size: 12px; color: var(--text-dim); font-weight: 600; white-space: nowrap; }
+.m-body { border-top: 1px solid var(--border); padding: 6px 10px 10px; }
+.m-cab { border-radius: 10px; }
+.m-cab + .m-cab { border-top: 1px solid var(--border); }
+.m-cab-head { display: flex; align-items: center; gap: 10px; padding: 11px 4px; cursor: pointer; }
+.m-dot { width: 18px; height: 18px; border-radius: 50%; border: 2.5px solid var(--dot); background: transparent; flex: 0 0 auto; padding: 0; }
+.m-cab.full .m-dot { background: var(--dot); }
+.m-cab-name { flex: 1 1 auto; min-width: 0; font-size: 14px; font-weight: 600; }
+.m-mo { display: block; font-size: 11px; font-weight: 600; color: var(--text-dim); }
+.m-cab-n { font-size: 13px; font-weight: 700; color: var(--text-dim); }
+.m-cab.full .m-cab-n { color: #10b981; }
+.m-chev { color: var(--text-dim); width: 14px; text-align: center; }
+.m-items { padding: 0 0 8px 28px; display: flex; flex-direction: column; gap: 2px; }
+.m-items-dept { font-size: 11px; font-weight: 700; color: var(--text-dim); margin: 6px 0 2px; }
+.m-item, .m-deptdone { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 46px; padding: 6px 8px; border: 0; border-radius: 10px; background: transparent; font: inherit; font-size: 15px; color: var(--text); text-align: left; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.m-item:active, .m-deptdone:active { background: var(--bg); }
+.m-box { width: 26px; height: 26px; flex: 0 0 auto; border-radius: 7px; border: 2px solid var(--border-strong); display: inline-flex; align-items: center; justify-content: center; color: #fff; transition: background .15s, border-color .15s; }
+.m-box .ico { width: 16px; height: 16px; stroke-width: 3; }
+.m-item.on .m-box, .m-deptdone.on .m-box { background: #10b981; border-color: #10b981; }
+.m-item.on .m-item-t { color: var(--text-dim); text-decoration: line-through; }
+.m-deptdone { margin-top: 6px; font-weight: 600; }
+.m-open-full { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; margin-top: 8px; padding: 10px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg); font: inherit; font-size: 13.5px; font-weight: 600; color: var(--text-dim); cursor: pointer; }
+.m-open-full .ico { width: 16px; height: 16px; }
+.m-empty { text-align: center; color: var(--text-dim); padding: 60px 20px; font-size: 14px; }
+.m-empty-sm { color: var(--text-dim); font-size: 13px; padding: 10px 4px; }
+.m-nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 50; display: flex; background: var(--panel); border-top: 1px solid var(--border); padding-bottom: env(safe-area-inset-bottom); }
+.m-nav button { position: relative; flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 0 7px; border: 0; background: transparent; font: inherit; font-size: 10.5px; color: var(--text-dim); cursor: pointer; }
+.m-nav button .ico { width: 22px; height: 22px; }
+.m-nav button.on { color: var(--accent); font-weight: 700; }
+.m-badge { position: absolute; top: 4px; left: calc(50% + 6px); min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px; background: #ef4444; color: #fff; font-size: 10px; line-height: 16px; font-style: normal; }
+.m-me { padding: calc(10px + env(safe-area-inset-top)) 2px 0; }
+.m-me-card { display: flex; align-items: center; gap: 12px; padding: 14px; border-radius: 14px; background: var(--panel); border: 1px solid var(--border); }
+.m-me-name { font-size: 16px; font-weight: 700; }
+.m-me-dept { font-size: 13px; color: var(--text-dim); }
+.m-me-h { font-size: 12px; font-weight: 700; color: var(--text-dim); margin: 16px 6px 6px; }
+.m-me-list { border-radius: 14px; background: var(--panel); border: 1px solid var(--border); overflow: hidden; }
+.m-me-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; min-height: 48px; padding: 0 14px; border: 0; background: transparent; font: inherit; font-size: 15px; color: var(--text); text-align: left; cursor: pointer; }
+.m-me-row + .m-me-row { border-top: 1px solid var(--border); }
+.m-me-row .ico { width: 18px; height: 18px; }
+.m-me-row.on { color: var(--accent); font-weight: 700; }
+.m-me-row.danger { color: #ef4444; justify-content: flex-start; }
+.m-me-row[data-mdesktop] { justify-content: flex-start; }
+#mPill { position: fixed; z-index: 1200; left: 50%; transform: translateX(-50%); bottom: calc(14px + env(safe-area-inset-bottom)); display: inline-flex; align-items: center; gap: 6px; padding: 10px 16px; border-radius: 999px; border: 0; background: var(--accent); color: #fff; font: inherit; font-size: 14px; font-weight: 700; box-shadow: 0 6px 18px rgba(0,0,0,.25); cursor: pointer; }
+#mPill[hidden] { display: none; }
+#mPill .ico { width: 17px; height: 17px; }
+@media print { #mobileRoot, #mPill { display: none !important; } body.m-mode #appRoot { display: block !important; } }
 .field.tm-title-row { flex-direction: row; gap: 8px; }
 .tm-title-row .tm-so { flex: 0 0 calc((100% - 8px) / 5); min-width: 0; }   /* SO = 1/4 of the name field */
 .tm-title-row .tm-name { flex: 1 1 0; min-width: 0; }
@@ -12136,6 +12222,242 @@ function openStarDrawer() {
   ov.addEventListener("mousedown", (e) => { if (e.target === ov) close(); });
 }
 
+/* ===================== ★ 2026-10-11 มุมมองมือถือ "งานของฉัน" =====================
+   owner: on a phone the desktop layout is hard to use; staff mostly just tick checklists → phones (≤640px; iPad keeps the
+   desktop view) open a list of MY department's open work grouped by date, cabinets expand to big tick boxes.
+   Same data / permissions / automations as the desktop — this is only another way to show it. "เปิดแบบคอม" switches back.
+   People with no department (or a "เห็นงานทั้งหมด" department) pick which department to look at (per calendar, this device). */
+const M_MQ = window.matchMedia("(max-width: 640px)");
+let mTab = "mine";            // mine | cal | me
+const mOpen = new Set();      // expanded projects
+const mOpenSub = new Set();   // expanded cabinets
+const mKeep = new Set();      // finished while on screen → stays (as done) until the list is left, so it doesn't vanish under the finger
+let mSearch = "";
+const M_MON = ["ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.","ก.ค.","ส.ค.","ก.ย.","ต.ค.","พ.ย.","ธ.ค."];
+function mForceDesktop() { try { return localStorage.getItem("qc_force_desktop") === "1"; } catch (_) { return false; } }
+function mSetForceDesktop(on) { try { localStorage.setItem("qc_force_desktop", on ? "1" : "0"); } catch (_) {} }
+function isMobileMode() { return M_MQ.matches && !mForceDesktop(); }
+function mPickedDept() { try { return localStorage.getItem("qc_m_dept_" + root.activeBoard) || ""; } catch (_) { return ""; } }
+function mSetPickedDept(id) { try { localStorage.setItem("qc_m_dept_" + root.activeBoard, id || ""); } catch (_) {} }
+function mCanPick() { return !isServiceBoard() && !myViewDeptId(); }
+function mDept() {
+  if (isServiceBoard()) return "";
+  const own = myViewDeptId(); if (own) return own;
+  const p = mPickedDept(); return p && getDept(p) ? p : "";
+}
+function mDueLabel(iso) {
+  if (!iso) return "ไม่มีวันกำหนด";
+  const d = fromIso(iso), n = Math.round((d - fromIso(todayIso())) / 86400000);
+  const lbl = `${d.getDate()} ${M_MON[d.getMonth()]}`;
+  return n === 0 ? "วันนี้" : n === 1 ? "พรุ่งนี้" : n < 0 ? `${lbl} · เลย ${-n} วัน` : lbl;
+}
+function mGroupOf(iso) {
+  if (!iso) return "none";
+  const n = Math.round((fromIso(iso) - fromIso(todayIso())) / 86400000);
+  return n < 0 ? "over" : n === 0 ? "today" : n === 1 ? "tom" : n <= 7 ? "week" : "later";
+}
+const M_GROUPS = [["over", "เลยกำหนด"], ["today", "วันนี้"], ["tom", "พรุ่งนี้"], ["week", "ภายใน 7 วัน"], ["later", "ถัดไป"], ["none", "ไม่มีวันกำหนด"]];
+function mItems() {
+  const dep = mDept(), q = mSearch.trim().toLowerCase();
+  return (state.tasks || []).filter(t => {
+    if (dep) { if (!taskStage(t, dep)) return false; if (isDeptComplete(t, dep) && !mKeep.has(t.id)) return false; }
+    else if (projectComplete(t) && !mKeep.has(t.id)) return false;
+    if (q) {
+      const hay = [taskAvt(t), t.so, t.title, ...(t.subtasks || []).map(x => (x.mo || "") + " " + (x.text || ""))].join(" ").toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  }).map(t => ({ t, due: dep ? ((taskStage(t, dep) || {}).due || t.date) : t.date }))
+    .sort((a, b) => (a.due || "9999").localeCompare(b.due || "9999") || (a.t.title || "").localeCompare(b.t.title || "", "th"));
+}
+// cabinets that have something to tick here (department items, or all items when no department is chosen)
+function mCabs(t, dep) { return (t.subtasks || []).filter(x => checklistProgress(x, dep || null).total > 0); }
+function mCardHtml(t, due, dep) {
+  const open = mOpen.has(t.id);
+  const done = dep ? isDeptComplete(t, dep) : projectComplete(t);
+  const cabs = mCabs(t, dep);
+  const cabDone = cabs.filter(x => { const p = checklistProgress(x, dep || null); return p.done === p.total; }).length;
+  const pct = cabs.length ? Math.round(cabDone / cabs.length * 100) : (done ? 100 : 0);
+  const st = getStatus(t.statusId);
+  const g = done ? "done" : mGroupOf(due);
+  const refs = [taskAvt(t), (t.so || "").trim()].filter(Boolean).map(x => `<span class="m-ref">${escapeHtml(x)}</span>`).join("");
+  let body = "";
+  if (open) {
+    const stg = dep ? taskStage(t, dep) : null;
+    const rows = cabs.map(x => {
+      const p = checklistProgress(x, dep || null), so = mOpenSub.has(x.id);
+      const items = (x.checklist || []).filter(i => !dep || i.deptId === dep);
+      const groups = dep ? [[null, items]] : [...new Set(items.map(i => i.deptId))].map(id => [id, items.filter(i => i.deptId === id)]);
+      return `<div class="m-cab${p.done === p.total ? " full" : ""}${so ? " open" : ""}">
+        <div class="m-cab-head" data-sub="${escapeHtml(x.id)}">
+          <button type="button" class="m-dot" data-substatus="${escapeHtml(x.id)}" style="--dot:${getStatus(x.statusId).color}" aria-label="สถานะตู้"></button>
+          <span class="m-cab-name">${x.mo ? `<span class="m-mo">${escapeHtml(x.mo)}</span>` : ""}${escapeHtml(x.text || "(ไม่มีชื่อตู้)")}</span>
+          <span class="m-cab-n">${p.done}/${p.total}</span><span class="m-chev">${so ? "▴" : "▾"}</span>
+        </div>
+        ${so ? `<div class="m-items">${groups.map(([gid, list]) => (gid ? `<div class="m-items-dept">${escapeHtml((getDept(gid) || {}).name || "")}</div>` : "") + list.map(i =>
+          `<button type="button" class="m-item${i.done ? " on" : ""}" data-item="${escapeHtml(x.id)}|${escapeHtml(i.id)}"><span class="m-box">${i.done ? ico("check") : ""}</span><span class="m-item-t">${escapeHtml(i.text || "")}</span></button>`).join("")).join("")}</div>` : ""}
+      </div>`;
+    }).join("");
+    const manual = dep && stg && !deptUsesChecklist(t, dep)
+      ? `<button type="button" class="m-deptdone${stg.done ? " on" : ""}" data-deptdone="1"><span class="m-box">${stg.done ? ico("check") : ""}</span>แผนก ${escapeHtml((getDept(dep) || {}).name || "")} เสร็จแล้ว</button>` : "";
+    body = `<div class="m-body">${rows || (manual ? "" : `<div class="m-empty-sm">ไม่มีเช็คลิสต์</div>`)}${manual}
+      <button type="button" class="m-open-full" data-full="1">${ico("message")} รายละเอียด · คอมเมนต์ · รูป</button></div>`;
+  }
+  return `<div class="m-card mg-${g}${open ? " open" : ""}" data-t="${escapeHtml(t.id)}">
+    <div class="m-card-head" data-toggle="1">
+      ${refs ? `<div class="m-refs">${refs}</div>` : ""}
+      <div class="m-title">${escapeHtml(t.title || "(ไม่มีชื่องาน)")}</div>
+      <div class="m-meta"><span class="m-due">${done ? "✓ เสร็จแล้ว" : escapeHtml(mDueLabel(due))}</span><span class="m-st" style="--st:${st.color}">${escapeHtml(st.name)}</span></div>
+      <div class="m-prog"><div class="m-track"><div class="m-bar" style="width:${pct}%"></div></div><span class="m-prog-n">${cabs.length ? `${cabDone}/${cabs.length} ตู้` : (done ? "เสร็จ" : "")}</span></div>
+    </div>${body}
+  </div>`;
+}
+function mEnsureRoot() {
+  let el = document.getElementById("mobileRoot");
+  if (el) return el;
+  el = document.createElement("div");
+  el.id = "mobileRoot";
+  el.innerHTML = `
+    <div class="m-top">
+      <div class="m-top-row"><span class="m-h">งานของฉัน</span><span class="m-board" data-mboard></span><span class="m-deptwrap" data-mdept></span></div>
+      <label class="m-search">${ico("search")}<input type="search" data-msearch placeholder="ค้นหา AVT / SO / ชื่องาน" autocomplete="off" /></label>
+    </div>
+    <div class="m-list" data-mlist></div>
+    <nav class="m-nav">
+      <button type="button" data-mtab="mine">${ico("list-check")}<span>งานของฉัน</span></button>
+      <button type="button" data-mtab="cal">${ico("calendar")}<span>ปฏิทิน</span></button>
+      <button type="button" data-mtab="bell">${ico("bell")}<span>แจ้งเตือน</span><b class="m-badge" data-mbadge hidden></b></button>
+      <button type="button" data-mtab="me">${ico("user")}<span>ฉัน</span></button>
+    </nav>`;
+  document.body.appendChild(el);
+  el.querySelector("[data-msearch]").addEventListener("input", (e) => { mSearch = e.target.value; mKeep.clear(); renderMobile(); });
+  el.querySelector(".m-nav").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-mtab]"); if (!b) return;
+    const tab = b.dataset.mtab;
+    if (tab === "bell") { openAlertPopup(pendingAlerts(), { fromBell: true }); return; }
+    mKeep.clear(); mTab = tab; window.scrollTo(0, 0); renderMobile();
+  });
+  el.querySelector("[data-mlist]").addEventListener("click", mListClick);
+  return el;
+}
+function mListClick(e) {
+  const card = e.target.closest(".m-card");
+  const t = card && state.tasks.find(x => x.id === card.dataset.t);
+  const dep = mDept();
+  if (e.target.closest("[data-mpick]") || e.target.closest(".m-me")) return;   // "ฉัน" page handles its own
+  if (!t) return;
+  const item = e.target.closest("[data-item]");
+  if (item) {
+    if (!canTick()) { permDenied("สิทธิ์ของคุณแก้เช็คลิสต์ไม่ได้"); return; }
+    const [sid, iid] = item.dataset.item.split("|");
+    const sub = (t.subtasks || []).find(x => x.id === sid), it = sub && (sub.checklist || []).find(i => i.id === iid);
+    if (!it) return;
+    const snap = automationSnapshot(t), was = isDeptComplete(t, it.deptId);
+    it.done = !it.done;
+    const now = isDeptComplete(t, it.deptId), dn = (getDept(it.deptId) || {}).name || "";
+    if (!was && now) logActivity(t, `✓ แผนก ${dn} เสร็จ`); else if (was && !now) logActivity(t, `ยกเลิกเสร็จ แผนก ${dn}`);
+    if (now) mKeep.add(t.id);
+    runAutomations(t, snap);   // ⚡ same automations as ticking on the desktop
+    t.updatedAt = Date.now(); saveState(); renderAll();
+    return;
+  }
+  if (e.target.closest("[data-deptdone]")) {
+    if (!canEdit()) { permDenied("สิทธิ์ของคุณติ๊กเสร็จไม่ได้"); return; }
+    const stg = taskStage(t, dep); if (!stg) return;
+    const snap = automationSnapshot(t), dn = (getDept(dep) || {}).name || "";
+    stg.done = !stg.done;
+    logActivity(t, stg.done ? `✓ แผนก ${dn} เสร็จ` : `ยกเลิกเสร็จ แผนก ${dn}`);
+    if (stg.done) mKeep.add(t.id);
+    runAutomations(t, snap);
+    if (stg.done && taskRelevantToMe(t)) pushNotify("done", "✅ แผนกเสร็จ", `${t.title} · ${dn}`, "dd-" + t.id + dep);
+    t.updatedAt = Date.now(); saveState(); renderAll();
+    return;
+  }
+  const dot = e.target.closest("[data-substatus]");
+  if (dot) {
+    e.stopPropagation();
+    if (!canEdit()) { permDenied("สิทธิ์ของคุณเปลี่ยนสถานะไม่ได้"); return; }
+    const sub = (t.subtasks || []).find(x => x.id === dot.dataset.substatus);
+    if (sub) openStatusPopover(dot, sub.statusId, (id) => applyStatusChange(t, sub, id));
+    return;
+  }
+  if (e.target.closest("[data-full]")) { openTaskModal(t.id); return; }
+  const sh = e.target.closest("[data-sub]");
+  if (sh) { const id = sh.dataset.sub; if (mOpenSub.has(id)) mOpenSub.delete(id); else mOpenSub.add(id); renderMobile(); return; }
+  if (e.target.closest("[data-toggle]")) {
+    if (mOpen.has(t.id)) mOpen.delete(t.id);
+    else { mOpen.add(t.id); const cabs = mCabs(t, dep); if (cabs.length === 1) mOpenSub.add(cabs[0].id); }   // one cabinet → open it too
+    renderMobile();
+  }
+}
+function mMePage() {
+  const p = currentProfile || {};
+  const dept = getDept(myDeptId()) || deptAnywhere(p.dept_id);
+  const boards = (root.boardMeta || []).filter(b => visibleBoardIds().includes(b.id));
+  return `<div class="m-me">
+    <div class="m-me-card">${currentProfile ? avatarHtml(currentProfile) : ""}<div><div class="m-me-name">${escapeHtml(personName(p))}</div><div class="m-me-dept">${escapeHtml(dept ? dept.name : "ไม่ระบุแผนก")}</div></div></div>
+    <div class="m-me-h">ปฏิทิน</div>
+    <div class="m-me-list">${boards.map(b => `<button type="button" class="m-me-row${b.id === root.activeBoard ? " on" : ""}" data-mboardpick="${escapeHtml(b.id)}">${escapeHtml(b.name)}${b.id === root.activeBoard ? ico("check") : ""}</button>`).join("")}</div>
+    <div class="m-me-h">ธีม</div>
+    <div class="m-me-list"><button type="button" class="m-me-row" data-mtheme="1">${currentTheme() === "dark" ? "มืด → สว่าง" : "สว่าง → มืด"}</button></div>
+    <div class="m-me-list" style="margin-top:14px">
+      <button type="button" class="m-me-row" data-mdesktop="1">${ico("monitor")} เปิดแบบคอม</button>
+      <button type="button" class="m-me-row danger" data-mlogout="1">${ico("logout")} ออกจากระบบ</button>
+    </div></div>`;
+}
+function renderMobile() {
+  const app = document.getElementById("appRoot");
+  const appOn = !!app && !app.classList.contains("hidden");
+  const on = appOn && isMobileMode();
+  const el = on ? mEnsureRoot() : document.getElementById("mobileRoot");
+  // floating pill: back to the phone list from the calendar, or back to the phone view after "เปิดแบบคอม"
+  let pill = document.getElementById("mPill");
+  const wantPill = appOn && M_MQ.matches && (mForceDesktop() || mTab === "cal");
+  if (wantPill && !pill) {
+    pill = document.createElement("button"); pill.id = "mPill"; pill.type = "button";
+    pill.addEventListener("click", () => { mSetForceDesktop(false); mTab = "mine"; window.scrollTo(0, 0); renderAll(); });
+    document.body.appendChild(pill);
+  }
+  if (pill) { pill.hidden = !wantPill; pill.innerHTML = `${ico("list-check")} งานของฉัน`; }
+  document.body.classList.toggle("m-mode", on && mTab !== "cal");
+  if (!el) return;
+  el.hidden = !(on && mTab !== "cal");
+  if (el.hidden) return;
+  el.querySelectorAll("[data-mtab]").forEach(b => b.classList.toggle("on", b.dataset.mtab === mTab));
+  const n = pendingAlerts().length, badge = el.querySelector("[data-mbadge]");
+  badge.hidden = !n; badge.textContent = n > 99 ? "99+" : String(n);
+  el.querySelector(".m-top").hidden = mTab !== "mine";
+  el.querySelector("[data-mboard]").textContent = boardNameOf(root.activeBoard);
+  const dw = el.querySelector("[data-mdept]");
+  if (mCanPick()) {
+    const cur = mDept();
+    dw.innerHTML = `<select data-mpick><option value="">ทุกแผนก</option>${(state.departments || []).map(d => `<option value="${escapeHtml(d.id)}"${d.id === cur ? " selected" : ""}>${escapeHtml(d.name)}</option>`).join("")}</select>`;
+    dw.querySelector("select").addEventListener("change", (e) => { mSetPickedDept(e.target.value); mKeep.clear(); renderMobile(); });
+  } else {
+    const d = getDept(mDept());
+    dw.innerHTML = d ? `<span class="m-mydept">${deptIco(d)}${escapeHtml(d.name)}</span>` : "";
+  }
+  const list = el.querySelector("[data-mlist]"), y = window.scrollY;
+  if (mTab === "me") {
+    list.innerHTML = mMePage();
+    list.querySelectorAll("[data-mboardpick]").forEach(b => b.addEventListener("click", () => { mKeep.clear(); mOpen.clear(); setBoard(b.dataset.mboardpick); mTab = "mine"; renderMobile(); }));
+    list.querySelector("[data-mtheme]").addEventListener("click", () => setTheme(currentTheme() === "dark" ? "light" : "dark"));
+    list.querySelector("[data-mdesktop]").addEventListener("click", () => { mSetForceDesktop(true); renderAll(); });
+    list.querySelector("[data-mlogout]").addEventListener("click", () => confirmSignOut());
+    return;
+  }
+  const dep = mDept(), items = mItems();
+  if (!items.length) {
+    list.innerHTML = `<div class="m-empty">${mSearch ? "ไม่พบงานที่ค้นหา" : "ไม่มีงานค้าง" + (dep ? ` ของแผนก ${escapeHtml((getDept(dep) || {}).name || "")}` : "")}</div>`;
+  } else {
+    const by = {};
+    items.forEach(x => { const g = mGroupOf(x.due); (by[g] = by[g] || []).push(x); });
+    list.innerHTML = M_GROUPS.filter(([g]) => by[g]).map(([g, name]) =>
+      `<div class="m-group mg-${g}"><div class="m-group-h">${name} <span>${by[g].length}</span></div>${by[g].map(x => mCardHtml(x.t, x.due, dep)).join("")}</div>`).join("");
+  }
+  window.scrollTo(0, y);
+}
+M_MQ.addEventListener ? M_MQ.addEventListener("change", () => renderAll()) : M_MQ.addListener(() => renderAll());
 function renderAll() {
   normalizeBoardNames();
   ensureVisibleBoard();   // must run first: may repoint `state` (e.g. a user just moved into/out of Service)
@@ -12148,6 +12470,7 @@ function renderAll() {
   renderBell();
   applySidebarPerm();
   renderUserBadge();   // keep the department chip in sync when it changes
+  try { renderMobile(); } catch (e) { console.warn("mobile view", e); }   // phone layout (never breaks the desktop one)
   document.dispatchEvent(new Event("app-rendered"));   // an open task popup refreshes itself from the saved data
 }
 // hide the create/draw/import buttons for members below "full" (they'd only get a permission toast)
