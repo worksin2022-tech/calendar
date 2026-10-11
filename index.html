@@ -385,6 +385,52 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
 .m-asg-n { flex: 1 1 auto; min-width: 0; }
 .m-asg-row.on .m-box { background: #10b981; border-color: #10b981; }
 .m-asg-done { flex: 0 0 auto; border: 0; border-radius: 12px; padding: 13px; background: var(--accent); color: #fff; font: inherit; font-size: 15px; font-weight: 700; cursor: pointer; }
+/* ★ 2026-10-11 phone card E1 + status band */
+.m-bpick-wrap { position: relative; flex: 0 1 auto; min-width: 0; }
+.m-bpick { display: inline-flex; align-items: center; gap: 4px; max-width: 46vw; padding: 5px 11px; border-radius: 999px; border: 1px solid var(--border-strong); background: var(--panel); font: inherit; font-size: 13px; font-weight: 600; color: var(--text); cursor: pointer; }
+.m-bpick span:first-child { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.m-bpick:disabled { cursor: default; opacity: 1; }
+.m-bcaret { color: var(--text-dim); font-size: 11px; }
+.m-bmenu { position: absolute; top: calc(100% + 6px); left: 0; z-index: 30; min-width: 200px; padding: 4px; border-radius: 12px; background: var(--panel); border: 1px solid var(--border-strong); box-shadow: 0 10px 28px rgba(0,0,0,.18); display: flex; flex-direction: column; }
+.m-bmenu button { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 44px; padding: 0 12px; border: 0; border-radius: 9px; background: transparent; font: inherit; font-size: 15px; color: var(--text); text-align: left; cursor: pointer; }
+.m-bmenu button.on { background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); font-weight: 700; }
+.m-bmenu .ico { width: 16px; height: 16px; }
+.m-card .m-card-head { padding: 0; }
+.m-band { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 12px; background: var(--st); font-size: 12.5px; font-weight: 700; }
+.m-band-st { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.m-band-due { flex: 0 0 auto; white-space: nowrap; }
+.m-band-due.over { background: #ef4444; color: #fff; padding: 1px 8px; border-radius: 6px; }
+.m-e1 { display: flex; gap: 12px; padding: 10px 12px 12px; }
+.m-ring { position: relative; flex: 0 0 50px; display: flex; flex-direction: column; align-items: center; }
+.m-ring svg { width: 50px; height: 50px; }
+.m-ring circle { fill: none; stroke-width: 4.5; }
+.m-ring-bg { stroke: var(--b-eef0f3, #eef0f3); }
+.m-ring.full .m-ring-bg { stroke: #10b981; }
+.m-ring-fg { stroke-linecap: round; transform: rotate(-90deg); transform-origin: 23px 23px; transition: stroke-dasharray .3s; }
+.m-ring-t { position: absolute; top: 0; left: 0; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; font-size: 12.5px; font-weight: 700; color: var(--text); }
+.m-ring.full .m-ring-t { color: #10b981; }
+.m-ring-t .ico { width: 20px; height: 20px; stroke-width: 3; }
+.m-ring-sub { font-size: 10.5px; color: var(--text-dim); margin-top: 2px; white-space: nowrap; }
+.m-e1-main { flex: 1 1 auto; min-width: 0; }
+.m-e1-main .m-title { font-size: 15.5px; }
+.m-e1-main .m-refs { margin: 2px 0 0; }
+.m-segbar { display: flex; gap: 3px; margin-top: 8px; }
+.m-segbar span { flex: 1; height: 6px; border-radius: 3px; background: var(--b-eef0f3, #eef0f3); }
+.m-segbar span.done { background: #10b981; }
+.m-segbar span.cur { background: var(--accent); }
+.m-segbar span.cur.over { background: #ef4444; }
+.m-e1-foot { display: flex; align-items: center; gap: 4px; margin-top: 7px; min-height: 26px; font-size: 12.5px; }
+.m-step { font-weight: 700; color: var(--accent); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.m-step.over { color: #ef4444; }
+.m-step.ok { color: #10b981; }
+.m-step-n { color: var(--text-dim); white-space: nowrap; }
+.m-av { margin-left: auto; display: inline-flex; align-items: center; flex: 0 0 auto; cursor: pointer; }
+.m-av .avatar { width: 26px; height: 26px; font-size: 11px; border: 2px solid var(--panel); box-sizing: content-box; }
+.m-av .avatar + .avatar { margin-left: -9px; }
+.m-av-more { font-size: 11px; color: var(--text-dim); margin-left: 3px; }
+.m-av-add { width: 26px; height: 26px; margin-left: -6px; border-radius: 50%; border: 1.5px dashed color-mix(in srgb, var(--accent) 60%, transparent); background: var(--panel); color: var(--accent); display: inline-flex; align-items: center; justify-content: center; font-weight: 700; box-sizing: border-box; }
+.m-asg-link { margin-left: auto; flex: 0 0 auto; border: 0; background: transparent; color: var(--accent); font: inherit; font-size: 13px; font-weight: 700; padding: 4px 2px; cursor: pointer; }
+.m-card.mg-done .m-band { opacity: .85; }
 /* ★ 2026-10-11 phone: งานวันนี้ header */
 .m-search[hidden], .m-daynav[hidden], .m-daysum[hidden] { display: none; }
 .m-daynav { display: flex; align-items: center; gap: 6px; margin-top: 10px; padding: 4px; border-radius: 12px; background: var(--bg); border: 1px solid var(--border); }
@@ -12557,14 +12603,33 @@ function mCardHtml(t, due, dep, bid) {
       <button type="button" class="m-open-full" data-full="1">${ico("message")} รายละเอียด · คอมเมนต์ · รูป</button></div>`;
   }
   const other = bid && bid !== root.activeBoard ? `<span class="m-boardtag">${escapeHtml(boardNameOf(bid))}</span>` : "";
+  // ★ 2026-10-11 card "E1 + แถบสถานะ" (owner): status band on top · cabinet ring · department step bar · owners
+  const over = !done && g === "over";
+  const ringCol = done ? "#10b981" : over ? "#ef4444" : "var(--accent)";
+  const R = 19, C = 2 * Math.PI * R;
+  const ringTxt = done && (!cabs.length || pct === 100) ? ico("check") : cabs.length ? `${pct}%` : "—";
+  const ring = `<div class="m-ring${done ? " full" : ""}"><svg viewBox="0 0 46 46" aria-hidden="true"><circle cx="23" cy="23" r="${R}" class="m-ring-bg"/>${pct > 0 ? `<circle cx="23" cy="23" r="${R}" class="m-ring-fg" style="stroke:${ringCol}" stroke-dasharray="${(C * pct / 100).toFixed(1)} ${C.toFixed(1)}"/>` : ""}</svg><span class="m-ring-t">${ringTxt}</span><span class="m-ring-sub">${cabs.length ? `ตู้ ${cabDone}/${cabs.length}` : "ไม่มีตู้"}</span></div>`;
+  const stages = isServiceBoard() ? [] : (t.deptStages || []).filter(x => getDept(x.deptId));
+  const sDone = stages.map(x => isDeptComplete(t, x.deptId)), cur = sDone.indexOf(false);
+  const curOver = cur >= 0 && (() => { const d = stages[cur].due || t.date; return d && d < todayIso(); })();
+  const segs = stages.length >= 2 ? `<div class="m-segbar">${stages.map((x, i) => `<span class="${sDone[i] ? "done" : i === cur ? (curOver ? "cur over" : "cur") : ""}" title="${escapeHtml((getDept(x.deptId) || {}).name || "")}"></span>`).join("")}</div>` : "";
+  const stepTxt = !stages.length ? "" : cur === -1 ? `<span class="m-step ok">ครบทุกแผนก</span>`
+    : `<span class="m-step${curOver ? " over" : ""}">ขั้น ${escapeHtml((getDept(stages[cur].deptId) || {}).name || "")}</span>${stages.length >= 2 ? `<span class="m-step-n">(${cur + 1}/${stages.length})</span>` : ""}`;
+  const canAsg = canEdit();
+  const vis = (t.assignees || []).filter(id => teamProfiles.has(id)).map(id => teamProfiles.get(id)).filter(canSeePerson);
+  const owners = vis.length
+    ? `<span class="m-av" ${canAsg ? `data-assign="1"` : ""} title="${escapeHtml(vis.map(personName).join(", "))}">${vis.slice(0, 3).map(p => avatarHtml(p)).join("")}${vis.length > 3 ? `<span class="m-av-more">+${vis.length - 3}</span>` : ""}${canAsg ? `<span class="m-av-add">+</span>` : ""}</span>`
+    : (canAsg ? `<button type="button" class="m-asg-link" data-assign="1">+ มอบหมาย</button>` : "");
+  const dueBadge = done ? "✓ เสร็จแล้ว" : escapeHtml(mDueLabel(due));
   return `<div class="m-card mg-${g}${open ? " open" : ""}" data-t="${escapeHtml(t.id)}" data-b="${escapeHtml(bid || root.activeBoard)}" data-dep="${escapeHtml(dep || "")}">
     <div class="m-card-head" data-toggle="1">
-      ${refs || other ? `<div class="m-refs">${other}${refs}</div>` : ""}
-      <div class="m-title-row"><div class="m-title">${escapeHtml(t.title || "(ไม่มีชื่องาน)")}</div></div>
-      ${mFlowHtml(t)}
-      <div class="m-meta"><span class="m-due">${done ? "✓ เสร็จแล้ว" : escapeHtml(mDueLabel(due))}</span><span class="m-st" style="--st:${st.color}">${escapeHtml(st.name)}</span></div>
-      <div class="m-prog"><div class="m-track"><div class="m-bar" style="width:${pct}%"></div></div><span class="m-prog-n">${cabs.length ? `${cabDone}/${cabs.length} ตู้` : (done ? "เสร็จ" : "")}</span></div>
-      ${mOwnersHtml(t)}
+      <div class="m-band" style="--st:${st.color};color:${textOn(st.color)}"><span class="m-band-st">● ${escapeHtml(st.name)}</span><span class="m-band-due${over ? " over" : ""}">${dueBadge}</span></div>
+      <div class="m-e1">${ring}<div class="m-e1-main">
+        <div class="m-title">${escapeHtml(t.title || "(ไม่มีชื่องาน)")}</div>
+        ${refs || other ? `<div class="m-refs">${other}${refs}</div>` : ""}
+        ${segs}
+        <div class="m-e1-foot">${stepTxt}${owners}</div>
+      </div></div>
     </div>${body}
   </div>`;
 }
@@ -12575,7 +12640,7 @@ function mEnsureRoot() {
   el.id = "mobileRoot";
   el.innerHTML = `
     <div class="m-top">
-      <div class="m-top-row"><span class="m-h" data-mh>งานแผนก</span><div class="m-boards" data-mboards></div><span class="m-deptwrap" data-mdept></span></div>
+      <div class="m-top-row"><span class="m-h" data-mh>งานแผนก</span><span class="m-bpick-wrap" data-mboards><button type="button" class="m-bpick" data-mbpick></button></span><span class="m-deptwrap" data-mdept></span></div>
       <div class="m-seg" data-mseg><button type="button" data-mmine="0">ทั้งแผนก <b data-mcnt0></b></button><button type="button" data-mmine="1">${ico("user")} มอบหมายให้ฉัน <b data-mcnt1></b></button></div>
       <label class="m-search" data-msearchwrap>${ico("search")}<input type="search" data-msearch placeholder="ค้นหา AVT / SO / ชื่องาน" autocomplete="off" /></label>
       <div class="m-daynav" data-mdaynav hidden>
@@ -12601,9 +12666,25 @@ function mEnsureRoot() {
     mKeep.clear(); mTab = tab; window.scrollTo(0, 0); renderMobile();
   });
   el.querySelector("[data-mlist]").addEventListener("click", mListClick);
+  // ★ 2026-10-11 calendar picker = "โรงงาน ▾" → small menu (owner: back to the first suggestion)
   el.querySelector("[data-mboards]").addEventListener("click", (e) => {
-    const b = e.target.closest("[data-mb]"); if (!b || b.dataset.mb === root.activeBoard) return;
-    mKeep.clear(); mOpen.clear(); mOpenSub.clear(); window.scrollTo(0, 0); setBoard(b.dataset.mb);
+    const item = e.target.closest("[data-mb]");
+    const menu = el.querySelector(".m-bmenu");
+    if (item) {
+      menu && menu.remove();
+      if (item.dataset.mb === root.activeBoard) return;
+      mKeep.clear(); mOpen.clear(); mOpenSub.clear(); window.scrollTo(0, 0); setBoard(item.dataset.mb);
+      return;
+    }
+    if (!e.target.closest("[data-mbpick]")) return;
+    if (menu) { menu.remove(); return; }
+    const boards = (root.boardMeta || []).filter(b => visibleBoardIds().includes(b.id));
+    const m = document.createElement("div");
+    m.className = "m-bmenu";
+    m.innerHTML = boards.map(b => `<button type="button" data-mb="${escapeHtml(b.id)}" class="${b.id === root.activeBoard ? "on" : ""}">${escapeHtml(b.name)}${b.id === root.activeBoard ? ico("check") : ""}</button>`).join("");
+    el.querySelector("[data-mboards]").appendChild(m);
+    const off = (ev) => { if (!m.contains(ev.target) && !ev.target.closest("[data-mbpick]")) { m.remove(); document.removeEventListener("pointerdown", off, true); } };
+    setTimeout(() => document.addEventListener("pointerdown", off, true), 0);
   });
   el.querySelector("[data-mseg]").addEventListener("click", (e) => {
     const b = e.target.closest("[data-mmine]"); if (!b) return;
@@ -12726,20 +12807,10 @@ function renderMobile() {
   el.querySelector("[data-msearchwrap]").hidden = mTab !== "mine";
   el.querySelector("[data-mdaynav]").hidden = mTab !== "today";
   el.querySelector("[data-mdaysum]").hidden = mTab !== "today";
-  // ★ 2026-10-11 calendars = one sliding segment on the title row (owner: "ช่องเดียวกันแล้วสไลด์ไปได้", same row)
   const bw = el.querySelector("[data-mboards]");
-  const boards = (root.boardMeta || []).filter(b => visibleBoardIds().includes(b.id));
-  bw.hidden = boards.length < 2;
-  const sig = boards.map(b => b.id + ":" + b.name).join("|") + "#" + root.activeBoard;
-  if (bw.dataset.sig !== sig) {
-    bw.dataset.sig = sig;
-    bw.innerHTML = boards.map(b => `<button type="button" data-mb="${escapeHtml(b.id)}" class="${b.id === root.activeBoard ? "on" : ""}">${escapeHtml(b.name)}</button>`).join("");
-    const on = bw.querySelector(".on");
-    if (on) setTimeout(() => {   // bring the chosen calendar to the middle of the strip (after layout; rAF can stall in a background tab)
-      const a = bw.getBoundingClientRect(), b = on.getBoundingClientRect();
-      bw.scrollLeft += (b.left + b.width / 2) - (a.left + a.width / 2);
-    }, 0);
-  }
+  const nBoards = (root.boardMeta || []).filter(b => visibleBoardIds().includes(b.id)).length;
+  bw.querySelector("[data-mbpick]").innerHTML = `<span>${escapeHtml(boardNameOf(root.activeBoard))}</span>${nBoards > 1 ? `<span class="m-bcaret">▾</span>` : ""}`;
+  bw.querySelector("[data-mbpick]").disabled = nBoards < 2;
   const dw = el.querySelector("[data-mdept]");
   const mine = mMine();
   el.querySelectorAll("[data-mmine]").forEach(b => b.classList.toggle("on", (b.dataset.mmine === "1") === mine));
