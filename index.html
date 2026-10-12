@@ -2021,6 +2021,11 @@ body.chip-dragging .task-chip.span-bar { pointer-events: none; }   /* let the da
 .stage-chip-ok { color:var(--t-10b981, #10b981); font-weight: 700; }
 .stage-chip.done { border-color:var(--l-a7e3c9, #a7e3c9); background:var(--b-ecfdf5, #ecfdf5); }
 .stage-chip.done .stage-chip-name, .stage-chip.done .stage-chip-date { color:var(--t-047857, #047857); }
+.stage-chip.stage-drag { cursor: grab; touch-action: pan-x pan-y; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.stage-chip.dragging { opacity: .35; }
+.stage-chip.drop-before { box-shadow: -3px 0 0 0 var(--accent); }
+.stage-chip.drop-after { box-shadow: 3px 0 0 0 var(--accent); }
+.stage-ghost { position: fixed; z-index: 99999; pointer-events: none; cursor: grabbing; box-shadow: 0 6px 18px rgba(0,0,0,.18); border-color: var(--accent); transform: rotate(-2deg); }
 .stage-chip-add { padding: 5px 11px; border-style:dashed; color:var(--accent); font-weight: 700; }
 .stage-chip:disabled { cursor: default; opacity: 1; }
 .stage-pop { position: fixed; z-index: 1300; background:var(--b-ffffff, #fff); border:1px solid var(--border); border-radius:10px; box-shadow: 0 10px 30px rgba(16,24,40,.16); padding: 10px; display: flex; flex-direction: column; gap: 8px; min-width: 220px; }
@@ -7040,6 +7045,7 @@ function openTaskModal(taskId, defaults={}) {
       let hoverTimer = null;
       chip.addEventListener("mouseenter", () => { clearTimeout(hoverTimer); hoverTimer = setTimeout(() => openStagePop(stg, chip), 160); });
       chip.addEventListener("mouseleave", () => clearTimeout(hoverTimer));
+      if (canFull() && visibleStages === task.deptStages && visibleStages.length > 1) stageDrag(chip, stg, () => clearTimeout(hoverTimer));
       stageWrap.appendChild(chip);
     });
     const add = document.createElement("button");
@@ -7053,9 +7059,66 @@ function openTaskModal(taskId, defaults={}) {
     if (!canFull()) add.style.display = "none";
     renderExtraFields();   // custom dropdown fields live in their own card, keyed off the current stages
   }
+  // ★ 2026-10-12 (owner: ดึงย้ายตำแหน่งแผนกที่ได้รับมอบหมาย) — drag a stage chip to reorder (full only).
+  //   Mouse: drag after 6px. Touch: hold ~0.35s then drag. Order = the flow bar / "ขั้น X" order.
+  function stageDrag(chip, stg, stopHover) {
+    chip.classList.add("stage-drag");
+    chip.addEventListener("pointerdown", (e) => {
+      if (e.button !== 0) return;
+      const touch = e.pointerType !== "mouse", x0 = e.clientX, y0 = e.clientY;
+      let on = false, ghost = null, target = null, after = false, holdT = null;
+      const chips = () => [...stageWrap.querySelectorAll(".stage-chip[data-dept-id]")].filter(c => c !== chip);
+      const mark = () => chips().forEach(c => c.classList.remove("drop-before", "drop-after"));
+      function start() {
+        on = true; stopHover();
+        if (closeStagePop) closeStagePop();
+        document.querySelectorAll(".stage-pop").forEach(n => n.remove());
+        const r = chip.getBoundingClientRect();
+        ghost = chip.cloneNode(true); ghost.className = chip.className + " stage-ghost";
+        ghost.style.width = r.width + "px";
+        document.body.appendChild(ghost);
+        chip.classList.add("dragging");
+        if (navigator.vibrate && touch) try { navigator.vibrate(15); } catch (_) {}
+      }
+      function move(ev) {
+        if (!on) {
+          if (Math.hypot(ev.clientX - x0, ev.clientY - y0) > 6) { if (touch) return end(); start(); } else return;
+        }
+        ghost.style.left = (ev.clientX + 8) + "px"; ghost.style.top = (ev.clientY + 8) + "px";
+        let best = null, bd = Infinity;
+        chips().forEach(c => { const r = c.getBoundingClientRect(); const d = Math.hypot(ev.clientX - (r.left + r.width / 2), ev.clientY - (r.top + r.height / 2)); if (d < bd) { bd = d; best = c; } });
+        mark(); target = best;
+        if (best) { const r = best.getBoundingClientRect(); after = ev.clientX > r.left + r.width / 2; best.classList.add(after ? "drop-after" : "drop-before"); }
+      }
+      const tm = (ev) => { if (on) ev.preventDefault(); };
+      function end() {
+        clearTimeout(holdT);
+        document.removeEventListener("pointermove", move); document.removeEventListener("pointerup", up); document.removeEventListener("pointercancel", end);
+        chip.removeEventListener("touchmove", tm);
+        if (ghost) ghost.remove();
+        chip.classList.remove("dragging"); mark();
+        return on;
+      }
+      function up() {
+        const t = target, a = after;
+        if (!end() || !t) return;
+        chip.addEventListener("click", (c) => { c.stopPropagation(); c.preventDefault(); }, { capture: true, once: true });
+        const to = task.deptStages.find(x => x.deptId === t.dataset.deptId);
+        const from = task.deptStages.indexOf(stg);
+        if (!to || from < 0) return;
+        task.deptStages.splice(from, 1);
+        task.deptStages.splice(task.deptStages.indexOf(to) + (a ? 1 : 0), 0, stg);
+        renderStages(); scheduleCommit(0);
+      }
+      document.addEventListener("pointermove", move); document.addEventListener("pointerup", up); document.addEventListener("pointercancel", end);
+      chip.addEventListener("touchmove", tm, { passive: false });
+      if (touch) holdT = setTimeout(start, 350);
+    });
+  }
   // popover for one stage chip
   let closeStagePop = null;
   function openStagePop(stg, chip) {
+    if (stageWrap.querySelector(".stage-chip.dragging")) return;   // mid-drag: hovering other chips mustn't pop
     if (closeStagePop) { if (closeStagePop.chip === chip && document.querySelector(".stage-pop")) return; closeStagePop(); }
     document.querySelectorAll(".stage-pop").forEach(n => n.remove());
     const pop = document.createElement("div");
