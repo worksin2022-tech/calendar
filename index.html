@@ -12872,6 +12872,19 @@ function renderMobile() {
   window.scrollTo(0, y);
 }
 M_MQ.addEventListener ? M_MQ.addEventListener("change", () => renderAll()) : M_MQ.addListener(() => renderAll());
+// ★ 2026-10-12 (owner: "บางครั้งไม่เป็นหน้ามือถือ ต้องออกเข้าใหม่ 3-4 ครั้ง"): the phone view was only decided inside renderAll(),
+//   but after sign-in the app panel is often revealed AFTER the last renderAll (hideLoginScreen) → it stayed on the desktop
+//   layout until something else re-rendered. Now: re-check whenever #appRoot is shown/hidden, on rotate/resize, when the
+//   page comes back (pageshow — iOS restores apps from memory) or becomes visible again.
+(() => {
+  let tm = null;
+  const kick = () => { clearTimeout(tm); tm = setTimeout(() => { try { renderMobile(); } catch (e) { console.warn("mobile view", e); } }, 60); };
+  const app = document.getElementById("appRoot");
+  if (app && window.MutationObserver) new MutationObserver(kick).observe(app, { attributes: true, attributeFilter: ["class"] });
+  ["resize", "orientationchange", "pageshow"].forEach(ev => window.addEventListener(ev, kick));
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) kick(); });
+  kick();
+})();
 function renderAll() {
   normalizeBoardNames();
   ensureVisibleBoard();   // must run first: may repoint `state` (e.g. a user just moved into/out of Service)
