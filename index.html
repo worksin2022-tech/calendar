@@ -385,6 +385,16 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
 .m-asg-n { flex: 1 1 auto; min-width: 0; }
 .m-asg-row.on .m-box { background: #10b981; border-color: #10b981; }
 .m-asg-done { flex: 0 0 auto; border: 0; border-radius: 12px; padding: 13px; background: var(--accent); color: #fff; font: inherit; font-size: 15px; font-weight: 700; cursor: pointer; }
+.m-nbanner { display: flex; align-items: center; gap: 10px; margin: 0 0 12px; padding: 10px 12px; border-radius: 12px; background: color-mix(in srgb, var(--accent) 12%, var(--panel)); border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent); font-size: 13.5px; font-weight: 600; color: var(--text); }
+.m-nbanner > .ico { width: 20px; height: 20px; color: var(--accent); flex: 0 0 auto; }
+.m-nbanner span { flex: 1 1 auto; min-width: 0; }
+.m-nbanner button { flex: 0 0 auto; border: 0; border-radius: 9px; padding: 7px 12px; background: var(--accent); color: #fff; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
+.m-nbanner button.x { background: transparent; color: var(--text-dim); padding: 6px; }
+.m-me-notif { border-radius: 14px; background: var(--panel); border: 1px solid var(--border); padding: 4px 14px 12px; }
+.m-me-notif .settings-section { margin: 0; padding: 0; border: 0; }
+.m-me-notif .settings-h:first-child { display: none; }
+.m-me-notif .btn { min-height: 40px; font-size: 14px; }
+.m-me-notif .settings-toggle-row { min-height: 40px; }
 /* ★ 2026-10-11 phone card E1 + status band */
 .m-bpick-wrap { position: relative; flex: 0 1 auto; min-width: 0; }
 .m-bpick { display: inline-flex; align-items: center; gap: 4px; max-width: 46vw; padding: 5px 11px; border-radius: 999px; border: 1px solid var(--border-strong); background: var(--panel); font: inherit; font-size: 13px; font-weight: 600; color: var(--text); cursor: pointer; }
@@ -12499,6 +12509,16 @@ function mDayItems(dayIso) {
     .sort((a, b) => (a.done - b.done) || (a.t.title || "").localeCompare(b.t.title || "", "th"));
 }
 const M_DOW = ["อา.", "จ.", "อ.", "พ.", "พฤ.", "ศ.", "ส."];
+// ★ 2026-10-12 (owner: อยากให้มือถือแจ้งเตือนด้วย) — nudge until this phone receives notifications; ✕ hides it on this phone
+function mNotifOn() { try { return NOTIF_SUPPORTED && Notification.permission === "granted" && myNotifyPrefs().enabled; } catch (_) { return false; } }
+function mNotifBanner() {
+  try { if (localStorage.getItem("qc_m_notif_hide") === "1") return ""; } catch (_) {}
+  if (mNotifOn()) return "";
+  const iosBrowser = isIOS() && !isStandalone();
+  if (!iosBrowser && !NOTIF_SUPPORTED) return "";
+  const msg = iosBrowser ? "ติดตั้งแอปลงหน้าจอโฮม เพื่อรับแจ้งเตือนบนมือถือ" : "เปิดการแจ้งเตือนบนมือถือเครื่องนี้";
+  return `<div class="m-nbanner">${ico("bell")}<span>${msg}</span><button type="button" data-mnotif-go>${iosBrowser ? "วิธีติดตั้ง" : "เปิด"}</button><button type="button" class="x" data-mnotif-x aria-label="ซ่อน">✕</button></div>`;
+}
 // ★ 2026-10-11 department steps on a phone card (same meaning as the bar on the desktop popup): ✓ done · ● now · ○ later
 function mFlowHtml(t) {
   if (isServiceBoard()) return "";
@@ -12702,6 +12722,8 @@ function mEnsureRoot() {
   return el;
 }
 function mListClick(e) {
+  if (e.target.closest("[data-mnotif-x]")) { try { localStorage.setItem("qc_m_notif_hide", "1"); } catch (_) {} renderMobile(); return; }
+  if (e.target.closest("[data-mnotif-go]")) { mTab = "me"; window.scrollTo(0, 0); renderMobile(); setTimeout(() => document.querySelector("[data-mnotif]")?.scrollIntoView({ block: "start" }), 50); return; }
   const card = e.target.closest(".m-card");
   const bid = (card && card.dataset.b) || root.activeBoard;
   const t = card && ((root.boards[bid] || {}).tasks || []).find(x => x.id === card.dataset.t);
@@ -12779,6 +12801,8 @@ function mMePage() {
     <div class="m-me-card">${currentProfile ? avatarHtml(currentProfile) : ""}<div><div class="m-me-name">${escapeHtml(personName(p))}</div><div class="m-me-dept">${escapeHtml(dept ? dept.name : "ไม่ระบุแผนก")}</div></div></div>
     <div class="m-me-h">ปฏิทิน</div>
     <div class="m-me-list">${boards.map(b => `<button type="button" class="m-me-row${b.id === root.activeBoard ? " on" : ""}" data-mboardpick="${escapeHtml(b.id)}">${escapeHtml(b.name)}${b.id === root.activeBoard ? ico("check") : ""}</button>`).join("")}</div>
+    <div class="m-me-h">การแจ้งเตือน</div>
+    <div class="m-me-notif" data-mnotif></div>
     <div class="m-me-h">ธีม</div>
     <div class="m-me-list"><button type="button" class="m-me-row" data-mtheme="1">${currentTheme() === "dark" ? "มืด → สว่าง" : "สว่าง → มืด"}</button></div>
     <div class="m-me-list" style="margin-top:14px">
@@ -12831,6 +12855,7 @@ function renderMobile() {
   const list = el.querySelector("[data-mlist]"), y = window.scrollY;
   if (mTab === "me") {
     list.innerHTML = mMePage();
+    try { buildNotifyPanel(list.querySelector("[data-mnotif]")); } catch (e) { console.warn("notify panel", e); }
     list.querySelectorAll("[data-mboardpick]").forEach(b => b.addEventListener("click", () => { mKeep.clear(); mOpen.clear(); setBoard(b.dataset.mboardpick); mTab = "mine"; renderMobile(); }));
     list.querySelector("[data-mtheme]").addEventListener("click", () => setTheme(currentTheme() === "dark" ? "light" : "dark"));
     list.querySelector("[data-mdesktop]").addEventListener("click", () => { mSetForceDesktop(true); renderAll(); });
@@ -12849,8 +12874,8 @@ function renderMobile() {
     el.querySelector("[data-mdaydate]").textContent = `${M_DOW[day.getDay()]} ${day.getDate()} ${M_MON[day.getMonth()]} ${day.getFullYear() + 543}`;
     const nDone = list2.filter(x => x.done).length;
     el.querySelector("[data-mdaysum]").innerHTML = list2.length ? `<span class="ok">เสร็จ ${nDone}</span><span>ค้าง ${list2.length - nDone}</span>` : "";
-    list.innerHTML = list2.length ? list2.map(x => mWithBoard(x.bid, () => mCardHtml(x.t, x.due, x.dep, x.bid))).join("")
-      : `<div class="m-empty">${mine ? "ไม่มีงานที่มอบหมายให้คุณ" : "ไม่มีงานครบกำหนด"}${mDay === 0 ? "วันนี้" : "วันนั้น"}</div>`;
+    list.innerHTML = mNotifBanner() + (list2.length ? list2.map(x => mWithBoard(x.bid, () => mCardHtml(x.t, x.due, x.dep, x.bid))).join("")
+      : `<div class="m-empty">${mine ? "ไม่มีงานที่มอบหมายให้คุณ" : "ไม่มีงานครบกำหนด"}${mDay === 0 ? "วันนี้" : "วันนั้น"}</div>`);
     window.scrollTo(0, y);
     return;
   }
@@ -12869,6 +12894,7 @@ function renderMobile() {
     list.innerHTML = M_GROUPS.filter(([g]) => by[g]).map(([g, name]) =>
       `<div class="m-group mg-${g}"><div class="m-group-h">${name} <span>${by[g].length}</span></div>${by[g].map(x => mWithBoard(x.bid, () => mCardHtml(x.t, x.due, x.dep, x.bid))).join("")}</div>`).join("");
   }
+  list.insertAdjacentHTML("afterbegin", mNotifBanner());
   window.scrollTo(0, y);
 }
 M_MQ.addEventListener ? M_MQ.addEventListener("change", () => renderAll()) : M_MQ.addListener(() => renderAll());
