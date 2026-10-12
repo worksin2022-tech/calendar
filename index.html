@@ -387,6 +387,13 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
 .m-asg-n { flex: 1 1 auto; min-width: 0; }
 .m-asg-row.on .m-box { background: #10b981; border-color: #10b981; }
 .m-asg-done { flex: 0 0 auto; border: 0; border-radius: 12px; padding: 13px; background: var(--accent); color: #fff; font: inherit; font-size: 15px; font-weight: 700; cursor: pointer; }
+.m-ptr { position: fixed; top: env(safe-area-inset-top, 0px); left: 50%; z-index: 9998; width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: var(--panel); color: var(--text-dim); box-shadow: 0 2px 10px rgba(0,0,0,.15); opacity: 0; transform: translate(-50%, -44px); pointer-events: none; transition: opacity .15s; }
+.m-ptr .ico { width: 20px; height: 20px; }
+.m-ptr.ready { color: var(--accent); }
+.m-ptr.spin { color: var(--accent); opacity: 1; transition: transform .2s; }
+.m-ptr.spin .ico { animation: mptrspin .8s linear infinite; }
+@keyframes mptrspin { to { transform: rotate(360deg); } }
+html:has(body.m-mode), body.m-mode { overscroll-behavior-y: contain; }
 .m-nbanner { display: flex; align-items: center; gap: 10px; margin: 0 0 12px; padding: 10px 12px; border-radius: 12px; background: color-mix(in srgb, var(--accent) 12%, var(--panel)); border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent); font-size: 13.5px; font-weight: 600; color: var(--text); }
 .m-nbanner > .ico { width: 20px; height: 20px; color: var(--accent); flex: 0 0 auto; }
 .m-nbanner span { flex: 1 1 auto; min-width: 0; }
@@ -5150,6 +5157,25 @@ function renderMonth() {
       if (dragDeptCab && Array.isArray(dragDeptCab.subIds)) {   // a project chip carrying one day's cabinets
         const t = state.tasks.find(x => x.id === dragDeptCab.taskId);
         const did = dragDeptCab.deptId;
+        // ★ 2026-10-12 (owner: ลากแล้ววันแผนกไม่เปลี่ยน ไปเปลี่ยนวันตู้) — the chip carries EVERY cabinet of the project →
+        //   it IS the department: move the department's due (start keeps its distance) and let the cabinets follow it
+        //   (their own per-department dates are cleared). Only a chip holding part of the cabinets moves just those.
+        const stgAll = t && taskStage(t, did);
+        if (stgAll && (t.subtasks || []).length && (t.subtasks || []).every(x => dragDeptCab.subIds.includes(x.id))) {
+          const cur = stgAll.due || t.date;
+          const cabMoved = (t.subtasks || []).some(x => x.deptDates && x.deptDates[did] && x.deptDates[did] !== iso);
+          if (cur === iso && !cabMoved) return;
+          const max = dateLimitViolation(t, did, iso, null);
+          if (max) { toast(dateLimitMsg(did, max)); return; }
+          if (stgAll.start && cur) stgAll.start = addDaysIso(stgAll.start, Math.round((fromIso(iso) - fromIso(cur)) / 86400000));
+          stgAll.due = iso;
+          (t.subtasks || []).forEach(x => { if (x.deptDates) delete x.deptDates[did]; });
+          logActivity(t, `เลื่อนกำหนดแผนก ${(getDept(did)||{}).name||""} → ${formatDateTH(iso)}`);
+          warnStagePastProjectEnd(t, stgAll);
+          t.updatedAt = Date.now();
+          saveState(); renderAll();
+          return;
+        }
         const subsM = t ? (t.subtasks || []).filter(x => dragDeptCab.subIds.includes(x.id) && cabinetDeptDue(t, x, did) !== iso) : [];
         if (!subsM.length) return;
         for (const s of subsM) { const max = dateLimitViolation(t, did, iso, s); if (max) { toast(dateLimitMsg(did, max)); return; } }
@@ -12306,8 +12332,11 @@ function statusReportHasContent() {
     const p = (t.subtasks || []).reduce((a, s) => { const x = checklistProgress(s); a.done += x.done; a.total += x.total; return a; }, { done: 0, total: 0 });
     return p.total > 0 ? p.done === p.total : isStatusDone(getStatus(t.statusId));
   };
-  return (state.tasks || []).some(t => (deptId ? !!taskStage(t, deptId) : true) && !isComplete(t));
+  const today = todayIso(), dueOf = t => deptId ? ((taskStage(t, deptId) || {}).due || t.date) : t.date;
+  return (state.tasks || []).some(t => (deptId ? !!taskStage(t, deptId) : true) && reportDueNow(dueOf(t), today) && !isComplete(t));
 }
+// ★ 2026-10-12 (owner): the report shows only today's work + overdue (not everything still open)
+function reportDueNow(due, today) { return !!due && due <= today; }
 
 function openStatusReport() {
   const deptId = myViewDeptId() || null;
@@ -12325,8 +12354,8 @@ function openStatusReport() {
   const dueOf = t => deptId ? ((taskStage(t, deptId) || {}).due || t.date) : t.date;
 
   const scope = state.tasks.filter(t => deptId ? !!taskStage(t, deptId) : true);
-  const pending = scope.filter(t => !isComplete(t));
-  const doneCount = scope.length - pending.length;
+  const pending = scope.filter(t => reportDueNow(dueOf(t), today) && !isComplete(t));
+  const overCount = pending.filter(t => dueOf(t) < today).length, todayCount = pending.length - overCount;
   const prRank = { urgent: 4, high: 3, medium: 2, low: 1, none: 0 };
   pending.sort((a, b) => (dueOf(a) || "9999").localeCompare(dueOf(b) || "9999")
     || (prRank[b.priority] || 0) - (prRank[a.priority] || 0) || a.title.localeCompare(b.title, "th"));
@@ -12337,7 +12366,7 @@ function openStatusReport() {
 
   let rowsHtml;
   if (pending.length === 0) {
-    rowsHtml = `<div class="rp-empty">${ico("check-circle")}<br>ไม่มีงานค้าง${deptName ? ` ของแผนก ${escapeHtml(deptName)}` : ""}</div>`;
+    rowsHtml = `<div class="rp-empty">${ico("check-circle")}<br>ไม่มีงานวันนี้และงานค้าง${deptName ? ` ของแผนก ${escapeHtml(deptName)}` : ""}</div>`;
   } else {
     rowsHtml = pending.map(t => {
       const p = prog(t), remain = p.total - p.done, pc = p.total ? Math.round(p.done / p.total * 100) : 0;
@@ -12360,7 +12389,7 @@ function openStatusReport() {
         <div class="rp-row">
           <div class="rp-row-head">
             <span class="rp-title">${pr.id !== "none" ? priFlag(pr) + " " : ""}${escapeHtml(t.title)}</span>
-            <span class="rp-due${od ? " overdue" : ""}">${due ? (od ? `เลย ${days} วัน` : formatDateTH(due)) : "—"}</span>
+            <span class="rp-due${od ? " overdue" : ""}">${due ? (od ? `เลย ${days} วัน` : due === today ? "วันนี้" : formatDateTH(due)) : "—"}</span>
           </div>
           <div class="rp-prog">
             <div class="rp-track"><div class="rp-bar" style="width:${pc}%;background:${pc === 100 ? "#10b981" : "var(--accent)"}"></div></div>
@@ -12381,8 +12410,8 @@ function openStatusReport() {
       </div>
       <div class="report-body">
         <div class="rp-summary">
-          <div class="rp-sum-stat"><span class="rp-sum-num">${pending.length}</span><span class="rp-sum-lbl">งานค้าง</span></div>
-          <div class="rp-sum-stat"><span class="rp-sum-num">${doneCount}</span><span class="rp-sum-lbl">เสร็จแล้ว</span></div>
+          <div class="rp-sum-stat"><span class="rp-sum-num">${todayCount}</span><span class="rp-sum-lbl">งานวันนี้</span></div>
+          <div class="rp-sum-stat"><span class="rp-sum-num"${overCount ? ' style="color:var(--danger)"' : ""}>${overCount}</span><span class="rp-sum-lbl">ค้าง (เลยกำหนด)</span></div>
           ${totTotal ? `<div class="rp-sum-stat"><span class="rp-sum-num">${pct}%</span><span class="rp-sum-lbl">เช็คลิสต์รวม (${totDone}/${totTotal})</span></div>` : ""}
           <div class="rp-sum-board">${ico("calendar")} ${escapeHtml(boardName)}<br>${formatDateFullTH(today)}</div>
         </div>
@@ -12619,6 +12648,53 @@ function mDayItems(dayIso) {
     .sort((a, b) => (a.done - b.done) || (a.t.title || "").localeCompare(b.t.title || "", "th"));
 }
 const M_DOW = ["อา.", "จ.", "อ.", "พ.", "พฤ.", "ศ.", "ส."];
+// ★ 2026-10-12 (owner: มือถือลากหน้าจอลง = รีเฟรช) — pull down at the top of a phone list → send any unsaved edit,
+//   then reload (fresh data + the newest app version). An unsent edit / photo upload → only re-pull boards, never reload.
+(function mPullToRefresh() {
+  let y0 = null, dist = 0, busy = false, el = null;
+  const LIMIT = 70;
+  const blocked = () => !document.body.classList.contains("m-mode") || window.scrollY > 0
+    || document.querySelector(".overlay, .m-sheet, .m-bmenu, .checklist-popover, .confirm-overlay");
+  function ui() {
+    if (!el) { el = document.createElement("div"); el.className = "m-ptr"; el.innerHTML = ico("restore"); document.body.appendChild(el); }
+    return el;
+  }
+  function paint(d) {
+    const e = ui(), p = Math.min(d / LIMIT, 1);
+    e.style.transform = `translate(-50%, ${Math.min(d, LIMIT + 20) - 44}px) rotate(${p * 270}deg)`;
+    e.style.opacity = String(Math.min(1, d / 30));
+    e.classList.toggle("ready", d >= LIMIT);
+  }
+  function hide() { if (el) { el.classList.remove("ready", "spin"); el.style.transform = "translate(-50%, -44px)"; el.style.opacity = "0"; } }
+  document.addEventListener("touchstart", (e) => {
+    if (busy || e.touches.length !== 1 || blocked()) { y0 = null; return; }
+    y0 = e.touches[0].clientY; dist = 0;
+  }, { passive: true });
+  document.addEventListener("touchmove", (e) => {
+    if (y0 == null) return;
+    const dy = e.touches[0].clientY - y0;
+    if (dy <= 0 || window.scrollY > 0) { dist = 0; hide(); return; }
+    dist = dy * 0.5;
+    paint(dist);
+  }, { passive: true });
+  document.addEventListener("touchend", async () => {
+    if (y0 == null) return;
+    y0 = null;
+    if (dist < LIMIT) { hide(); return; }
+    busy = true;
+    const e = ui(); e.classList.add("spin"); e.style.transform = "translate(-50%, 26px)";
+    try {
+      if (_cloudSaveTimer) { clearTimeout(_cloudSaveTimer); _cloudSaveTimer = null; await pushAllBoardsToCloud(); }
+      for (let i = 0; i < 50 && _pushBusy; i++) await new Promise(r => setTimeout(r, 100));
+      const unsent = _cloudReady && (root.boardMeta || []).some(b => root.boards[b.id] && _lastPushedJson[b.id] !== JSON.stringify(root.boards[b.id]));
+      if (!navigator.onLine || !_cloudReady || unsent || _upCount > 0) {
+        _lastResumeCheck = 0; await refreshBoardsOnResume(); renderAll();
+        toast(_upCount > 0 ? "กำลังอัปโหลดรูป — รีเฟรชข้อมูลแล้ว" : unsent ? "ยังมีการแก้ไขที่ส่งไม่สำเร็จ — รีเฟรชข้อมูลแล้ว" : navigator.onLine ? "ยังเชื่อมต่อ cloud ไม่ได้ — ลองใหม่อีกครั้ง" : "ออฟไลน์อยู่ — ต่อเน็ตแล้วลองใหม่");
+      } else { location.reload(); return; }
+    } catch (err) { console.warn("pull refresh", err); }
+    busy = false; hide();
+  });
+})();
 // ★ 2026-10-12 (owner: อยากให้มือถือแจ้งเตือนด้วย) — nudge until this phone receives notifications; ✕ hides it on this phone
 function mNotifOn() { try { return NOTIF_SUPPORTED && Notification.permission === "granted" && myNotifyPrefs().enabled; } catch (_) { return false; } }
 function mNotifBanner() {
