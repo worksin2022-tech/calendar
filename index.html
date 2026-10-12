@@ -201,6 +201,8 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
 .um-mail { font-size: 11px; color:var(--text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .um-row select { font-size: 12px; padding: 4px 6px; border:1px solid var(--border-strong); border-radius:7px; background:var(--b-ffffff, #fff); }
 .um-me { font-size: 10px; font-weight: 700; padding: 1px 7px; border-radius:8px; background:var(--b-ecfdf3, #ecfdf3); color:var(--t-027a48, #027a48); }
+.um-similar { display: flex; align-items: center; gap: 4px; margin-top: 2px; font-size: 12px; font-weight: 600; color: var(--t-b54708, #b54708); }
+.um-similar .ico { width: 13px; height: 13px; flex: 0 0 auto; }
 .um-pending { font-size: 10px; font-weight: 700; padding: 1px 7px; border-radius:8px; background:var(--b-fef0c7, #fef0c7); color:var(--t-b54708, #b54708); }
 .um-blocked-badge { font-size: 10px; font-weight: 700; padding: 1px 7px; border-radius:8px; background:var(--b-fee4e2, #fee4e2); color:var(--t-b42318, #b42318); }
 .um-blocked-wrap { margin-top: 10px; border-top:1px solid var(--border); padding-top: 8px; }
@@ -3194,6 +3196,22 @@ function tickWhoHtml(it) {
   const txt = tickWhoText(it); if (!txt) return "";
   const p = (it.doneBy && teamProfiles.get(it.doneBy)) || { id: it.doneBy || it.doneByName, display_name: it.doneByName };
   return `<span class="cl-who" data-who="${escapeHtml(txt)}" title="${escapeHtml(txt)}">${avatarHtml(p, "xs")}</span>`;
+}
+function editDistance(a, b) {
+  const m = a.length, n = b.length; if (Math.abs(m - n) > 2) return 3;
+  let prev = Array.from({ length: n + 1 }, (_, j) => j);
+  for (let i = 1; i <= m; i++) {
+    const cur = [i];
+    for (let j = 1; j <= n; j++) cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    prev = cur;
+  }
+  return prev[n];
+}
+function similarEmailUser(p, others) {
+  const e = String(p.email || "").trim().toLowerCase(); if (!e) return null;
+  let best = null, bd = 3;
+  others.forEach(u => { const o = String(u.email || "").trim().toLowerCase(); if (!o || o === e) return; const d = editDistance(e, o); if (d < bd) { bd = d; best = u; } });
+  return bd <= 2 ? best : null;
 }
 function avatarHtml(profile, cls = "") {
   const name = (profile && (profile.display_name || profile.email)) || "?";
@@ -8768,6 +8786,7 @@ function buildUsersAdminPanel(container) {
         <div style="min-width:0">
           <div class="um-name">${escapeHtml(p.display_name || "(ไม่มีชื่อ)")} ${p.is_owner ? '<span class="um-owner" title="เจ้าของระบบ — แต่งตั้ง/ถอด admin ได้คนเดียว">' + ico("crown") + ' Owner</span> ' : ""}${isMe ? '<span class="um-me">คุณ</span>' : ""}${p.approved ? "" : ' <span class="um-pending">รออนุมัติ</span>'}</div>
           <div class="um-mail">${escapeHtml(p.email || "")}</div>
+          ${p._similar ? `<div class="um-similar">${ico("alert")} คล้ายกับ ${escapeHtml(p._similar.email)}${p._similar.display_name ? " (" + escapeHtml(p._similar.display_name) + ")" : ""}</div>` : ""}
         </div>
       </div>
       <select data-role ${roleLocked ? "disabled" : ""} title="${isMe ? "เปลี่ยนสิทธิ์ตัวเองไม่ได้ (กันล็อกตัวเองออก)" : roleLocked ? "แต่งตั้ง/ถอด admin ได้เฉพาะ Owner" : "สิทธิ์"}">
@@ -8887,6 +8906,8 @@ function buildUsersAdminPanel(container) {
 
     // 1) "รออนุมัติ" first — the priority action, kept together across all departments
     if (pending.length) {
+      // ★ 2026-10-12 (owner): a pending email 1–2 letters off an existing account = probably a typo of that person
+      pending.forEach(p => { p._similar = similarEmailUser(p, users.filter(u => u !== p && u.approved)); });
       listEl.appendChild(groupHead(`${ico("clock")} รออนุมัติ`, pending.length));
       pending.forEach(p => listEl.appendChild(makeRow(p)));
     }
