@@ -557,6 +557,12 @@ body.m-mode #appRoot, body.m-mode #sideTabs { display: none !important; }
 .m-box { width: 26px; height: 26px; flex: 0 0 auto; border-radius: 7px; border: 2px solid var(--border-strong); display: inline-flex; align-items: center; justify-content: center; color: #fff; transition: background .15s, border-color .15s; }
 .m-box .ico { width: 16px; height: 16px; stroke-width: 3; }
 .m-item.on .m-box, .m-deptdone.on .m-box { background: #10b981; border-color: #10b981; }
+.cl-who-slot { flex: 0 0 auto; display: inline-flex; order: 2; }
+.cl-pop-item .cl-item-del { order: 3; }
+.cl-who { display: inline-flex; flex: 0 0 auto; cursor: default; }
+.cl-who .avatar { box-shadow: none; }
+.m-item .cl-who { margin-left: auto; padding: 4px; }
+.m-item .cl-who .avatar { width: 22px; height: 22px; font-size: 11px; }
 .m-item.on .m-item-t { color: var(--text-dim); text-decoration: line-through; }
 .m-deptdone { margin-top: 6px; font-weight: 600; }
 .m-open-full { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; margin-top: 8px; padding: 10px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg); font: inherit; font-size: 13.5px; font-weight: 600; color: var(--text-dim); cursor: pointer; }
@@ -3166,6 +3172,24 @@ function notifyAssigneeChanges(before, task) {
     task.comments = task.comments.filter(c => !(c.type === "alert" && c.toUser === id && !c.ack));
   });
 }
+// ★ 2026-10-12 (owner: เช็คลิสต์บอกผู้ติ๊ก — แบบ A) — ticking stamps who/when; unticking clears it
+function stampTick(it) {
+  if (it.done) { it.doneBy = (currentProfile && currentProfile.id) || ""; it.doneByName = currentUser(); it.doneAt = Date.now(); }
+  else { delete it.doneBy; delete it.doneByName; delete it.doneAt; }
+}
+function tickWhoText(it) {
+  const p = it.doneBy && teamProfiles.get(it.doneBy);
+  const nm = (p && (p.display_name || p.email)) || it.doneByName || "";
+  if (!nm) return "";
+  const d = new Date(it.doneAt || 0), M = ["ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.","ก.ค.","ส.ค.","ก.ย.","ต.ค.","พ.ย.","ธ.ค."];
+  return it.doneAt ? `${nm} · ${d.getDate()} ${M[d.getMonth()]} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}` : nm;
+}
+function tickWhoHtml(it) {
+  if (!it || !it.done) return "";
+  const txt = tickWhoText(it); if (!txt) return "";
+  const p = (it.doneBy && teamProfiles.get(it.doneBy)) || { id: it.doneBy || it.doneByName, display_name: it.doneByName };
+  return `<span class="cl-who" data-who="${escapeHtml(txt)}" title="${escapeHtml(txt)}">${avatarHtml(p, "xs")}</span>`;
+}
 function avatarHtml(profile, cls = "") {
   const name = (profile && (profile.display_name || profile.email)) || "?";
   const raw = profile && profile.avatar_url;
@@ -5706,12 +5730,14 @@ function openChecklistPopover(anchorEl, sub, onChange, opts = {}) {
       <input type="checkbox" ${it.done ? "checked" : ""} />
       <input type="text" class="cl-item-name" value="${escapeHtml(it.text)}" placeholder="รายการ..." />
       <button type="button" class="cl-item-del" title="ลบ">✕</button>
+      <span class="cl-who-slot">${tickWhoHtml(it)}</span>
     `;
-    const [cb, nameI, delB] = r.children;
+    const [cb, nameI, delB, whoS] = r.children;
     if (!structOk) { nameI.readOnly = true; delB.style.display = "none"; }
     cb.addEventListener("change", () => {
       const was = task ? isDeptComplete(task, it.deptId) : false;
       it.done = cb.checked;
+      stampTick(it); whoS.innerHTML = tickWhoHtml(it);
       r.classList.toggle("done", cb.checked);
       if (task) {
         const now = isDeptComplete(task, it.deptId);
@@ -12614,7 +12640,7 @@ function mCardHtml(t, due, dep, bid) {
           <span class="m-cab-n">${p.done}/${p.total}</span><span class="m-chev">${so ? "▴" : "▾"}</span>
         </div>
         ${so ? `<div class="m-items">${groups.map(([gid, list]) => (gid ? `<div class="m-items-dept">${escapeHtml((getDept(gid) || {}).name || "")}</div>` : "") + list.map(i =>
-          `<button type="button" class="m-item${i.done ? " on" : ""}" data-item="${escapeHtml(x.id)}|${escapeHtml(i.id)}"><span class="m-box">${i.done ? ico("check") : ""}</span><span class="m-item-t">${escapeHtml(i.text || "")}</span></button>`).join("")).join("")}</div>` : ""}
+          `<button type="button" class="m-item${i.done ? " on" : ""}" data-item="${escapeHtml(x.id)}|${escapeHtml(i.id)}"><span class="m-box">${i.done ? ico("check") : ""}</span><span class="m-item-t">${escapeHtml(i.text || "")}</span>${tickWhoHtml(i)}</button>`).join("")).join("")}</div>` : ""}
       </div>`;
     }).join("");
     const manual = dep && stg && !deptUsesChecklist(t, dep)
@@ -12730,6 +12756,8 @@ function mListClick(e) {
   const dep = card ? (card.dataset.dep || "") : mDept();
   if (e.target.closest("[data-mpick]") || e.target.closest(".m-me")) return;   // "ฉัน" page handles its own
   if (!t) return;
+  const who = e.target.closest("[data-who]");
+  if (who && e.target.closest(".m-item")) { toast(who.dataset.who); return; }   // tap the face = who ticked + when (no untick)
   const item = e.target.closest("[data-item]");
   if (item) {
     if (!canTick()) { permDenied("สิทธิ์ของคุณแก้เช็คลิสต์ไม่ได้"); return; }
@@ -12738,7 +12766,7 @@ function mListClick(e) {
     if (!it) return;
     mWithBoard(bid, () => {   // that calendar's departments / automations
       const snap = automationSnapshot(t), was = isDeptComplete(t, it.deptId);
-      it.done = !it.done;
+      it.done = !it.done; stampTick(it);
       const now = isDeptComplete(t, it.deptId), dn = (getDept(it.deptId) || {}).name || "";
       if (!was && now) logActivity(t, `✓ แผนก ${dn} เสร็จ`); else if (was && !now) logActivity(t, `ยกเลิกเสร็จ แผนก ${dn}`);
       if (now && (!dep || it.deptId === dep)) mKeep.add(t.id);
