@@ -485,7 +485,7 @@ html:has(body.m-mode), body.m-mode { overscroll-behavior-y: contain; }
 .m-sheet .ta-item { max-width: 86%; }
 .m-sheet .ta-item .ta-item-body { background: var(--bg); border-radius: 14px 14px 14px 4px; padding: 8px 11px; }
 .m-sheet .ta-item.mine { align-self: flex-end; flex-direction: row-reverse; }
-.m-sheet .ta-item.mine .ta-avatar { display: none; }
+.m-sheet .ta-item.mine .ta-avatar, .m-sheet .ta-item.mine .ta-av { display: none; }
 .m-sheet .ta-item.mine .ta-item-body { background: var(--accent); color: #fff; border-radius: 14px 14px 4px 14px; }
 .m-sheet .ta-item.mine .ta-time, .m-sheet .ta-item.mine .ta-author, .m-sheet .ta-item.mine .ta-pin, .m-sheet .ta-item.mine .ta-del { color: rgba(255,255,255,.8); }
 .m-sheet .ta-item.mine .ta-text a { color: #fff; }
@@ -582,6 +582,7 @@ body.m-mode #appRoot, body.m-mode #sideTabs { display: none !important; }
 .m-nav button { position: relative; flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 0 7px; border: 0; background: transparent; font: inherit; font-size: 10.5px; color: var(--text-dim); cursor: pointer; }
 .m-nav button .ico { width: 22px; height: 22px; }
 .m-nav button.on { color: var(--accent); font-weight: 700; }
+.m-badge.today { background: var(--accent); }
 .m-badge { position: absolute; top: 4px; left: calc(50% + 6px); min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px; background: #ef4444; color: #fff; font-size: 10px; line-height: 16px; font-style: normal; }
 .m-me { padding: calc(10px + env(safe-area-inset-top)) 2px 0; }
 .m-me-card { display: flex; align-items: center; gap: 12px; padding: 14px; border-radius: 14px; background: var(--panel); border: 1px solid var(--border); }
@@ -1820,6 +1821,8 @@ body.chip-dragging .task-chip.span-bar { pointer-events: none; }   /* let the da
   display: flex; align-items: center; justify-content: center;
   font-size: 12px; font-weight: 700;
 }
+.avatar.ta-av { width: 28px; height: 28px; font-size: 12px; font-weight: 700; }
+.avatar.ta-av.sm { width: 20px; height: 20px; font-size: 10px; align-self: center; }
 .ta-item-body { flex: 1; min-width: 0; }
 .ta-item-head { display: flex; align-items: baseline; gap: 6px; margin-bottom: 2px; }
 .ta-author { font-size: 12.5px; font-weight: 600; }
@@ -3203,6 +3206,14 @@ function tickWhoHtml(it) {
   const txt = tickWhoText(it); if (!txt) return "";
   const p = (it.doneBy && teamProfiles.get(it.doneBy)) || { id: it.doneBy || it.doneByName, display_name: it.doneByName };
   return `<span class="cl-who" data-who="${escapeHtml(txt)}" title="${escapeHtml(txt)}">${avatarHtml(p, "xs")}</span>`;
+}
+// ★ 2026-10-13 (owner: Activity แสดงรูปโปรไฟล์) — comment author name → that person's avatar (initial if no match)
+function authorAvatar(name, cls = "ta-av") {
+  const nm = String(name || "").trim();
+  let p = null;
+  if (currentProfile && (currentProfile.display_name || "").trim() === nm) p = currentProfile;
+  if (!p) for (const x of teamProfiles.values()) { if ((x.display_name || "").trim() === nm) { p = x; break; } }
+  return avatarHtml(p || { id: nm, display_name: nm || "?" }, cls);
 }
 function editDistance(a, b) {
   const m = a.length, n = b.length; if (Math.abs(m - n) > 2) return 3;
@@ -7577,7 +7588,7 @@ function openTaskModal(taskId, defaults={}) {
         al.innerHTML = `
           <div class="ta-alert-head">
             <span class="ta-alert-badge">${ico("bell")} แจ้งเตือน → ${escapeHtml(dept.name)}</span>
-            <span class="ta-author">${escapeHtml(c.author || "คุณ")}</span>
+            ${authorAvatar(c.author || currentUser(), "ta-av sm")}<span class="ta-author">${escapeHtml(c.author || "คุณ")}</span>
             <span class="ta-alert-time">${formatDateTimeTH(c.at)}</span>
             <button class="ta-pin${c.pinned ? " on" : ""}" data-pin title="${c.pinned ? "เลิกปักหมุด" : "ปักหมุด"}">${ico("pin")}</button>
             <button class="ta-del" title="ลบ">✕</button>
@@ -7623,7 +7634,7 @@ function openTaskModal(taskId, defaults={}) {
       item.className = "ta-item" + (c.author && c.author === currentUser() ? " mine" : "");
       item.dataset.cid = c.id;
       item.innerHTML = `
-        <div class="ta-avatar">${escapeHtml(author.slice(0,1))}</div>
+        ${authorAvatar(author)}
         <div class="ta-item-body">
           <div class="ta-item-head">
             <span class="ta-author">${escapeHtml(author)}</span>
@@ -10965,7 +10976,7 @@ function buildWorkOrderSheet(deptId, day) {
   });
   if (!entries.length) return "";
   // group by the first field's chosen value (unspecified bucket sorts last)
-  const UNSET = " ";
+  const UNSET = "\u0000";
   const groups = new Map();
   entries.forEach(e => {
     const key = groupField ? (stageFieldLabel(groupField, e.stg) || UNSET) : "all";
@@ -12852,7 +12863,7 @@ function mEnsureRoot() {
   el.innerHTML = `
     <div class="m-top">
       <div class="m-top-row"><span class="m-h" data-mh>งานแผนก</span><span class="m-bpick-wrap" data-mboards><button type="button" class="m-bpick" data-mbpick></button></span><span class="m-deptwrap" data-mdept></span></div>
-      <div class="m-seg" data-mseg><button type="button" data-mmine="0">ทั้งแผนก <b data-mcnt0></b></button><button type="button" data-mmine="1">${ico("user")} มอบหมายให้ฉัน <b data-mcnt1></b></button></div>
+      <div class="m-seg" data-mseg><button type="button" data-mmine="0">ทั้งแผนก <b data-mcnt0 hidden></b></button><button type="button" data-mmine="1">${ico("user")} มอบหมายให้ฉัน <b data-mcnt1></b></button></div>
       <label class="m-search" data-msearchwrap>${ico("search")}<input type="search" data-msearch placeholder="ค้นหา AVT / SO / ชื่องาน" autocomplete="off" /></label>
       <div class="m-daynav" data-mdaynav hidden>
         <button type="button" data-mday="-1" aria-label="วันก่อนหน้า">‹</button>
@@ -12864,7 +12875,7 @@ function mEnsureRoot() {
     <div class="m-list" data-mlist></div>
     <nav class="m-nav">
       <button type="button" data-mtab="mine">${ico("list-check")}<span>งานแผนก</span></button>
-      <button type="button" data-mtab="today">${ico("calendar")}<span>งานวันนี้</span></button>
+      <button type="button" data-mtab="today">${ico("calendar")}<span>งานวันนี้</span><b class="m-badge today" data-mtoday hidden></b></button>
       <button type="button" data-mtab="bell">${ico("bell")}<span>แจ้งเตือน</span><b class="m-badge" data-mbadge hidden></b></button>
       <button type="button" data-mtab="me">${ico("user")}<span>ฉัน</span></button>
     </nav>`;
@@ -13019,6 +13030,13 @@ function renderMobile() {
   el.querySelectorAll("[data-mtab]").forEach(b => b.classList.toggle("on", b.dataset.mtab === mTab));
   const n = pendingAlerts().length, badge = el.querySelector("[data-mbadge]");
   badge.hidden = !n; badge.textContent = n > 99 ? "99+" : String(n);
+  // ★ 2026-10-13 (owner: แถบวันนี้มีตัวเลข) — today's NOT-done tasks, same list as the tab (ทั้งแผนก / มอบหมายให้ฉัน)
+  try {
+    const ti = todayIso();
+    const nT = (mMine() ? mMineItems().filter(x => x.due === ti) : mDayItems(ti)).filter(x => !x.done).length;
+    const tb = el.querySelector("[data-mtoday]");
+    tb.hidden = !nT; tb.textContent = nT > 99 ? "99+" : String(nT);
+  } catch (e) { console.warn("today badge", e); }
   el.querySelector(".m-top").hidden = mTab === "me";
   el.querySelector("[data-mh]").textContent = mTab === "today" ? "งานวันนี้" : "งานแผนก";
   el.querySelector("[data-msearchwrap]").hidden = mTab !== "mine";
