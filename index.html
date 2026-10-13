@@ -1571,6 +1571,10 @@ body.m-mode #appRoot, body.m-mode #sideTabs { display: none !important; }
 .fat-del { border: 0; background: transparent; color: var(--text-faint); cursor: pointer; font-size: 13px; padding: 4px; }
 .fat-del:hover { color: var(--danger); }
 .fat-color-in { width: 34px; height: 28px; padding: 0 2px; border: 1px solid var(--border-strong); border-radius: 7px; background: var(--panel); cursor: pointer; flex: 0 0 auto; }
+.dup-warn { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 6px; margin: -6px 0 12px; padding: 6px 10px; border-radius: 8px; background: var(--b-fffbeb, #fffbeb); border: 1px solid var(--l-f59e0b, #f59e0b); color: var(--t-92400e, #92400e); font-size: 12.5px; font-weight: 600; }
+.dup-warn[hidden] { display: none; }
+.dup-warn > .ico { width: 15px; height: 15px; flex: 0 0 auto; }
+.dup-link { border: 0; background: transparent; padding: 0 2px; color: var(--accent); font: inherit; font-weight: 700; text-decoration: underline; cursor: pointer; }
 .fat-new { margin-left: 6px; padding: 1px 7px; border-radius: 999px; background: var(--fat, #ac00eb); color: #fff; font-size: 10px; font-weight: 700; letter-spacing: .3px; vertical-align: 1px; }
 .fat-new[hidden] { display: none; }
 .tm-cell-fat.fat-spot { box-shadow: inset 0 0 0 2px var(--fat, #ac00eb); border-radius: 0 0 10px 10px; }
@@ -3317,6 +3321,18 @@ function fatColorOf(f) { const r = fatRes(f); return r === "pass" ? "#10b981" : 
 function fatRes(f) { return f && (f.result === "pass" || f.result === "fix") ? f.result : "wait"; }
 function nextFat(t) { return taskFats(t).filter(f => f.result !== "pass").sort((a, b) => (a.date + (a.time || "")).localeCompare(b.date + (b.time || "")))[0] || null; }
 function fatOnDay(t, iso) { return taskFats(t).some(f => f.date === iso); }
+// same SO / same project name as another project on the current calendar (case / spaces ignored)
+function dupKey(v) { return String(v || "").toLowerCase().replace(/\s+/g, " ").trim(); }
+function findDuplicateTasks(task) {
+  const so = dupKey(task.so), nm = dupKey(task.title), out = [];
+  if (!so && nm.length < 3) return out;
+  (state.tasks || []).forEach(t => {
+    if (!t || t.id === task.id) return;
+    if (so && dupKey(t.so) === so) out.push({ t, why: "SO" });
+    else if (nm.length >= 3 && dupKey(t.title) === nm) out.push({ t, why: "ชื่อโครงการ" });
+  });
+  return out.sort((a, b) => (a.why === "SO" ? 0 : 1) - (b.why === "SO" ? 0 : 1));
+}
 function editDistance(a, b) {
   const m = a.length, n = b.length; if (Math.abs(m - n) > 2) return 3;
   let prev = Array.from({ length: n + 1 }, (_, j) => j);
@@ -6730,6 +6746,7 @@ function openTaskModal(taskId, defaults={}) {
           ${task.ext && task.ext.src === "it" ? `<span class="tm-it-badge" title="เชื่อมกับระบบไอที">${ico("link")}</span>` : ""}
           <input type="text" class="title-input tm-name" data-f="title" placeholder="ชื่อโครงการ" />
         </div>
+        <div class="dup-warn" data-dup hidden></div>
         <div class="tm-meta">
           <div class="tm-cell tm-cell-status">
             <span class="tm-lbl">สถานะ</span>
@@ -7988,7 +8005,19 @@ function openTaskModal(taskId, defaults={}) {
   modal.querySelectorAll('[data-act="close"]').forEach(b => b.addEventListener("click", close));
   modal.querySelector('[data-act="dashboard"]')?.addEventListener("click", () => openProjectDashboard(task.id));
   modal.querySelectorAll('[data-act="attachments"]').forEach(b => b.addEventListener("click", () => openAttachmentsGallery(task)));
-  modal.querySelector('[data-f="title"]').addEventListener("input", (e) => { task.title = e.target.value; scheduleCommit(created ? 800 : 600); });
+  modal.querySelector('[data-f="title"]').addEventListener("input", (e) => { task.title = e.target.value; scheduleCommit(created ? 800 : 600); renderDup(); });
+  // ★ 2026-10-13 (owner) another project on THIS calendar with the same SO / name → warn (link to it); never blocks
+  function renderDup() {
+    const el = modal.querySelector("[data-dup]"); if (!el) return;
+    const hits = findDuplicateTasks(task);
+    el.hidden = !hits.length;
+    el.innerHTML = hits.length ? `${ico("alert")}<span>${hits[0].why} ซ้ำกับ</span>` + hits.slice(0, 3).map(h =>
+      `<button type="button" class="dup-link" data-dup-open="${escapeHtml(h.t.id)}">${escapeHtml(taskLabel(h.t))}</button>`).join("")
+      + (hits.length > 3 ? `<span>+${hits.length - 3}</span>` : "") : "";
+    el.querySelectorAll("[data-dup-open]").forEach(b => b.addEventListener("click", () => { const id = b.dataset.dupOpen; close(); openTaskModal(id); }));
+  }
+  modal.querySelector('[data-f="so"]').addEventListener("input", renderDup);
+  renderDup();
   modal.querySelector('[data-f="description"]').addEventListener("input", (e) => { task.description = e.target.value; scheduleCommit(900); });
 
   function scheduleCommit(ms = 700) {
@@ -8104,9 +8133,21 @@ function openTaskModal(taskId, defaults={}) {
     if (deptDueField) { const st0 = taskStage(task, myViewDeptId()); deptDueField.setValue(st0 ? st0.due || null : null); }
     if (deptStartField) { const st0 = taskStage(task, myViewDeptId()); deptStartField.setValue(st0 ? st0.start || null : null); }
     if (prioritySel) { prioritySel.value = task.priority || "none"; prioritySel.style.color = getPriority(prioritySel.value).color; }
+    // ★ 2026-10-13 (owner: ติ๊กแล้วอัตโนมัติทำงาน ป๊อปอัปเช็คลิสต์ปิด) — remember the open checklist (cabinet + scroll) and reopen it
+    const clPop = document.querySelector(".checklist-popover");
+    const clRow = clPop && _clPopAnchor && modal.contains(_clPopAnchor) ? _clPopAnchor.closest(".subtask-row") : null;
+    const clKeep = clRow ? { sid: clRow.dataset.sid, scroll: (clPop.querySelector(".cl-pop-items") || {}).scrollTop || 0 } : null;
     if (closeStagePop) closeStagePop(); document.querySelectorAll(".checklist-popover, .stage-pop").forEach(n => n.remove());
+    if (clKeep) { _clPopAnchor = null; modal._clReopen = clKeep; }
     paintStatus(); renderLabels(); renderSubs(); renderStages(); renderAssignees(); renderFeed();
     applyTaskModalPerm(modal);
+    // reopen after this tick: a commit repaints the popup twice in a row (commit + app refresh) — reopen once, after both
+    if (modal._clReopen && !modal._clReopenT) modal._clReopenT = setTimeout(() => {
+      const k = modal._clReopen; modal._clReopen = null; modal._clReopenT = null;
+      if (closed || !k) return;
+      const btn = subWrap.querySelector(`.subtask-row[data-sid="${CSS.escape(k.sid)}"] .subtask-cl-btn`);
+      if (btn) { btn.click(); const it = document.querySelector(".checklist-popover .cl-pop-items"); if (it) it.scrollTop = k.scroll; }
+    }, 0);
     if (sidFocus) {
       const inp = subWrap.querySelector(`.subtask-row[data-sid="${CSS.escape(sidFocus)}"] input.${focusMo ? "sub-mo" : "sub-name"}`);
       if (inp) { inp.focus(); if (caret != null) try { inp.setSelectionRange(caret, caret); } catch (_) {} }
