@@ -950,6 +950,124 @@ body.m-mode #appRoot, body.m-mode #sideTabs { display: none !important; }
 
 /* ---------- Dashboard ---------- */
 .dash-wrap { flex: 1; min-height: 0; overflow-y: auto; background:var(--b-f7f8fa, #f7f8fa); }
+.ov-tabs { display: flex; align-items: center; gap: 6px; margin-bottom: 16px; }
+.ov-tab { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border: 1px solid var(--border-strong); border-radius: 999px; background: var(--panel); color: var(--text-dim); font: inherit; font-size: 13.5px; font-weight: 700; cursor: pointer; }
+.ov-tab .ico { width: 15px; height: 15px; }
+.ov-tab.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+.ov .ov-card { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 12px 14px; }
+.ov-top { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 2fr); gap: 12px; }
+.ov-hero { display: flex; align-items: center; gap: 18px; }
+.ov-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 10px; }
+.ov-lbl { font-size: 12px; color: var(--text-dim); }
+.ov-big { font-size: 28px; font-weight: 800; line-height: 1.2; }
+.ov-num { font-size: 24px; font-weight: 800; line-height: 1.25; }
+.ov-num.bad, .ov .bad { color: var(--danger); }
+.ov-num.fat { color: var(--fat, #ac00eb); }
+.ov-ring { position: relative; display: inline-flex; flex: 0 0 auto; }
+.ov-ring-bg { stroke: var(--b-eef0f3, #eef0f3); }
+.ov-ring-t { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-weight: 800; color: var(--text); }
+.ov-h { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 20px 2px 10px; font-size: 14px; font-weight: 700; }
+.ov-sub { font-size: 12px; font-weight: 500; color: var(--text-faint); }
+.ov-depts { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.ov-dept { display: flex; flex-direction: column; align-items: center; gap: 6px; font: inherit; color: var(--text); cursor: pointer; text-align: center; }
+.ov-dept b { display: inline-flex; align-items: center; gap: 4px; font-size: 13.5px; }
+.ov-dept.on { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 30%, transparent); }
+.ov-dept:disabled { cursor: default; }
+.ov-opt { display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; font-weight: 500; color: var(--text-dim); cursor: pointer; margin-left: 6px; }
+.ov-chips { display: inline-flex; gap: 6px; margin-left: auto; flex-wrap: wrap; }
+.ov-chip { padding: 4px 11px; border: 1px solid var(--border-strong); border-radius: 999px; background: var(--panel); color: var(--text-dim); font: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer; }
+.ov-chip.on { background: color-mix(in srgb, var(--accent) 12%, var(--panel)); border-color: var(--accent); color: var(--accent); }
+.ov-projs { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; }
+.ov-proj { display: flex; align-items: center; gap: 12px; font: inherit; color: var(--text); text-align: left; cursor: pointer; }
+.ov-proj:hover, .ov-ev:hover { border-color: var(--accent); }
+.ov-pm { min-width: 0; flex: 1; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
+.ov-pt { font-weight: 700; font-size: 13.5px; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ov-seg { display: flex; gap: 3px; width: 100%; margin: 4px 0 3px; }
+.ov-seg i { flex: 1; height: 5px; border-radius: 3px; background: var(--b-eef0f3, #eef0f3); }
+.ov-seg i.d { background: #10b981; } .ov-seg i.c { background: var(--accent); } .ov-seg i.o { background: #ef4444; }
+.ov-tag { display: inline-flex; align-items: center; gap: 3px; padding: 1px 8px; border-radius: 999px; background: var(--b-f1f3f5, #f1f3f5); color: var(--text-dim); font-size: 11.5px; font-weight: 700; white-space: nowrap; }
+.ov-tag .ico { width: 12px; height: 12px; }
+.ov-tag.ok { background: var(--b-ecfdf5, #ecfdf5); color: var(--t-047857, #047857); }
+.ov-tag.bad { background: var(--b-fef2f2, #fef2f2); color: var(--danger); }
+.ov-tag.fat { background: color-mix(in srgb, var(--fat, #ac00eb) 13%, var(--panel)); color: var(--fat, #ac00eb); }
+.ov-tag.ship { background: var(--b-e6f7f1, #e6f7f1); color: var(--t-0f6e56, #0f6e56); }
+.ov-bottom { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; margin-top: 20px; }
+.ov-ev { display: flex; align-items: center; gap: 10px; width: 100%; padding: 7px 4px; border: 0; border-top: 1px solid var(--border); background: transparent; font: inherit; color: var(--text); text-align: left; cursor: pointer; }
+.ov-ev:first-of-type { border-top: 0; }
+.ov-dt { flex: 0 0 40px; text-align: center; font-size: 11px; color: var(--text-dim); line-height: 1.15; }
+.ov-dt b { display: block; font-size: 17px; color: var(--text); }
+.ov-evt { min-width: 0; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ov-bars { display: flex; align-items: flex-end; gap: 10px; height: 140px; }
+.ov-bar { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 4px; }
+.ov-bar i { width: 100%; border-radius: 6px 6px 0 0; background: var(--accent); opacity: .75; }
+.ov-bar i.bad { background: #ef4444; opacity: 1; }
+.ov-bar-n { font-size: 12px; font-weight: 700; }
+.ov-click { cursor: pointer; transition: border-color .12s; }
+.ov-click:hover { border-color: var(--accent); }
+.ovl-overlay .ovl-modal { width: min(640px, 96vw); max-height: 86vh; display: flex; flex-direction: column; }
+.ovl-chips { display: flex; gap: 6px; padding: 10px 18px 0; flex-wrap: wrap; }
+.ovl-list { overflow-y: auto; padding: 8px 12px 14px; }
+.ovl-row { display: flex; align-items: center; gap: 12px; width: 100%; padding: 9px 8px; border: 0; border-bottom: 1px solid var(--border); background: transparent; font: inherit; color: var(--text); text-align: left; cursor: pointer; border-radius: 0; }
+.ovl-row:hover { background: var(--b-fafbfc, #fafbfc); }
+.ovl-row .ov-dt { font-size: 10.5px; }
+.ovl-m { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.ovl-t { font-weight: 700; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ov-mg { margin-top: 14px; }
+.ov-mgh { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+.ov-mgh b { font-size: 15px; }
+.ov-mgbtn { margin-left: auto; display: inline-flex; align-items: center; gap: 4px; border: 0; background: transparent; color: var(--accent); font: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer; }
+.ov-mgbtn .ico { width: 14px; height: 14px; }
+.ov-caps { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; }
+.ov-capcard { background: var(--b-f8f9fb, #f8f9fb); border-radius: 12px; padding: 12px; }
+.ov-caph { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-bottom: 6px; font-size: 13px; }
+.ov-caph b { display: inline-flex; align-items: center; gap: 4px; }
+.ov-pill { font-size: 11.5px; font-weight: 700; padding: 2px 9px; border-radius: 999px; background: var(--b-f1f3f5, #f1f3f5); color: var(--text-dim); white-space: nowrap; }
+.ov-pill.ok { background: var(--b-ecfdf5, #ecfdf5); color: var(--t-047857, #047857); }
+.ov-pill.warn { background: var(--b-fef3c7, #fef3c7); color: var(--t-92400e, #92400e); }
+.ov-pill.bad { background: var(--b-fef2f2, #fef2f2); color: var(--danger); }
+.ov-capw { cursor: pointer; }
+.ov-capw:hover rect:nth-child(2) { opacity: .8; }
+.ov-capn { font-size: 10.5px; font-weight: 700; fill: var(--text); }
+.ov-capn.bad { fill: var(--danger); }
+.ov-capx { font-size: 10px; fill: var(--text-dim); }
+.ov-capline { stroke: var(--text-dim); stroke-dasharray: 4 3; stroke-width: 1.2; }
+.ov-capline.away { stroke: #f59e0b; stroke-width: 1.6; }
+.ov-away { display: flex; align-items: center; gap: 5px; margin-top: 6px; font-size: 12px; font-weight: 600; color: var(--t-92400e, #92400e); }
+.ov-away .ico { width: 14px; height: 14px; flex: 0 0 auto; }
+.ov-caphd { display: grid; grid-template-columns: minmax(0, 1fr) 70px 92px 80px 70px; gap: 8px; font-size: 11.5px; color: var(--text-dim); font-weight: 700; }
+.ov-neck { margin-left: auto; display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 999px; background: var(--b-fef2f2, #fef2f2); color: var(--danger); font-size: 12px; font-weight: 700; }
+.ov-neck .ico { width: 13px; height: 13px; }
+.ov-pipe { display: flex; gap: 3px; height: 46px; border-radius: 12px; overflow: hidden; }
+.ov-pseg { display: flex; flex-direction: column; justify-content: center; align-items: flex-start; min-width: 34px; padding: 0 12px; border: 0; background: color-mix(in srgb, var(--accent) 22%, var(--panel)); color: var(--text); font: inherit; font-size: 11.5px; cursor: pointer; text-align: left; overflow: hidden; white-space: nowrap; }
+.ov-pseg b { font-size: 17px; line-height: 1.1; }
+.ov-pseg:hover { filter: brightness(.95); }
+.ov-pseg.neck { background: #ef4444; color: #fff; }
+.ov-plbl { display: flex; gap: 3px; margin-top: 6px; font-size: 11.5px; color: var(--text-dim); }
+.ov-plbl span { min-width: 34px; padding-left: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ov-otd { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 20px; align-items: center; }
+.ov-gnum { font-size: 24px; font-weight: 800; fill: var(--text); }
+.ov-trend { max-width: 420px; display: block; }
+.ov-caps svg { max-height: 150px; }
+.ov-bottom.one { grid-template-columns: minmax(0, 1fr); }
+.ov-capf { cursor: pointer; border-radius: 6px; padding: 1px 4px; margin-left: -4px; }
+.ov-capf:hover { background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); }
+.ov-capcard.on { box-shadow: 0 0 0 2px var(--accent); }
+.ov-depf { display: inline-flex; align-items: center; gap: 4px; padding: 2px 4px 2px 9px; border-radius: 999px; background: color-mix(in srgb, var(--accent) 12%, var(--panel)); color: var(--accent); font-size: 12.5px; }
+.ov-depf button { border: 0; background: transparent; color: inherit; cursor: pointer; font-size: 12px; padding: 0 4px; }
+.ov-up { color: var(--t-047857, #047857); }
+.ov-mgh .ov-chips { margin-left: auto; }
+.ov-otds { display: flex; gap: 22px; flex-wrap: wrap; margin-top: 6px; }
+.ov-otds div { display: flex; flex-direction: column; }
+.ov-otds b { font-size: 18px; }
+.ov-capset { display: flex; flex-direction: column; gap: 8px; padding: 14px 18px; }
+.ov-caprow { display: grid; grid-template-columns: minmax(0, 1fr) 70px 92px 80px 70px; gap: 8px; align-items: center; font-size: 13.5px; }
+.ov-caprow span:first-child { display: inline-flex; align-items: center; gap: 5px; }
+.ov-caprow select { height: 34px; border: 1px solid var(--border-strong); border-radius: 8px; padding: 0 6px; font: inherit; font-size: 13px; background: var(--panel); color: var(--text); }
+.ov-caprow input { height: 34px; border: 1px solid var(--border-strong); border-radius: 8px; padding: 0 10px; font: inherit; font-size: 15px; text-align: right; background: var(--panel); color: var(--text); }
+@media (max-width: 760px) { .ov-otd { grid-template-columns: minmax(0, 1fr); justify-items: center; } }
+.ov-empty { padding: 18px; text-align: center; color: var(--text-faint); font-size: 13px; }
+@media (max-width: 760px) { .ov-top, .ov-bottom { grid-template-columns: minmax(0, 1fr); } }
+@media print { .ov-tabs, .ov-chips, .ov-opt { display: none !important; } .ov .ov-card { break-inside: avoid; } }
 .dash-inner { max-width: 1100px; margin: 0 auto; padding: 18px 20px 40px; }
 .dash-h { font-size: 14px; font-weight: 700; color:var(--text); margin: 20px 2px 10px; }
 /* ★ 2026-10-09 dashboard statistics (per person + drawing stats) */
@@ -1654,6 +1772,25 @@ body.m-mode #appRoot, body.m-mode #sideTabs { display: none !important; }
 .wn-ico .ico { width: 19px; height: 19px; }
 .wn-item b { font-size: 14.5px; }
 .wn-item p { margin: 3px 0 0; font-size: 13px; line-height: 1.55; color: var(--text-dim); }
+.wn-body { min-width: 0; }
+.wn-steps { margin: 4px 0 0; padding-left: 18px; font-size: 13px; line-height: 1.55; color: var(--text-dim); }
+.wn-steps li { margin: 1px 0; }
+.wn-go { display: inline-flex; align-items: center; gap: 4px; margin-top: 8px; padding: 5px 12px; border: 1px solid var(--accent); border-radius: 999px; background: transparent; color: var(--accent); font: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer; }
+.wn-go .ico { width: 13px; height: 13px; }
+.wn-go:hover { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+.wn-overlay .wn-modal { max-height: 90vh; overflow-y: auto; }
+.tour-spot { position: relative; z-index: 2; box-shadow: 0 0 0 3px var(--accent), 0 0 0 9px color-mix(in srgb, var(--accent) 22%, transparent) !important; border-radius: 14px; }
+.tour-tip { position: fixed; z-index: 1500; width: min(320px, 92vw); padding: 12px 14px; border-radius: 12px; background: #26215c; color: #fff; font-size: 13px; line-height: 1.55; box-shadow: 0 10px 30px rgba(0,0,0,.25); }
+.tour-tip::before { content: ""; position: absolute; top: -7px; left: var(--ax, 26px); border: 7px solid transparent; border-top: 0; border-bottom-color: #26215c; }
+.tour-tip.above::before { top: auto; bottom: -7px; border-bottom: 0; border-top: 7px solid #26215c; }
+.tour-tip b { font-size: 14px; }
+.tour-tip p { margin: 3px 0 0; color: rgba(255,255,255,.88); }
+.tour-n { font-size: 11px; font-weight: 700; color: #cecbf6; margin-bottom: 2px; }
+.tour-btns { display: flex; justify-content: flex-end; gap: 6px; margin-top: 10px; }
+.tour-btns button { border: 0; border-radius: 7px; padding: 5px 11px; font: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer; background: rgba(255,255,255,.14); color: #fff; }
+.tour-btns .tour-next { background: #fff; color: #26215c; }
+.tour-btns .tour-skip { margin-right: auto; background: transparent; color: rgba(255,255,255,.7); }
+@media print { .tour-tip { display: none !important; } }
 .wn-foot { display: flex; justify-content: flex-end; padding: 10px 20px 18px; }
 .bom-tip { margin: 6px 0 10px 0; }
 .bom-bulk-btn.bom-spot { border-style: solid; border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent); }
@@ -3765,9 +3902,19 @@ function openBomPanel(ctx) {
 }
 // ★ 2026-10-13 (owner) "มีอะไรใหม่" — shown once per release on this device (after login, before the daily report).
 //   Next release: change WHATS_NEW.id and the items; everyone sees it once again.
-const WHATS_NEW = { id: "2026-10-13", date: "13 ต.ค. 2569", items: [
-  { icon: "flag", title: "นัด FAT", text: "ใส่วันลูกค้าเข้าตรวจในป๊อปอัปโครงการ (ปฏิทินโรงงาน) ขึ้นเป็นชิปบนปฏิทิน · ติ๊ก ผ่าน / แก้ไข ได้" },
-  { icon: "archive", title: "รายการอุปกรณ์จากใบสั่งผลิต", text: "นำเข้า PDF ใบสั่งผลิตจาก Beecy (รวมหลายตู้ในไฟล์เดียวได้) แล้วติ๊กเช็คอุปกรณ์ทีละรายการ — ปุ่ม “นำเข้าใบสั่งผลิต” ข้างหัวข้อตู้" },
+// ★ 2026-10-13b: + แดชบอร์ดภาพรวม (new id → everyone sees it once more; FAT / ใบสั่งผลิต kept for people who missed them)
+const WHATS_NEW = { id: "2026-10-13b", date: "13 ต.ค. 2569", items: [
+  { icon: "chart", title: "แดชบอร์ด · ภาพรวมโรงงาน", go: "dashboard", steps: [
+    "กดการ์ดตัวเลข (กำลังทำ, เลยกำหนด, ตู้ผลิตเดือนนี้ ฯลฯ) เพื่อดูรายการ",
+    "กำลังการผลิต 6 สัปดาห์ — หักคนที่ไปออกไซต์ให้อัตโนมัติ · กดแท่งเพื่อดูตู้",
+    "งานค้างแต่ละขั้น — ช่องแดง = คอขวด",
+    "ส่งตรงเวลา — เลือกช่วง 30 วัน ถึง 1 ปี" ] },
+  { icon: "flag", title: "นัด FAT", steps: [
+    "ป๊อปอัปโครงการ (ปฏิทินโรงงาน) → “+ นัด FAT” ใส่วัน-เวลา",
+    "ขึ้นเป็นชิปม่วงบนปฏิทิน · ติ๊ก ผ่าน / แก้ไข ได้" ] },
+  { icon: "archive", title: "รายการอุปกรณ์จากใบสั่งผลิต", steps: [
+    "ปุ่ม “นำเข้าใบสั่งผลิต” ข้างหัวข้อตู้ → เลือก PDF จาก Beecy (รวมหลายตู้ได้)",
+    "ติ๊กเช็คอุปกรณ์ทีละรายการที่ปุ่ม อุปกรณ์ ของแต่ละตู้" ] },
 ] };
 const WHATS_NEW_KEY = "qc_whatsnew_seen";
 function whatsNewDue() { try { return localStorage.getItem(WHATS_NEW_KEY) !== WHATS_NEW.id; } catch (_) { return false; } }
@@ -3776,11 +3923,18 @@ function openWhatsNew(after) {
   ov.className = "overlay wn-overlay";
   ov.innerHTML = `<div class="modal wn-modal" role="dialog" aria-modal="true">
     <div class="wn-head"><span class="wn-tag">ใหม่</span><h3>มีอะไรใหม่</h3><span class="wn-date">${escapeHtml(WHATS_NEW.date)}</span></div>
-    <div class="wn-list">${WHATS_NEW.items.map(it => `<div class="wn-item"><span class="wn-ico">${ico(it.icon)}</span><div><b>${escapeHtml(it.title)}</b><p>${escapeHtml(it.text)}</p></div></div>`).join("")}</div>
+    <div class="wn-list">${WHATS_NEW.items.map((it, i) => `<div class="wn-item"><span class="wn-ico">${ico(it.icon)}</span><div class="wn-body"><b>${escapeHtml(it.title)}</b>
+      ${it.text ? `<p>${escapeHtml(it.text)}</p>` : ""}${it.steps ? `<ol class="wn-steps">${it.steps.map(x => `<li>${escapeHtml(x)}</li>`).join("")}</ol>` : ""}
+      ${it.go ? `<button type="button" class="wn-go" data-wn-go="${i}">ไปดูพร้อมการ์ดนำทาง ${ico("arrow-right") || "›"}</button>` : ""}</div></div>`).join("")}</div>
     <div class="wn-foot"><button type="button" class="btn btn-primary" data-wn-ok>เข้าใจแล้ว</button></div></div>`;
   document.body.appendChild(ov);
   const done = () => { try { localStorage.setItem(WHATS_NEW_KEY, WHATS_NEW.id); } catch (_) {} ov.remove(); after && after(); };
   ov.querySelector("[data-wn-ok]").addEventListener("click", done);
+  ov.querySelectorAll("[data-wn-go]").forEach(b => b.addEventListener("click", () => {
+    const it = WHATS_NEW.items[+b.dataset.wnGo];
+    try { localStorage.setItem(WHATS_NEW_KEY, WHATS_NEW.id); } catch (_) {} ov.remove();
+    if (it && it.go === "dashboard") openDashTour(true);
+  }));
   ov.addEventListener("mousedown", (e) => { if (e.target === ov) done(); });
 }
 // small "ใหม่" badge on the import button until first use / 14 days (same idea as the FAT one)
@@ -3794,6 +3948,156 @@ function bomIntroBadgeOn() {
 function bomIntro() { try { return JSON.parse(localStorage.getItem(BOM_INTRO_KEY) || "{}") || {}; } catch (_) { return {}; } }
 function bomIntroSet(patch) { try { localStorage.setItem(BOM_INTRO_KEY, JSON.stringify({ ...bomIntro(), ...patch })); } catch (_) {} }
 function bomIntroUsed() { bomIntroSet({ used: true, tipDone: true }); }
+// ★ 2026-10-13 แดชบอร์ดภาพรวม: list behind a KPI card — rows { t, ring?, date?, title, sub, tag, done? }
+// ★ 2026-10-13 กำลังผลิต (ตู้/สัปดาห์) per department — state.settings.capacity (shared, this calendar) · full only
+// ★ 2026-10-13 (owner) กำลังผลิต = คน × วันทำงาน/สัปดาห์ ÷ วัน-คนต่อตู้, minus person-days of that department's people sent
+//   out on the ออกไซต์ calendar (its assignees, by their profile department) during that week.
+//   state.settings.capacity[deptId] = { people, days: 5|6, perCab } · an old plain number = a fixed ตู้/สัปดาห์
+function capConf(deptId) {
+  const c = ((state.settings && state.settings.capacity) || {})[deptId];
+  if (c && typeof c === "object" && Number(c.people) > 0 && Number(c.perCab) > 0) return { people: Number(c.people), days: Number(c.days) === 5 ? 5 : 6, perCab: Number(c.perCab) };
+  if (Number(c) > 0) return { fixed: Number(c) };
+  return null;
+}
+const ONSITE_BOARD = "onsite";
+// person-days away (sent out) for a department within [ws, ws+6] — counts only the department's working weekdays
+function onsiteAway(deptId, ws, days) {
+  const ob = root.boards && root.boards[ONSITE_BOARD]; if (!ob) return { pd: 0, who: [] };
+  const DAY = 86400000, we = new Date(ws.getTime() + 6 * DAY), who = new Map();
+  let pd = 0;
+  (ob.tasks || []).forEach(t => (t.assignees || []).forEach(id => {
+    const p = teamProfiles.get(id); if (!p || !p.dept_id || !sameDept(p.dept_id, deptId)) return;
+    const st = (t.deptStages || []).find(x => sameDept(x.deptId, deptId));
+    const a = (st && (st.start || st.due)) || t.startDate || t.date, b = (st && st.due) || t.date || a;
+    if (!a || !b) return;
+    const from = fromIso(a < b ? a : b), to = fromIso(a < b ? b : a);
+    let n = 0;
+    for (let d = new Date(Math.max(from, ws)); d <= to && d <= we; d = new Date(d.getTime() + DAY)) { const wd = (d.getDay() + 6) % 7; if (wd < days) n++; }
+    if (!n) return;
+    pd += n; const nm = personName(p); who.set(nm, (who.get(nm) || 0) + n);
+  }));
+  return { pd, who: [...who].map(([n, d]) => `${n} ${d} วัน`) };
+}
+function capForWeek(deptId, ws) {
+  const c = capConf(deptId); if (!c) return null;
+  if (c.fixed) return { cap: c.fixed, away: { pd: 0, who: [] } };
+  const away = onsiteAway(deptId, ws, c.days);
+  return { cap: Math.max(0, Math.round((c.people * c.days - away.pd) / c.perCab * 10) / 10), away, base: Math.round(c.people * c.days / c.perCab * 10) / 10 };
+}
+function openCapacitySettings(depts) {
+  if (!canFull()) { permDenied("ตั้งกำลังผลิตได้เฉพาะสิทธิ์แก้ไขเต็ม"); return; }
+  const cur = (state.settings && state.settings.capacity) || {};
+  const ov = document.createElement("div");
+  ov.className = "overlay ovl-overlay";
+  ov.innerHTML = `<div class="modal ovl-modal" style="width:min(600px,96vw)" role="dialog" aria-modal="true">
+    <div class="modal-head"><h3>${ico("settings")} ตั้งกำลังผลิต</h3><button class="btn btn-ghost" data-x>✕</button></div>
+    <div class="ov-capset"><div class="ov-caphd"><span></span><span>จำนวนคน</span><span>วันทำงาน/สัปดาห์</span><span>วัน-คนต่อตู้</span><span>= ตู้/สัปดาห์</span></div>${depts.map(d => {
+      const c = cur[d.id] && typeof cur[d.id] === "object" ? cur[d.id] : {};
+      const nUsers = [...teamProfiles.values()].filter(p => p.approved && !p.blocked && p.dept_id && sameDept(p.dept_id, d.id)).length;
+      return `<div class="ov-caprow" data-cd="${escapeHtml(d.id)}"><span>${deptIco(d)}${escapeHtml(d.name)}</span>
+        <input type="number" min="0" step="1" inputmode="numeric" data-k="people" value="${c.people || nUsers || ""}" placeholder="—" />
+        <select data-k="days"><option value="6" ${Number(c.days) === 5 ? "" : "selected"}>6 วัน</option><option value="5" ${Number(c.days) === 5 ? "selected" : ""}>5 วัน</option></select>
+        <input type="number" min="0" step="0.5" inputmode="decimal" data-k="perCab" value="${c.perCab || ""}" placeholder="—" />
+        <b data-out>—</b></div>`; }).join("")}</div>
+    <div class="bom-foot" style="padding:0 18px 16px"><button class="btn" data-x>ยกเลิก</button><button class="btn btn-primary" data-save>บันทึก</button></div></div>`;
+  document.body.appendChild(ov);
+  const close = () => ov.remove();
+  ov.querySelectorAll("[data-x]").forEach(b => b.addEventListener("click", close));
+  ov.addEventListener("mousedown", (e) => { if (e.target === ov) close(); });
+  const rowVal = r => ({ people: Math.round(Number(r.querySelector('[data-k="people"]').value)), days: Number(r.querySelector('[data-k="days"]').value) === 5 ? 5 : 6, perCab: Number(r.querySelector('[data-k="perCab"]').value) });
+  const paint = () => ov.querySelectorAll(".ov-caprow").forEach(r => { const v = rowVal(r); r.querySelector("[data-out]").textContent = v.people > 0 && v.perCab > 0 ? (Math.round(v.people * v.days / v.perCab * 10) / 10) + " ตู้" : "—"; });
+  ov.querySelectorAll(".ov-caprow input, .ov-caprow select").forEach(i => i.addEventListener("input", paint));
+  paint();
+  ov.querySelector("[data-save]").addEventListener("click", () => {
+    const next = { ...cur };
+    ov.querySelectorAll(".ov-caprow").forEach(r => { const v = rowVal(r); if (v.people > 0 && v.perCab > 0) next[r.dataset.cd] = v; else delete next[r.dataset.cd]; });
+    state.settings.capacity = next;
+    saveState(); close(); renderDashboard(); toast("บันทึกกำลังผลิตแล้ว");
+  });
+}
+// ★ 2026-10-13 การ์ดนำทาง: step-by-step pointer boxes over the ภาพรวม dashboard (localStorage qc_dash_tour)
+const DASH_TOUR_KEY = "qc_dash_tour";
+function dashTourDue() { try { return localStorage.getItem(DASH_TOUR_KEY) !== "1"; } catch (_) { return false; } }
+function openDashTour(navigate) {
+  if (navigate) {
+    dashTab = "overview"; try { localStorage.setItem("qc_dash_tab", "overview"); } catch (_) {}
+    if (isMobileMode && isMobileMode()) { toast("เปิดแดชบอร์ดบนคอมหรือแท็บเล็ตเพื่อดูการ์ดนำทาง"); return; }
+    document.querySelector('[data-view="dashboard"]')?.click();
+  }
+  setTimeout(runDashTour, 350);
+}
+function runDashTour() {
+  const wrap = document.getElementById("dashWrap");
+  if (!wrap || !wrap.querySelector(".ov")) return;
+  document.querySelectorAll(".tour-tip").forEach(n => n.remove());
+  const ALL = [
+    { sel: ".ov-top", title: "ตัวเลขหลัก", text: "กดการ์ดตัวเลขเพื่อดูรายการเบื้องหลัง เช่น ตู้ที่ต้องผลิตเดือนนี้ทีละตู้" },
+    { sel: ".ov-caps", title: "กำลังการผลิต 6 สัปดาห์", text: "แท่ง = ตู้ที่ถึงกำหนด · เส้นประ = กำลังผลิต (หักคนออกไซต์แล้ว) · แดง = เกินกำลัง · กดแท่งเพื่อดูตู้ · กดชื่อแผนกเพื่อกรองโครงการ" },
+    { sel: "[data-capset]", title: "ตั้งกำลังผลิต", text: "ใส่จำนวนคน วันทำงาน และวัน-คนต่อตู้ ของแต่ละแผนก แอปคำนวณตู้ต่อสัปดาห์ให้" },
+    { sel: ".ov-pipe", title: "งานค้างแต่ละขั้น", text: "ตู้ที่ยังไม่เสร็จรออยู่แผนกไหน · ช่องแดง = คอขวด · กดเพื่อดูรายการตู้" },
+    { sel: "[data-otd]", up: ".ov-mg", title: "ส่งตรงเวลา", text: "เลือกช่วงเวลา 30 วัน – 1 ปี · ▲▼ เทียบกับช่วงก่อนหน้า" },
+    { sel: ".ov-projs, .ov-empty", title: "การ์ดโครงการ", text: "วงแหวน = ความคืบหน้า · ป้ายแดงบอกแผนกที่ช้า · กดการ์ดเพื่อเปิดแดชบอร์ดโครงการ" },
+  ];
+  const steps = ALL.filter(st => wrap.querySelector(st.sel));
+  if (!steps.length) return;
+  try { localStorage.setItem(DASH_TOUR_KEY, "1"); } catch (_) {}
+  let i = 0, spot = null;
+  const tip = document.createElement("div");
+  tip.className = "tour-tip";
+  document.body.appendChild(tip);
+  const end = () => { tip.remove(); spot && spot.classList.remove("tour-spot"); window.removeEventListener("resize", place); document.removeEventListener("keydown", onKey, true); };
+  const onKey = (e) => { if (e.key === "Escape") { e.stopPropagation(); end(); } };
+  function place() {
+    if (!spot) return;
+    const r = spot.getBoundingClientRect(), tw = tip.offsetWidth, th = tip.offsetHeight;
+    let top = r.bottom + 12, left = Math.min(Math.max(12, r.left + 16), window.innerWidth - tw - 12);
+    tip.classList.toggle("above", false);
+    if (top + th > window.innerHeight - 8) { top = Math.max(8, r.top - th - 12); tip.classList.add("above"); }
+    tip.style.top = top + "px"; tip.style.left = left + "px";
+    tip.style.setProperty("--ax", Math.max(18, Math.min(tw - 18, r.left + 30 - left)) + "px");
+  }
+  function show() {
+    const st = steps[i];
+    spot && spot.classList.remove("tour-spot");
+    let el = wrap.querySelector(st.sel);
+    if (st.up) el = el.closest(st.up) || el;
+    spot = el; spot.classList.add("tour-spot");
+    spot.scrollIntoView({ block: "center", behavior: "smooth" });
+    tip.innerHTML = `<div class="tour-n">${i + 1} / ${steps.length}</div><b>${escapeHtml(st.title)}</b><p>${escapeHtml(st.text)}</p>
+      <div class="tour-btns"><button type="button" class="tour-skip">ข้าม</button>${i > 0 ? `<button type="button" class="tour-prev">ก่อนหน้า</button>` : ""}<button type="button" class="tour-next">${i === steps.length - 1 ? "เสร็จ" : "ถัดไป"}</button></div>`;
+    tip.querySelector(".tour-skip").addEventListener("click", end);
+    tip.querySelector(".tour-prev")?.addEventListener("click", () => { i--; show(); });
+    tip.querySelector(".tour-next").addEventListener("click", () => { if (i === steps.length - 1) end(); else { i++; show(); } });
+    setTimeout(place, 0); setTimeout(place, 400);
+  }
+  window.addEventListener("resize", place);
+  document.addEventListener("keydown", onKey, true);
+  show();
+}
+function openOvList({ title, rows, filters }) {
+  const ov = document.createElement("div");
+  ov.className = "overlay ovl-overlay";
+  let f = "all";
+  const DOW = ["อา.", "จ.", "อ.", "พ.", "พฤ.", "ศ.", "ส."];
+  const draw = () => {
+    const shown = rows.filter(r => f === "all" || (f === "open" ? !r.done : r.done));
+    ov.innerHTML = `<div class="modal ovl-modal" role="dialog" aria-modal="true">
+      <div class="modal-head"><h3>${escapeHtml(title)}</h3><button class="btn btn-ghost" data-ovlx title="ปิด">✕</button></div>
+      ${filters ? `<div class="ovl-chips">${[["all", "ทั้งหมด"], ["open", "ยังไม่เสร็จ"], ["done", "เสร็จแล้ว"]].map(([k, l]) => `<button type="button" class="ov-chip${f === k ? " on" : ""}" data-ovlf="${k}">${l} ${k === "all" ? rows.length : rows.filter(r => k === "open" ? !r.done : r.done).length}</button>`).join("")}</div>` : ""}
+      <div class="ovl-list">${shown.length ? shown.map((r, i) => { const d = r.date ? fromIso(r.date) : null;
+        return `<button type="button" class="ovl-row" data-ovli="${rows.indexOf(r)}">${r.ring || (d ? `<span class="ov-dt">${DOW[d.getDay()]}<b>${d.getDate()}</b>${TH_MON[d.getMonth()]}</span>` : "")}
+          <span class="ovl-m"><span class="ovl-t">${escapeHtml(r.title)}</span><span class="ov-lbl">${escapeHtml(r.sub || "")}</span></span>${r.tag || ""}</button>`; }).join("") : `<div class="ov-empty">ไม่มีรายการ</div>`}</div></div>`;
+    ov.querySelector("[data-ovlx]").addEventListener("click", close);
+    ov.querySelectorAll("[data-ovlf]").forEach(b => b.addEventListener("click", () => { f = b.dataset.ovlf; draw(); }));
+    ov.querySelectorAll("[data-ovli]").forEach(b => b.addEventListener("click", () => openProjectDashboard(rows[+b.dataset.ovli].t.id)));
+  };
+  const close = () => { ov.remove(); document.removeEventListener("keydown", onEsc, true); };
+  const onEsc = (e) => { if (e.key === "Escape" && !document.querySelector(".overlay:not(.ovl-overlay)")) { e.stopPropagation(); close(); } };
+  document.addEventListener("keydown", onEsc, true);
+  ov.addEventListener("mousedown", (e) => { if (e.target === ov) close(); });
+  document.body.appendChild(ov);
+  draw();
+}
 function editDistance(a, b) {
   const m = a.length, n = b.length; if (Math.abs(m - n) > 2) return 3;
   let prev = Array.from({ length: n + 1 }, (_, j) => j);
@@ -4801,6 +5105,11 @@ let viewMode = "calendar"; // main view: "calendar" (month grid) | "gantt" (time
 let dashDept = null;       // dashboard department filter (null = ทุกแผนก)
 let dashPeriod = "month";  // drawing stats period: month | 3m | year | all
 let dashPerson = null;      // dashboard: show only this assignee's projects ("__none" = not assigned)
+// ★ 2026-10-13 (owner) แดชบอร์ด tab "ภาพรวม" (rings, planning view) first, the old page = "รายละเอียด" · per device
+let dashTab = (() => { try { return localStorage.getItem("qc_dash_tab") === "detail" ? "detail" : "overview"; } catch (_) { return "overview"; } })();
+let dashCardFilter = "all";   // ภาพรวม → project cards: all | over | soon | fat
+// ส่งตรงเวลา: period (days) — the only historical figure, so the only one with a period picker · per device
+let otdDays = (() => { try { const v = +localStorage.getItem("qc_otd_days"); return [30, 90, 180, 365].includes(v) ? v : 90; } catch (_) { return 90; } })();
 let dragTaskId = null;
 let dragSub = null; // { taskId, subId } when dragging a cabinet chip
 let dragStage = null; // { taskId, deptId } when dragging a department-stage chip
@@ -11343,7 +11652,6 @@ function renderDashboard() {
       ${lockDept ? `<span class="dept-chip active">${deptIco(getDept(lockDept))}${escapeHtml((getDept(lockDept) || {}).name || "")}</span>` : `
       <button class="dept-chip${!dep ? ' active' : ''}" data-df="">ทุกแผนก</button>
       ${(state.departments || []).map(d => `<button class="dept-chip${dep === d.id ? ' active' : ''}" data-df="${d.id}">${deptIco(d)}${escapeHtml(d.name)}</button>`).join("")}`}
-      <button class="btn btn-sm dash-print-hide" data-act="print" title="พิมพ์ / บันทึกเป็น PDF" style="margin-left:auto">${ico("printer")} พิมพ์ / PDF</button>
     </div>`;
 
   const scopeLbl = dep ? ` · แผนก ${escapeHtml((getDept(dep) || {}).name || "")}` : "";
@@ -11519,9 +11827,223 @@ function renderDashboard() {
     </div>`;
   }
 
-  wrap.innerHTML = `<div class="dash-inner">${filterHtml}${statHtml}${drawHtml}${personHtml}${workloadHtml}${deptHtml}${cardsHtml}</div>`;
+
+  // ★ 2026-10-13 ภาพรวม (overview) — rings like the phone cards; everything in the same scope as the old page
+  const tabsHtml = `<div class="ov-tabs dash-print-hide"><button type="button" class="ov-tab${dashTab === "overview" ? " on" : ""}" data-dtab="overview">${ico("chart")} ภาพรวม</button><button type="button" class="ov-tab${dashTab === "detail" ? " on" : ""}" data-dtab="detail">${ico("list-check")} รายละเอียด</button>
+    <button class="btn btn-sm" data-act="print" title="พิมพ์ / บันทึกเป็น PDF" style="margin-left:auto">${ico("printer")} พิมพ์ / PDF</button></div>`;
+  const wireTabs = () => {
+    wrap.querySelectorAll("[data-dtab]").forEach(b => b.addEventListener("click", () => { dashTab = b.dataset.dtab; try { localStorage.setItem("qc_dash_tab", dashTab); } catch (_) {} renderDashboard(); }));
+    wrap.querySelector('[data-act="print"]')?.addEventListener("click", () => window.print());
+  };
+  if (dashTab === "overview") {
+    const ring = (p, size, color, txt) => {
+      const w = size > 80 ? 9 : size > 60 ? 7 : 6, r = (size - w) / 2, C = 2 * Math.PI * r, v = Math.max(0, Math.min(100, p || 0));
+      return `<span class="ov-ring" style="width:${size}px;height:${size}px"><svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" aria-hidden="true"><circle cx="${size / 2}" cy="${size / 2}" r="${r}" fill="none" class="ov-ring-bg" stroke-width="${w}"/>${v > 0 ? `<circle cx="${size / 2}" cy="${size / 2}" r="${r}" fill="none" stroke="${color}" stroke-width="${w}" stroke-linecap="round" stroke-dasharray="${(C * v / 100).toFixed(1)} ${C.toFixed(1)}" transform="rotate(-90 ${size / 2} ${size / 2})"/>` : ""}</svg><span class="ov-ring-t" style="font-size:${size > 80 ? 20 : size > 60 ? 15 : 12.5}px">${txt != null ? txt : (v >= 100 ? "✓" : v + "%")}</span></span>`;
+    };
+    const ACC = "var(--accent)", OK = "#10b981", BAD = "#ef4444";
+    const month = today.slice(0, 7);
+    const in7 = (() => { const d = fromIso(today); d.setDate(d.getDate() + 6); return isoDate(d); })();
+    const active = tasks.filter(t => !isComp(t));
+    let ad = 0, at = 0; active.forEach(t => { const p = prog(t); ad += p.done; at += p.total; });
+    const actPct = at ? Math.round(ad / at * 100) : 0;
+    const fatOn = fatBoardOn();
+    const fat7 = !fatOn ? [] : tasks.flatMap(t => taskFats(t).filter(f => fatRes(f) !== "pass" && f.date >= today && f.date <= in7).map(f => ({ t, f })));
+    const shipMonth = tasks.filter(t => (t.date || "").slice(0, 7) === month);
+    // cabinets to build this month: their production date (department named ผลิต…) — else the cabinet / project date
+    const prodDept = (state.departments || []).find(d => /ผลิต/.test(d.name || "")) || null;
+    let cabN = 0, cabDone = 0;
+    const cabList = [];
+    tasks.forEach(t => (t.subtasks || []).forEach(sb => {
+      const due = prodDept && taskStage(t, prodDept.id) ? deptDueForView(t, sb, prodDept.id) : (sb.date || t.date);
+      if ((due || "").slice(0, 7) !== month) return;
+      cabN++;
+      const done = prodDept && taskStage(t, prodDept.id) ? cabDeptDone(t, sb, prodDept.id) : isStatusDone(getStatus(sb.statusId));
+      if (done) cabDone++;
+      cabList.push({ t, sb, due, done });
+    }));
+    const kpi = `<div class="ov-top">
+      <div class="ov-card ov-hero ov-click" data-ovk="active">${ring(actPct, 96, ACC)}<div><div class="ov-lbl">ความคืบหน้ารวม</div><div class="ov-big">${actPct}%</div><div class="ov-lbl">เช็คลิสต์ ${ad.toLocaleString()} / ${at.toLocaleString()} · ${active.length} โครงการที่กำลังทำ</div></div></div>
+      <div class="ov-kpis">
+        <div class="ov-card ov-click" data-ovk="active"><div class="ov-lbl">กำลังทำ</div><div class="ov-num">${active.length}</div></div>
+        <div class="ov-card ov-click" data-ovk="late"><div class="ov-lbl">เลยกำหนด</div><div class="ov-num${overdue ? " bad" : ""}" data-ovlate>${overdue}</div></div>
+        <div class="ov-card ov-click" data-ovk="cabs"><div class="ov-lbl">ตู้ที่ต้องผลิตเดือนนี้</div><div class="ov-num">${cabN}</div><div class="ov-lbl">เสร็จ ${cabDone}</div></div>
+        ${fatOn ? `<div class="ov-card ov-click" data-ovk="fat"><div class="ov-lbl">FAT 7 วัน</div><div class="ov-num fat">${fat7.length}</div></div>` : ""}
+        <div class="ov-card ov-click" data-ovk="ship"><div class="ov-lbl">ส่งมอบเดือนนี้</div><div class="ov-num">${shipMonth.length}</div><div class="ov-lbl">เสร็จ ${shipMonth.filter(isComp).length}</div></div>
+      </div></div>`;
+    const deptRings = deptRows.length ? `<div class="ov-h">แผนก${lockDept ? "" : ` <span class="ov-sub">กดเพื่อกรองโครงการ</span>`}</div><div class="ov-depts">${deptRows.map(r => {
+      const act = r.using - r.projDone, rp = r.total ? r.pct : Math.round(r.projDone / r.using * 100), col = r.projOverdue ? BAD : rp >= 100 ? OK : ACC;
+      return `<button type="button" class="ov-card ov-dept${dep === r.d.id ? " on" : ""}" data-ovdep="${escapeHtml(r.d.id)}" ${lockDept ? "disabled" : ""}>${ring(rp, 72, col)}<b>${deptIco(r.d)}${escapeHtml(r.d.name)}</b><span class="ov-lbl">กำลังทำ ${act}${r.projOverdue ? ` · <span class="bad">เลย ${r.projOverdue}</span>` : ""}</span></button>`;
+    }).join("")}</div>` : "";
+    // project cards
+    let showDone = false; try { showDone = localStorage.getItem("qc_dash_showdone") === "1"; } catch (_) {}
+    const curStage = t => { const st = (t.deptStages || []).filter(x => getDept(x.deptId)); const i = st.findIndex(x => !isDeptComplete(t, x.deptId)); return { st, i }; };
+    let cards = tasks.filter(ofPerson).filter(t => !isComp(t) || (showDone && ((t.actualEnd || t.date || "").slice(0, 7) === month)));
+    const daysTo = d => Math.round((fromIso(d) - fromIso(today)) / 86400000);
+    const isOver = t => { if (isComp(t)) return false; const d = dueOf(t); return d && d < today; };
+    const lateStep = t => { if (isComp(t) || dep) return null; const { st, i } = curStage(t); const x = i >= 0 ? st[i] : null; const d = x && (x.due || t.date); return d && d < today ? { x, d } : null; };
+    const isLate = t => isOver(t) || !!lateStep(t);
+    const shortTH = d => { const x = fromIso(d); return `${x.getDate()} ${TH_MON[x.getMonth()]}`; };
+    if (dashCardFilter === "over") cards = cards.filter(isLate);
+    else if (dashCardFilter === "soon") cards = cards.filter(t => { const d = dueOf(t); return !isComp(t) && d && d >= today && daysTo(d) <= 7; });
+    else if (dashCardFilter === "fat") cards = cards.filter(t => taskFats(t).some(f => fatRes(f) !== "pass"));
+    cards.sort((a, b) => (isComp(a) - isComp(b)) || ((dueOf(a) || "9999").localeCompare(dueOf(b) || "9999")));
+    const cardHtml = t => {
+      const comp = isComp(t), over = isOver(t), ls = lateStep(t), p = pctOf(t), { st, i } = curStage(t);
+      const segs = st.length ? `<div class="ov-seg">${st.map((x, k) => `<i class="${isDeptComplete(t, x.deptId) ? "d" : k === i ? (((x.due || t.date) || "9") < today ? "o" : "c") : ""}" title="${escapeHtml((getDept(x.deptId) || {}).name || "")}"></i>`).join("")}</div>` : "";
+      const f = fatOn ? nextFat(t) : null, d = dueOf(t);
+      const tag = comp ? `<span class="ov-tag ok">${ico("check")} เสร็จแล้ว</span>`
+        : over ? `<span class="ov-tag bad">เลย ${-daysTo(d)} วัน${i >= 0 ? " · " + escapeHtml((getDept(st[i].deptId) || {}).name || "") : ""}</span>`
+        : ls ? `<span class="ov-tag bad">${escapeHtml((getDept(ls.x.deptId) || {}).name || "")} เลย ${-daysTo(ls.d)} วัน</span>`
+        : f ? `<span class="ov-tag fat">FAT ${escapeHtml(fatWhen(f))}</span>`
+        : d ? `<span class="ov-tag">${dep ? "กำหนด" : "ส่ง"} ${escapeHtml(shortTH(d))}</span>` : "";
+      const nCab = (t.subtasks || []).length;
+      return `<button type="button" class="ov-card ov-proj" data-ovp="${escapeHtml(t.id)}">${ring(p, 54, comp ? OK : (over || ls) ? BAD : ACC)}<div class="ov-pm">
+        <div class="ov-pt">${escapeHtml(t.title || "(ไม่มีชื่อ)")}</div><div class="ov-lbl">${escapeHtml([(t.so || "").trim(), nCab ? nCab + " ตู้" : ""].filter(Boolean).join(" · "))}</div>${segs}${tag}</div></button>`;
+    };
+    const fBtn = (k, lbl) => `<button type="button" class="ov-chip${dashCardFilter === k ? " on" : ""}" data-ovf="${k}">${lbl}</button>`;
+    const projHtml = `<div class="ov-h">โครงการ${dep && !lockDept ? ` <span class="ov-depf">${deptIco(getDept(dep))}${escapeHtml((getDept(dep) || {}).name || "")}<button type="button" data-ovdep="${escapeHtml(dep)}" title="แสดงทุกแผนก">✕</button></span>` : ""} <span class="ov-sub">(${cards.length}) เรียงตามวันส่ง</span>
+        <label class="ov-opt dash-print-hide"><input type="checkbox" data-ovdone ${showDone ? "checked" : ""}/> แสดงที่เสร็จแล้วเดือนนี้</label>
+        <span class="ov-chips dash-print-hide">${fBtn("all", "ทั้งหมด")}${fBtn("over", "เลยกำหนด")}${fBtn("soon", "ใกล้ส่ง 7 วัน")}${fatOn ? fBtn("fat", "มี FAT") : ""}</span></div>
+      ${cards.length ? `<div class="ov-projs">${cards.map(cardHtml).join("")}</div>` : `<div class="ov-empty">ไม่มีโครงการ</div>`}`;
+    // next 7 days: FAT, deliveries (project end), and the filtered department's dues
+    const ev = [];
+    fat7.forEach(({ t, f }) => ev.push({ d: f.date, k: "fat", t, txt: f.time ? f.time + " น." : "" }));
+    tasks.forEach(t => { if (!isComp(t) && t.date && t.date >= today && t.date <= in7) ev.push({ d: t.date, k: "ship", t }); });
+    if (dep) tasks.forEach(t => { const x = taskStage(t, dep); if (x && x.due && x.due >= today && x.due <= in7 && !isDeptComplete(t, dep)) ev.push({ d: x.due, k: "dep", t }); });
+    ev.sort((a, b) => a.d.localeCompare(b.d) || (a.k === "fat" ? -1 : 1));
+    const DOW = ["อา.", "จ.", "อ.", "พ.", "พฤ.", "ศ.", "ส."];
+    const evHtml = `<div class="ov-card ov-week"><div class="ov-h" style="margin:0 0 6px">7 วันข้างหน้า</div>${ev.length ? ev.slice(0, 10).map(e => { const dd = fromIso(e.d);
+        return `<button type="button" class="ov-ev" data-ovp="${escapeHtml(e.t.id)}"><span class="ov-dt">${DOW[dd.getDay()]}<b>${dd.getDate()}</b></span><span class="ov-tag ${e.k === "fat" ? "fat" : e.k === "ship" ? "ship" : ""}">${e.k === "fat" ? "FAT" : e.k === "ship" ? "ส่งมอบ" : escapeHtml((getDept(dep) || {}).name || "")}</span><span class="ov-evt">${escapeHtml(taskLabel(e.t))}${e.txt ? ` · ${escapeHtml(e.txt)}` : ""}</span></button>`; }).join("") + (ev.length > 10 ? `<div class="ov-lbl">+${ev.length - 10}</div>` : "")
+      : `<div class="ov-empty">ไม่มีนัดใน 7 วัน</div>`}</div>`;
+    const loadHtml = `<div class="ov-card ov-load"><div class="ov-h" style="margin:0 0 6px">ภาระงานต่อสัปดาห์ <span class="ov-sub">โครงการที่ยังไม่เสร็จ</span></div><div class="ov-bars">${buckets.map(b =>
+      `<div class="ov-bar"><span class="ov-bar-n">${b.n}</span><i style="height:${Math.round(b.n / maxN * 92) + 4}px" class="${b.danger ? "bad" : ""}"></i><span class="ov-lbl">${escapeHtml(b.label)}</span></div>`).join("")}</div></div>`;
+
+    // ★ 2026-10-13 (owner, design 2) management: capacity vs load (6 weeks) · where work waits (bottleneck) · on-time delivery
+    const DAY = 86400000;
+    const wk0 = (() => { const x = fromIso(today); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return x; })();
+    const wkLbl = i => { const a = new Date(wk0.getTime() + i * 7 * DAY); return i === 0 || a.getDate() <= 7 ? `${a.getDate()} ${TH_MON[a.getMonth()]}` : String(a.getDate()); };
+    const capSet = (state.settings && state.settings.capacity) || {};
+    const unitsOf = t => (t.subtasks || []).length ? t.subtasks : [null];
+    const unitDue = (t, sb, did) => sb ? deptDueForView(t, sb, did) : (((taskStage(t, did) || {}).due) || t.date);
+    const unitDone = (t, sb, did) => sb ? cabDeptDone(t, sb, did) : isDeptComplete(t, did);
+    const capDepts = deptRows.map(r => r.d);
+    const capCells = {};
+    capDepts.forEach(d => {
+      const cells = [0, 1, 2, 3, 4, 5].map(() => ({ n: 0, carry: 0, items: [] }));
+      allTasks.forEach(t => { if (!taskStage(t, d.id)) return; unitsOf(t).forEach(sb => {
+        if (unitDone(t, sb, d.id)) return;
+        const due = unitDue(t, sb, d.id); if (!due) return;
+        let wi = Math.floor((fromIso(due) - wk0) / (7 * DAY));
+        const carry = wi < 0; if (carry) wi = 0;
+        if (wi > 5) return;
+        cells[wi].n++; if (carry) cells[wi].carry++;
+        cells[wi].items.push({ t, sb, due });
+      }); });
+      capCells[d.id] = cells;
+    });
+    const capWk = {};   // deptId → [{ cap, away, base } | null] × 6
+    capDepts.forEach(d => { capWk[d.id] = [0, 1, 2, 3, 4, 5].map(i => capForWeek(d.id, new Date(wk0.getTime() + i * 7 * DAY))); });
+    const capCard = d => {
+      const cw = capWk[d.id], conf = capConf(d.id), cells = capCells[d.id], v = cells.map(c => c.n), capOf = i => cw[i] ? cw[i].cap : 0, cap = capOf(0);
+      const now = cw[0] ? (cap ? Math.round(v[0] / cap * 100) : (v[0] ? 999 : 0)) : null, cls = now == null ? "" : now > 100 ? "bad" : now >= 80 ? "warn" : "ok";
+      const H = 90, bw = 22, gap = 10, max = Math.max(1, ...v, ...cw.map(c => c ? c.cap * 1.4 : 0)), y = x => H - x / max * H;
+      const bars = v.map((x, i) => { const cap = capOf(i), p = cw[i] ? (cap ? x / cap : (x ? 9.99 : 0)) : 0, c = !cap ? "var(--text-faint)" : p > 1 ? "#ef4444" : p >= .8 ? "#f59e0b" : "var(--accent)", X = i * (bw + gap);
+        return `<g class="ov-capw" data-capd="${escapeHtml(d.id)}" data-capw="${i}"><rect x="${X - 4}" y="-14" width="${bw + 8}" height="${H + 30}" fill="transparent"/>${x ? `<rect x="${X}" y="${y(x)}" width="${bw}" height="${H - y(x)}" rx="5" fill="${c}"/>` : `<rect x="${X}" y="${H - 2}" width="${bw}" height="2" rx="1" fill="var(--border)"/>`}
+          <text x="${X + bw / 2}" y="${(x ? y(x) : H) - 4}" text-anchor="middle" class="ov-capn${cap && p > 1 ? " bad" : ""}">${x ? (cap && p > 1 ? Math.round(p * 100) + "%" : x) : ""}</text>
+          <text x="${X + bw / 2}" y="${H + 13}" text-anchor="middle" class="ov-capx">${wkLbl(i)}</text></g>`; }).join("");
+      const line = cw.map((c, i) => c ? `<line x1="${i * (bw + gap) - 4}" x2="${i * (bw + gap) + bw + 4}" y1="${y(c.cap)}" y2="${y(c.cap)}" class="ov-capline${c.away && c.away.pd ? " away" : ""}"/>` : "").join("");
+      const sub = !conf ? "ยังไม่ตั้งกำลังผลิต" : conf.fixed ? `${conf.fixed} ตู้/สัปดาห์` : `${conf.people} คน · ${conf.days} วัน · ${conf.perCab} วัน-คน/ตู้ = ${cw[0].base} ตู้`;
+      const away0 = cw[0] && cw[0].away && cw[0].away.pd ? cw[0].away : null;
+      const awayLine = away0 ? `<div class="ov-away" title="${escapeHtml(away0.who.join(", "))}">${ico("users")} ออกไซต์สัปดาห์นี้ ${away0.who.length} คน (${away0.pd} วัน-คน) · เหลือ ${cw[0].cap} ตู้</div>` : "";
+      return `<div class="ov-capcard${dep === d.id ? " on" : ""}"><div class="ov-caph"><span><b class="${lockDept ? "" : "ov-capf"}" data-ovdep="${escapeHtml(d.id)}" title="${lockDept ? "" : "กดเพื่อกรองโครงการเฉพาะแผนกนี้"}">${deptIco(d)}${escapeHtml(d.name)}</b> <span class="ov-sub">${escapeHtml(sub)}</span></span>${now != null ? `<span class="ov-pill ${cls}">สัปดาห์นี้ ${now > 500 ? "เกิน" : now + "%"}</span>` : `<span class="ov-pill">สัปดาห์นี้ ${v[0]} ตู้</span>`}</div>
+        <svg width="100%" viewBox="-2 -14 ${6 * (bw + gap)} ${H + 30}" aria-hidden="true">${bars}${line}</svg>${awayLine}</div>`;
+    };
+    const capHtml = capDepts.length ? `<div class="ov-card ov-mg"><div class="ov-mgh"><b>กำลังการผลิต</b><span class="ov-sub">6 สัปดาห์ข้างหน้า · ตู้ที่ถึงกำหนดของแผนกและยังไม่เสร็จ${Object.keys(capSet).length ? " · เส้นประ = กำลังผลิตสัปดาห์นั้น (หักคนออกไซต์แล้ว)" : ""}</span>
+        ${canFull() ? `<button type="button" class="ov-mgbtn dash-print-hide" data-capset>${ico("settings")} ตั้งกำลังผลิต</button>` : ""}</div>
+      <div class="ov-caps">${capDepts.map(capCard).join("")}</div></div>` : "";
+    // where cabinets wait now = the first department (in the project's order) not done for that cabinet
+    const wip = {}, wipOrder = [];
+    if (!lockDept) allTasks.forEach(t => { if (projectComplete(t)) return;
+      const stg = (t.deptStages || []).filter(x => getDept(x.deptId));
+      unitsOf(t).forEach(sb => { const cur = stg.find(x => !unitDone(t, sb, x.deptId)); if (!cur) return;
+        const due = unitDue(t, sb, cur.deptId);
+        (wip[cur.deptId] = wip[cur.deptId] || []).push({ t, sb, due, late: !!due && due < today }); }); });
+    (state.departments || []).forEach(d => { if (wip[d.id]) wipOrder.push(d); });
+    const wipTot = wipOrder.reduce((a, d) => a + wip[d.id].length, 0);
+    const neck = wipOrder.reduce((m, d) => (!m || wip[d.id].length > wip[m.id].length) ? d : m, null);
+    const pipeHtml = wipOrder.length ? `<div class="ov-card ov-mg"><div class="ov-mgh"><b>งานค้างแต่ละขั้น</b><span class="ov-sub">${wipTot} ตู้ที่ยังไม่เสร็จ</span>${neck && wipOrder.length > 1 ? `<span class="ov-neck">${ico("alert")} คอขวด: ${escapeHtml(neck.name)}</span>` : ""}</div>
+      <div class="ov-pipe">${wipOrder.map(d => { const L = wip[d.id], late = L.filter(x => x.late).length, isNeck = neck && d.id === neck.id && wipOrder.length > 1;
+        return `<button type="button" class="ov-pseg${isNeck ? " neck" : ""}" style="flex:${Math.max(L.length, 1)}" data-wip="${escapeHtml(d.id)}" title="${escapeHtml(d.name)} ${L.length} ตู้"><b>${L.length}</b>${late ? `<span>เลยกำหนด ${late}</span>` : ""}</button>`; }).join("")}</div>
+      <div class="ov-plbl">${wipOrder.map(d => `<span style="flex:${Math.max(wip[d.id].length, 1)}">${escapeHtml(d.name)}</span>`).join("")}</div></div>` : "";
+    // on-time = actual end ≤ due date (projects with a recorded actual end)
+    const ended = allTasks.filter(t => t.actualEnd && t.date);
+    const winOf = days => { const from = isoDate(new Date(fromIso(today).getTime() - days * DAY)); return ended.filter(t => t.actualEnd >= from && t.actualEnd <= today); };
+    const winRange = (fromD, toD) => { const a = isoDate(new Date(fromIso(today).getTime() - fromD * DAY)), b = isoDate(new Date(fromIso(today).getTime() - toD * DAY)); return ended.filter(t => t.actualEnd > a && t.actualEnd <= b); };
+    const w90 = winOf(otdDays), wPrev = winRange(otdDays * 2, otdDays), onT = L => L.filter(t => t.actualEnd <= t.date);
+    const pctOT = L => L.length ? Math.round(onT(L).length / L.length * 100) : null;
+    const lateL = w90.filter(t => t.actualEnd > t.date);
+    const avgLate = lateL.length ? (lateL.reduce((a, t) => a + Math.round((fromIso(t.actualEnd) - fromIso(t.date)) / DAY), 0) / lateL.length) : 0;
+    const nM = otdDays >= 365 ? 12 : 6;
+    const months = Array.from({ length: nM }, (_, i) => nM - 1 - i).map(k => { const x = fromIso(today); x.setDate(1); x.setMonth(x.getMonth() - k); const key = isoDate(x).slice(0, 7); const L = ended.filter(t => t.actualEnd.slice(0, 7) === key); return { lbl: TH_MON[x.getMonth()], p: pctOT(L), n: L.length }; });
+    const p90 = pctOT(w90);
+    const gauge = p => { const v = p == null ? 0 : p, R = 58, cx = 70, cy = 68, a = Math.PI * (1 - v / 100), ex = cx + R * Math.cos(a), ey = cy - R * Math.sin(a), col = v >= 90 ? "#10b981" : v >= 75 ? "#f59e0b" : "#ef4444";
+      return `<svg width="140" height="88" viewBox="0 0 140 88" aria-hidden="true"><path d="M12 68 A58 58 0 0 1 128 68" fill="none" class="ov-ring-bg" stroke-width="12" stroke-linecap="round"/>${p != null && v > 0 ? `<path d="M12 68 A58 58 0 0 1 ${ex.toFixed(1)} ${ey.toFixed(1)}" fill="none" stroke="${col}" stroke-width="12" stroke-linecap="round"/>` : ""}<text x="70" y="64" text-anchor="middle" class="ov-gnum">${p == null ? "—" : p + "%"}</text><text x="70" y="83" text-anchor="middle" class="ov-capx">ส่งตรงเวลา</text></svg>`; };
+    const trend = () => { const tw = 300, th = 64, px = i => 12 + i * (tw - 24) / (nM - 1), py = v => th - Math.max(0, v - 40) / 60 * th, pts = months.map((m, i) => m.p == null ? null : [px(i), py(m.p)]);
+      const line = pts.filter(Boolean).map(p => p.join(",")).join(" ");
+      return `<svg class="ov-trend" width="100%" viewBox="0 -16 ${tw} ${th + 34}" aria-hidden="true">${line ? `<polyline points="${line}" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>` : ""}${months.map((m, i) => `${m.p != null ? `<circle cx="${px(i)}" cy="${py(m.p)}" r="3.5" fill="#10b981"/>${nM <= 6 ? `<text x="${px(i)}" y="${py(m.p) - 7}" text-anchor="middle" class="ov-capx">${m.p}%</text>` : ""}` : ""}<text x="${px(i)}" y="${th + 15}" text-anchor="middle" class="ov-capx">${m.lbl}</text>`).join("")}</svg>`; };
+    const PER = [[30, "30 วัน"], [90, "90 วัน"], [180, "6 เดือน"], [365, "1 ปี"]], perLbl = (PER.find(p => p[0] === otdDays) || PER[1])[1];
+    const pNow = pctOT(w90), pPrev = pctOT(wPrev), delta = pNow != null && pPrev != null ? pNow - pPrev : null;
+    const otdHtml = `<div class="ov-card ov-mg"><div class="ov-mgh"><b>ส่งตรงเวลา</b><span class="ov-sub">${perLbl}ล่าสุด · เทียบวันจบงานจริงกับกำหนดส่ง</span>
+      <span class="ov-chips dash-print-hide">${PER.map(([d, l]) => `<button type="button" class="ov-chip${otdDays === d ? " on" : ""}" data-otd="${d}">${l}</button>`).join("")}</span></div>
+      ${ended.length ? `<div class="ov-otd"><div>${gauge(p90)}</div><div style="min-width:0">${trend()}<div class="ov-otds">
+        <div><span class="ov-sub">ตรงเวลา</span><b>${onT(w90).length} / ${w90.length}</b></div>
+        <div><span class="ov-sub">ช้าเฉลี่ย</span><b>${lateL.length ? avgLate.toFixed(1) + " วัน" : "—"}</b></div>
+        <div><span class="ov-sub">เทียบ${perLbl}ก่อนหน้า</span><b class="${delta == null ? "" : delta >= 0 ? "ov-up" : "bad"}">${delta == null ? "—" : (delta >= 0 ? "▲ " : "▼ ") + Math.abs(delta) + "%"}</b></div></div></div></div>`
+      : `<div class="ov-empty">ยังไม่มีโครงการที่บันทึกวันจบงานจริง — ตัวเลขจะขึ้นเมื่อมีงานที่เปลี่ยนเป็นสถานะเสร็จ</div>`}</div>`;
+    const mgmtHtml = `${capHtml}${pipeHtml}${otdHtml}`;
+    // ★ 2026-10-13 (owner): department rings + weekly load removed (capacity cards / waiting bar cover them) — filter = capacity card header
+    wrap.innerHTML = `<div class="dash-inner ov">${tabsHtml}${kpi}${mgmtHtml}${projHtml}<div class="ov-bottom one">${evHtml}</div></div>`;
+    if (dashTourDue() && !document.querySelector(".tour-tip, .overlay")) setTimeout(runDashTour, 400);
+    wrap.querySelectorAll("[data-otd]").forEach(b => b.addEventListener("click", () => { otdDays = +b.dataset.otd; try { localStorage.setItem("qc_otd_days", String(otdDays)); } catch (_) {} renderDashboard(); }));
+    { const n = active.filter(isLate).length, el = wrap.querySelector("[data-ovlate]"); if (el) { el.textContent = n; el.classList.toggle("bad", n > 0); } }
+    wireTabs();
+    wrap.querySelectorAll("[data-ovdep]").forEach(b => b.addEventListener("click", () => { if (lockDept) return; dashDept = dashDept === b.dataset.ovdep ? null : b.dataset.ovdep; renderDashboard(); }));
+    wrap.querySelectorAll("[data-ovf]").forEach(b => b.addEventListener("click", () => { dashCardFilter = b.dataset.ovf; renderDashboard(); }));
+    wrap.querySelector("[data-ovdone]")?.addEventListener("change", (e) => { try { localStorage.setItem("qc_dash_showdone", e.target.checked ? "1" : "0"); } catch (_) {} renderDashboard(); });
+    wrap.querySelectorAll("[data-ovp]").forEach(b => b.addEventListener("click", () => openProjectDashboard(b.dataset.ovp)));
+    // ★ 2026-10-13 (owner) KPI cards open the list behind the number · a row opens that project
+    const projRow = t => { const comp = isComp(t), ls = lateStep(t), d = dueOf(t);
+      return { t, ring: ring(pctOf(t), 40, comp ? OK : isLate(t) ? BAD : ACC), title: t.title || "(ไม่มีชื่อ)", sub: [(t.so || "").trim(), (t.subtasks || []).length ? (t.subtasks || []).length + " ตู้" : ""].filter(Boolean).join(" · "),
+        tag: comp ? `<span class="ov-tag ok">${ico("check")} เสร็จแล้ว</span>` : isOver(t) ? `<span class="ov-tag bad">เลย ${-daysTo(d)} วัน</span>` : ls ? `<span class="ov-tag bad">${escapeHtml((getDept(ls.x.deptId) || {}).name || "")} เลย ${-daysTo(ls.d)} วัน</span>` : d ? `<span class="ov-tag">${dep ? "กำหนด" : "ส่ง"} ${escapeHtml(shortTH(d))}</span>` : "" }; };
+    const byDue = (a, b) => ((dueOf(a) || "9999").localeCompare(dueOf(b) || "9999"));
+    const lists = {
+      active: () => ({ title: `กำลังทำ · ${active.length} โครงการ`, rows: active.slice().sort(byDue).map(projRow) }),
+      late: () => { const l = active.filter(isLate).sort(byDue); return { title: `เลยกำหนด · ${l.length} โครงการ`, rows: l.map(projRow) }; },
+      ship: () => ({ title: `ส่งมอบเดือนนี้ · ${shipMonth.length} โครงการ`, rows: shipMonth.slice().sort((a, b) => (a.date || "").localeCompare(b.date || "")).map(t => { const r = projRow(t); if (!isComp(t)) r.tag = `<span class="ov-tag${t.date < today ? " bad" : ""}">ส่ง ${escapeHtml(shortTH(t.date))}</span>`; return r; }) }),
+      fat: () => ({ title: `FAT 7 วันข้างหน้า · ${fat7.length}`, rows: fat7.slice().sort((a, b) => (a.f.date + (a.f.time || "")).localeCompare(b.f.date + (b.f.time || ""))).map(({ t, f }) => ({ t, date: f.date, title: taskLabel(t), sub: `FAT รอบ ${fatRoundNo(t, f)}`, tag: `<span class="ov-tag fat">${escapeHtml(f.time ? f.time + " น." : "ไม่ระบุเวลา")}</span>` })) }),
+      cabs: () => ({ title: `ตู้ที่ต้องผลิตเดือนนี้ · ${cabN} ตู้ (เสร็จ ${cabDone})`, filters: true, rows: cabList.slice().sort((a, b) => (a.due || "").localeCompare(b.due || "")).map(c => ({ t: c.t, date: c.due, done: c.done,
+        title: [c.sb.mo, c.sb.text].filter(Boolean).join(" · ") || "(ไม่มีชื่อตู้)", sub: taskLabel(c.t),
+        tag: c.done ? `<span class="ov-tag ok">${ico("check")} เสร็จ</span>` : c.due < today ? `<span class="ov-tag bad">เลย ${-daysTo(c.due)} วัน</span>` : `<span class="ov-tag">ยังไม่เสร็จ</span>` })) }),
+    };
+    wrap.querySelectorAll("[data-ovk]").forEach(c => c.addEventListener("click", () => { const L = lists[c.dataset.ovk]; if (L) openOvList(L()); }));
+    const unitRow = x => ({ t: x.t, date: x.due, title: x.sb ? ([x.sb.mo, x.sb.text].filter(Boolean).join(" · ") || "(ไม่มีชื่อตู้)") : "(ทั้งโครงการ)", sub: taskLabel(x.t),
+      tag: x.due && x.due < today ? `<span class="ov-tag bad">เลย ${-daysTo(x.due)} วัน</span>` : "" });
+    wrap.querySelectorAll("[data-capw]").forEach(g => g.addEventListener("click", () => {
+      const d = getDept(g.dataset.capd), c = (capCells[g.dataset.capd] || [])[+g.dataset.capw]; if (!d || !c) return;
+      const cw = (capWk[d.id] || [])[+g.dataset.capw], aw = cw && cw.away && cw.away.pd ? ` · ออกไซต์: ${cw.away.who.join(", ")}` : "";
+      openOvList({ title: `${d.name} · สัปดาห์ ${wkLbl(+g.dataset.capw)} · ${c.n} ตู้${cw ? ` / กำลัง ${cw.cap}` : ""}${c.carry ? ` (ค้างจากก่อนหน้า ${c.carry})` : ""}${aw}`,
+        rows: c.items.slice().sort((a, b) => (a.due || "").localeCompare(b.due || "")).map(unitRow) });
+    }));
+    wrap.querySelectorAll("[data-wip]").forEach(b => b.addEventListener("click", () => {
+      const d = getDept(b.dataset.wip), L = wip[b.dataset.wip] || [];
+      openOvList({ title: `งานค้างที่ ${d ? d.name : ""} · ${L.length} ตู้`, rows: L.slice().sort((a, b2) => (a.due || "9").localeCompare(b2.due || "9")).map(unitRow) });
+    }));
+    wrap.querySelector("[data-capset]")?.addEventListener("click", () => openCapacitySettings(capDepts));
+    return;
+  }
+  wrap.innerHTML = `<div class="dash-inner">${tabsHtml}${filterHtml}${drawHtml}${personHtml}${cardsHtml}</div>`;   // ★ 2026-10-13 stats / dept progress / weekly load → ภาพรวม
+  wireTabs();
   wrap.querySelectorAll("[data-df]").forEach(b => b.addEventListener("click", () => { dashDept = b.dataset.df || null; renderDashboard(); }));
-  wrap.querySelector('[data-act="print"]')?.addEventListener("click", () => window.print());
   wrap.querySelectorAll("[data-dp]").forEach(b => b.addEventListener("click", () => { dashPeriod = b.dataset.dp; renderDashboard(); }));
   wrap.querySelectorAll("tr[data-person]").forEach(r => r.addEventListener("click", () => { dashPerson = dashPerson === r.dataset.person ? null : r.dataset.person; renderDashboard(); }));
   wrap.querySelector("[data-person-clear]")?.addEventListener("click", () => { dashPerson = null; renderDashboard(); });
