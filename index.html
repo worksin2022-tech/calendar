@@ -1575,6 +1575,73 @@ body.m-mode #appRoot, body.m-mode #sideTabs { display: none !important; }
 .dup-warn[hidden] { display: none; }
 .dup-warn > .ico { width: 15px; height: 15px; flex: 0 0 auto; }
 .dup-link { border: 0; background: transparent; padding: 0 2px; color: var(--accent); font: inherit; font-weight: 700; text-decoration: underline; cursor: pointer; }
+.subtask-bom-btn { display: inline-flex; align-items: center; gap: 4px; flex: 0 0 auto; height: 30px; padding: 0 8px; border: 1px solid var(--border-strong); border-radius: 7px; background: var(--panel); color: var(--text-dim); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+.subtask-bom-btn .ico { width: 14px; height: 14px; }
+.subtask-bom-btn:hover { border-color: var(--accent); color: var(--accent); }
+.subtask-bom-btn.full { color: var(--t-10b981, #10b981); border-color: var(--l-10b981, #10b981); }
+.subtask-bom-btn.empty { padding: 0 7px; border-style: dashed; opacity: .7; }
+.bom-overlay .bom-modal { width: min(760px, 96vw); max-height: 90vh; display: flex; flex-direction: column; }
+.bom-sub { font-weight: 500; color: var(--text-dim); font-size: 14px; }
+.bom-body { display: flex; flex-direction: column; gap: 10px; padding: 12px 18px 16px; min-height: 0; overflow: hidden; }
+.bom-empty { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 40px 10px; color: var(--text-dim); text-align: center; }
+.bom-empty > .ico { width: 34px; height: 34px; color: var(--text-faint); }
+.bom-empty-sm { padding: 16px; text-align: center; color: var(--text-faint); font-size: 13px; }
+.bom-info { font-size: 13px; font-weight: 700; }
+.bom-meta { font-weight: 500; color: var(--text-dim); font-size: 12px; }
+.bom-prog { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+.bom-track { flex: 1; height: 7px; border-radius: 4px; background: var(--b-f1f3f5, #f1f3f5); overflow: hidden; }
+.bom-bar { height: 100%; background: var(--accent); border-radius: 4px; }
+.bom-tools { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.bom-q { flex: 1 1 200px; min-width: 0; height: 34px; padding: 0 10px; border: 1px solid var(--border-strong); border-radius: 8px; font: inherit; font-size: 13px; background: var(--panel); color: var(--text); }
+.bom-hide { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; cursor: pointer; white-space: nowrap; }
+.bom-list { overflow-y: auto; min-height: 0; flex: 1 1 auto; border: 1px solid var(--border); border-radius: 10px; }
+.bom-row, .bom-prow { display: flex; align-items: center; gap: 10px; padding: 7px 10px; border-bottom: 1px solid var(--border); font-size: 13px; }
+.bom-row { cursor: pointer; }
+.bom-row:hover { background: var(--b-fafbfc, #fafbfc); }
+.bom-row input { width: 17px; height: 17px; flex: 0 0 auto; accent-color: #10b981; cursor: pointer; }
+.bom-row.done .bom-name { color: var(--text-faint); text-decoration: line-through; }
+.bom-code { flex: 0 0 132px; font-family: ui-monospace, Consolas, monospace; font-size: 11.5px; color: var(--text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bom-name { flex: 1 1 auto; min-width: 0; }
+.bom-qty { flex: 0 0 auto; color: var(--text-dim); font-size: 12.5px; white-space: nowrap; }
+.bom-who { flex: 0 0 22px; display: inline-flex; justify-content: center; }
+.bom-cons, .bom-merged { font-size: 10.5px; font-weight: 700; padding: 0 6px; border-radius: 999px; background: var(--b-f1f3f5, #f1f3f5); color: var(--text-dim); white-space: nowrap; }
+.bom-merged { background: var(--b-eef0ff, #eef0ff); color: var(--accent); }
+.bom-prow.off { opacity: .45; }
+.bom-del { flex: 0 0 auto; border: 0; background: transparent; color: var(--text-faint); font-size: 13px; padding: 2px 4px; cursor: pointer; opacity: 0; }
+.bom-row:hover .bom-del { opacity: 1; }
+.bom-del:hover { color: var(--danger); }
+.bom-delall { color: var(--danger); }
+@media (hover: none) { .bom-del { opacity: .6; } }
+.bom-bulk-btn { margin-left: 10px; display: inline-flex; align-items: center; gap: 4px; padding: 2px 9px; border: 1px dashed var(--border-strong); border-radius: 999px; background: transparent; color: var(--accent); font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; vertical-align: 1px; }
+.bom-bulk-btn .ico { width: 13px; height: 13px; }
+.bom-bulk-btn:hover { border-color: var(--accent); }
+.bom-map { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-bottom: 1px solid var(--border); font-size: 13px; }
+.bom-map.off { opacity: .55; }
+.bom-map-l { flex: 1 1 auto; min-width: 0; }
+.bom-map-r { flex: 0 0 auto; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.bom-map-r select { height: 32px; max-width: 230px; border: 1px solid var(--border-strong); border-radius: 7px; padding: 0 6px; font: inherit; font-size: 13px; background: var(--panel); color: var(--text); }
+.bom-how { font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 999px; background: var(--b-ecfdf5, #ecfdf5); color: var(--t-047857, #047857); }
+.bom-bad { font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 999px; background: var(--b-fef2f2, #fef2f2); color: var(--danger); }
+@media (max-width: 640px) { .bom-map { flex-direction: column; align-items: stretch; } .bom-map-r { justify-content: flex-start; } }
+.bom-prow.pick { cursor: pointer; }
+.bom-prow.pick input { width: 16px; height: 16px; flex: 0 0 auto; accent-color: var(--accent); cursor: pointer; }
+.bom-prow.off .bom-name { text-decoration: line-through; }
+.bom-sec { position: sticky; top: 0; z-index: 1; padding: 5px 10px; background: var(--b-f8f9fb, #f8f9fb); border-bottom: 1px solid var(--border); font-size: 11.5px; font-weight: 700; color: var(--text-dim); }
+.bom-check { display: flex; gap: 8px; align-items: flex-start; padding: 8px 12px; border-radius: 9px; font-size: 13px; }
+.bom-check > .ico { width: 18px; height: 18px; flex: 0 0 auto; margin-top: 1px; }
+.bom-check.ok { background: var(--b-ecfdf5, #ecfdf5); color: var(--t-047857, #047857); }
+.bom-check.bad { background: var(--b-fef2f2, #fef2f2); color: var(--danger); }
+.bom-opt { display: flex; align-items: center; gap: 7px; font-size: 13px; cursor: pointer; }
+.bom-foot { display: flex; justify-content: flex-end; gap: 8px; }
+.m-bom { display: inline-flex; align-items: center; gap: 3px; margin-left: auto; padding: 3px 8px; border: 1px solid var(--border-strong); border-radius: 999px; background: var(--panel); color: var(--text-dim); font: inherit; font-size: 12px; font-weight: 700; }
+.m-bom .ico { width: 13px; height: 13px; }
+.m-bom.full { color: var(--t-047857, #047857); border-color: var(--l-a7e3c9, #a7e3c9); }
+@media (max-width: 640px) {
+  .bom-overlay .bom-modal { width: 100vw; max-height: 100vh; height: 100vh; border-radius: 0; }
+  .bom-code { display: none; }
+  .bom-row { padding: 11px 10px; font-size: 14.5px; }
+  .bom-row input { width: 22px; height: 22px; }
+}
 .fat-new { margin-left: 6px; padding: 1px 7px; border-radius: 999px; background: var(--fat, #ac00eb); color: #fff; font-size: 10px; font-weight: 700; letter-spacing: .3px; vertical-align: 1px; }
 .fat-new[hidden] { display: none; }
 .tm-cell-fat.fat-spot { box-shadow: inset 0 0 0 2px var(--fat, #ac00eb); border-radius: 0 0 10px 10px; }
@@ -3332,6 +3399,353 @@ function findDuplicateTasks(task) {
     else if (nm.length >= 3 && dupKey(t.title) === nm) out.push({ t, why: "ชื่อโครงการ" });
   });
   return out.sort((a, b) => (a.why === "SO" ? 0 : 1) - (b.why === "SO" ? 0 : 1));
+}
+/* ★ 2026-10-13 (owner) รายการอุปกรณ์ของตู้ (BOM) จากใบสั่งผลิต Beecy (PDF)
+   sub.bom = { mo, so, file, at, by, items:[{ id, code, name, qty, unit, cons, done, doneBy, doneByName, doneAt }] }
+   - separate from department checklists (no effect on % / automations)
+   - consumables (screws, washers, paint, wire…) skipped unless ticked at import · same code on several lines = ONE line (qty summed)
+   - re-import replaces the list but keeps ticks whose code matches (asks first) · import = canEdit, tick = canTick */
+// matched on text with Thai vowel/tone marks removed — PDFs store them in varying order (ท่อร้อย ↔ ทอ่รอ้ย)
+const BOM_CONS_RE = /สกร|แหวน|นอต|สเปรย|spray|paint|\bcable\b|h07v|iec01|\(thw\)|หางปลา|cable lugs|fork terminal|ปลอก|เคเบลไทร|cable tie|ทอรอย|ทอกระดก|สายไฟ|เชอก|insulator|support busbar|busbar support|ซพพอรต|hotglue|hot glue|corner board|กระดาษ|bubble|กนกระแทก|ดอกสวาน|ดอกตาป|โฮลซอว|ใบเลอย|spiral|ไสไก|แปนกาว|marker|ผาวน|din-rail-\d|ฟลมยด|ทชช|เทป|ถงมอ|ทอหด|heat shrink|ทนเนอร|ลวดเชอม|ลกรเวท|rivet|ซองเอกสาร|ถงพลาสตก|ผาหมก|ink ribbon|label \d|ซลโคน|silicone|นำยาลอค|ยาลอค|ผาทราย|tze-|ยางกนบาด|ตวยดทอ|สตดเกลยว|รางวายดกส|wire duct|ทองแดงถก|บลอคลอย|แกลน|gland|spade terminal|blade insulated|tube terminal|solderless terminal|terminal crimping|butt splice|cord.?end|end plate|fixed bridge|stopper|flat bar/i;
+// Thai fonts in PDFs often use Private-Use glyphs for shifted vowels / tone marks (U+F700–F71A) → standard Thai
+const THAI_PUA = { 0xF700: "ฐ", 0xF701: "ิ", 0xF702: "ี", 0xF703: "ึ", 0xF704: "ื", 0xF705: "่", 0xF706: "้", 0xF707: "๊", 0xF708: "๋", 0xF709: "์",
+  0xF70A: "่", 0xF70B: "้", 0xF70C: "๊", 0xF70D: "๋", 0xF70E: "์", 0xF70F: "ญ", 0xF710: "ั", 0xF711: "ํ", 0xF712: "็", 0xF713: "่", 0xF714: "้",
+  0xF715: "๊", 0xF716: "๋", 0xF717: "์", 0xF718: "ุ", 0xF719: "ู", 0xF71A: "ฺ" };
+function thaiPua(t) { return String(t || "").replace(/[-]/g, c => THAI_PUA[c.charCodeAt(0)] || ""); }
+function bomPlain(t) { return String(t || "").replace(/[ัิ-ฺ็-๎]/g, ""); }
+function bomIsConsumable(code, name) { return BOM_CONS_RE.test(bomPlain((code || "") + " " + (name || ""))); }
+function bomKey(it) { return (it.code || "").trim().toUpperCase() || ("N:" + (it.name || "").trim().toLowerCase()); }
+function bomProgress(sub) {
+  const items = (sub && sub.bom && Array.isArray(sub.bom.items)) ? sub.bom.items : [];
+  return { done: items.filter(i => i.done).length, total: items.length };
+}
+// read a Beecy "ใบสั่งผลิต" PDF → { mo, so, product, items:[{code,name,qty,unit}] } (lines kept in order, not merged yet)
+// read a Beecy "ใบสั่งผลิต" PDF → [{ mo, so, product, cabHint, items:[{code,name,qty,unit}] }, …]
+//   several MOs printed into ONE file (owner 2026-10-13: "คำสั่งผลิต x2.pdf") → one entry per MO, split where a page shows "XX/MO/nnnnn"
+async function parseBeecyPdf(file) {
+  const pdfjs = await loadPdfJs();
+  const doc = await pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
+  const join = ps => ps.map(p => p.str).join(" ").replace(/\s+/g, " ").trim();
+  const pages = [];
+  for (let pn = 1; pn <= doc.numPages; pn++) {
+    const page = await doc.getPage(pn);
+    const vp = page.getViewport({ scale: 1 });
+    const tc = await page.getTextContent();
+    const rows = [];
+    tc.items.forEach(it => {
+      const str = thaiPua(it.str || "").replace(/\s+/g, " ");
+      if (!str.trim()) return;
+      const x = it.transform[4], top = vp.height - it.transform[5];
+      let r = rows.find(r => Math.abs(r.top - top) < 3.5);
+      if (!r) { r = { top, parts: [] }; rows.push(r); }
+      r.parts.push({ x, str });
+    });
+    rows.sort((a, b) => a.top - b.top).forEach(r => { r.parts.sort((a, b) => a.x - b.x); r.page = pn; });
+    pages.push(rows);
+  }
+  const groups = [];
+  pages.forEach(rows => {
+    const starts = rows.some(r => /^[A-Z]{1,4}\/MO\/\d+$/.test(join(r.parts)));
+    if (starts || !groups.length) groups.push([]);
+    groups[groups.length - 1].push(...rows);
+  });
+  return groups.map(rowsAll => bomExtractDoc(rowsAll, join)).filter(d => d.items.length || d.mo);
+}
+function bomExtractDoc(rowsAll, join) {
+  const fullText = rowsAll.map(r => join(r.parts)).join("\n");
+  const mo = (fullText.match(/[A-Z]{1,4}\/MO\/\d+/) || [""])[0];
+  const so = (fullText.match(/\bSO\d{5,}\b/) || [""])[0];
+  let product = "", cabHint = "";
+  const pi = rowsAll.findIndex(r => /^Product:/.test(join(r.parts)));
+  if (pi >= 0) {
+    const bits = [];
+    for (let k = pi + 1; k < rowsAll.length && !/^Components/.test(join(rowsAll[k].parts)); k++) bits.push(join(rowsAll[k].parts.filter(p => p.x < 250)));
+    const raw = bits.join(" ");
+    const br = raw.match(/^\s*\[([^\]]+)\]/);
+    cabHint = br ? br[1].replace(/\d[\d,]*\.\d+\s*[A-Za-z]*/g, " ").split("/")[0].replace(/\s+/g, " ").trim() : "";   // "[MDB4/TFG Vietnam] …" → MDB4
+    product = raw.replace(/\d[\d,]*\.\d+\s*[A-Za-z]*/g, " ").replace(/^\[|\]/g, "").replace(/\s+/g, " ").trim();
+  }
+  // table rows: below each page's "Product Consumed …" header · columns: name < 365 · consumed 365–430 · to-consume + unit ≥ 430
+  const items = [];
+  let cur = null, inTable = false, page = 0;
+  const num = s => { const m = String(s).replace(/,/g, "").match(/-?\d+(\.\d+)?/); return m ? parseFloat(m[0]) : null; };
+  rowsAll.forEach(r => {
+    if (r.page !== page) { page = r.page; inTable = false; }
+    const line = join(r.parts);
+    if (/Consumed/.test(line) && /Product/.test(line)) { inTable = true; return; }
+    if (!inTable) return;
+    if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}/.test(line) || /^To$/.test(line)) return;
+    const name = join(r.parts.filter(p => p.x < 365)), cons = join(r.parts.filter(p => p.x >= 365 && p.x < 430)), tail = join(r.parts.filter(p => p.x >= 430));
+    const consN = num(cons);
+    if (consN !== null && name) {
+      cur = { raw: name, qty: num(tail) ?? consN, unit: tail.replace(/[-\d.,]+/g, "").trim() };
+      items.push(cur);
+    } else if (cur) {
+      if (name) cur.raw += " " + name;
+      const u = tail.replace(/[-\d.,]+/g, "").trim();
+      if (u && !cur.unit) cur.unit = u;
+    }
+  });
+  return { mo, so, product, cabHint, items: items.map(it => {
+    const m = it.raw.match(/^\[([^\]]+)\]\s*(.*)$/);
+    return { code: m ? m[1].trim() : "", name: (m ? m[2] : it.raw).trim(), qty: it.qty, unit: it.unit };
+  }) };
+}
+// shared by the single-cabinet and the whole-project import: build sub.bom keeping ticks whose code+unit match
+function bomApply(task, sub, res, lines, fileName) {
+  const old = new Map(((sub.bom && sub.bom.items) || []).map(i => [bomLineKey(i), i]));
+  sub.bom = { mo: res.mo || "", so: res.so || "", file: fileName || "", at: Date.now(), by: currentUser(), items: lines.map(l => {
+    const o = old.get(bomLineKey(l));
+    const it = { id: uid("bm"), code: l.code, name: l.name, qty: l.qty, unit: l.unit, cons: !!l.cons, done: false };
+    if (o && o.done) { it.done = true; ["doneBy", "doneByName", "doneAt"].forEach(f => { if (o[f] !== undefined) it[f] = o[f]; }); }
+    return it;
+  }) };
+}
+function bomPrepLines(res) { return bomMergeLines(res.items.map(it => ({ ...it, cons: bomIsConsumable(it.code, it.name) }))); }
+function moShort(mo) { return String(mo || "").replace(/^[A-Z]+\//, ""); }
+// which cabinet a production order belongs to: same MO number → else the product tag ("MDB4") in the cabinet name
+function bomMatchSub(task, res, taken) {
+  const subs = (task.subtasks || []).filter(x => !taken.has(x.id));
+  const d = moDigits(res.mo);
+  let hit = d && subs.find(x => moDigits(x.mo) === d);
+  if (hit) return { sub: hit, how: "mo" };
+  const h = (res.cabHint || "").toLowerCase();
+  if (h) { hit = subs.find(x => !x.mo && new RegExp("(^|[^a-z0-9])" + h.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "([^a-z0-9]|$)", "i").test(x.text || "")); if (hit) return { sub: hit, how: "name" }; }
+  return null;
+}
+
+// ★ whole-project import (owner: one combined PDF instead of one file per cabinet)
+function openBomBulkImport(task, ctx) {
+  const fileIn = document.createElement("input");
+  fileIn.type = "file"; fileIn.accept = "application/pdf,.pdf";
+  fileIn.addEventListener("change", async () => {
+    const f = fileIn.files && fileIn.files[0]; if (!f) return;
+    toast("กำลังอ่านไฟล์…");
+    let docs;
+    try { docs = await parseBeecyPdf(f); } catch (err) { console.warn("bom pdf", err); toast("อ่านไฟล์ PDF ไม่ได้"); return; }
+    if (!docs.length) { toast("ไม่พบใบสั่งผลิตในไฟล์นี้ — ต้องเป็นใบสั่งผลิตจาก Beecy"); return; }
+    showMap(docs, f.name);
+  });
+  fileIn.click();
+
+  function showMap(docs, fileName) {
+    const taken = new Set();
+    const rows = docs.map((res, i) => {
+      const lines = bomPrepLines(res), m = bomMatchSub(task, res, taken);
+      if (m) taken.add(m.sub.id);
+      return { i, res, lines, target: m ? m.sub.id : (canFull() ? "new" : ""), how: m ? m.how : "" };
+    });
+    let withCons = false;
+    const ov = document.createElement("div");
+    ov.className = "overlay bom-overlay";
+    document.body.appendChild(ov);
+    const close = () => ov.remove();
+    ov.addEventListener("mousedown", (e) => { if (e.target === ov) close(); });
+    const subOpts = (sel) => (task.subtasks || []).map(x => `<option value="${escapeHtml(x.id)}" ${sel === x.id ? "selected" : ""}>${escapeHtml([x.mo, x.text].filter(Boolean).join(" · ") || "(ไม่มีชื่อตู้)")}</option>`).join("");
+    const draw = () => {
+      const soBad = rows.some(r => r.res.so && task.so && r.res.so.replace(/\s/g, "").toUpperCase() !== String(task.so).replace(/\s/g, "").toUpperCase());
+      const nGo = rows.filter(r => r.target).length;
+      ov.innerHTML = `<div class="modal bom-modal" role="dialog" aria-modal="true">
+        <div class="modal-head"><h3>${ico("archive")} นำเข้าใบสั่งผลิต <span class="bom-sub">${escapeHtml(fileName)}</span></h3><button class="btn btn-ghost" data-bclose>✕</button></div>
+        <div class="bom-body">
+          <div class="bom-check ${soBad ? "bad" : "ok"}">${soBad ? ico("alert") : ico("check-circle")}<div>พบ <b>${rows.length}</b> ใบสั่งผลิต${soBad ? ` — มีใบที่ SO ไม่ตรงกับงานนี้ (${escapeHtml(task.so || "")})` : task.so ? ` · ${escapeHtml(task.so)} ตรงกับงานนี้` : ""}</div></div>
+          <label class="bom-opt"><input type="checkbox" data-bcons ${withCons ? "checked" : ""} /> นำเข้าของสิ้นเปลืองด้วย <span class="bom-meta">(เลือกทีละรายการได้ที่ปุ่มอุปกรณ์ของแต่ละตู้ → นำเข้าใหม่)</span></label>
+          <div class="bom-list bom-maplist">${rows.map(r => {
+            const main = r.lines.filter(l => !l.cons).length, cons = r.lines.length - main;
+            const soOff = r.res.so && task.so && r.res.so.replace(/\s/g, "").toUpperCase() !== String(task.so).replace(/\s/g, "").toUpperCase();
+            return `<div class="bom-map${r.target ? "" : " off"}" data-ri="${r.i}">
+              <div class="bom-map-l"><b>${escapeHtml(moShort(r.res.mo) || "(ไม่พบเลข MO)")}</b>${soOff ? ` <span class="bom-bad">SO ${escapeHtml(r.res.so)}</span>` : ""}<div class="bom-meta">${escapeHtml(r.res.product || "")}</div>
+                <div class="bom-meta">อุปกรณ์ ${main} · สิ้นเปลือง ${cons}</div></div>
+              <div class="bom-map-r"><span class="bom-meta">ใส่ลงตู้</span><select data-rt>
+                ${subOpts(r.target)}
+                ${canFull() ? `<option value="new" ${r.target === "new" ? "selected" : ""}>+ สร้างตู้ใหม่ (${escapeHtml(r.res.cabHint || moShort(r.res.mo))})</option>` : ""}
+                <option value="" ${r.target ? "" : "selected"}>ไม่นำเข้า</option></select>
+                ${r.how === "mo" ? `<span class="bom-how">MO ตรง</span>` : r.how === "name" ? `<span class="bom-how">ชื่อตู้ตรง</span>` : ""}</div></div>`;
+          }).join("")}</div>
+          <div class="bom-foot"><button type="button" class="btn" data-bcancel>ยกเลิก</button><button type="button" class="btn btn-primary" data-bok ${nGo ? "" : "disabled"}>นำเข้า ${nGo} ตู้</button></div>
+        </div></div>`;
+      ov.querySelector("[data-bclose]").addEventListener("click", close);
+      ov.querySelector("[data-bcancel]").addEventListener("click", close);
+      ov.querySelector("[data-bcons]").addEventListener("change", (e) => { withCons = e.target.checked; draw(); });
+      ov.querySelectorAll("[data-ri]").forEach(el => el.querySelector("[data-rt]").addEventListener("change", (e) => {
+        const r = rows[+el.dataset.ri]; r.target = e.target.value; r.how = "";
+        if (r.target && r.target !== "new") rows.forEach(o => { if (o !== r && o.target === r.target) o.target = ""; });   // one order per cabinet
+        draw();
+      }));
+      ov.querySelector("[data-bok]").addEventListener("click", async () => {
+        if (!canEdit()) { permDenied("สิทธิ์ของคุณนำเข้ารายการอุปกรณ์ไม่ได้"); return; }
+        const go = rows.filter(r => r.target);
+        const replace = go.filter(r => r.target !== "new").map(r => (task.subtasks || []).find(x => x.id === r.target)).filter(x => x && x.bom && (x.bom.items || []).length);
+        if (replace.length && !await confirmDialog({ icon: "file-text", title: `แทนที่รายการอุปกรณ์เดิม ${replace.length} ตู้?`, message: "รายการที่รหัสและหน่วยตรงกันจะคงการติ๊กไว้", confirmText: "แทนที่", danger: false })) return;
+        if (!Array.isArray(task.subtasks)) task.subtasks = [];
+        const names = [];
+        go.forEach(r => {
+          let sub = r.target === "new" ? null : task.subtasks.find(x => x.id === r.target);
+          if (!sub) {
+            if (!canFull()) return;
+            sub = { id: uid("s"), text: r.res.cabHint || r.res.product || moShort(r.res.mo), mo: moShort(r.res.mo), statusId: (state.statuses[0] || {}).id, checklist: makeCabinetChecklist() };
+            task.subtasks.push(sub);
+          }
+          if (!sub.mo && r.res.mo) sub.mo = moShort(r.res.mo);
+          bomApply(task, sub, r.res, r.lines.filter(l => withCons || !l.cons), fileName);
+          names.push(`${sub.mo || sub.text} (${sub.bom.items.length})`);
+        });
+        if (names.length) logActivity(task, `นำเข้ารายการอุปกรณ์ ${names.length} ตู้: ${names.join(", ")}`);
+        close(); ctx.commit(); toast(`นำเข้ารายการอุปกรณ์ ${names.length} ตู้แล้ว`);
+      });
+    };
+    draw();
+  }
+}
+function bomLineKey(it) { return bomKey(it) + "|" + String(it.unit || "").trim().toLowerCase(); }
+function bomMergeLines(lines) {   // owner: same product AND same unit on several lines → one line, quantities added
+  const map = new Map(), out = [];
+  lines.forEach(l => {
+    if (!(Number(l.qty) > 0)) return;   // owner: quantity 0 = not imported
+    const k = bomLineKey(l);
+    const ex = map.get(k);
+    if (ex) { ex.qty = Math.round(((ex.qty || 0) + (l.qty || 0)) * 100) / 100; ex.lines++; return; }
+    const it = { ...l, lines: 1 };
+    map.set(k, it); out.push(it);
+  });
+  return out;
+}
+function bomQtyTxt(it) { const q = it.qty == null ? "" : (Number.isInteger(it.qty) ? String(it.qty) : String(it.qty)); return (q + " " + (it.unit || "")).trim(); }
+function moDigits(v) { const m = String(v || "").match(/(\d{3,})\s*$/); return m ? m[1].replace(/^0+/, "") : ""; }
+
+// ctx = { task, sub, commit(), title }
+function openBomPanel(ctx) {
+  const { task, sub } = ctx;
+  document.querySelectorAll(".bom-overlay").forEach(n => n.remove());
+  const ov = document.createElement("div");
+  ov.className = "overlay bom-overlay";
+  ov.innerHTML = `<div class="modal bom-modal" role="dialog" aria-modal="true">
+    <div class="modal-head"><h3>${ico("archive")} รายการอุปกรณ์ <span class="bom-sub" data-bsub></span></h3><button class="btn btn-ghost" data-bclose title="ปิด">✕</button></div>
+    <div class="bom-body" data-bbody></div></div>`;
+  document.body.appendChild(ov);
+  const body = ov.querySelector("[data-bbody]");
+  ov.querySelector("[data-bsub]").textContent = [sub.mo, sub.text].filter(Boolean).join(" · ");
+  let q = "", hideDone = false;
+  const close = () => { ov.remove(); document.removeEventListener("keydown", onEsc, true); ctx.onClose && ctx.onClose(); };
+  const onEsc = (e) => { if (e.key === "Escape") { e.stopPropagation(); close(); } };
+  document.addEventListener("keydown", onEsc, true);
+  ov.addEventListener("mousedown", (e) => { if (e.target === ov) close(); });
+  ov.querySelector("[data-bclose]").addEventListener("click", close);
+  const fileIn = document.createElement("input");
+  fileIn.type = "file"; fileIn.accept = "application/pdf,.pdf"; fileIn.hidden = true; ov.appendChild(fileIn);
+  fileIn.addEventListener("change", async () => {
+    const f = fileIn.files && fileIn.files[0]; fileIn.value = "";
+    if (!f) return;
+    body.innerHTML = `<div class="bom-empty">กำลังอ่านไฟล์…</div>`;
+    try {
+      const docs = await parseBeecyPdf(f);
+      const d = moDigits(sub.mo);
+      const pick = (d && docs.find(x => moDigits(x.mo) === d)) || docs[0];
+      if (!pick) throw new Error("no order");
+      if (docs.length > 1) toast(`ไฟล์นี้มี ${docs.length} ใบสั่งผลิต — ใช้ ${moShort(pick.mo)}${d && moDigits(pick.mo) === d ? " (ตรงกับตู้นี้)" : ""} · นำเข้าทั้งโครงการได้ที่หัวข้อ “ตู้”`);
+      renderPreview(pick, f.name);
+    }
+    catch (err) { console.warn("bom pdf", err); toast("อ่านไฟล์ PDF ไม่ได้"); renderList(); }
+  });
+  const pickFile = () => { if (!canEdit()) { permDenied("สิทธิ์ของคุณนำเข้ารายการอุปกรณ์ไม่ได้"); return; } fileIn.click(); };
+
+  function renderList() {
+    const bom = sub.bom, items = (bom && bom.items) || [];
+    if (!items.length) {
+      body.innerHTML = `<div class="bom-empty">${ico("file-text")}<div>ยังไม่มีรายการอุปกรณ์</div>${canEdit() ? `<button type="button" class="btn btn-primary" data-bimp>${ico("upload")} นำเข้าใบสั่งผลิต (PDF)</button>` : ""}</div>`;
+      body.querySelector("[data-bimp]")?.addEventListener("click", pickFile);
+      return;
+    }
+    const p = bomProgress(sub), pct = p.total ? Math.round(p.done / p.total * 100) : 0;
+    const qq = q.trim().toLowerCase();
+    const shown = items.filter(i => (!hideDone || !i.done) && (!qq || (i.code + " " + i.name).toLowerCase().includes(qq)));
+    body.innerHTML = `
+      <div class="bom-info">${escapeHtml([bom.mo, bom.so].filter(Boolean).join(" · "))}${bom.by ? ` <span class="bom-meta">· นำเข้า ${escapeHtml(formatDateTH(isoDate(new Date(bom.at || Date.now()))))} โดย ${escapeHtml(bom.by)}</span>` : ""}</div>
+      <div class="bom-prog"><div class="bom-track"><div class="bom-bar" style="width:${pct}%;${pct === 100 ? "background:#10b981" : ""}"></div></div><b>${p.done}/${p.total}</b></div>
+      <div class="bom-tools"><input type="search" class="bom-q" placeholder="ค้นหารหัส / ชื่อ" value="${escapeHtml(q)}" />
+        <label class="bom-hide"><input type="checkbox" ${hideDone ? "checked" : ""} /> ซ่อนที่ติ๊กแล้ว</label>
+        ${canEdit() ? `<button type="button" class="btn btn-ghost btn-sm" data-bimp>${ico("upload")} นำเข้าใหม่</button><button type="button" class="btn btn-ghost btn-sm bom-delall" data-bdelall>${ico("trash")} ลบทั้งหมด</button>` : ""}</div>
+      <div class="bom-list">${shown.map(i => `<label class="bom-row${i.done ? " done" : ""}" data-bid="${escapeHtml(i.id)}">
+          <input type="checkbox" ${i.done ? "checked" : ""} />
+          <span class="bom-code">${escapeHtml(i.code || "—")}</span>
+          <span class="bom-name">${escapeHtml(i.name)}${i.cons ? ` <span class="bom-cons">สิ้นเปลือง</span>` : ""}</span>
+          <span class="bom-qty">${escapeHtml(bomQtyTxt(i))}</span>
+          <span class="bom-who">${tickWhoHtml(i)}</span>${canEdit() ? `<button type="button" class="bom-del" data-bdel title="ลบรายการนี้">✕</button>` : ""}</label>`).join("") || `<div class="bom-empty-sm">ไม่พบรายการ</div>`}</div>`;
+    const qi = body.querySelector(".bom-q");
+    qi.addEventListener("input", () => { q = qi.value; const pos = qi.selectionStart; renderList(); const n = body.querySelector(".bom-q"); n.focus(); try { n.setSelectionRange(pos, pos); } catch (_) {} });
+    body.querySelector(".bom-hide input").addEventListener("change", (e) => { hideDone = e.target.checked; renderList(); });
+    body.querySelector("[data-bimp]")?.addEventListener("click", pickFile);
+    body.querySelectorAll("[data-bdel]").forEach(btn => btn.addEventListener("click", (e) => {
+      e.preventDefault(); e.stopPropagation();
+      if (!canEdit()) { permDenied("สิทธิ์ของคุณลบรายการไม่ได้"); return; }
+      const id = btn.closest(".bom-row").dataset.bid, ix = items.findIndex(x => x.id === id); if (ix < 0) return;
+      const gone = items.splice(ix, 1)[0];
+      ctx.commit();
+      const st = body.querySelector(".bom-list").scrollTop; renderList(); const l2 = body.querySelector(".bom-list"); if (l2) l2.scrollTop = st;
+      toast(`ลบ “${gone.code || gone.name}” แล้ว`, { label: "เลิกทำ", run: () => { items.splice(Math.min(ix, items.length), 0, gone); ctx.commit(); renderList(); } });
+    }));
+    body.querySelector("[data-bdelall]")?.addEventListener("click", async () => {
+      if (!canEdit()) { permDenied("สิทธิ์ของคุณลบรายการไม่ได้"); return; }
+      if (!await confirmDialog({ icon: "trash", title: "ลบรายการอุปกรณ์ทั้งหมดของตู้นี้?", message: `${items.length} รายการ (รวมที่ติ๊กไว้)`, confirmText: "ลบทั้งหมด", danger: true })) return;
+      delete sub.bom;
+      logActivity(task, `ลบรายการอุปกรณ์ ตู้ “${sub.text || "(ไม่มีชื่อ)"}”`);
+      ctx.commit(true); renderList();
+    });
+    body.querySelectorAll(".bom-row").forEach(row => row.querySelector("input").addEventListener("change", (e) => {
+      const it = items.find(x => x.id === row.dataset.bid); if (!it) return;
+      if (!canTick()) { permDenied("สิทธิ์ของคุณติ๊กรายการไม่ได้"); e.target.checked = !!it.done; return; }
+      it.done = e.target.checked; stampTick(it);
+      ctx.commit();
+      const st = body.querySelector(".bom-list").scrollTop; renderList(); body.querySelector(".bom-list").scrollTop = st;
+    }));
+  }
+
+  function renderPreview(res, fileName) {
+    const lines = bomPrepLines(res);
+    const zeroN = res.items.filter(it => !(Number(it.qty) > 0)).length;
+    lines.forEach((l, i) => { l.k = "L" + i; });
+    if (!lines.length) { toast("ไม่พบรายการสินค้าในไฟล์นี้ — ต้องเป็นใบสั่งผลิตจาก Beecy"); renderList(); return; }
+    const soOk = !res.so || !task.so || res.so.replace(/\s/g, "").toUpperCase() === String(task.so).replace(/\s/g, "").toUpperCase();
+    const moOk = !res.mo || !sub.mo || moDigits(res.mo) === moDigits(sub.mo);
+    const fillMo = !sub.mo && res.mo;
+    const pickCons = new Set();   // consumables the user ticked in (owner: choose some, just in case)
+    const draw = () => {
+      const main = lines.filter(l => !l.cons), cons = lines.filter(l => l.cons), n = main.length + pickCons.size;
+      const row = l => { const on = !l.cons || pickCons.has(l.k);
+        return `<${l.cons ? "label" : "div"} class="bom-prow${on ? "" : " off"}${l.cons ? " pick" : ""}" ${l.cons ? `data-pk="${l.k}"` : ""}>${l.cons ? `<input type="checkbox" ${on ? "checked" : ""} />` : ""}<span class="bom-code">${escapeHtml(l.code || "—")}</span><span class="bom-name">${escapeHtml(l.name)}${l.lines > 1 ? ` <span class="bom-merged">รวม ${l.lines} บรรทัด</span>` : ""}</span><span class="bom-qty">${escapeHtml(bomQtyTxt(l))}</span></${l.cons ? "label" : "div"}>`; };
+      const withCons = cons.length > 0 && pickCons.size === cons.length;
+      body.innerHTML = `
+        <div class="bom-check ${soOk && moOk ? "ok" : "bad"}">${soOk && moOk ? ico("check-circle") : ico("alert")}<div><b>${escapeHtml(res.mo || "(ไม่พบเลข MO)")}</b> · ${escapeHtml(res.so || "(ไม่พบ SO)")}
+          ${soOk && moOk ? " ตรงกับงานนี้" : !soOk ? ` — SO ไม่ตรงกับงานนี้ (${escapeHtml(task.so || "")})` : ` — MO ไม่ตรงกับตู้นี้ (${escapeHtml(sub.mo)})`}
+          ${res.product ? `<div class="bom-meta">${escapeHtml(res.product)}</div>` : ""}</div></div>
+        ${fillMo ? `<label class="bom-opt"><input type="checkbox" data-bfill checked /> ใส่ MO ตู้นี้เป็น ${escapeHtml(res.mo.replace(/^[A-Z]+\//, ""))}</label>` : ""}
+        ${cons.length ? `<label class="bom-opt"><input type="checkbox" data-bcons ${withCons ? "checked" : ""} /> นำเข้าของสิ้นเปลืองทั้งหมด (${cons.length} รายการ) <span class="bom-meta">หรือติ๊กเลือกทีละรายการด้านล่าง</span></label>` : ""}
+        <div class="bom-list bom-plist"><div class="bom-sec">อุปกรณ์ ${main.length} รายการ${zeroN ? ` · ตัดจำนวน 0 ออก ${zeroN} บรรทัด` : ""}</div>${main.map(row).join("")}
+          ${cons.length ? `<div class="bom-sec">ของสิ้นเปลือง ${cons.length} รายการ · เลือกนำเข้า ${pickCons.size}</div>${cons.map(row).join("")}` : ""}</div>
+        <div class="bom-foot"><button type="button" class="btn" data-bcancel>ยกเลิก</button><button type="button" class="btn btn-primary" data-bok>นำเข้า ${n} รายการ</button></div>`;
+      const cb = body.querySelector("[data-bcons]");
+      if (cb) { cb.indeterminate = pickCons.size > 0 && !withCons; cb.addEventListener("change", (e) => { pickCons.clear(); if (e.target.checked) cons.forEach(l => pickCons.add(l.k)); draw(); }); }
+      body.querySelectorAll("[data-pk] input").forEach(inp => inp.addEventListener("change", () => {
+        const k = inp.closest("[data-pk]").dataset.pk;
+        if (inp.checked) pickCons.add(k); else pickCons.delete(k);
+        const sc = body.querySelector(".bom-plist").scrollTop; draw(); body.querySelector(".bom-plist").scrollTop = sc;
+      }));
+      body.querySelector("[data-bcancel]").addEventListener("click", renderList);
+      body.querySelector("[data-bok]").addEventListener("click", async () => {
+        if (!canEdit()) { permDenied("สิทธิ์ของคุณนำเข้ารายการอุปกรณ์ไม่ได้"); return; }
+        const had = sub.bom && (sub.bom.items || []).length;
+        if (had && !await confirmDialog({ icon: "file-text", title: "แทนที่รายการอุปกรณ์เดิม?", message: "รายการที่รหัสตรงกันจะคงการติ๊กไว้", confirmText: "แทนที่", danger: false })) return;
+        bomApply(task, sub, res, lines.filter(l => !l.cons || pickCons.has(l.k)), fileName);
+        if (fillMo && body.querySelector("[data-bfill]")?.checked) sub.mo = res.mo.replace(/^[A-Z]+\//, "");
+        logActivity(task, `นำเข้ารายการอุปกรณ์ ตู้ “${sub.text || "(ไม่มีชื่อ)"}” ${sub.bom.items.length} รายการ (${res.mo || fileName})`);
+        ctx.commit(true);
+        ov.querySelector("[data-bsub]").textContent = [sub.mo, sub.text].filter(Boolean).join(" · ");
+        renderList();
+      });
+    };
+    draw();
+  }
+  renderList();
 }
 function editDistance(a, b) {
   const m = a.length, n = b.length; if (Math.abs(m - n) > 2) return 3;
@@ -6786,7 +7200,7 @@ function openTaskModal(taskId, defaults={}) {
           <div class="stage-flow" data-stages></div>
         </div>
         <div class="field">
-          <label>ตู้ <span class="tm-count" data-sub-count></span> <span class="muted" style="font-weight:400" data-cl-hint></span></label>
+          <label>ตู้ <span class="tm-count" data-sub-count></span> <span class="muted" style="font-weight:400" data-cl-hint></span>${canEdit() ? `<button type="button" class="bom-bulk-btn" data-bom-bulk title="อ่านใบสั่งผลิต (PDF รวมหลายใบได้) แล้วใส่รายการอุปกรณ์ให้ทุกตู้ตามเลข MO">${ico("upload")} นำเข้าใบสั่งผลิต</button>` : ""}</label>
           <div class="subtask-list" data-subtasks></div>
           <button class="add-sub-btn" data-act="add-sub">+ เพิ่มตู้</button>
         </div>
@@ -7010,6 +7424,10 @@ function openTaskModal(taskId, defaults={}) {
     btn.querySelector(".cl-count").textContent = `${p.done}/${p.total}`;
     btn.classList.toggle("full", p.total > 0 && p.done === p.total);
   }
+  modal.querySelector("[data-bom-bulk]")?.addEventListener("click", (e) => {
+    e.preventDefault(); e.stopPropagation();
+    openBomBulkImport(task, { commit: () => { renderSubs(); scheduleCommit(0); } });
+  });
   function renderSubs() {
     if (modal._flowReady) renderFlow();   // a cabinet checklist tick can finish a department (not during setup: renderFlow's helpers come later)
     subWrap.innerHTML = "";
@@ -7028,6 +7446,8 @@ function openTaskModal(taskId, defaults={}) {
           <input type="text" class="sub-name" value="${escapeHtml(s.text)}" placeholder="ชื่อตู้" />
           <div class="subtask-progress" title="ความคืบหน้า checklist"><div class="subtask-progress-track"><div class="subtask-progress-bar"></div></div><span class="subtask-progress-pct"></span></div>
           <button type="button" class="subtask-cl-btn" title="Checklist ของตู้นี้ (ชี้เมาส์หรือคลิก)">${ico("check-square")} <span class="cl-count">${prog.done}/${prog.total}</span></button>
+          ${(() => { const bp = bomProgress(s); return bp.total ? `<button type="button" class="subtask-bom-btn${bp.done === bp.total ? " full" : ""}" title="รายการอุปกรณ์">${ico("archive")} <span>${bp.done}/${bp.total}</span></button>`
+            : (canEdit() ? `<button type="button" class="subtask-bom-btn empty" title="นำเข้ารายการอุปกรณ์ (PDF ใบสั่งผลิต)">${ico("archive")}</button>` : ""); })()}
           <span class="subtask-date-mount" title="วันที่ของตู้นี้ (ไม่ใส่ = ตามวันโปรเจค)"></span>
           <button class="subtask-del" title="ลบ">✕</button>
         </div>
@@ -7086,6 +7506,11 @@ function openTaskModal(taskId, defaults={}) {
         });
       });
       const openCl = () => openChecklistPopover(clBtn, s, () => { paintProg(); scheduleCommit(600); }, { task, deptId: modalDept });
+      row.querySelector(".subtask-bom-btn")?.addEventListener("click", (e) => {
+        e.stopPropagation();
+        document.querySelectorAll(".checklist-popover").forEach(n => n.remove()); _clPopAnchor = null;
+        openBomPanel({ task, sub: s, commit: (now) => scheduleCommit(now ? 0 : 500), onClose: () => { flushIfPending(); renderSubs(); } });
+      });
       clBtn.addEventListener("click", (e) => { e.stopPropagation(); openCl(); });
       clBtn.addEventListener("mouseenter", openCl);
       txt.addEventListener("input", () => { s.text = txt.value; scheduleCommit(800); });
@@ -8065,6 +8490,14 @@ function openTaskModal(taskId, defaults={}) {
           const out = { ...i, done: !!m.done };
           ["doneBy", "doneByName", "doneAt"].forEach(f => { if (m.done && m[f] !== undefined) out[f] = m[f]; else delete out[f]; });
           return out; }) }));
+        // ★ equipment list (BOM) ticks too — copied by item id, nothing else
+        const mineB = new Map();
+        (task.subtasks || []).forEach(sx => ((sx.bom && sx.bom.items) || []).forEach(i => mineB.set(sx.id + "|" + i.id, i)));
+        local.subtasks = local.subtasks.map(sx => !(sx.bom && Array.isArray(sx.bom.items)) ? sx : ({ ...sx, bom: { ...sx.bom, items: sx.bom.items.map(i => {
+          const m = mineB.get(sx.id + "|" + i.id); if (!m) return i;
+          const out = { ...i, done: !!m.done };
+          ["doneBy", "doneByName", "doneAt"].forEach(f => { if (m.done && m[f] !== undefined) out[f] = m[f]; else delete out[f]; });
+          return out; }) } }));
       }
     }
     else if (!(task.title || "").trim()) local = { ...task, title: base.title };
@@ -13080,6 +13513,7 @@ function mCardHtml(t, due, dep, bid) {
         <div class="m-cab-head" data-sub="${escapeHtml(x.id)}">
           <button type="button" class="m-dot" data-substatus="${escapeHtml(x.id)}" style="--dot:${getStatus(x.statusId).color}" aria-label="สถานะตู้"></button>
           <span class="m-cab-name">${x.mo ? `<span class="m-mo">${escapeHtml(x.mo)}</span>` : ""}${escapeHtml(x.text || "(ไม่มีชื่อตู้)")}</span>
+          ${(() => { const bp = bomProgress(x); return bp.total ? `<button type="button" class="m-bom${bp.done === bp.total ? " full" : ""}" data-bom="${escapeHtml(x.id)}">${ico("archive")}${bp.done}/${bp.total}</button>` : ""; })()}
           <span class="m-cab-n">${p.done}/${p.total}</span><span class="m-chev">${so ? "▴" : "▾"}</span>
         </div>
         ${so ? `<div class="m-items">${groups.map(([gid, list]) => (gid ? `<div class="m-items-dept">${escapeHtml((getDept(gid) || {}).name || "")}</div>` : "") + list.map(i =>
@@ -13261,6 +13695,13 @@ function mListClick(e) {
   }
   if (e.target.closest("[data-assign]")) { e.stopPropagation(); mOpenAssign(t, bid); return; }
   if (e.target.closest("[data-full]")) { if (bid !== root.activeBoard) setBoard(bid); openTaskModal(t.id); return; }
+  const bomB = e.target.closest("[data-bom]");
+  if (bomB) {
+    e.stopPropagation();
+    const sub = (t.subtasks || []).find(x => x.id === bomB.dataset.bom); if (!sub) return;
+    openBomPanel({ task: t, sub, commit: () => { t.updatedAt = Date.now(); saveState(); }, onClose: () => renderMobile() });
+    return;
+  }
   const sh = e.target.closest("[data-sub]");
   if (sh) { const id = sh.dataset.sub; if (mOpenSub.has(id)) mOpenSub.delete(id); else mOpenSub.add(id); renderMobile(); return; }
   if (e.target.closest("[data-toggle]")) {
