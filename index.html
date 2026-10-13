@@ -1538,24 +1538,52 @@ body.m-mode #appRoot, body.m-mode #sideTabs { display: none !important; }
 }
 .cal-cell:hover .cell-add { opacity: 1; }
 .cell-tasks { display: flex; flex-direction: column; gap: 3px; }
-.cell-head .cell-fats { flex: 1 1 auto; min-width: 0; display: flex; gap: 3px; margin: 0 4px; overflow: hidden; }
-.fat-pill { display: inline-flex; align-items: center; gap: 3px; min-width: 0; max-width: 100%; height: 19px; padding: 0 5px; border-radius: 5px; border: 1px solid var(--l-f59e0b, #f59e0b); background: var(--b-fef3c7, #fef3c7); color: var(--t-92400e, #92400e); font: inherit; font-size: 10.5px; font-weight: 700; cursor: pointer; white-space: nowrap; }
-.fat-pill .ico { width: 11px; height: 11px; flex: 0 0 auto; }
-.fat-pill .fat-pill-t { font-weight: 500; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
-.fat-pill.res-pass { opacity: .5; border-color: var(--l-a7e3c9, #a7e3c9); background: var(--b-ecfdf5, #ecfdf5); color: var(--t-047857, #047857); }
-.fat-pill.res-fail { opacity: .5; text-decoration: line-through; }
-.fat-more { font-size: 10.5px; font-weight: 700; color: var(--t-92400e, #92400e); align-self: center; }
-.fat-list { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
-.fat-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 4px 8px 4px 10px; border-radius: 8px; border: 1px solid var(--l-f59e0b, #f59e0b); background: var(--b-fffbeb, #fffbeb); }
+.fat-chip { display: flex; align-items: stretch; border: 1px solid color-mix(in srgb, var(--fat, #ac00eb) 45%, transparent); border-radius: 7px; overflow: hidden; background: color-mix(in srgb, var(--fat, #ac00eb) 12%, var(--panel)); color: var(--text); font-size: 12px; cursor: pointer; min-width: 0; }
+.fat-chip:hover { border-color: var(--fat, #ac00eb); }
+.fat-chip-tm { flex: 0 0 auto; min-width: 42px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; padding: 3px 5px; background: var(--fat, #ac00eb); color: #fff; font-size: 11.5px; font-weight: 700; line-height: 1.15; }
+.fat-chip-tm b { font-size: 10.5px; letter-spacing: .4px; opacity: .9; }
+.fat-chip-tm .ico { width: 13px; height: 13px; }
+.fat-chip-ok { display: inline-flex; align-items: center; gap: 1px; }
+.fat-chip-ok .ico { width: 11px; height: 11px; }
+.fat-chip-bd { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 3px 6px; overflow: hidden; }
+.fat-chip .chip-so { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fat-chip-t { max-width: 100%; font-weight: 600; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }   /* ★ owner: same size as a project chip (full text in the tooltip) */
+.fat-chip.res-pass { opacity: .6; border-color: var(--l-a7e3c9, #a7e3c9); background: var(--b-ecfdf5, #ecfdf5); }
+.fat-chip.res-pass .fat-chip-tm { background: #10b981; }
+.fat-chip.res-fix { border-color: var(--l-f59e0b, #f59e0b); background: var(--b-fffbeb, #fffbeb); }
+.fat-chip.res-fix .fat-chip-tm { background: #f59e0b; }
+.tm-cell-fat { grid-column: 1 / -1; border-left: 0 !important; border-top: 1px solid var(--border); }
+.tm-cell-fat[hidden] { display: none; }
+.fat-list { display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: center; }
+.fat-row { display: inline-flex; align-items: center; gap: 6px; padding: 3px 6px 3px 9px; border-radius: 8px; border: 1px solid color-mix(in srgb, var(--fat, #ac00eb) 40%, transparent); background: color-mix(in srgb, var(--fat, #ac00eb) 8%, var(--panel)); }
 .fat-row.res-pass { border-color: var(--l-a7e3c9, #a7e3c9); background: var(--b-ecfdf5, #ecfdf5); }
-.fat-row.res-fail { border-color: var(--l-fecaca, #fecaca); background: var(--b-fef2f2, #fef2f2); }
-.fat-n { font-size: 12px; font-weight: 700; color: var(--text-dim); }
-.fat-time, .fat-res { height: 30px; border: 1px solid var(--border-strong); border-radius: 7px; padding: 0 6px; font: inherit; font-size: 13px; background: var(--panel); color: var(--text); }
+.fat-row.res-fix { border-color: var(--l-f59e0b, #f59e0b); background: var(--b-fffbeb, #fffbeb); }
+.fat-resbtns { display: inline-flex; gap: 4px; }
+.fat-rb { display: inline-flex; align-items: center; gap: 3px; height: 28px; padding: 0 9px; border-radius: 7px; border: 1px solid var(--border-strong); background: var(--panel); color: var(--text-dim); font: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer; }
+.fat-rb .ico { width: 13px; height: 13px; }
+.fat-rb.pass.on { background: #10b981; border-color: #10b981; color: #fff; }
+.fat-rb.fix.on { background: #f59e0b; border-color: #f59e0b; color: #fff; }
+.fat-rb:disabled { cursor: default; }
+.fat-n { font-size: 12px; font-weight: 700; color: var(--fat, #ac00eb); }
+.fat-row.res-pass .fat-n { color: var(--t-047857, #047857); }
+.fat-row.res-fix .fat-n { color: var(--t-92400e, #92400e); }
+.fat-time { height: 30px; border: 1px solid var(--border-strong); border-radius: 7px; padding: 0 4px; font: inherit; font-size: 13px; background: var(--panel); color: var(--text); width: auto; }
 .fat-del { border: 0; background: transparent; color: var(--text-faint); cursor: pointer; font-size: 13px; padding: 4px; }
 .fat-del:hover { color: var(--danger); }
-.fat-add { border: 1px dashed var(--l-f59e0b, #f59e0b); background: transparent; color: var(--t-92400e, #92400e); border-radius: 8px; padding: 5px 11px; font: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer; }
-.m-fat { display: inline-flex; align-items: center; gap: 4px; margin: 4px 0 2px; padding: 2px 8px; border-radius: 999px; background: var(--b-fef3c7, #fef3c7); color: var(--t-92400e, #92400e); font-size: 12px; font-weight: 700; }
+.fat-color-in { width: 34px; height: 28px; padding: 0 2px; border: 1px solid var(--border-strong); border-radius: 7px; background: var(--panel); cursor: pointer; flex: 0 0 auto; }
+.fat-new { margin-left: 6px; padding: 1px 7px; border-radius: 999px; background: var(--fat, #ac00eb); color: #fff; font-size: 10px; font-weight: 700; letter-spacing: .3px; vertical-align: 1px; }
+.fat-new[hidden] { display: none; }
+.tm-cell-fat.fat-spot { box-shadow: inset 0 0 0 2px var(--fat, #ac00eb); border-radius: 0 0 10px 10px; }
+.fat-tip { position: relative; margin: -6px 0 16px 12px; max-width: 320px; padding: 12px 14px; border-radius: 10px; background: #26215c; color: #fff; font-size: 13px; line-height: 1.55; box-shadow: 0 8px 24px rgba(0,0,0,.18); }
+.fat-tip::before { content: ""; position: absolute; top: -7px; left: 26px; border: 7px solid transparent; border-top: 0; border-bottom-color: #26215c; }
+.fat-tip b { font-weight: 700; }
+.fat-tip-new { display: inline-block; margin-right: 6px; padding: 1px 7px; border-radius: 999px; background: var(--fat, #ac00eb); font-size: 10px; font-weight: 700; }
+.fat-tip-btns { display: flex; justify-content: flex-end; margin-top: 10px; }
+.fat-tip-ok { border: 0; border-radius: 7px; padding: 5px 12px; background: #fff; color: #26215c; font: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer; }
+.fat-add { border: 1px dashed color-mix(in srgb, var(--fat, #ac00eb) 60%, transparent); background: transparent; color: var(--fat, #ac00eb); border-radius: 8px; padding: 5px 11px; font: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer; }
+.m-fat { display: inline-flex; align-items: center; gap: 4px; margin: 4px 0 2px; padding: 2px 8px; border-radius: 999px; background: color-mix(in srgb, var(--fat, #ac00eb) 14%, var(--panel)); color: var(--fat, #ac00eb); font-size: 12px; font-weight: 700; }
 .m-fat .ico { width: 12px; height: 12px; }
+.m-fat.fix { background: var(--b-fef3c7, #fef3c7); color: var(--t-92400e, #92400e); }
 .cell-tasks > * { flex: 0 0 auto; }  /* chips keep natural height (don't shrink) */
 .task-chip {
   display: flex; flex-direction: column; gap: 3px;
@@ -2242,7 +2270,7 @@ body.chip-dragging .task-chip.span-bar { pointer-events: none; }   /* let the da
   border-radius:10px;
   box-shadow: var(--shadow-lg);
   padding: 10px;
-  z-index: 130;
+  z-index: 1400;   /* ★ 2026-10-13 above .stage-pop (1300) — the department card covered the calendar */
   width: 252px;
 }
 .dp-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
@@ -3244,7 +3272,30 @@ function taskFats(t) { return (Array.isArray(t && t.fats) ? t.fats : []).filter(
 function fatRoundNo(t, f) { return (t.fats || []).indexOf(f) + 1; }
 function fatWhen(f) { const d = fromIso(f.date); return `${d.getDate()} ${TH_MON[d.getMonth()]}${f.time ? " " + f.time : ""}`; }
 // the round to show on a card: the next one still waiting (else none)
-function nextFat(t) { return taskFats(t).filter(f => (f.result || "wait") === "wait").sort((a, b) => (a.date + (a.time || "")).localeCompare(b.date + (b.time || "")))[0] || null; }
+// 24-hour times every 15 min (an odd saved value like 13:20 stays selectable)
+function fatTimeOptions(cur) {
+  const list = [];
+  for (let h = 6; h <= 21; h++) for (const m of ["00", "15", "30", "45"]) list.push(String(h).padStart(2, "0") + ":" + m);
+  if (cur && !list.includes(cur)) { list.push(cur); list.sort(); }
+  return `<option value="" ${cur ? "" : "selected"}>— เวลา —</option>` + list.map(v => `<option value="${v}" ${v === cur ? "selected" : ""}>${v} น.</option>`).join("");
+}
+// ★ 2026-10-13 (owner) FAT colour — ⚙ การแสดงผล on the โรงงาน calendar (shared like other board settings); default = owner's pick
+const FAT_COLOR_DEFAULT = "#ac00eb";
+function fatColor() { const ws = root.boards && root.boards[FAT_BOARD]; const c = ws && ws.settings && ws.settings.fatColor; return /^#[0-9a-f]{6}$/i.test(c || "") ? c : FAT_COLOR_DEFAULT; }
+function applyFatColor() { document.documentElement.style.setProperty("--fat", fatColor()); }
+// ★ 2026-10-13 (owner) introduce the new FAT button: one-time pointer box + a small "ใหม่" badge
+//   badge: until this person books a FAT for the first time, or 14 days after they first saw it · per device
+const FAT_INTRO_KEY = "qc_fat_intro";
+function fatIntro() { try { return JSON.parse(localStorage.getItem(FAT_INTRO_KEY) || "{}") || {}; } catch (_) { return {}; } }
+function fatIntroSet(patch) { try { localStorage.setItem(FAT_INTRO_KEY, JSON.stringify({ ...fatIntro(), ...patch })); } catch (_) {} }
+function fatIntroBadgeOn() {
+  const s = fatIntro();
+  if (s.used) return false;
+  if (!s.first) { fatIntroSet({ first: Date.now() }); return true; }
+  return Date.now() - s.first < 14 * 86400000;
+}
+function fatRes(f) { return f && (f.result === "pass" || f.result === "fix") ? f.result : "wait"; }
+function nextFat(t) { return taskFats(t).filter(f => f.result !== "pass").sort((a, b) => (a.date + (a.time || "")).localeCompare(b.date + (b.time || "")))[0] || null; }
 function fatOnDay(t, iso) { return taskFats(t).some(f => f.date === iso); }
 function editDistance(a, b) {
   const m = a.length, n = b.length; if (Math.abs(m - n) > 2) return 3;
@@ -5125,25 +5176,24 @@ function renderMonth() {
       <div class="cell-tasks"></div>
     `;
     const taskWrap = cell.querySelector(".cell-tasks");
-    if (fatTasks.length) {   // ★ 2026-10-13 FAT appointments of this day
+    // ★ 2026-10-13 (owner v2) FAT appointments of this day = purple chips with the full details, above the day's tasks
+    const fatChips = [];
+    if (fatTasks.length) {
       const fl = [];
       fatTasks.forEach(t => taskFats(t).forEach(f => { if (f.date === iso) fl.push({ t, f }); }));
-      if (fl.length) {
-        fl.sort((a, b) => (a.f.time || "99").localeCompare(b.f.time || "99"));
-        const wrap = document.createElement("span");
-        wrap.className = "cell-fats";
-        fl.slice(0, 2).forEach(({ t, f }) => {
-          const p = document.createElement("button");
-          p.type = "button";
-          p.className = "fat-pill res-" + (f.result || "wait");
-          p.title = `FAT รอบ ${fatRoundNo(t, f)} · ${taskLabel(t)}${f.time ? " · " + f.time : ""} · ${FAT_RES[f.result || "wait"]}`;
-          p.innerHTML = `${ico("flag")}<span>FAT${f.time ? " " + escapeHtml(f.time) : ""}</span><span class="fat-pill-t">${escapeHtml((t.so || "").trim() || t.title || "")}</span>`;
-          p.addEventListener("click", (e) => { e.stopPropagation(); openTaskModal(t.id); });
-          wrap.appendChild(p);
-        });
-        if (fl.length > 2) { const m = document.createElement("span"); m.className = "fat-more"; m.textContent = "+" + (fl.length - 2); m.title = fl.slice(2).map(x => taskLabel(x.t)).join("\n"); wrap.appendChild(m); }
-        cell.querySelector(".cell-date").after(wrap);
-      }
+      fl.sort((a, b) => (a.f.time || "99").localeCompare(b.f.time || "99"));
+      fl.forEach(({ t, f }) => {
+        const res = fatRes(f);
+        const c = document.createElement("div");
+        c.className = "fat-chip res-" + res;
+        c.title = `FAT รอบ ${fatRoundNo(t, f)}${f.time ? " · " + f.time : ""}${res === "pass" ? " · ผ่านแล้ว" : res === "fix" ? " · มีแก้ไข" : ""}\n${taskLabel(t)}`;
+        // ★ owner final: design D — left block FAT + time / ✓ผ่าน (green) / แก้ไข (amber) · right SO + name · round
+        const side = res === "pass" ? `<span class="fat-chip-ok">${ico("check")}ผ่าน</span>` : res === "fix" ? `<span>แก้ไข</span>` : `<span>${escapeHtml(f.time || "—")}</span>`;
+        c.innerHTML = `<div class="fat-chip-tm"><b>FAT</b>${side}</div>`
+          + `<div class="fat-chip-bd">${chipRefTags(t)}<span class="fat-chip-t">${escapeHtml(t.title || "")} · รอบ ${fatRoundNo(t, f)}</span></div>`;
+        c.addEventListener("click", (e) => { e.stopPropagation(); openTaskModal(t.id); });
+        fatChips.push(c);
+      });
     }
     // multi-day bars are placed by lane (with spacers for empty upper lanes) so each bar keeps
     // its row across every day it crosses; everything else stacks below in sorted order.
@@ -5175,6 +5225,7 @@ function renderMonth() {
         taskWrap.appendChild(chip);
       });
     }
+    fatChips.forEach(c => taskWrap.appendChild(c));
     rest.forEach(item => {
       if (item.kind === "deptstage") {
         taskWrap.appendChild(renderDeptChip(item.task, item.stage));
@@ -6688,14 +6739,14 @@ function openTaskModal(taskId, defaults={}) {
             <span class="tm-lbl">ผู้รับผิดชอบ</span>
             <div class="asg-row" data-assignees></div>
           </div>
+          <div class="tm-cell tm-cell-fat" data-fat-field hidden>
+            <span class="tm-lbl">FAT (ลูกค้าเข้าตรวจ)<span class="fat-new" data-fat-new hidden>ใหม่</span></span>
+            <div class="fat-list" data-fats></div>
+          </div>
         </div>
         <div class="field" data-stage-field${isServiceBoard() ? ' style="display:none"' : ""}>
           <label>แผนกที่ได้รับมอบหมาย <span class="need-stage-tag">${ico("alert")} ยังไม่ได้เลือก</span></label>
           <div class="stage-flow" data-stages></div>
-        </div>
-        <div class="field" data-fat-field hidden>
-          <label>${ico("flag")} FAT</label>
-          <div class="fat-list" data-fats></div>
         </div>
         <div class="field">
           <label>ตู้ <span class="tm-count" data-sub-count></span> <span class="muted" style="font-weight:400" data-cl-hint></span></label>
@@ -7136,10 +7187,11 @@ function openTaskModal(taskId, defaults={}) {
     list.innerHTML = "";
     task.fats.forEach((f, i) => {
       const row = document.createElement("div");
-      row.className = "fat-row res-" + (f.result || "wait");
+      const res = fatRes(f);
+      row.className = "fat-row res-" + res;
       row.innerHTML = `<span class="fat-n">รอบ ${i + 1}</span><span class="fat-date-mount"></span>
-        <input type="time" class="fat-time" value="${escapeHtml(f.time || "")}" ${ed ? "" : "disabled"} />
-        <select class="fat-res" ${ed ? "" : "disabled"}>${Object.entries(FAT_RES).map(([k, v]) => `<option value="${k}" ${(f.result || "wait") === k ? "selected" : ""}>${v}</option>`).join("")}</select>
+        <select class="fat-time" ${ed ? "" : "disabled"} title="เวลา (24 ชม.)">${fatTimeOptions(f.time)}</select>
+        <span class="fat-resbtns"><button type="button" class="fat-rb pass${res === "pass" ? " on" : ""}" data-res="pass" ${ed ? "" : "disabled"}>${ico("check")}ผ่าน</button><button type="button" class="fat-rb fix${res === "fix" ? " on" : ""}" data-res="fix" ${ed ? "" : "disabled"}>แก้ไข</button></span>
         ${ed ? `<button type="button" class="fat-del" title="ลบรอบนี้">✕</button>` : ""}`;
       const df = createDateField({ value: f.date || null, extraClass: "tm-date", onChange: (iso) => {
         if (!canEdit()) { permDenied("สิทธิ์ของคุณแก้วันไม่ได้"); df.setValue(f.date || null); return; }
@@ -7149,7 +7201,11 @@ function openTaskModal(taskId, defaults={}) {
       if (!ed) df.querySelectorAll("input,button").forEach(el => el.disabled = true);
       row.querySelector(".fat-date-mount").replaceWith(df);
       row.querySelector(".fat-time").addEventListener("change", (e) => { if (!canEdit()) return; f.time = e.target.value || ""; scheduleCommit(0); });
-      row.querySelector(".fat-res").addEventListener("change", (e) => { if (!canEdit()) return; f.result = e.target.value; row.className = "fat-row res-" + f.result; scheduleCommit(0); });
+      row.querySelectorAll("[data-res]").forEach(b => b.addEventListener("click", () => {
+        if (!canEdit()) { permDenied("สิทธิ์ของคุณแก้ไม่ได้"); return; }
+        f.result = fatRes(f) === b.dataset.res ? "wait" : b.dataset.res;   // tap the chosen one again = clear
+        renderFat(); scheduleCommit(0);
+      }));
       row.querySelector(".fat-del")?.addEventListener("click", async () => {
         if (!canEdit()) return;
         if (!await confirmDialog({ icon: "trash", title: `ลบ FAT รอบ ${i + 1}?`, message: fatWhen(f), confirmText: "ลบ", danger: true })) return;
@@ -7157,10 +7213,23 @@ function openTaskModal(taskId, defaults={}) {
       });
       list.appendChild(row);
     });
+    // "ใหม่" badge + one-time pointer box (only for people who can book a FAT)
+    const newB = box.querySelector("[data-fat-new]");
+    if (newB) newB.hidden = !(ed && fatIntroBadgeOn());
+    const closeIntro = () => { fatIntroSet({ tipDone: true }); modal.querySelector(".fat-tip")?.remove(); box.classList.remove("fat-spot"); };
+    if (ed && !fatIntro().tipDone && !modal.querySelector(".fat-tip")) {
+      const meta = box.closest(".tm-meta");
+      const tip = document.createElement("div");
+      tip.className = "fat-tip";
+      tip.innerHTML = `<span class="fat-tip-new">ใหม่</span><b>นัด FAT ได้แล้ว</b><br>ใส่วันและเวลาที่ลูกค้าเข้าตรวจ จะขึ้นบนปฏิทินโรงงานให้ทุกคนเห็น<div class="fat-tip-btns"><button type="button" class="fat-tip-ok">เข้าใจแล้ว</button></div>`;
+      tip.querySelector(".fat-tip-ok").addEventListener("click", closeIntro);
+      if (meta) { meta.after(tip); box.classList.add("fat-spot"); }
+    }
     if (ed) {
       const add = document.createElement("button");
-      add.type = "button"; add.className = "fat-add"; add.textContent = task.fats.length ? "+ เพิ่มรอบ FAT" : "+ นัด FAT";
+      add.type = "button"; add.className = "fat-add"; add.textContent = task.fats.length ? "+ รอบใหม่" : "+ นัด FAT";
       add.addEventListener("click", () => {
+        fatIntroSet({ used: true }); closeIntro();
         const last = task.fats[task.fats.length - 1];
         task.fats.push({ id: uid("fat"), date: todayIso(), time: (last && last.time) || "", result: "wait" });
         renderFat(); scheduleCommit(0);
@@ -8324,7 +8393,7 @@ function diffTaskActivity(before, after) {
       if (!b || !b.date) logs.push(`นัด FAT รอบ ${n} → ${fatWhen(f)}`);
       else {
         if (b.date !== f.date || (b.time || "") !== (f.time || "")) logs.push(`เลื่อน FAT รอบ ${n} → ${fatWhen(f)}`);
-        if ((b.result || "wait") !== (f.result || "wait")) logs.push(`FAT รอบ ${n}: ${FAT_RES[f.result || "wait"]}`);
+        if (fatRes(b) !== fatRes(f)) logs.push(fatRes(f) === "pass" ? `✓ FAT รอบ ${n} ผ่าน` : fatRes(f) === "fix" ? `FAT รอบ ${n} มีแก้ไข` : `ยกเลิกผล FAT รอบ ${n}`);
       }
     });
     const aIds = new Set(aF.map(f => f.id));
@@ -9798,6 +9867,11 @@ function buildDisplayPanel(container) {
         <span class="settings-toggle-title">@ กล่าวถึงคนแผนกอื่นได้</span>
       </span>
     </label>
+    ${fatBoardOn() ? `<label class="settings-toggle-row">
+      <input type="color" class="fat-color-in" data-f="fatcolor" value="${fatColor()}" />
+      <span class="settings-toggle-text"><span class="settings-toggle-title">สีชิป FAT</span></span>
+      <button type="button" class="btn btn-ghost btn-sm" data-f="fatcolor-reset" ${fatColor() === FAT_COLOR_DEFAULT ? "hidden" : ""}>ค่าเริ่มต้น</button>
+    </label>` : ""}
     ${root.activeBoard === SERVICE_BOARD ? "" : `<h4 class="settings-h" style="margin-top:14px">ปุ่ม “ยื่นขอแบบ” แสดงกับแผนก</h4>
     <div class="perm-dept-list" data-draw-depts></div>
     <h4 class="settings-h" style="margin-top:14px">ปุ่ม “ดึงคำขอจากฟอร์ม” แสดงกับแผนก</h4>
@@ -9809,6 +9883,13 @@ function buildDisplayPanel(container) {
     saveState(); renderMainView();
   });
   sec.querySelector('[data-f="xmention"]').addEventListener("change", (e) => { state.settings.crossMention = e.target.checked; saveState(); });
+  const fatIn = sec.querySelector('[data-f="fatcolor"]'), fatReset = sec.querySelector('[data-f="fatcolor-reset"]');
+  if (fatIn) {
+    const setFat = (c) => { state.settings.fatColor = c; applyFatColor(); fatIn.value = c; fatReset.hidden = c === FAT_COLOR_DEFAULT; };
+    fatIn.addEventListener("input", () => { setFat(fatIn.value); renderMainView(); });   // live preview
+    fatIn.addEventListener("change", () => { setFat(fatIn.value); saveState(); });
+    fatReset.addEventListener("click", (e) => { e.preventDefault(); setFat(FAT_COLOR_DEFAULT); saveState(); renderMainView(); });
+  }
   sec.querySelector('[data-f="deptcab"]').addEventListener("change", (e) => {
     state.settings.deptCalByCabinet = e.target.checked;
     saveState(); renderMainView();
@@ -12108,6 +12189,13 @@ function mentionTextHtml(c) {
   const re = new RegExp(toks.map(t => t.tok.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|"), "g");
   return html.replace(re, m => { const t = toks.find(x => x.tok === m); return `<span class="mention${t && t.id === me ? " me" : ""}">${m}</span>`; });
 }
+// department name of a person even when that department lives on another calendar
+function mentionDeptRank(p) {
+  const my = currentProfile && currentProfile.dept_id;
+  if (!mentionDeptName(p)) return 2;
+  return my && (p.dept_id === my || (typeof sameDept === "function" && sameDept(my, p.dept_id))) ? 0 : 1;
+}
+function mentionDeptName(p) { return ((getDept(p.dept_id) || (typeof deptAnywhere === "function" && deptAnywhere(p.dept_id)) || {}).name) || ""; }
 // "@" picker for a textarea: type @ + part of a name → list of people who can see this board
 function attachMentionPicker(input) {
   const host = input.parentElement;
@@ -12125,13 +12213,17 @@ function attachMentionPicker(input) {
     const me = currentProfile && currentProfile.id;
     items = mentionCandidates().filter(p => p.id !== me &&
         (personName(p).toLowerCase().includes(range.q) || (p.email || "").toLowerCase().startsWith(range.q)))
-      .sort((a, b) => (a._otherDept ? 1 : 0) - (b._otherDept ? 1 : 0) || personName(a).localeCompare(personName(b), "th")).slice(0, 8);
+      // ★ 2026-10-13 (owner: แผนกอื่นขึ้นไม่ครบ) — no 8-person cap (the list scrolls); other departments grouped by department
+      // ★ grouped BY DEPARTMENT (owner): my department first, then the others A→Z, "no department" last
+      .sort((a, b) => mentionDeptRank(a) - mentionDeptRank(b)
+        || mentionDeptName(a).localeCompare(mentionDeptName(b), "th")
+        || personName(a).localeCompare(personName(b), "th"));
     if (!items.length) return close();
     idx = Math.min(idx, items.length - 1);
     if (!pop) { pop = document.createElement("div"); pop.className = "mention-pop"; host.appendChild(pop); }
     pop.innerHTML = `<div class="mention-head">กล่าวถึง — ↑↓ เลือก · Enter ใส่ชื่อ · Esc ปิด</div>` + items.map((p, i) =>
-      (p._otherDept && (i === 0 || !items[i - 1]._otherDept) ? `<div class="mention-group">แผนกอื่น</div>` : "") +
-      `<div class="mention-item${i === idx ? " active" : ""}" data-i="${i}">${avatarHtml(p)}<span class="mention-name">${escapeHtml(personName(p))}</span><span class="mention-dept">${escapeHtml((getDept(p.dept_id) || {}).name || "")}</span></div>`).join("");
+      (i === 0 || mentionDeptName(items[i - 1]) !== mentionDeptName(p) ? `<div class="mention-group">${escapeHtml(mentionDeptName(p) || "ไม่ระบุแผนก")}</div>` : "") +
+      `<div class="mention-item${i === idx ? " active" : ""}" data-i="${i}">${avatarHtml(p)}<span class="mention-name">${escapeHtml(personName(p))}</span></div>`).join("");
     pop.querySelectorAll(".mention-item").forEach(el => el.addEventListener("mousedown", (e) => { e.preventDefault(); pick(+el.dataset.i); }));
     const act = pop.querySelector(".mention-item.active");
     if (act) act.scrollIntoView({ block: "nearest" });
@@ -12967,7 +13059,7 @@ function mCardHtml(t, due, dep, bid) {
       <div class="m-e1">${ring}<div class="m-e1-main">
         <div class="m-title">${escapeHtml(t.title || "(ไม่มีชื่องาน)")}</div>
         ${refs || other ? `<div class="m-refs">${other}${refs}</div>` : ""}
-        ${(() => { const f = fatBoardOn(bid) ? nextFat(t) : null; return f ? `<span class="m-fat">${ico("flag")}FAT รอบ ${fatRoundNo(t, f)} · ${escapeHtml(fatWhen(f))}</span>` : ""; })()}
+        ${(() => { const f = fatBoardOn(bid) ? nextFat(t) : null; return f ? `<span class="m-fat${fatRes(f) === "fix" ? " fix" : ""}">${ico("flag")}FAT รอบ ${fatRoundNo(t, f)} · ${fatRes(f) === "fix" ? "แก้ไข" : escapeHtml(fatWhen(f))}</span>` : ""; })()}
         ${segs}
         <div class="m-e1-foot">${stepTxt}${cabTxt}${owners}</div>
       </div></div>
@@ -13237,6 +13329,7 @@ M_MQ.addEventListener ? M_MQ.addEventListener("change", () => renderAll()) : M_M
   kick();
 })();
 function renderAll() {
+  applyFatColor();
   normalizeBoardNames();
   ensureVisibleBoard();   // must run first: may repoint `state` (e.g. a user just moved into/out of Service)
   applyBranding();
