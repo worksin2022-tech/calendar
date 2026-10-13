@@ -1583,7 +1583,12 @@ body.m-mode #appRoot, body.m-mode #sideTabs { display: none !important; }
 .fat-add { border: 1px dashed color-mix(in srgb, var(--fat, #ac00eb) 60%, transparent); background: transparent; color: var(--fat, #ac00eb); border-radius: 8px; padding: 5px 11px; font: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer; }
 .m-fat { display: inline-flex; align-items: center; gap: 4px; margin: 4px 0 2px; padding: 2px 8px; border-radius: 999px; background: color-mix(in srgb, var(--fat, #ac00eb) 14%, var(--panel)); color: var(--fat, #ac00eb); font-size: 12px; font-weight: 700; }
 .m-fat .ico { width: 12px; height: 12px; }
-.m-fat.fix { background: var(--b-fef3c7, #fef3c7); color: var(--t-92400e, #92400e); }
+.m-fat.res-fix { background: var(--b-fef3c7, #fef3c7); color: var(--t-92400e, #92400e); }
+.m-fat.res-pass { background: var(--b-ecfdf5, #ecfdf5); color: var(--t-047857, #047857); }
+.m-band-fat .m-band-st { display: inline-flex; align-items: center; gap: 5px; }
+.m-band-fat .ico { width: 14px; height: 14px; }
+.m-card:has(.m-band-fat.res-wait) { border-color: color-mix(in srgb, var(--fat, #ac00eb) 55%, transparent); }
+.m-stpill { display: inline-flex; align-items: center; margin: 4px 0 2px; padding: 2px 8px; border-radius: 999px; background: color-mix(in srgb, var(--st) 16%, var(--panel)); color: var(--text); font-size: 12px; font-weight: 700; }
 .cell-tasks > * { flex: 0 0 auto; }  /* chips keep natural height (don't shrink) */
 .task-chip {
   display: flex; flex-direction: column; gap: 3px;
@@ -3294,6 +3299,21 @@ function fatIntroBadgeOn() {
   if (!s.first) { fatIntroSet({ first: Date.now() }); return true; }
   return Date.now() - s.first < 14 * 86400000;
 }
+// ★ 2026-10-13 (owner: มือถือ FAT ผ่านแล้วป้ายหาย) — phone card shows FAT like the desktop chip:
+//   on "งานวันนี้" for the day of a FAT → the card's band IS the FAT (purple / green ผ่าน / amber แก้ไข);
+//   elsewhere a small tag: next waiting round, else the latest round with its result.
+function mViewIso() { const d = new Date(); d.setDate(d.getDate() + mDay); return isoDate(d); }
+function mFatOfDay(t, bid) {
+  if (mTab !== "today" || !fatBoardOn(bid)) return null;
+  const iso = mViewIso();
+  return taskFats(t).filter(f => f.date === iso).sort((a, b) => (a.time || "99").localeCompare(b.time || "99"))[0] || null;
+}
+function mFatTag(t, bid) {
+  if (!fatBoardOn(bid)) return null;
+  const all = taskFats(t);
+  return nextFat(t) || all.slice().sort((a, b) => (b.date + (b.time || "")).localeCompare(a.date + (a.time || "")))[0] || null;
+}
+function fatColorOf(f) { const r = fatRes(f); return r === "pass" ? "#10b981" : r === "fix" ? "#f59e0b" : fatColor(); }
 function fatRes(f) { return f && (f.result === "pass" || f.result === "fix") ? f.result : "wait"; }
 function nextFat(t) { return taskFats(t).filter(f => f.result !== "pass").sort((a, b) => (a.date + (a.time || "")).localeCompare(b.date + (b.time || "")))[0] || null; }
 function fatOnDay(t, iso) { return taskFats(t).some(f => f.date === iso); }
@@ -13000,6 +13020,7 @@ function mOpenAssign(t, bid) {
 function mCabs(t, dep) { return (t.subtasks || []).filter(x => checklistProgress(x, dep || null).total > 0); }
 function mCardHtml(t, due, dep, bid) {
   const open = mOpen.has(t.id);
+  const fatDay = mFatOfDay(t, bid);
   const done = dep ? isDeptComplete(t, dep) : projectComplete(t);
   const cabs = mCabs(t, dep);
   const cabDone = cabs.filter(x => { const p = checklistProgress(x, dep || null); return p.done === p.total; }).length;
@@ -13055,11 +13076,15 @@ function mCardHtml(t, due, dep, bid) {
   const dueBadge = done ? "✓ เสร็จแล้ว" : escapeHtml(mDueLabel(due));
   return `<div class="m-card mg-${g}${open ? " open" : ""}" data-t="${escapeHtml(t.id)}" data-b="${escapeHtml(bid || root.activeBoard)}" data-dep="${escapeHtml(dep || "")}">
     <div class="m-card-head" data-toggle="1">
-      <div class="m-band" style="--st:${st.color};color:${textOn(st.color)}"><span class="m-band-st">● ${escapeHtml(st.name)}</span><span class="m-band-due${over ? " over" : ""}">${dueBadge}</span></div>
+      ${fatDay ? (() => { const r = fatRes(fatDay), col = fatColorOf(fatDay);
+          return `<div class="m-band m-band-fat res-${r}" style="--st:${col};color:#fff"><span class="m-band-st">${r === "pass" ? ico("check") : ico("flag")} FAT รอบ ${fatRoundNo(t, fatDay)}${r === "pass" ? " · ผ่าน" : r === "fix" ? " · แก้ไข" : ""}</span><span class="m-band-due">${fatDay.time ? escapeHtml(fatDay.time) + " น." : ""}</span></div>`; })()
+        : `<div class="m-band" style="--st:${st.color};color:${textOn(st.color)}"><span class="m-band-st">● ${escapeHtml(st.name)}</span><span class="m-band-due${over ? " over" : ""}">${dueBadge}</span></div>`}
       <div class="m-e1">${ring}<div class="m-e1-main">
         <div class="m-title">${escapeHtml(t.title || "(ไม่มีชื่องาน)")}</div>
         ${refs || other ? `<div class="m-refs">${other}${refs}</div>` : ""}
-        ${(() => { const f = fatBoardOn(bid) ? nextFat(t) : null; return f ? `<span class="m-fat${fatRes(f) === "fix" ? " fix" : ""}">${ico("flag")}FAT รอบ ${fatRoundNo(t, f)} · ${fatRes(f) === "fix" ? "แก้ไข" : escapeHtml(fatWhen(f))}</span>` : ""; })()}
+        ${fatDay ? `<span class="m-stpill" style="--st:${st.color}">● ${escapeHtml(st.name)}</span>`
+          : (() => { const f = mFatTag(t, bid); if (!f) return ""; const r = fatRes(f);
+              return `<span class="m-fat res-${r}">${r === "pass" ? ico("check") : ico("flag")}FAT รอบ ${fatRoundNo(t, f)} · ${r === "pass" ? "ผ่าน" : r === "fix" ? "แก้ไข" : escapeHtml(fatWhen(f))}</span>`; })()}
         ${segs}
         <div class="m-e1-foot">${stepTxt}${cabTxt}${owners}</div>
       </div></div>
