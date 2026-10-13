@@ -1642,6 +1642,22 @@ body.m-mode #appRoot, body.m-mode #sideTabs { display: none !important; }
   .bom-row { padding: 11px 10px; font-size: 14.5px; }
   .bom-row input { width: 22px; height: 22px; }
 }
+.wn-overlay .wn-modal { width: min(480px, 94vw); padding: 0; overflow: hidden; }
+.wn-head { display: flex; align-items: center; gap: 8px; padding: 18px 20px 6px; }
+.wn-head h3 { margin: 0; font-size: 18px; }
+.wn-tag { padding: 2px 9px; border-radius: 999px; background: var(--accent); color: #fff; font-size: 11px; font-weight: 700; }
+.wn-date { margin-left: auto; font-size: 12px; color: var(--text-dim); }
+.wn-list { display: flex; flex-direction: column; gap: 4px; padding: 8px 20px 4px; }
+.wn-item { display: flex; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+.wn-item:last-child { border-bottom: 0; }
+.wn-ico { flex: 0 0 auto; width: 36px; height: 36px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; background: color-mix(in srgb, var(--accent) 12%, var(--panel)); color: var(--accent); }
+.wn-ico .ico { width: 19px; height: 19px; }
+.wn-item b { font-size: 14.5px; }
+.wn-item p { margin: 3px 0 0; font-size: 13px; line-height: 1.55; color: var(--text-dim); }
+.wn-foot { display: flex; justify-content: flex-end; padding: 10px 20px 18px; }
+.bom-tip { margin: 6px 0 10px 0; }
+.bom-bulk-btn.bom-spot { border-style: solid; border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent); }
+@media (max-width: 640px) { .bom-tip { margin-left: 0; } }
 .fat-new { margin-left: 6px; padding: 1px 7px; border-radius: 999px; background: var(--fat, #ac00eb); color: #fff; font-size: 10px; font-weight: 700; letter-spacing: .3px; vertical-align: 1px; }
 .fat-new[hidden] { display: none; }
 .tm-cell-fat.fat-spot { box-shadow: inset 0 0 0 2px var(--fat, #ac00eb); border-radius: 0 0 10px 10px; }
@@ -3747,6 +3763,37 @@ function openBomPanel(ctx) {
   }
   renderList();
 }
+// ★ 2026-10-13 (owner) "มีอะไรใหม่" — shown once per release on this device (after login, before the daily report).
+//   Next release: change WHATS_NEW.id and the items; everyone sees it once again.
+const WHATS_NEW = { id: "2026-10-13", date: "13 ต.ค. 2569", items: [
+  { icon: "flag", title: "นัด FAT", text: "ใส่วันลูกค้าเข้าตรวจในป๊อปอัปโครงการ (ปฏิทินโรงงาน) ขึ้นเป็นชิปบนปฏิทิน · ติ๊ก ผ่าน / แก้ไข ได้" },
+  { icon: "archive", title: "รายการอุปกรณ์จากใบสั่งผลิต", text: "นำเข้า PDF ใบสั่งผลิตจาก Beecy (รวมหลายตู้ในไฟล์เดียวได้) แล้วติ๊กเช็คอุปกรณ์ทีละรายการ — ปุ่ม “นำเข้าใบสั่งผลิต” ข้างหัวข้อตู้" },
+] };
+const WHATS_NEW_KEY = "qc_whatsnew_seen";
+function whatsNewDue() { try { return localStorage.getItem(WHATS_NEW_KEY) !== WHATS_NEW.id; } catch (_) { return false; } }
+function openWhatsNew(after) {
+  const ov = document.createElement("div");
+  ov.className = "overlay wn-overlay";
+  ov.innerHTML = `<div class="modal wn-modal" role="dialog" aria-modal="true">
+    <div class="wn-head"><span class="wn-tag">ใหม่</span><h3>มีอะไรใหม่</h3><span class="wn-date">${escapeHtml(WHATS_NEW.date)}</span></div>
+    <div class="wn-list">${WHATS_NEW.items.map(it => `<div class="wn-item"><span class="wn-ico">${ico(it.icon)}</span><div><b>${escapeHtml(it.title)}</b><p>${escapeHtml(it.text)}</p></div></div>`).join("")}</div>
+    <div class="wn-foot"><button type="button" class="btn btn-primary" data-wn-ok>เข้าใจแล้ว</button></div></div>`;
+  document.body.appendChild(ov);
+  const done = () => { try { localStorage.setItem(WHATS_NEW_KEY, WHATS_NEW.id); } catch (_) {} ov.remove(); after && after(); };
+  ov.querySelector("[data-wn-ok]").addEventListener("click", done);
+  ov.addEventListener("mousedown", (e) => { if (e.target === ov) done(); });
+}
+// small "ใหม่" badge on the import button until first use / 14 days (same idea as the FAT one)
+const BOM_INTRO_KEY = "qc_bom_intro";
+function bomIntroBadgeOn() {
+  let st = {}; try { st = JSON.parse(localStorage.getItem(BOM_INTRO_KEY) || "{}") || {}; } catch (_) {}
+  if (st.used) return false;
+  if (!st.first) { try { localStorage.setItem(BOM_INTRO_KEY, JSON.stringify({ first: Date.now() })); } catch (_) {} return true; }
+  return Date.now() - st.first < 14 * 86400000;
+}
+function bomIntro() { try { return JSON.parse(localStorage.getItem(BOM_INTRO_KEY) || "{}") || {}; } catch (_) { return {}; } }
+function bomIntroSet(patch) { try { localStorage.setItem(BOM_INTRO_KEY, JSON.stringify({ ...bomIntro(), ...patch })); } catch (_) {} }
+function bomIntroUsed() { bomIntroSet({ used: true, tipDone: true }); }
 function editDistance(a, b) {
   const m = a.length, n = b.length; if (Math.abs(m - n) > 2) return 3;
   let prev = Array.from({ length: n + 1 }, (_, j) => j);
@@ -7200,7 +7247,7 @@ function openTaskModal(taskId, defaults={}) {
           <div class="stage-flow" data-stages></div>
         </div>
         <div class="field">
-          <label>ตู้ <span class="tm-count" data-sub-count></span> <span class="muted" style="font-weight:400" data-cl-hint></span>${canEdit() ? `<button type="button" class="bom-bulk-btn" data-bom-bulk title="อ่านใบสั่งผลิต (PDF รวมหลายใบได้) แล้วใส่รายการอุปกรณ์ให้ทุกตู้ตามเลข MO">${ico("upload")} นำเข้าใบสั่งผลิต</button>` : ""}</label>
+          <label>ตู้ <span class="tm-count" data-sub-count></span> <span class="muted" style="font-weight:400" data-cl-hint></span>${canEdit() ? `<button type="button" class="bom-bulk-btn" data-bom-bulk title="อ่านใบสั่งผลิต (PDF รวมหลายใบได้) แล้วใส่รายการอุปกรณ์ให้ทุกตู้ตามเลข MO">${ico("upload")} นำเข้าใบสั่งผลิต${bomIntroBadgeOn() ? `<span class="fat-new">ใหม่</span>` : ""}</button>` : ""}</label>
           <div class="subtask-list" data-subtasks></div>
           <button class="add-sub-btn" data-act="add-sub">+ เพิ่มตู้</button>
         </div>
@@ -7424,8 +7471,24 @@ function openTaskModal(taskId, defaults={}) {
     btn.querySelector(".cl-count").textContent = `${p.done}/${p.total}`;
     btn.classList.toggle("full", p.total > 0 && p.done === p.total);
   }
+  function showBomTip() {
+    const btn = modal.querySelector("[data-bom-bulk]");
+    if (closed || !btn || !canEdit() || bomIntro().tipDone || modal.querySelector(".fat-tip, .bom-tip")) return;
+    const tip = document.createElement("div");
+    tip.className = "fat-tip bom-tip";
+    tip.innerHTML = `<span class="fat-tip-new">ใหม่</span><b>นำเข้าใบสั่งผลิตได้แล้ว</b><br>เลือก PDF ใบสั่งผลิตจาก Beecy (รวมหลายตู้ในไฟล์เดียวได้) ระบบจะใส่รายการอุปกรณ์ให้ทุกตู้ตามเลข MO<div class="fat-tip-btns"><button type="button" class="fat-tip-ok">เข้าใจแล้ว</button></div>`;
+    tip.querySelector(".fat-tip-ok").addEventListener("click", () => { bomIntroSet({ tipDone: true }); tip.remove(); btn.classList.remove("bom-spot"); });
+    btn.closest("label").after(tip);
+    btn.classList.add("bom-spot");
+    const lab = btn.closest("label"), br = btn.getBoundingClientRect(), lr = lab.getBoundingClientRect();   // arrow under the button
+    tip.style.marginLeft = Math.max(0, Math.round(br.left - lr.left + br.width / 2 - 33)) + "px";
+  }
+  modal._showBomTip = showBomTip;
+  setTimeout(showBomTip, 0);
   modal.querySelector("[data-bom-bulk]")?.addEventListener("click", (e) => {
     e.preventDefault(); e.stopPropagation();
+    bomIntroUsed(); e.currentTarget.querySelector(".fat-new")?.remove();
+    modal.querySelector(".bom-tip")?.remove(); e.currentTarget.classList.remove("bom-spot");
     openBomBulkImport(task, { commit: () => { renderSubs(); scheduleCommit(0); } });
   });
   function renderSubs() {
@@ -7678,8 +7741,8 @@ function openTaskModal(taskId, defaults={}) {
     // "ใหม่" badge + one-time pointer box (only for people who can book a FAT)
     const newB = box.querySelector("[data-fat-new]");
     if (newB) newB.hidden = !(ed && fatIntroBadgeOn());
-    const closeIntro = () => { fatIntroSet({ tipDone: true }); modal.querySelector(".fat-tip")?.remove(); box.classList.remove("fat-spot"); };
-    if (ed && !fatIntro().tipDone && !modal.querySelector(".fat-tip")) {
+    const closeIntro = () => { fatIntroSet({ tipDone: true }); modal.querySelector(".fat-tip:not(.bom-tip)")?.remove(); box.classList.remove("fat-spot"); setTimeout(() => modal._showBomTip && modal._showBomTip(), 0); };
+    if (ed && !fatIntro().tipDone && !modal.querySelector(".fat-tip")) {   // (a .bom-tip never shows before this one)
       const meta = box.closest(".tm-meta");
       const tip = document.createElement("div");
       tip.className = "fat-tip";
@@ -14132,6 +14195,7 @@ async function startApp() {
   // it used to fire on every single open, which people found too noisy. 📋 opens it on demand.
   if (openTaskFromUrl()) { /* opened from a notification → straight to that task */ }
   else if (pendingAlerts().length) openAlertPopup();
+  else if (whatsNewDue()) openWhatsNew(() => { if (shouldAutoShowReport()) { markReportSeen(); openStatusReport(); } });
   else if (shouldAutoShowReport()) { markReportSeen(); openStatusReport(); }
   refreshPushSub();
   refreshImportBadge();   // fire-and-forget: check for pending online drawing requests (Supabase)
