@@ -1538,6 +1538,24 @@ body.m-mode #appRoot, body.m-mode #sideTabs { display: none !important; }
 }
 .cal-cell:hover .cell-add { opacity: 1; }
 .cell-tasks { display: flex; flex-direction: column; gap: 3px; }
+.cell-head .cell-fats { flex: 1 1 auto; min-width: 0; display: flex; gap: 3px; margin: 0 4px; overflow: hidden; }
+.fat-pill { display: inline-flex; align-items: center; gap: 3px; min-width: 0; max-width: 100%; height: 19px; padding: 0 5px; border-radius: 5px; border: 1px solid var(--l-f59e0b, #f59e0b); background: var(--b-fef3c7, #fef3c7); color: var(--t-92400e, #92400e); font: inherit; font-size: 10.5px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+.fat-pill .ico { width: 11px; height: 11px; flex: 0 0 auto; }
+.fat-pill .fat-pill-t { font-weight: 500; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.fat-pill.res-pass { opacity: .5; border-color: var(--l-a7e3c9, #a7e3c9); background: var(--b-ecfdf5, #ecfdf5); color: var(--t-047857, #047857); }
+.fat-pill.res-fail { opacity: .5; text-decoration: line-through; }
+.fat-more { font-size: 10.5px; font-weight: 700; color: var(--t-92400e, #92400e); align-self: center; }
+.fat-list { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
+.fat-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 4px 8px 4px 10px; border-radius: 8px; border: 1px solid var(--l-f59e0b, #f59e0b); background: var(--b-fffbeb, #fffbeb); }
+.fat-row.res-pass { border-color: var(--l-a7e3c9, #a7e3c9); background: var(--b-ecfdf5, #ecfdf5); }
+.fat-row.res-fail { border-color: var(--l-fecaca, #fecaca); background: var(--b-fef2f2, #fef2f2); }
+.fat-n { font-size: 12px; font-weight: 700; color: var(--text-dim); }
+.fat-time, .fat-res { height: 30px; border: 1px solid var(--border-strong); border-radius: 7px; padding: 0 6px; font: inherit; font-size: 13px; background: var(--panel); color: var(--text); }
+.fat-del { border: 0; background: transparent; color: var(--text-faint); cursor: pointer; font-size: 13px; padding: 4px; }
+.fat-del:hover { color: var(--danger); }
+.fat-add { border: 1px dashed var(--l-f59e0b, #f59e0b); background: transparent; color: var(--t-92400e, #92400e); border-radius: 8px; padding: 5px 11px; font: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer; }
+.m-fat { display: inline-flex; align-items: center; gap: 4px; margin: 4px 0 2px; padding: 2px 8px; border-radius: 999px; background: var(--b-fef3c7, #fef3c7); color: var(--t-92400e, #92400e); font-size: 12px; font-weight: 700; }
+.m-fat .ico { width: 12px; height: 12px; }
 .cell-tasks > * { flex: 0 0 auto; }  /* chips keep natural height (don't shrink) */
 .task-chip {
   display: flex; flex-direction: column; gap: 3px;
@@ -3215,6 +3233,19 @@ function authorAvatar(name, cls = "ta-av") {
   if (!p) for (const x of teamProfiles.values()) { if ((x.display_name || "").trim() === nm) { p = x; break; } }
   return avatarHtml(p || { id: nm, display_name: nm || "?" }, cls);
 }
+// ★ 2026-10-13 (owner) FAT = customer inspection appointment(s) on a project — FACTORY calendar only.
+//   task.fats = [{ id, date "YYYY-MM-DD", time "HH:MM"|"", result "wait"|"pass"|"fail" }] · several rounds (re-FAT).
+//   Not a deadline: QC keeps its own due (= when the cabinets can be released after fixing the comments).
+const FAT_BOARD = "factory";
+const TH_MON = ["ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.","ก.ค.","ส.ค.","ก.ย.","ต.ค.","พ.ย.","ธ.ค."];
+const FAT_RES = { wait: "รอตรวจ", pass: "ผ่าน", fail: "ไม่ผ่าน" };
+function fatBoardOn(bid) { return (bid || root.activeBoard) === FAT_BOARD; }
+function taskFats(t) { return (Array.isArray(t && t.fats) ? t.fats : []).filter(f => f && f.date); }
+function fatRoundNo(t, f) { return (t.fats || []).indexOf(f) + 1; }
+function fatWhen(f) { const d = fromIso(f.date); return `${d.getDate()} ${TH_MON[d.getMonth()]}${f.time ? " " + f.time : ""}`; }
+// the round to show on a card: the next one still waiting (else none)
+function nextFat(t) { return taskFats(t).filter(f => (f.result || "wait") === "wait").sort((a, b) => (a.date + (a.time || "")).localeCompare(b.date + (b.time || "")))[0] || null; }
+function fatOnDay(t, iso) { return taskFats(t).some(f => f.date === iso); }
 function editDistance(a, b) {
   const m = a.length, n = b.length; if (Math.abs(m - n) > 2) return 3;
   let prev = Array.from({ length: n + 1 }, (_, j) => j);
@@ -5067,6 +5098,7 @@ function renderMonth() {
   const tasksByDate = vDepts.length
     ? buildDeptItems(filteredTasks, vDepts)
     : buildCalendarItems(filteredTasks);
+  const fatTasks = !fatBoardOn() ? [] : filteredTasks.filter(t => taskFats(t).length && (!vDepts.length || vDepts.some(d => taskStage(t, d))));
 
   for (let i = 0; i < 42; i++) {
     const d = new Date(startDate);
@@ -5093,6 +5125,26 @@ function renderMonth() {
       <div class="cell-tasks"></div>
     `;
     const taskWrap = cell.querySelector(".cell-tasks");
+    if (fatTasks.length) {   // ★ 2026-10-13 FAT appointments of this day
+      const fl = [];
+      fatTasks.forEach(t => taskFats(t).forEach(f => { if (f.date === iso) fl.push({ t, f }); }));
+      if (fl.length) {
+        fl.sort((a, b) => (a.f.time || "99").localeCompare(b.f.time || "99"));
+        const wrap = document.createElement("span");
+        wrap.className = "cell-fats";
+        fl.slice(0, 2).forEach(({ t, f }) => {
+          const p = document.createElement("button");
+          p.type = "button";
+          p.className = "fat-pill res-" + (f.result || "wait");
+          p.title = `FAT รอบ ${fatRoundNo(t, f)} · ${taskLabel(t)}${f.time ? " · " + f.time : ""} · ${FAT_RES[f.result || "wait"]}`;
+          p.innerHTML = `${ico("flag")}<span>FAT${f.time ? " " + escapeHtml(f.time) : ""}</span><span class="fat-pill-t">${escapeHtml((t.so || "").trim() || t.title || "")}</span>`;
+          p.addEventListener("click", (e) => { e.stopPropagation(); openTaskModal(t.id); });
+          wrap.appendChild(p);
+        });
+        if (fl.length > 2) { const m = document.createElement("span"); m.className = "fat-more"; m.textContent = "+" + (fl.length - 2); m.title = fl.slice(2).map(x => taskLabel(x.t)).join("\n"); wrap.appendChild(m); }
+        cell.querySelector(".cell-date").after(wrap);
+      }
+    }
     // multi-day bars are placed by lane (with spacers for empty upper lanes) so each bar keeps
     // its row across every day it crosses; everything else stacks below in sorted order.
     const isSpanItem = it => !!it.position && it.position !== "single";   // project spans + department bars (stage.start)
@@ -6641,6 +6693,10 @@ function openTaskModal(taskId, defaults={}) {
           <label>แผนกที่ได้รับมอบหมาย <span class="need-stage-tag">${ico("alert")} ยังไม่ได้เลือก</span></label>
           <div class="stage-flow" data-stages></div>
         </div>
+        <div class="field" data-fat-field hidden>
+          <label>${ico("flag")} FAT</label>
+          <div class="fat-list" data-fats></div>
+        </div>
         <div class="field">
           <label>ตู้ <span class="tm-count" data-sub-count></span> <span class="muted" style="font-weight:400" data-cl-hint></span></label>
           <div class="subtask-list" data-subtasks></div>
@@ -7069,8 +7125,52 @@ function openTaskModal(taskId, defaults={}) {
       </div>`;
     }).join("") + `</div>`;
   }
+  // ★ 2026-10-13 FAT rounds (factory calendar only · editing = whoever may edit dates)
+  function renderFat() {
+    const box = modal.querySelector("[data-fat-field]"), list = modal.querySelector("[data-fats]");
+    if (!box || !list) return;
+    const ed = canEdit();
+    if (!fatBoardOn() || (!ed && !taskFats(task).length)) { box.hidden = true; return; }
+    box.hidden = false;
+    if (!Array.isArray(task.fats)) task.fats = [];
+    list.innerHTML = "";
+    task.fats.forEach((f, i) => {
+      const row = document.createElement("div");
+      row.className = "fat-row res-" + (f.result || "wait");
+      row.innerHTML = `<span class="fat-n">รอบ ${i + 1}</span><span class="fat-date-mount"></span>
+        <input type="time" class="fat-time" value="${escapeHtml(f.time || "")}" ${ed ? "" : "disabled"} />
+        <select class="fat-res" ${ed ? "" : "disabled"}>${Object.entries(FAT_RES).map(([k, v]) => `<option value="${k}" ${(f.result || "wait") === k ? "selected" : ""}>${v}</option>`).join("")}</select>
+        ${ed ? `<button type="button" class="fat-del" title="ลบรอบนี้">✕</button>` : ""}`;
+      const df = createDateField({ value: f.date || null, extraClass: "tm-date", onChange: (iso) => {
+        if (!canEdit()) { permDenied("สิทธิ์ของคุณแก้วันไม่ได้"); df.setValue(f.date || null); return; }
+        if (!iso) { df.setValue(f.date || null); return; }
+        f.date = iso; scheduleCommit(0);
+      } });
+      if (!ed) df.querySelectorAll("input,button").forEach(el => el.disabled = true);
+      row.querySelector(".fat-date-mount").replaceWith(df);
+      row.querySelector(".fat-time").addEventListener("change", (e) => { if (!canEdit()) return; f.time = e.target.value || ""; scheduleCommit(0); });
+      row.querySelector(".fat-res").addEventListener("change", (e) => { if (!canEdit()) return; f.result = e.target.value; row.className = "fat-row res-" + f.result; scheduleCommit(0); });
+      row.querySelector(".fat-del")?.addEventListener("click", async () => {
+        if (!canEdit()) return;
+        if (!await confirmDialog({ icon: "trash", title: `ลบ FAT รอบ ${i + 1}?`, message: fatWhen(f), confirmText: "ลบ", danger: true })) return;
+        task.fats = task.fats.filter(x => x !== f); renderFat(); scheduleCommit(0);
+      });
+      list.appendChild(row);
+    });
+    if (ed) {
+      const add = document.createElement("button");
+      add.type = "button"; add.className = "fat-add"; add.textContent = task.fats.length ? "+ เพิ่มรอบ FAT" : "+ นัด FAT";
+      add.addEventListener("click", () => {
+        const last = task.fats[task.fats.length - 1];
+        task.fats.push({ id: uid("fat"), date: todayIso(), time: (last && last.time) || "", result: "wait" });
+        renderFat(); scheduleCommit(0);
+      });
+      list.appendChild(add);
+    }
+  }
   function renderStages() {
     renderFlow();
+    renderFat();
     stageWrap.innerHTML = "";
     // ★ 2026-10-08: a project with no department shows on no department's calendar → mark the section until one is picked
     modal.querySelector("[data-stage-field]")?.classList.toggle("need-stage", needsStage());
@@ -7840,9 +7940,13 @@ function openTaskModal(taskId, defaults={}) {
       local = { ...base, comments: task.comments };
       if (canTick()) {   // copy only each item's done flag (by id) — names, cabinets, dates, statuses stay as saved
         const mine = new Map();
-        (task.subtasks || []).forEach(sx => (sx.checklist || []).forEach(i => mine.set(sx.id + "|" + i.id, !!i.done)));
+        (task.subtasks || []).forEach(sx => (sx.checklist || []).forEach(i => mine.set(sx.id + "|" + i.id, i)));
+        // ★ 2026-10-13: the tick's who/when travels with it (the ติ๊กเช็คลิสต์ tier lost it → no avatar)
         local.subtasks = (base.subtasks || []).map(sx => ({ ...sx, checklist: (sx.checklist || []).map(i => {
-          const k = sx.id + "|" + i.id; return mine.has(k) ? { ...i, done: mine.get(k) } : i; }) }));
+          const m = mine.get(sx.id + "|" + i.id); if (!m) return i;
+          const out = { ...i, done: !!m.done };
+          ["doneBy", "doneByName", "doneAt"].forEach(f => { if (m.done && m[f] !== undefined) out[f] = m[f]; else delete out[f]; });
+          return out; }) }));
       }
     }
     else if (!(task.title || "").trim()) local = { ...task, title: base.title };
@@ -8212,6 +8316,20 @@ function diffTaskActivity(before, after) {
   const logs = [];
   if (!before) { logs.push("สร้างงาน"); return logs; }
   if ((before.so || "") !== (after.so || "")) logs.push(after.so ? `SO → ${after.so}` : "ลบ SO");
+  {   // ★ 2026-10-13 FAT rounds
+    const bF = new Map((before.fats || []).map(f => [f.id, f])), aF = after.fats || [];
+    aF.forEach((f, i) => {
+      if (!f.date) return;
+      const b = bF.get(f.id), n = i + 1;
+      if (!b || !b.date) logs.push(`นัด FAT รอบ ${n} → ${fatWhen(f)}`);
+      else {
+        if (b.date !== f.date || (b.time || "") !== (f.time || "")) logs.push(`เลื่อน FAT รอบ ${n} → ${fatWhen(f)}`);
+        if ((b.result || "wait") !== (f.result || "wait")) logs.push(`FAT รอบ ${n}: ${FAT_RES[f.result || "wait"]}`);
+      }
+    });
+    const aIds = new Set(aF.map(f => f.id));
+    (before.fats || []).forEach(f => { if (f.date && !aIds.has(f.id)) logs.push(`ลบ FAT ${fatWhen(f)}`); });
+  }
   if (before.statusId !== after.statusId)
     logs.push(`เปลี่ยนสถานะ: ${getStatus(before.statusId).name} → ${getStatus(after.statusId).name}`);
   if (before.date !== after.date)
@@ -12654,7 +12772,7 @@ function mItems() {
 function mDayItems(dayIso) {
   const dep = mDept();
   return (state.tasks || []).map(t => ({ t, due: dep ? (taskStage(t, dep) ? ((taskStage(t, dep) || {}).due || t.date) : null) : t.date }))
-    .filter(x => x.due === dayIso)
+    .filter(x => x.due === dayIso || (fatBoardOn() && x.due !== null && fatOnDay(x.t, dayIso)))   // ★ 2026-10-13 + FAT that day
     .map(x => ({ ...x, done: dep ? isDeptComplete(x.t, dep) : projectComplete(x.t) }))
     .sort((a, b) => (a.done - b.done) || (a.t.title || "").localeCompare(b.t.title || "", "th"));
 }
@@ -12849,6 +12967,7 @@ function mCardHtml(t, due, dep, bid) {
       <div class="m-e1">${ring}<div class="m-e1-main">
         <div class="m-title">${escapeHtml(t.title || "(ไม่มีชื่องาน)")}</div>
         ${refs || other ? `<div class="m-refs">${other}${refs}</div>` : ""}
+        ${(() => { const f = fatBoardOn(bid) ? nextFat(t) : null; return f ? `<span class="m-fat">${ico("flag")}FAT รอบ ${fatRoundNo(t, f)} · ${escapeHtml(fatWhen(f))}</span>` : ""; })()}
         ${segs}
         <div class="m-e1-foot">${stepTxt}${cabTxt}${owners}</div>
       </div></div>
@@ -13072,7 +13191,7 @@ function renderMobile() {
     const dep = mDept(), day = new Date(); day.setDate(day.getDate() + mDay);
     const iso = isoDate(day);
     const deptDay = mDayItems(iso).map(x => ({ ...x, dep, bid: root.activeBoard }));
-    const mineDay = mMineItems().filter(x => x.due === iso && mSearchHit(x.t)).sort((a, b) => (a.done - b.done) || (a.t.title || "").localeCompare(b.t.title || "", "th"));
+    const mineDay = mMineItems().filter(x => (x.due === iso || (fatBoardOn(x.bid) && fatOnDay(x.t, iso))) && mSearchHit(x.t)).sort((a, b) => (a.done - b.done) || (a.t.title || "").localeCompare(b.t.title || "", "th"));
     el.querySelector("[data-mcnt0]").textContent = deptDay.length;
     el.querySelector("[data-mcnt1]").textContent = mineDay.length;
     const list2 = mine ? mineDay : deptDay;
