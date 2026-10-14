@@ -942,6 +942,21 @@ html, body { touch-action: manipulation; }
 .g-bar.clip-r { border-top-right-radius:0; border-bottom-right-radius:0; border-right-style:dashed; }
 .g-bar.starts-today { box-shadow: -3px 0 0 0 var(--accent); }
 /* department-due dots sit in a lane just ABOVE the bar; same-day dots are spread so none hides */
+.g-lab2 { display: flex; flex-direction: column; min-width: 0; gap: 2px; }
+.g-lab-t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.g-lab-s { font-size: 11px; color: var(--text-faint); display: flex; align-items: center; gap: 4px; }
+.g-step { display: inline-flex; align-items: center; gap: 3px; padding: 0 7px; border-radius: 999px; font-weight: 700; color: var(--dc); background: color-mix(in srgb, var(--dc) 14%, transparent); }
+.g-step.late { color: var(--danger); background: color-mix(in srgb, var(--danger) 12%, transparent); }
+.g-step.ok { color: #10b981; background: color-mix(in srgb, #10b981 12%, transparent); }
+.g-step .ico { width: 11px; height: 11px; }
+.g-seg { position: absolute; top: 14px; height: 24px; border-radius: 6px; z-index: 1; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 3px; overflow: hidden; white-space: nowrap;
+  font-size: 11px; font-weight: 700; color: var(--dc); background: color-mix(in srgb, var(--dc) 16%, var(--b-ffffff, #fff)); }
+.g-seg span { overflow: hidden; text-overflow: ellipsis; padding: 0 4px; }
+.g-seg .ico { width: 11px; height: 11px; flex: 0 0 auto; }
+.g-seg.done { background: var(--dc); color: #fff; opacity: .5; }
+.g-seg.cur { background: var(--dc); color: #fff; box-shadow: 0 0 0 2px var(--b-ffffff, #fff), 0 0 0 4px var(--dc); z-index: 2; }
+.g-seg.cur.late { box-shadow: 0 0 0 2px var(--b-ffffff, #fff), 0 0 0 4px var(--danger); }
+.g-seg:hover { filter: brightness(.96); }
 .g-marker {
   position: absolute; top: 4px; width: 13px; height: 13px;
   transform: translateX(-50%);
@@ -5363,7 +5378,40 @@ function syncLinkedDepts() {
   return changed;
 }
 let _deptSyncing = false;
+// ★ 2026-10-14 (owner): a drawing request finished on the เขียนแบบ calendar → tell the person who asked for it.
+//   Who: the app account whose name = "ชื่อผู้ยื่น", else the account that filed it in the app. Sent once (request.doneNotified)
+//   as a personal alert (bell + รับทราบ) + web push. Only completions made on THIS device count: saveState() compares with
+//   the snapshot taken at the last renderAll() (remote merges re-render first, so they are never seen as "new").
+let _drawDoneSnap = null;
+function drawDoneIds() {
+  const ws = root && root.boards && root.boards.drawing; if (!ws) return null;
+  return mWithBoard("drawing", () => new Set((ws.tasks || []).filter(t => t.request && (projectComplete(t) || isStatusDone(getStatus(t.statusId)))).map(t => t.id)));
+}
+function drawRequesterId(r) {
+  const nm = String(r.submitter || "").trim().toLowerCase();
+  const byName = nm && [...teamProfiles.values()].find(p => p.approved && !p.blocked && [p.display_name, personName(p)].some(x => String(x || "").trim().toLowerCase() === nm));
+  return (byName && byName.id) || r.filedById || "";
+}
+function notifyDrawRequesters() {
+  if (!_drawDoneSnap) return;
+  const now = drawDoneIds(); if (!now) return;
+  const ws = root.boards.drawing;
+  now.forEach(id => {
+    if (_drawDoneSnap.has(id)) return;
+    const t = (ws.tasks || []).find(x => x.id === id), r = t && t.request;
+    if (!r || r.doneNotified) return;
+    r.doneNotified = Date.now();
+    const to = drawRequesterId(r);
+    if (!to || (currentProfile && to === currentProfile.id)) return;
+    const c = { id: uid("al"), type: "alert", kind: "drawdone", author: currentUser(), toUser: to, text: `✅ เขียนแบบเสร็จแล้ว${t.avt ? " · DWG " + t.avt : ""}`, at: Date.now(), ack: false };
+    if (!Array.isArray(t.comments)) t.comments = [];
+    t.comments.push(c);
+    try { sendPush({ userIds: [to], boardId: "drawing", taskId: t.id, title: "📐 เขียนแบบเสร็จแล้ว", body: `${taskLabel(t)}${t.avt ? " · DWG " + t.avt : ""} · โดย ${currentUser()}`, tag: "rt-drdone-" + t.id }); } catch (e) { console.warn("drawdone push", e); }
+  });
+  _drawDoneSnap = now;
+}
 function saveState() {
+  try { notifyDrawRequesters(); } catch (e) { console.warn("drawdone", e); }
   if (!_deptSyncing && root && root.activeBoard === "factory") {   // a department edit at โรงงาน → ออกไซต์ follows
     _deptSyncing = true; try { syncLinkedDepts(); } catch (e) { console.warn("dept sync", e); } _deptSyncing = false;
   }
@@ -5686,8 +5734,8 @@ function notifyRemoteBoardChange(ws, newTasks, oldTasksById, savedBy) {
       if (commentFresh(c, before) && Array.isArray(c.mentions) && c.mentions.includes(meId) && (seen || crossMentionOn(ws))) {
         try { sysNotify("💬 มีคนกล่าวถึงคุณ", { body: `${t.title} · ${c.author || ""}: ${c.text || ""}`.slice(0, 180), tag: "rt-men-" + c.id, renotify: true }); } catch (e) {}
       }
-      if (seen && c.type === "alert" && !c.ack && c.toUser === meId && commentFresh(c, before)) {
-        try { sysNotify("📌 มีงานมอบหมายให้คุณ", { body: `${t.title}${c.author ? " · จาก " + c.author : ""}`, tag: "rt-asg-" + c.id, renotify: true }); } catch (e) {}
+      if ((seen || c.kind === "drawdone") && c.type === "alert" && !c.ack && c.toUser === meId && commentFresh(c, before)) {
+        try { sysNotify(c.kind === "drawdone" ? "📐 เขียนแบบเสร็จแล้ว" : "📌 มีงานมอบหมายให้คุณ", { body: `${t.title}${c.author ? (c.kind === "drawdone" ? " · โดย " : " · จาก ") + c.author : ""}`, tag: "rt-asg-" + c.id, renotify: true }); } catch (e) {}
       }
     });
   });
@@ -7171,7 +7219,7 @@ function salesOptionsHtml(cur) {
 }
 // routes one drawing request into a task. returns { boardName, attached, title } for the caller's toast/summary.
 function routeDrawingRequest({ kind, project, so, dwg, due, detail, submitter, sales, photo, files, driveFolderId, imported, sentAt }) {
-  const reqMeta = { kind, dwgNo: dwg, submitter, salesTeam: sales, at: sentAt || Date.now(), ...(so ? { so } : {}) };
+  const reqMeta = { kind, dwgNo: dwg, submitter, salesTeam: sales, at: sentAt || Date.now(), ...(so ? { so } : {}), ...(!imported && currentProfile ? { filedById: currentProfile.id } : {}) };
   const summary = [`📐 คำขอเขียนแบบวงจรไฟฟ้า${kind === "structure" ? "" : " (ปฏิทินผลิต)"}`, ...(so ? [`SO: ${so}`] : []), `เลข DWG: ${dwg}`, `ผู้ยื่น: ${submitter}${sales ? ` · Sales: ${sales}` : ""}`].concat(detail ? [detail] : []).join("\n");
 
   if (kind === "structure") {
@@ -11899,6 +11947,12 @@ function renderDashboard() {
     const fatOn = fatBoardOn();
     const fat7 = !fatOn ? [] : tasks.flatMap(t => taskFats(t).filter(f => fatRes(f) !== "pass" && f.date >= today && f.date <= in7).map(f => ({ t, f })));
     const shipMonth = tasks.filter(t => (t.date || "").slice(0, 7) === month);
+    // ★ 2026-10-14 (owner) รอส่งมอบ: every other department finished, only the ส่งมอบ step left (built but not shipped)
+    const shipDept = (state.departments || []).find(d => d.id === "d_deliver") || (state.departments || []).find(d => /ส่งมอบ|deliver/i.test(d.name || "")) || null;
+    const shipDue = t => ((shipDept && taskStage(t, shipDept.id)) || {}).due || t.date || "";
+    const waitShip = !shipDept ? [] : tasks.filter(t => taskStage(t, shipDept.id) && !isDeptComplete(t, shipDept.id) && !projectComplete(t)
+      && (t.deptStages || []).filter(x => x.deptId !== shipDept.id && getDept(x.deptId)).every(x => isDeptComplete(t, x.deptId)));
+    const waitLate = waitShip.filter(t => shipDue(t) && shipDue(t) < today).length;
     // cabinets to build this month: their production date (department named ผลิต…) — else the cabinet / project date
     const prodDept = (state.departments || []).find(d => /ผลิต/.test(d.name || "")) || null;
     let cabN = 0, cabDone = 0;
@@ -11919,6 +11973,7 @@ function renderDashboard() {
         <div class="ov-card ov-click" data-ovk="cabs"><div class="ov-lbl">ตู้ที่ต้องผลิตเดือนนี้</div><div class="ov-num">${cabN}</div><div class="ov-lbl">เสร็จ ${cabDone}</div></div>
         ${fatOn ? `<div class="ov-card ov-click" data-ovk="fat"><div class="ov-lbl">FAT 7 วัน</div><div class="ov-num fat">${fat7.length}</div></div>` : ""}
         <div class="ov-card ov-click" data-ovk="ship"><div class="ov-lbl">ส่งมอบเดือนนี้</div><div class="ov-num">${shipMonth.length}</div><div class="ov-lbl">เสร็จ ${shipMonth.filter(isComp).length}</div></div>
+        ${shipDept ? `<div class="ov-card ov-click" data-ovk="waitship"><div class="ov-lbl">รอส่งมอบ</div><div class="ov-num">${waitShip.length}</div>${waitLate ? `<div class="ov-lbl bad">เลยกำหนดส่ง ${waitLate}</div>` : ""}</div>` : ""}
       </div></div>`;
     const deptRings = deptRows.length ? `<div class="ov-h">แผนก${lockDept ? "" : ` <span class="ov-sub">กดเพื่อกรองโครงการ</span>`}</div><div class="ov-depts">${deptRows.map(r => {
       const act = r.using - r.projDone, rp = r.total ? r.pct : Math.round(r.projDone / r.using * 100), col = r.projOverdue ? BAD : rp >= 100 ? OK : ACC;
@@ -12070,6 +12125,8 @@ function renderDashboard() {
       active: () => ({ title: `กำลังทำ · ${active.length} โครงการ`, rows: active.slice().sort(byDue).map(projRow) }),
       late: () => { const l = active.filter(isLate).sort(byDue); return { title: `เลยกำหนด · ${l.length} โครงการ`, rows: l.map(projRow) }; },
       ship: () => ({ title: `ส่งมอบเดือนนี้ · ${shipMonth.length} โครงการ`, rows: shipMonth.slice().sort((a, b) => (a.date || "").localeCompare(b.date || "")).map(t => { const r = projRow(t); if (!isComp(t)) r.tag = `<span class="ov-tag${t.date < today ? " bad" : ""}">ส่ง ${escapeHtml(shortTH(t.date))}</span>`; return r; }) }),
+      waitship: () => ({ title: `รอส่งมอบ · ${waitShip.length} โครงการ`, rows: waitShip.slice().sort((a, b) => (shipDue(a) || "9999").localeCompare(shipDue(b) || "9999")).map(t => { const r = projRow(t), d = shipDue(t);
+        r.ring = ring(100, 40, OK); r.tag = !d ? `<span class="ov-tag ship">ผลิตเสร็จ</span>` : d < today ? `<span class="ov-tag bad">เลยกำหนดส่ง ${-daysTo(d)} วัน</span>` : `<span class="ov-tag ship">ส่ง ${escapeHtml(shortTH(d))}</span>`; return r; }) }),
       fat: () => ({ title: `FAT 7 วันข้างหน้า · ${fat7.length}`, rows: fat7.slice().sort((a, b) => (a.f.date + (a.f.time || "")).localeCompare(b.f.date + (b.f.time || ""))).map(({ t, f }) => ({ t, date: f.date, title: taskLabel(t), sub: `FAT รอบ ${fatRoundNo(t, f)}`, tag: `<span class="ov-tag fat">${escapeHtml(f.time ? f.time + " น." : "ไม่ระบุเวลา")}</span>` })) }),
       cabs: () => ({ title: `ตู้ที่ต้องผลิตเดือนนี้ · ${cabN} ตู้ (เสร็จ ${cabDone})`, filters: true, rows: cabList.slice().sort((a, b) => (a.due || "").localeCompare(b.due || "")).map(c => ({ t: c.t, date: c.due, done: c.done,
         title: [c.sb.mo, c.sb.text].filter(Boolean).join(" · ") || "(ไม่มีชื่อตู้)", sub: taskLabel(c.t),
@@ -12410,8 +12467,24 @@ function renderGantt() {
       const due = stg.due || t.date;
       return { t, start: (stg.start && stg.start < due) ? stg.start : due, due };
     }
-    const start = (t.startDate && t.startDate < t.date) ? t.startDate : t.date;
-    return { t, start, due: t.date };
+    let start = (t.startDate && t.startDate < t.date) ? t.startDate : t.date, due = t.date;
+    // ★ 2026-10-14 (owner, แบบ A): one bar split into the departments' spans — a stage runs from its own start (else the day
+    //   after the previous stage's due, else the project start) to its due; done = faded ✓, current = outlined (red when late)
+    const segs = [];
+    let prev = start;
+    (t.deptStages || []).filter(x => getDept(x.deptId)).forEach(x => {
+      const e = x.due || t.date; if (!e) return;
+      let a = x.start || (segs.length ? isoDate(new Date(fromIso(prev).getTime() + 86400000)) : (prev || e));
+      if (!a || a > e) a = e;
+      segs.push({ stg: x, a, e, done: isDeptComplete(t, x.deptId) });
+      prev = e;
+    });
+    if (segs.length) {
+      const ci = segs.findIndex(g => !g.done);
+      if (ci >= 0) { segs[ci].cur = true; segs[ci].late = segs[ci].e < todayIso(); }
+      segs.forEach(g => { if (!start || g.a < start) start = g.a; if (!due || g.e > due) due = g.e; });
+    }
+    return { t, start, due, segs };
   }).filter(x => x.start && x.due && x.start <= reIso && x.due >= rsIso)               // intersects this month
     .sort((a,b) => a.start.localeCompare(b.start)
       || (prRank[b.t.priority]||0)-(prRank[a.t.priority]||0)
@@ -12431,7 +12504,7 @@ function renderGantt() {
   let rowsHtml = "";
   if (rows.length === 0) {
     rowsHtml = `<div class="g-empty">ไม่มีงานในเดือนนี้</div>`;
-  } else rows.forEach(({ t, start, due }) => {
+  } else rows.forEach(({ t, start, due, segs }) => {
     const st = getStatus(t.statusId);
     const pr = getPriority(t.priority);
     const s = Math.max(0, dayIdx(start));
@@ -12459,6 +12532,23 @@ function renderGantt() {
         markers += `<span class="g-marker${done?' done':''}" style="left:${x}px;background:${dept?dept.color:'#888'}" title="${escapeHtml(dept?dept.name:'')} • ${formatDateTH(stg.due)}${done?' ✓':''}"></span>`;
       });
     });
+    if (segs && segs.length) {
+      const ci = segs.findIndex(g => g.cur), cur = ci >= 0 ? segs[ci] : null, cd = cur && getDept(cur.stg.deptId);
+      const tag = !cur ? `<span class="g-step ok">${ico("check")} ครบทุกแผนก</span>`
+        : `<span class="g-step${cur.late ? " late" : ""}" style="--dc:${cd.color}">${escapeHtml(cd.name)}${cur.late ? ` · เลย ${Math.round((fromIso(todayStr) - fromIso(cur.e)) / 86400000)} วัน` : ""}</span>`;
+      const segHtml = segs.map(g => {
+        if (g.e < rsIso || g.a > reIso) return "";
+        const d = getDept(g.stg.deptId), a = Math.max(0, dayIdx(g.a)), b = Math.min(N - 1, dayIdx(g.e));
+        return `<div class="g-seg${g.done ? " done" : ""}${g.cur ? " cur" : ""}${g.late ? " late" : ""}" style="left:calc(${a / N * 100}% + 1px);width:calc(${(b - a + 1) / N * 100}% - 2px);--dc:${d.color}"
+          title="${escapeHtml(d.name)} · ${formatDateTH(g.a)} → ${formatDateTH(g.e)}${g.done ? " ✓" : g.late ? " · เลยกำหนด" : ""}">${g.done ? ico("check") : ""}<span>${escapeHtml(d.name)}</span></div>`;
+      }).join("");
+      rowsHtml += `
+      <div class="g-row g-row-seg" data-id="${t.id}">
+        <div class="g-label" title="${escapeHtml(taskLabel(t))}"><div class="g-lab2"><span class="g-lab-t">${pr.id!=='none'?priFlag(pr)+' ':''}${escapeHtml(t.title)}</span><span class="g-lab-s">${ci >= 0 ? `ขั้น ${ci + 1}/${segs.length} ` : ""}${tag}</span></div></div>
+        <div class="g-track">${bg}${todayLine}${segHtml}</div>
+      </div>`;
+      return;
+    }
     rowsHtml += `
       <div class="g-row" data-id="${t.id}">
         <div class="g-label" title="${escapeHtml(t.title)}">${pr.id!=='none'?priFlag(pr)+' ':''}${escapeHtml(t.title)}</div>
@@ -12476,7 +12566,7 @@ function renderGantt() {
 
   wrap.innerHTML = `
     <div class="g-scroll">
-      <div class="g-inner" style="--g-dayarea:${N*DAYW}px;--g-label:170px">
+      <div class="g-inner" style="--g-dayarea:${N*DAYW}px;--g-label:210px">
         <div class="g-head"><div class="g-corner">โปรเจค${gDept ? ` · ${escapeHtml((getDept(gDept) || {}).name || "")}` : ""}</div><div class="g-days">${daysHtml}</div></div>
         <div class="g-rows">${rowsHtml}</div>
       </div>
@@ -14488,6 +14578,7 @@ function renderAll() {
   renderUserBadge();   // keep the department chip in sync when it changes
   try { renderMobile(); } catch (e) { console.warn("mobile view", e); }   // phone layout (never breaks the desktop one)
   document.dispatchEvent(new Event("app-rendered"));   // an open task popup refreshes itself from the saved data
+  try { _drawDoneSnap = drawDoneIds(); } catch (_) {}
 }
 // hide the create/draw/import buttons for members below "full" (they'd only get a permission toast)
 function applySidebarPerm() {
