@@ -528,6 +528,8 @@ body.m-mode #appRoot, body.m-mode #sideTabs { display: none !important; }
 .m-group.mg-over .m-group-h { color: #ef4444; }
 .m-group.mg-today .m-group-h { color: var(--accent); }
 .m-group.mg-hold { opacity: .75; }
+/* ★ 2026-10-14 (owner): no double-tap zoom on phones (pinch zoom still works) */
+html, body { touch-action: manipulation; }
 .m-card { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; margin-bottom: 10px; overflow: hidden; }
 .m-card.mg-over { border-color: color-mix(in srgb, #ef4444 45%, var(--border)); }
 .m-card.mg-today { border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); }
