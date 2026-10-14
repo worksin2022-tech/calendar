@@ -957,6 +957,8 @@ html, body { touch-action: manipulation; }
 .g-seg.cur { background: var(--dc); color: #fff; box-shadow: 0 0 0 2px var(--b-ffffff, #fff), 0 0 0 4px var(--dc); z-index: 2; }
 .g-seg.cur.late { box-shadow: 0 0 0 2px var(--b-ffffff, #fff), 0 0 0 4px var(--danger); }
 .g-seg:hover { filter: brightness(.96); }
+.g-seg.mine { overflow: visible; }
+.g-seg.mine::after { content: ""; position: absolute; left: 2px; right: 2px; bottom: -6px; height: 3px; border-radius: 2px; background: var(--dc); }
 .g-marker {
   position: absolute; top: 4px; width: 13px; height: 13px;
   transform: translateX(-50%);
@@ -12462,11 +12464,6 @@ function renderGantt() {
   //   department's dates (its start/due; no due → the project's). PM ("เห็นงานทั้งหมด") / no department → every project as before
   const gDept = isServiceBoard() ? "" : myViewDeptId();
   const rows = state.tasks.filter(matchesFilter(filter)).filter(t => !gDept || taskStage(t, gDept)).map(t => {
-    if (gDept) {
-      const stg = taskStage(t, gDept);
-      const due = stg.due || t.date;
-      return { t, start: (stg.start && stg.start < due) ? stg.start : due, due };
-    }
     let start = (t.startDate && t.startDate < t.date) ? t.startDate : t.date, due = t.date;
     // ★ 2026-10-14 (owner, แบบ A): one bar split into the departments' spans — a stage runs from its own start (else the day
     //   after the previous stage's due, else the project start) to its due; done = faded ✓, current = outlined (red when late)
@@ -12482,7 +12479,12 @@ function renderGantt() {
     if (segs.length) {
       const ci = segs.findIndex(g => !g.done);
       if (ci >= 0) { segs[ci].cur = true; segs[ci].late = segs[ci].e < todayIso(); }
-      segs.forEach(g => { if (!start || g.a < start) start = g.a; if (!due || g.e > due) due = g.e; });
+      segs.forEach(g => { if (!start || g.a < start) start = g.a; if (!due || g.e > due) due = g.e; if (gDept && g.stg.deptId === gDept) g.mine = true; });
+    }
+    // own-department view: which projects show (and their order) still follows MY stage's dates — the bar shows every step
+    if (gDept) {
+      const stg = taskStage(t, gDept), d2 = stg.due || t.date;
+      return { t, start: (stg.start && stg.start < d2) ? stg.start : d2, due: d2, segs };
     }
     return { t, start, due, segs };
   }).filter(x => x.start && x.due && x.start <= reIso && x.due >= rsIso)               // intersects this month
@@ -12539,7 +12541,7 @@ function renderGantt() {
       const segHtml = segs.map(g => {
         if (g.e < rsIso || g.a > reIso) return "";
         const d = getDept(g.stg.deptId), a = Math.max(0, dayIdx(g.a)), b = Math.min(N - 1, dayIdx(g.e));
-        return `<div class="g-seg${g.done ? " done" : ""}${g.cur ? " cur" : ""}${g.late ? " late" : ""}" style="left:calc(${a / N * 100}% + 1px);width:calc(${(b - a + 1) / N * 100}% - 2px);--dc:${d.color}"
+        return `<div class="g-seg${g.done ? " done" : ""}${g.cur ? " cur" : ""}${g.late ? " late" : ""}${g.mine ? " mine" : ""}" style="left:calc(${a / N * 100}% + 1px);width:calc(${(b - a + 1) / N * 100}% - 2px);--dc:${d.color}"
           title="${escapeHtml(d.name)} · ${formatDateTH(g.a)} → ${formatDateTH(g.e)}${g.done ? " ✓" : g.late ? " · เลยกำหนด" : ""}">${g.done ? ico("check") : ""}<span>${escapeHtml(d.name)}</span></div>`;
       }).join("");
       rowsHtml += `
