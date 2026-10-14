@@ -527,6 +527,7 @@ body.m-mode #appRoot, body.m-mode #sideTabs { display: none !important; }
 .m-group-h span { font-weight: 600; opacity: .8; }
 .m-group.mg-over .m-group-h { color: #ef4444; }
 .m-group.mg-today .m-group-h { color: var(--accent); }
+.m-group.mg-hold { opacity: .75; }
 .m-card { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; margin-bottom: 10px; overflow: hidden; }
 .m-card.mg-over { border-color: color-mix(in srgb, #ef4444 45%, var(--border)); }
 .m-card.mg-today { border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); }
@@ -1297,6 +1298,9 @@ body.m-mode #appRoot, body.m-mode #sideTabs { display: none !important; }
 
 /* ===== Alert system (department alerts + photos in chat) ===== */
 .tb-bell { position: relative; padding: 6px 9px; }
+.tb-hold { display: inline-flex; align-items: center; gap: 5px; padding: 6px 10px; color: var(--text-dim); white-space: nowrap; }
+.tb-hold[hidden] { display: none; }
+.tb-hold b { background: var(--b-f2f4f7, #f2f4f7); color: var(--text); border-radius: 9px; padding: 0 6px; font-size: 11px; }
 /* circular "+" add button in the toolbar — the pill slides open to the LEFT over its neighbours on hover.
    (2026-10-07: it used to grow in the layout → on a one-row toolbar the extra width re-wrapped the row, the button
    slid away from the mouse, shrank, came back… the screen shook. The button keeps a fixed 32px slot now.) */
@@ -3226,6 +3230,7 @@ body.chip-dragging .task-chip.span-bar { pointer-events: none; }   /* let the da
       <div class="spacer"></div>
       <div class="tb-right">
         <div class="legend" id="legend"></div>
+        <button class="btn btn-sm tb-hold" id="btnHold" type="button" title="งานที่เลื่อนส่ง (ไม่อยู่ในแพลน)" hidden><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M10 15V9M14 15V9"/></svg>เลื่อนส่ง <b>0</b></button>
         <button class="btn btn-sm tb-bell" id="btnBell" title="การแจ้งเตือนถึงฉัน/แผนกฉัน — รวมทุกปฏิทิน"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><span class="tb-bell-badge" id="bellBadge" hidden>0</span></button>
         <button class="tb-add" id="btnQuickAdd" title="เพิ่มงานใหม่" aria-label="เพิ่มงานใหม่">
           <span class="tb-add-pill"><span class="tb-add-icon">+</span><span class="tb-add-text">เพิ่มงานใหม่</span></span>
@@ -4074,7 +4079,7 @@ function runDashTour() {
   document.addEventListener("keydown", onKey, true);
   show();
 }
-function openOvList({ title, rows, filters }) {
+function openOvList({ title, rows, filters, open }) {
   const ov = document.createElement("div");
   ov.className = "overlay ovl-overlay";
   let f = "all";
@@ -4089,7 +4094,7 @@ function openOvList({ title, rows, filters }) {
           <span class="ovl-m"><span class="ovl-t">${escapeHtml(r.title)}</span><span class="ov-lbl">${escapeHtml(r.sub || "")}</span></span>${r.tag || ""}</button>`; }).join("") : `<div class="ov-empty">ไม่มีรายการ</div>`}</div></div>`;
     ov.querySelector("[data-ovlx]").addEventListener("click", close);
     ov.querySelectorAll("[data-ovlf]").forEach(b => b.addEventListener("click", () => { f = b.dataset.ovlf; draw(); }));
-    ov.querySelectorAll("[data-ovli]").forEach(b => b.addEventListener("click", () => openProjectDashboard(rows[+b.dataset.ovli].t.id)));
+    ov.querySelectorAll("[data-ovli]").forEach(b => b.addEventListener("click", () => { const r = rows[+b.dataset.ovli]; open ? open(r) : openProjectDashboard(r.t.id); }));
   };
   const close = () => { ov.remove(); document.removeEventListener("keydown", onEsc, true); };
   const onEsc = (e) => { if (e.key === "Escape" && !document.querySelector(".overlay:not(.ovl-overlay)")) { e.stopPropagation(); close(); } };
@@ -5552,7 +5557,7 @@ async function pushChangedBoards(sb) {
       const before = root.boards[b.id];
       const oldById = {}; ((before && before.tasks) || []).forEach(t => oldById[t.id] = t);
       migrateState(cloudRow.data);
-      if (!savedByMe(cloudRow)) notifyRemoteBoardChange(cloudRow.data, cloudRow.data.tasks || [], oldById);
+      if (!savedByMe(cloudRow)) notifyRemoteBoardChange(cloudRow.data, cloudRow.data.tasks || [], oldById, cloudRow.updated_by);
       mergeBoardInto(b.id, cloudRow.data, cloudRow.updated_at);
       mergedAny = true;
     }
@@ -5659,7 +5664,14 @@ function getStatusIn(ws, id) { return (ws.statuses || []).find(s => s.id === id)
 function getDeptIn(ws, id) { return (ws.departments || []).find(d => d.id === id) || null; }
 // same notification rules as pushNotify()/canNotify()/taskRelevantToMe() further down, but reading the
 // REMOTE board's own settings — the board that just changed isn't necessarily the one on screen here.
-function notifyRemoteBoardChange(ws, newTasks, oldTasksById) {
+// ★ 2026-10-14 (owner): status notifications name who changed it — the newest activity line added to that task in this
+//   save (logActivity stamps its author); else whoever saved the board
+function changedByName(t, before, fallback) {
+  const old = new Set(((before && before.comments) || []).map(c => c.id));
+  const sys = (t.comments || []).filter(c => c.type === "system" && c.author && !old.has(c.id));
+  return sys.length ? sys[sys.length - 1].author : (fallback || "");
+}
+function notifyRemoteBoardChange(ws, newTasks, oldTasksById, savedBy) {
   const notify = myNotifyPrefs();
   if (!(typeof window !== "undefined" && "Notification" in window) || !notify.enabled || Notification.permission !== "granted") return;
   // personal alerts (assignments) — for me regardless of department, also on brand-new tasks
@@ -5697,11 +5709,12 @@ function notifyRemoteBoardChange(ws, newTasks, oldTasksById) {
   newTasks.forEach(t => {
     const before = oldTasksById[t.id];
     if (!before || !relevant(t)) return;   // brand-new task (no prior snapshot) or not my department — nothing to diff/notify
+    const who = changedByName(t, before, savedBy), by = who ? ` · โดย ${who}` : "";
     if (before.statusId !== t.statusId) {
       const ns = getStatusIn(ws, t.statusId), os = getStatusIn(ws, before.statusId);
       if (ns && os) {
         const done = ns.isDone && !os.isDone;
-        fire(done ? "done" : "status", done ? "✅ เสร็จแล้ว" : "🔁 เปลี่ยนสถานะ", `${t.title} → ${ns.name}`, "rt-st-" + t.id);
+        fire(done ? "done" : "status", done ? "✅ เสร็จแล้ว" : "🔁 เปลี่ยนสถานะ", `${t.title} → ${ns.name}${by}`, "rt-st-" + t.id);
       }
     }
     // cabinets: status / done
@@ -5711,12 +5724,12 @@ function notifyRemoteBoardChange(ws, newTasks, oldTasksById) {
       const ns = getStatusIn(ws, sub.statusId), os = getStatusIn(ws, b.statusId);
       if (!ns || !os) return;
       const done = ns.isDone && !os.isDone;
-      fire(done ? "done" : "status", done ? "✅ ตู้เสร็จ" : "🔁 เปลี่ยนสถานะตู้", `${t.title} · ตู้ “${sub.text || "-"}” → ${ns.name}`, "rt-sub-" + sub.id);
+      fire(done ? "done" : "status", done ? "✅ ตู้เสร็จ" : "🔁 เปลี่ยนสถานะตู้", `${t.title} · ตู้ “${sub.text || "-"}” → ${ns.name}${by}`, "rt-sub-" + sub.id);
     });
     // department finished
     (t.deptStages || []).forEach(stg => {
       const b = (before.deptStages || []).find(x => x.deptId === stg.deptId);
-      if (b && !b.done && stg.done) fire("done", "✅ แผนกเสร็จ", `${t.title} · ${(getDeptIn(ws, stg.deptId) || {}).name || ""}`, "rt-dd-" + t.id + stg.deptId);
+      if (b && !b.done && stg.done) fire("done", "✅ แผนกเสร็จ", `${t.title} · ${(getDeptIn(ws, stg.deptId) || {}).name || ""}${by}`, "rt-dd-" + t.id + stg.deptId);
     });
     // new comments / replies from others (mentions + alerts are handled above)
     const oldC = {}; (before.comments || []).forEach(c => oldC[c.id] = c);
@@ -5739,7 +5752,7 @@ function handleRealtimeBoardChange(payload) {
   migrateState(newWs);
   if (oldWs && !savedByMe(row)) {
     const oldTasksById = {}; (oldWs.tasks || []).forEach(t => oldTasksById[t.id] = t);
-    notifyRemoteBoardChange(newWs, newWs.tasks || [], oldTasksById);
+    notifyRemoteBoardChange(newWs, newWs.tasks || [], oldTasksById, row.updated_by);
   }
   // this device has unsent edits on that board → merge (keep both sides) instead of dropping either one;
   // the pending push then sends the merged copy with the new base
@@ -5827,6 +5840,33 @@ function taskStage(t, deptId) {
   return (t.deptStages || []).find(st => st.deptId === deptId) || null;
 }
 function isStatusDone(st) { return !!(st && st.isDone); }
+// ★ 2026-10-14 (owner): a status ticked "เลื่อน" (⚙ › สถานะงาน, e.g. "เลื่อนส่ง") takes the project / cabinet OFF the plan —
+//   not on the calendars, today panels, dashboard, daily report or overdue counts (its old date would keep counting late).
+//   Dates are kept untouched; it lives in the "เลื่อนส่ง" list until its status is changed back.
+function isStatusHold(st) { return !!(st && st.isHold && !st.isDone); }
+function taskOnHold(t) { return isStatusHold(getStatus(t.statusId)); }
+function subOnHold(sb) { return !!sb && isStatusHold(getStatus(sb.statusId)); }
+function holdItems() {
+  const out = [];
+  (state.tasks || []).forEach(t => {
+    if (taskOnHold(t)) { out.push({ t, sub: null }); return; }
+    (t.subtasks || []).forEach(sb => { if (subOnHold(sb)) out.push({ t, sub: sb }); });
+  });
+  return out;
+}
+function openHoldList() {
+  const items = holdItems();
+  openOvList({ title: `เลื่อนส่ง · ${items.length}`, open: r => { document.querySelectorAll(".ovl-overlay").forEach(n => n.remove()); openTaskModal(r.t.id); },
+    rows: items.map(({ t, sub }) => { const st = getStatus(sub ? sub.statusId : t.statusId), d = sub ? (sub.date || t.date) : t.date;
+      return { t, title: sub ? `ตู้ ${subLabel(sub)}` : taskLabel(t), sub: [sub ? taskLabel(t) : "", d ? `เดิม ${fromIso(d).getDate()} ${TH_MON[fromIso(d).getMonth()]}` : ""].filter(Boolean).join(" · "),
+        tag: `<span class="ov-tag" style="color:${st.color};border-color:${st.color}">${escapeHtml(st.name)}</span>` }; }) });
+}
+function renderHoldBtn() {
+  const b = document.getElementById("btnHold"); if (!b) return;
+  const n = holdItems().length;
+  b.hidden = !n;
+  b.querySelector("b").textContent = n;
+}
 // ★ 2026-10-09 วันที่จบงานจริง (task.actualEnd): filled with today when the task turns done (only if empty);
 //   back to not-done → cleared again, but only when it was filled automatically (a date typed by hand stays).
 //   every calendar (owner 2026-10-09: for the dashboard stats) — the box itself shows only on the drawing calendar. true = changed
@@ -6306,7 +6346,7 @@ function buildCalendarItems(tasks) {
   if (state.settings.showCabinetChips) {
     tasks.forEach(t => {
       (t.subtasks || []).forEach(s => {
-        if (s.date) {
+        if (s.date && !subOnHold(s)) {
           (out[s.date] = out[s.date] || []).push({ kind: "cabinet", task: t, sub: s });
         }
       });
@@ -6396,7 +6436,7 @@ function buildDeptItems(tasks, deptIds) {
         // ★ 2026-10-08: one PROJECT chip per day (same look as the normal department chip) carrying the cabinets due that
         //   day — a project whose cabinets fall on 3 days shows 3 chips; the counts are that day's cabinets only
         const byDay = new Map();
-        subs.forEach(sub => { const d = deptDueForView(t, sub, deptId); if (!d) return; if (!byDay.has(d)) byDay.set(d, []); byDay.get(d).push(sub); });
+        subs.forEach(sub => { const d = deptDueForView(t, sub, deptId); if (!d || subOnHold(sub)) return; if (!byDay.has(d)) byDay.set(d, []); byDay.get(d).push(sub); });
         byDay.forEach((group, d) => place(d, { kind: "deptgroup", task: t, stage: stg, subs: group }, t.id + "|" + deptId + "|" + d));
       } else {
         place(stg.due || t.date, { kind: "deptstage", task: t, stage: stg }, t.id + "|" + deptId);
@@ -6568,6 +6608,7 @@ function currentFilter() {
 }
 function matchesFilter(filter) {
   return (t) => {
+    if (taskOnHold(t)) return false;   // ★ เลื่อนส่ง → off the plan (every view that uses this filter)
     if (filter.mine && !isMyTask(t)) return false;
     if (filter.priority && filter.priority !== "all" && t.priority !== filter.priority) return false;
     if (filter.search) {
@@ -9125,7 +9166,7 @@ function openDayModal(dateIso) {
   } else {
     dayTasks = state.tasks.filter(t => taskCoversDate(t, dateIso)).filter(pass);
     state.tasks.filter(pass).forEach(t => {
-      (t.subtasks || []).forEach(s => { if (s.date === dateIso) dayCabs.push({ task: t, sub: s }); });
+      (t.subtasks || []).forEach(s => { if (s.date === dateIso && !subOnHold(s)) dayCabs.push({ task: t, sub: s }); });
     });
   }
 
@@ -9458,7 +9499,8 @@ function renderTodayPanel() {
 
   const showOverdue = tpDayOffset === 0;   // overdue backlog only on "today"; other days show just that day
   state.tasks.filter(pass).forEach(t => {
-    const subs = t.subtasks || [];
+    const subs = (t.subtasks || []).filter(s => !subOnHold(s));
+    if (!subs.length && (t.subtasks || []).length) return;
     const units = subs.length
       ? subs.map(s => ({ sub: s, ed: cabEffDate(t, s), done: subtaskDone(s) }))
       : [{ sub: null, ed: t.date, done: isStatusDone(getStatus(t.statusId)) }];
@@ -9584,7 +9626,8 @@ function renderTodayPanelDept(deptIds, today, pass) {
     state.tasks.filter(pass).forEach(t => {
       const stg = taskStage(t, deptId);
       if (!stg) return;
-      const subs = t.subtasks || [];
+      const subs = (t.subtasks || []).filter(s => !subOnHold(s));
+      if (!subs.length && (t.subtasks || []).length) return;
       // 2026-10-07: a project (or cabinet) whose STATUS is finished isn't overdue for any department, even when this
       // department's own tick/checklist was never done (e.g. imported finished jobs) — same as the all-departments view
       const taskFinished = isStatusDone(getStatus(t.statusId));
@@ -10068,11 +10111,15 @@ function buildStatusesPanel(container) {
         <label class="done-toggle" title="ถือเป็นเสร็จสิ้น — งาน/ตู้ที่อยู่ในสถานะนี้จะถูกขีดทับและนับเป็น 'เสร็จ'">
           <input type="checkbox" ${s.isDone?"checked":""} />เสร็จ
         </label>
+        <label class="done-toggle" title="เลื่อนส่ง — งาน/ตู้ในสถานะนี้ถูกนำออกจากแพลน ไม่นับเลยกำหนด">
+          <input type="checkbox" ${s.isHold?"checked":""} />เลื่อน
+        </label>
         <button class="btn btn-ghost btn-sm" data-act="up" title="ขึ้น">↑</button>
         <button class="btn btn-ghost btn-sm" data-act="down" title="ลง">↓</button>
         <button class="btn btn-ghost btn-sm btn-danger" data-act="del" title="ลบ">✕</button>
       `;
-      const [swatch, nameInput, doneLbl, upBtn, downBtn, delBtn] = row.children;
+      const [swatch, nameInput, doneLbl, holdLbl, upBtn, downBtn, delBtn] = row.children;
+      const holdCb = holdLbl.querySelector("input");
       const colorInput = swatch.querySelector("input");
       const doneCb = doneLbl.querySelector("input");
       // live updates: change state directly + save + refresh background (modal stays open, focus kept)
@@ -10081,7 +10128,8 @@ function buildStatusesPanel(container) {
         saveState(); renderAll();
       });
       nameInput.addEventListener("input", () => { s.name = nameInput.value; saveState(); renderAll(); });
-      doneCb.addEventListener("change", () => { s.isDone = doneCb.checked; saveState(); renderAll(); });
+      doneCb.addEventListener("change", () => { s.isDone = doneCb.checked; if (s.isDone) { s.isHold = false; holdCb.checked = false; } saveState(); renderAll(); });
+      holdCb.addEventListener("change", () => { s.isHold = holdCb.checked; if (s.isHold) { s.isDone = false; doneCb.checked = false; } saveState(); renderAll(); });
       upBtn.addEventListener("click", () => {
         if (i>0) { [state.statuses[i-1], state.statuses[i]] = [state.statuses[i], state.statuses[i-1]]; saveState(); renderRows(); renderAll(); }
       });
@@ -11855,7 +11903,7 @@ function renderDashboard() {
     const cabList = [];
     tasks.forEach(t => (t.subtasks || []).forEach(sb => {
       const due = prodDept && taskStage(t, prodDept.id) ? deptDueForView(t, sb, prodDept.id) : (sb.date || t.date);
-      if ((due || "").slice(0, 7) !== month) return;
+      if ((due || "").slice(0, 7) !== month || subOnHold(sb)) return;
       cabN++;
       const done = prodDept && taskStage(t, prodDept.id) ? cabDeptDone(t, sb, prodDept.id) : isStatusDone(getStatus(sb.statusId));
       if (done) cabDone++;
@@ -12244,7 +12292,7 @@ function buildWorkOrderSheet(deptId, day) {
   // collect tasks with cabinets (or the project itself) due this day for this department
   const entries = [];
   (state.tasks || []).forEach(t => {
-    const stg = taskStage(t, deptId); if (!stg) return;
+    const stg = taskStage(t, deptId); if (!stg || taskOnHold(t)) return;
     const subs = t.subtasks || [];
     const units = subs.length
       ? subs.map(s => ({ sub: s, ed: deptDueForView(t, s, deptId) }))
@@ -13633,7 +13681,7 @@ function statusReportHasContent() {
     return p.total > 0 ? p.done === p.total : isStatusDone(getStatus(t.statusId));
   };
   const today = todayIso(), dueOf = t => deptId ? ((taskStage(t, deptId) || {}).due || t.date) : t.date;
-  return (state.tasks || []).some(t => (deptId ? !!taskStage(t, deptId) : true) && reportDueNow(dueOf(t), today) && !isComplete(t));
+  return (state.tasks || []).some(t => !taskOnHold(t) && (deptId ? !!taskStage(t, deptId) : true) && reportDueNow(dueOf(t), today) && !isComplete(t));
 }
 // ★ 2026-10-12 (owner): the report shows only today's work + overdue (not everything still open)
 function reportDueNow(due, today) { return !!due && due <= today; }
@@ -13653,7 +13701,7 @@ function openStatusReport() {
   };
   const dueOf = t => deptId ? ((taskStage(t, deptId) || {}).due || t.date) : t.date;
 
-  const scope = state.tasks.filter(t => deptId ? !!taskStage(t, deptId) : true);
+  const scope = state.tasks.filter(t => !taskOnHold(t) && (deptId ? !!taskStage(t, deptId) : true));
   const pending = scope.filter(t => reportDueNow(dueOf(t), today) && !isComplete(t));
   const overCount = pending.filter(t => dueOf(t) < today).length, todayCount = pending.length - overCount;
   const prRank = { urgent: 4, high: 3, medium: 2, low: 1, none: 0 };
@@ -13925,7 +13973,7 @@ function mGroupOf(iso) {
   const n = Math.round((fromIso(iso) - fromIso(todayIso())) / 86400000);
   return n < 0 ? "over" : n === 0 ? "today" : n === 1 ? "tom" : n <= 7 ? "week" : "later";
 }
-const M_GROUPS = [["over", "เลยกำหนด"], ["today", "วันนี้"], ["tom", "พรุ่งนี้"], ["week", "ภายใน 7 วัน"], ["later", "ถัดไป"], ["none", "ไม่มีวันกำหนด"]];
+const M_GROUPS = [["over", "เลยกำหนด"], ["today", "วันนี้"], ["tom", "พรุ่งนี้"], ["week", "ภายใน 7 วัน"], ["later", "ถัดไป"], ["none", "ไม่มีวันกำหนด"], ["hold", "เลื่อนส่ง"]];
 function mItems() {
   const dep = mDept(), q = mSearch.trim().toLowerCase();
   return (state.tasks || []).filter(t => {
@@ -13942,7 +13990,7 @@ function mItems() {
 // งานวันนี้: what is due on the chosen day for this department (finished ones too — shown as done, after the open ones)
 function mDayItems(dayIso) {
   const dep = mDept();
-  return (state.tasks || []).map(t => ({ t, due: dep ? (taskStage(t, dep) ? ((taskStage(t, dep) || {}).due || t.date) : null) : t.date }))
+  return (state.tasks || []).filter(t => !taskOnHold(t)).map(t => ({ t, due: dep ? (taskStage(t, dep) ? ((taskStage(t, dep) || {}).due || t.date) : null) : t.date }))
     .filter(x => x.due === dayIso || (fatBoardOn() && x.due !== null && fatOnDay(x.t, dayIso)))   // ★ 2026-10-13 + FAT that day
     .map(x => ({ ...x, done: dep ? isDeptComplete(x.t, dep) : projectComplete(x.t) }))
     .sort((a, b) => (a.done - b.done) || (a.t.title || "").localeCompare(b.t.title || "", "th"));
@@ -14085,7 +14133,8 @@ function mCardHtml(t, due, dep, bid) {
   const cabDone = cabs.filter(x => { const p = checklistProgress(x, dep || null); return p.done === p.total; }).length;
   const pct = cabs.length ? Math.round(cabDone / cabs.length * 100) : (done ? 100 : 0);
   const st = getStatus(t.statusId);
-  const g = done ? "done" : mGroupOf(due);
+  const hold = !done && taskOnHold(t);
+  const g = done ? "done" : hold ? "hold" : mGroupOf(due);
   const refs = [taskAvt(t), (t.so || "").trim()].filter(Boolean).map(x => `<span class="m-ref">${escapeHtml(x)}</span>`).join("");
   let body = "";
   if (open) {
@@ -14123,7 +14172,7 @@ function mCardHtml(t, due, dep, bid) {
   const ring = `<div class="m-ring${done ? " full" : ""}"><svg viewBox="0 0 46 46" aria-hidden="true"><circle cx="23" cy="23" r="${R}" class="m-ring-bg"/>${iPct > 0 ? `<circle cx="23" cy="23" r="${R}" class="m-ring-fg" style="stroke:${ringCol}" stroke-dasharray="${(C * iPct / 100).toFixed(1)} ${C.toFixed(1)}"/>` : ""}</svg><span class="m-ring-t">${ringTxt}</span><span class="m-ring-sub">${items.total ? `${items.done}/${items.total}` : "ไม่มีเช็คลิสต์"}</span></div>`;
   const stages = isServiceBoard() ? [] : (t.deptStages || []).filter(x => getDept(x.deptId));
   const sDone = stages.map(x => isDeptComplete(t, x.deptId)), cur = sDone.indexOf(false);
-  const curOver = cur >= 0 && (() => { const d = stages[cur].due || t.date; return d && d < todayIso(); })();
+  const curOver = !hold && cur >= 0 && (() => { const d = stages[cur].due || t.date; return d && d < todayIso(); })();
   const segs = stages.length >= 2 ? `<div class="m-segbar">${stages.map((x, i) => `<span class="${sDone[i] ? "done" : i === cur ? (curOver ? "cur over" : "cur") : ""}" title="${escapeHtml((getDept(x.deptId) || {}).name || "")}"></span>`).join("")}</div>` : "";
   const stepTxt = !stages.length ? "" : cur === -1 ? `<span class="m-step ok">ครบทุกแผนก</span>`
     : `<span class="m-step${curOver ? " over" : ""}">ขั้น ${escapeHtml((getDept(stages[cur].deptId) || {}).name || "")}</span>${stages.length >= 2 ? `<span class="m-step-n">(${cur + 1}/${stages.length})</span>` : ""}`;
@@ -14133,7 +14182,7 @@ function mCardHtml(t, due, dep, bid) {
   const owners = vis.length
     ? `<span class="m-av" ${canAsg ? `data-assign="1"` : ""} title="${escapeHtml(vis.map(personName).join(", "))}">${vis.slice(0, 3).map(p => avatarHtml(p)).join("")}${vis.length > 3 ? `<span class="m-av-more">+${vis.length - 3}</span>` : ""}${canAsg ? `<span class="m-av-add">+</span>` : ""}</span>`
     : (canAsg ? `<button type="button" class="m-asg-link" data-assign="1">+ มอบหมาย</button>` : "");
-  const dueBadge = done ? "✓ เสร็จแล้ว" : escapeHtml(mDueLabel(due));
+  const dueBadge = done ? "✓ เสร็จแล้ว" : hold ? (due ? `เดิม ${fromIso(due).getDate()} ${M_MON[fromIso(due).getMonth()]}` : "") : escapeHtml(mDueLabel(due));
   return `<div class="m-card mg-${g}${open ? " open" : ""}" data-t="${escapeHtml(t.id)}" data-b="${escapeHtml(bid || root.activeBoard)}" data-dep="${escapeHtml(dep || "")}">
     <div class="m-card-head" data-toggle="1">
       ${fatDay ? (() => { const r = fatRes(fatDay), col = fatColorOf(fatDay);
@@ -14399,7 +14448,7 @@ function renderMobile() {
     list.innerHTML = `<div class="m-empty">${mSearch ? "ไม่พบงานที่ค้นหา" : mine ? "ยังไม่มีงานที่มอบหมายให้คุณ" : "ไม่มีงานค้าง" + (dep ? ` ของแผนก ${escapeHtml((getDept(dep) || {}).name || "")}` : "")}</div>`;
   } else {
     const by = {};
-    items.forEach(x => { const g = mGroupOf(x.due); (by[g] = by[g] || []).push(x); });
+    items.forEach(x => { const g = mWithBoard(x.bid, () => taskOnHold(x.t)) ? "hold" : mGroupOf(x.due); (by[g] = by[g] || []).push(x); });
     list.innerHTML = M_GROUPS.filter(([g]) => by[g]).map(([g, name]) =>
       `<div class="m-group mg-${g}"><div class="m-group-h">${name} <span>${by[g].length}</span></div>${by[g].map(x => mWithBoard(x.bid, () => mCardHtml(x.t, x.due, x.dep, x.bid))).join("")}</div>`).join("");
   }
@@ -14420,6 +14469,7 @@ M_MQ.addEventListener ? M_MQ.addEventListener("change", () => renderAll()) : M_M
   document.addEventListener("visibilitychange", () => { if (!document.hidden) kick(); });
   kick();
 })();
+document.addEventListener("click", e => { if (e.target.closest && e.target.closest("#btnHold")) openHoldList(); });
 function renderAll() {
   applyFatColor();
   normalizeBoardNames();
@@ -14431,6 +14481,7 @@ function renderAll() {
   renderMainView();
   renderTodayPanel();
   renderBell();
+  renderHoldBtn();
   applySidebarPerm();
   renderUserBadge();   // keep the department chip in sync when it changes
   try { renderMobile(); } catch (e) { console.warn("mobile view", e); }   // phone layout (never breaks the desktop one)
