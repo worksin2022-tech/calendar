@@ -5082,11 +5082,14 @@ function setTaskAvt(t, v) {
   if (v) t.avt = v; else delete t.avt;
   if (t.request) { if (v) t.request.dwgNo = v; else delete t.request.dwgNo; }
 }
-// AVT + SO tags in front of a chip's name (AVT first — owner 2026-10-11)
+// tag in front of a chip's name. ★ 2026-10-15 (owner): SO only — except the เขียนแบบ calendar, which shows AVT instead of SO
 function chipRefTags(t) {
-  const so = (t.so || "").trim(), avt = taskAvt(t);
-  return (avt ? `<span class="chip-so chip-avt" title="AVT ${escapeHtml(avt)}">${escapeHtml(avt)}</span>` : "")
-    + (so ? `<span class="chip-so" title="SO ${escapeHtml(so)}">${escapeHtml(so)}</span>` : "");
+  if (root.activeBoard === "drawing") {
+    const avt = taskAvt(t);
+    return avt ? `<span class="chip-so chip-avt" title="AVT ${escapeHtml(avt)}">${escapeHtml(avt)}</span>` : "";
+  }
+  const so = (t.so || "").trim();
+  return so ? `<span class="chip-so" title="SO ${escapeHtml(so)}">${escapeHtml(so)}</span>` : "";
 }
 function taskLabel(t) { const so = ((t && t.so) || "").trim(); return so ? `${so} ${t.title || ""}` : ((t && t.title) || ""); }
 function subLabel(s) { const mo = ((s && s.mo) || "").trim(), nm = (s && s.text) || "(ไม่มีชื่อตู้)"; return mo ? `${mo} ${nm}` : nm; }
