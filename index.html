@@ -528,6 +528,11 @@ body.m-mode #appRoot, body.m-mode #sideTabs { display: none !important; }
 .m-group.mg-over .m-group-h { color: #ef4444; }
 .m-group.mg-today .m-group-h { color: var(--accent); }
 .m-group.mg-hold { opacity: .75; }
+.m-shiprep { display: flex; align-items: center; gap: 10px; width: 100%; margin: 0 0 10px; padding: 11px 14px; border: 1px solid var(--border); border-radius: 12px;
+  background: var(--b-ffffff, #fff); color: var(--accent); font: inherit; text-align: left; cursor: pointer; }
+.m-shiprep .ico { width: 20px; height: 20px; flex: 0 0 auto; }
+.m-shiprep-t { flex: 1; display: flex; flex-direction: column; color: var(--text); font-weight: 700; font-size: 14px; }
+.m-shiprep-t small { font-weight: 400; font-size: 11.5px; color: var(--text-dim); }
 /* ★ 2026-10-14 (owner): no double-tap zoom on phones (pinch zoom still works) */
 html, body { touch-action: manipulation; }
 .m-card { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; margin-bottom: 10px; overflow: hidden; }
@@ -1022,6 +1027,16 @@ html, body { touch-action: manipulation; }
 .ov-bar i { width: 100%; border-radius: 6px 6px 0 0; background: var(--accent); opacity: .75; }
 .ov-bar i.bad { background: #ef4444; opacity: 1; }
 .ov-bar-n { font-size: 12px; font-weight: 700; }
+.srp-modal { width: min(560px, 96vw); max-height: 92vh; display: flex; flex-direction: column; }
+.srp-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 18px; }
+.srp-range { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--text-dim); }
+.srp-range .datefield { width: 150px; overflow: hidden; }
+.srp-range > span[data-from], .srp-range > span[data-to] { display: flex; min-width: 0; }
+@media (max-width: 560px) { .srp-range { flex: 1 1 100%; min-width: 0; } .srp-range .datefield { min-width: 0; } .srp-range > span[data-from], .srp-range > span[data-to] { flex: 1; } .srp-range .datefield { width: 100%; } }
+.srp-range .datefield-input { flex: 1; width: auto; min-width: 0; padding: 7px 8px; }
+.srp-bar { flex-wrap: wrap; }
+.srp-img { overflow-y: auto; padding: 0 18px 16px; }
+.srp-img img { width: 100%; display: block; border: 1px solid var(--border); border-radius: 10px; }
 .ov-click { cursor: pointer; transition: border-color .12s; }
 .ov-click:hover { border-color: var(--accent); }
 .ovl-overlay .ovl-modal { width: min(640px, 96vw); max-height: 86vh; display: flex; flex-direction: column; }
@@ -4120,6 +4135,159 @@ function openOvList({ title, rows, filters, open }) {
   document.addEventListener("keydown", onEsc, true);
   ov.addEventListener("mousedown", (e) => { if (e.target === ov) close(); });
   document.body.appendChild(ov);
+  draw();
+}
+// ★ 2026-10-15 (owner) รายงาน FAT / ส่ง เป็นรูป (แบบ 1) — replaces the production admin's Excel + typed LINE report.
+//   Built from the factory board: FAT rounds not yet passed, cabinets due to ship (ส่งมอบ stage date per cabinet, else the
+//   cabinet / project date) that aren't finished; overdue-and-not-shipped on top. Drawn on a canvas → downloaded as PNG.
+function shipReportData(from, end) {
+  const today = todayIso(), start = from || today;
+  const shipDept = (state.departments || []).find(d => d.id === "d_deliver") || (state.departments || []).find(d => /ส่งมอบ|deliver/i.test(d.name || "")) || null;
+  const secs = new Map();   // key → { kind, date, projects: Map(taskId → { t, cabs:[], due }) }
+  const add = (kind, date, t, unit, due) => {
+    const k = kind === "late" ? "0late" : date + (kind === "fat" ? "1" : "2");
+    if (!secs.has(k)) secs.set(k, { kind, date, projects: new Map() });
+    const pm = secs.get(k).projects;
+    if (!pm.has(t.id)) pm.set(t.id, { t, cabs: [], due });
+    if (unit && !pm.get(t.id).cabs.includes(unit)) pm.get(t.id).cabs.push(unit);
+    if (due && (!pm.get(t.id).due || due < pm.get(t.id).due)) pm.get(t.id).due = due;
+  };
+  let nFat = 0, nShip = 0, nLate = 0;
+  (state.tasks || []).forEach(t => {
+    if (taskOnHold(t)) return;
+    const subs = (t.subtasks || []).filter(sb => !subOnHold(sb));
+    const units = subs.length ? subs.map(sb => ({ sb, done: subtaskDone(sb) || !!(shipDept && taskStage(t, shipDept.id) && cabDeptDone(t, sb, shipDept.id)),
+        due: shipDept && taskStage(t, shipDept.id) ? deptDueForView(t, sb, shipDept.id) : (sb.date || t.date) }))
+      : (t.subtasks || []).length ? [] : [{ sb: null, done: projectComplete(t), due: shipDept && taskStage(t, shipDept.id) ? (taskStage(t, shipDept.id).due || t.date) : t.date }];
+    const open = units.filter(u => !u.done);
+    taskFats(t).forEach(f => {
+      if (fatRes(f) === "pass" || f.date < start || f.date > end) return;
+      nFat++;
+      if (!open.length) add("fat", f.date, t, null, null);
+      open.forEach(u => add("fat", f.date, t, u, null));
+      const sec = secs.get(f.date + "1"); sec.fat = sec.fat || {}; sec.fat[t.id] = f;
+    });
+    open.forEach(u => {
+      if (!u.due) return;
+      if (u.due < today) { if (start <= today) { nLate++; add("late", null, t, u, u.due); } }   // overdue only when the range includes today
+      else if (u.due >= start && u.due <= end) { nShip++; add("ship", u.due, t, u, u.due); }
+    });
+  });
+  const list = [...secs.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([, v]) => ({ ...v, projects: [...v.projects.values()] }));
+  const rl = d => { const x = fromIso(d); return `${x.getDate()} ${TH_MON[x.getMonth()]}`; };
+  return { list, nFat, nShip, nLate, range: start === end ? rl(start) : `${rl(start)} – ${rl(end)}` };
+}
+function drawShipReport(data) {
+  const W = 720, SC = 2, PAD = 20;
+  const FONT = getComputedStyle(document.body).fontFamily || "sans-serif";
+  const cv = document.createElement("canvas"), cx = cv.getContext("2d");
+  const f = (sz, w) => `${w || 400} ${sz}px ${FONT}`;
+  const fit = (txt, max, font) => { cx.font = font; txt = String(txt || ""); if (cx.measureText(txt).width <= max) return txt; while (txt && cx.measureText(txt + "…").width > max) txt = txt.slice(0, -1); return txt + "…"; };
+  const shade = (hex, k) => { const n = parseInt(String(hex || "#888888").replace("#", "").padEnd(6, "0").slice(0, 6), 16); const c = [n >> 16, (n >> 8) & 255, n & 255].map(v => Math.round(v * k)); return `rgb(${c.join(",")})`; };
+  const tint = (hex, a) => { const n = parseInt(String(hex || "#888888").replace("#", "").padEnd(6, "0").slice(0, 6), 16); return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`; };
+  const rr = (x, y, w, h, r) => { cx.beginPath(); cx.moveTo(x + r, y); cx.arcTo(x + w, y, x + w, y + h, r); cx.arcTo(x + w, y + h, x, y + h, r); cx.arcTo(x, y + h, x, y, r); cx.arcTo(x, y, x + w, y, r); cx.closePath(); };
+  const DOW = ["อา.", "จ.", "อ.", "พ.", "พฤ.", "ศ.", "ส."];
+  const dLbl = iso => { const d = fromIso(iso); return `${DOW[d.getDay()]} ${d.getDate()} ${TH_MON[d.getMonth()]}`; };
+  const HEAD = 84, SUM = 92, SECH = 46, PT = 34, CL = 30, CPAD = 10, GAP = 10, FOOT = 46;
+  let H = HEAD + SUM + FOOT + 10;
+  if (!data.list.length) H += 80;
+  data.list.forEach(sec => { H += SECH; sec.projects.forEach(p => { H += CPAD * 2 + PT + Math.max(0, p.cabs.length) * CL + GAP; }); });
+  cv.width = W * SC; cv.height = H * SC; cx.scale(SC, SC);
+  cx.fillStyle = "#ffffff"; cx.fillRect(0, 0, W, H);
+  cx.textBaseline = "middle";
+  // header
+  cx.fillStyle = "#26215C"; cx.fillRect(0, 0, W, HEAD);
+  cx.fillStyle = "#ffffff"; cx.font = f(26, 700); cx.fillText("รายงานการผลิตประจำวัน", PAD, 32);
+  const now = new Date();
+  cx.fillStyle = "#CECBF6"; cx.font = f(15); cx.fillText(`อัปเดต ${now.getDate()} ${TH_MON[now.getMonth()]} ${now.getFullYear() + 543} · ${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")} น. · โดย ${currentUser() || "-"}`, PAD, 62);
+  // summary
+  const boxes = [["FAT", data.nFat, "#2C2C2A"], ["ตู้ต้องส่ง", data.nShip, "#2C2C2A"], ["เลยกำหนด", data.nLate, data.nLate ? "#A32D2D" : "#2C2C2A"]];
+  const bw = (W - PAD * 2 - 16) / 3;
+  boxes.forEach(([l, n, col], i) => {
+    const x = PAD + i * (bw + 8), y = HEAD + 14;
+    cx.fillStyle = "#F1EFE8"; rr(x, y, bw, 64, 12); cx.fill();
+    cx.textAlign = "center"; cx.fillStyle = col; cx.font = f(28, 700); cx.fillText(String(n), x + bw / 2, y + 26);
+    cx.fillStyle = "#5F5E5A"; cx.font = f(14); cx.fillText(l, x + bw / 2, y + 50); cx.textAlign = "left";
+  });
+  cx.fillStyle = "#D3D1C7"; cx.fillRect(0, HEAD + SUM - 1, W, 1);
+  let y = HEAD + SUM;
+  if (!data.list.length) { cx.fillStyle = "#888780"; cx.font = f(17); cx.textAlign = "center"; cx.fillText(`ไม่มีงาน FAT / ส่ง ช่วง ${data.range}`, W / 2, y + 40); cx.textAlign = "left"; y += 80; }
+  const KIND = { late: ["เลยกำหนด", "#E24B4A"], fat: ["FAT", "#7F77DD"], ship: ["ส่ง", "#378ADD"] };
+  data.list.forEach(sec => {
+    const [kl, kc] = KIND[sec.kind];
+    cx.font = f(14, 700); const pw = cx.measureText(kl).width + 22;
+    cx.fillStyle = kc; rr(PAD, y + 11, pw, 26, 13); cx.fill();
+    cx.fillStyle = "#ffffff"; cx.fillText(kl, PAD + 11, y + 24);
+    if (sec.date) { cx.fillStyle = "#2C2C2A"; cx.font = f(18, 700); cx.fillText(dLbl(sec.date), PAD + pw + 10, y + 24); }
+    y += SECH;
+    sec.projects.forEach(p => {
+      const ch = CPAD * 2 + PT + p.cabs.length * CL;
+      cx.fillStyle = "#ffffff"; rr(PAD, y, W - PAD * 2, ch, 12); cx.fill();
+      cx.strokeStyle = sec.kind === "late" ? "#F09595" : "#D3D1C7"; cx.lineWidth = 1; cx.stroke();
+      let x = PAD + 14; const ty = y + CPAD + PT / 2;
+      const so = (p.t.so || "").trim();
+      if (so) { cx.font = f(13, 700); const sw = cx.measureText(so).width + 14; cx.fillStyle = "#FAECE7"; rr(x, ty - 11, sw, 22, 6); cx.fill(); cx.fillStyle = "#993C1D"; cx.fillText(so, x + 7, ty); x += sw + 8; }
+      let right = W - PAD - 14;
+      const rTxt = sec.kind === "late" && p.due ? `กำหนด ${dLbl(p.due)}` : sec.kind === "fat" && sec.fat && sec.fat[p.t.id] ? `FAT รอบ ${fatRoundNo(p.t, sec.fat[p.t.id])}${sec.fat[p.t.id].time ? " · " + sec.fat[p.t.id].time + " น." : ""}` : "";
+      if (rTxt) { cx.font = f(13, 700); cx.fillStyle = sec.kind === "late" ? "#A32D2D" : "#534AB7"; cx.textAlign = "right"; cx.fillText(rTxt, right, ty); cx.textAlign = "left"; right -= cx.measureText(rTxt).width + 12; }
+      cx.fillStyle = "#2C2C2A"; cx.fillText(fit(p.t.title || "(ไม่มีชื่อ)", right - x, f(16, 700)), x, ty);
+      let cy = y + CPAD + PT;
+      p.cabs.forEach(u => {
+        const my = cy + CL / 2;
+        const st = getStatus(u.sb ? u.sb.statusId : p.t.statusId);
+        cx.font = f(13, 700); const lbl = st.name || ""; const lw = cx.measureText(lbl).width + 20;
+        const lx = W - PAD - 14 - lw;
+        cx.fillStyle = tint(st.color, .16); rr(lx, my - 12, lw, 24, 12); cx.fill();
+        cx.fillStyle = shade(st.color, .55); cx.fillText(lbl, lx + 10, my);
+        let xx = PAD + 14;
+        const mo = u.sb ? (u.sb.mo || "").trim() : "";
+        if (mo) { cx.font = `400 12px ui-monospace, Consolas, monospace`; cx.fillStyle = "#888780"; const mt = mo.replace(/^WH\/MO\//i, "MO "); cx.fillText(mt, xx, my); xx += cx.measureText(mt).width + 10; }
+        cx.fillStyle = "#444441"; cx.fillText(fit(u.sb ? (u.sb.text || "(ไม่มีชื่อตู้)") : "ทั้งโครงการ", lx - xx - 10, f(14)), xx, my);
+        cy += CL;
+      });
+      y += ch + GAP;
+    });
+  });
+  y += 10;
+  cx.fillStyle = "#D3D1C7"; cx.fillRect(0, y, W, 1);
+  cx.fillStyle = "#888780"; cx.font = f(13); cx.fillText("Avatar Planning", PAD, y + 22);
+  cx.textAlign = "right"; cx.fillText(`ช่วง ${data.range}`, W - PAD, y + 22); cx.textAlign = "left";
+  return cv;
+}
+function openShipReport(startIso) {
+  let days = 7; try { days = +localStorage.getItem("qc_shiprep_days") || 7; } catch (_) {}
+  const plus = (iso, n) => isoDate(new Date(fromIso(iso).getTime() + n * 86400000));
+  let from = (typeof startIso === "string" && startIso) || todayIso(), to = plus(from, days - 1);
+  const ov = document.createElement("div");
+  ov.className = "overlay ovl-overlay";
+  ov.innerHTML = `<div class="modal ovl-modal srp-modal" role="dialog" aria-modal="true">
+    <div class="modal-head"><h3>${ico("file-text")} รายงานการผลิตประจำวัน</h3><button class="btn btn-ghost" data-x title="ปิด">✕</button></div>
+    <div class="srp-bar"><div class="srp-range"><span data-from></span><span>ถึง</span><span data-to></span></div><div class="ovl-chips" style="padding:0">${[7, 14].map(d => `<button type="button" class="ov-chip" data-d="${d}">${d} วัน</button>`).join("")}</div>
+      <button type="button" class="btn btn-primary" data-dl>${ico("download")} ดาวน์โหลดรูป</button></div>
+    <div class="srp-img"></div></div>`;
+  document.body.appendChild(ov);
+  let cv = null;
+  const fromF = createDateField({ value: from, onChange: v => { if (!v) return; const span = Math.round((fromIso(to) - fromIso(from)) / 86400000); from = v; to = plus(from, Math.max(0, span)); draw(); } });
+  const toF = createDateField({ value: to, onChange: v => { if (!v) return; to = v; if (to < from) from = to; draw(); } });
+  ov.querySelector("[data-from]").appendChild(fromF); ov.querySelector("[data-to]").appendChild(toF);
+  const draw = () => {
+    if (to < from) to = from;
+    fromF.setValue(from); toF.setValue(to);
+    ov.querySelectorAll("[data-d]").forEach(b => b.classList.toggle("on", from === todayIso() && to === plus(from, +b.dataset.d - 1)));
+    cv = drawShipReport(shipReportData(from, to));
+    const box = ov.querySelector(".srp-img"); box.innerHTML = ""; const img = new Image(); img.src = cv.toDataURL("image/png"); img.alt = "รายงานการผลิตประจำวัน"; box.appendChild(img);
+  };
+  const close = () => ov.remove();
+  ov.querySelectorAll("[data-x]").forEach(b => b.addEventListener("click", close));
+  ov.addEventListener("mousedown", e => { if (e.target === ov) close(); });
+  ov.querySelectorAll("[data-d]").forEach(b => b.addEventListener("click", () => { days = +b.dataset.d; try { localStorage.setItem("qc_shiprep_days", days); } catch (_) {} from = todayIso(); to = plus(from, days - 1); draw(); }));
+  ov.querySelector("[data-dl]").addEventListener("click", () => {
+    if (!cv) return;
+    cv.toBlob(blob => {
+      const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `รายงานการผลิตประจำวัน-${from}${to !== from ? "_" + to : ""}.png`;
+      document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+    }, "image/png");
+  });
   draw();
 }
 function editDistance(a, b) {
@@ -14526,8 +14694,10 @@ function renderMobile() {
     el.querySelector("[data-mdaydate]").textContent = `${M_DOW[day.getDay()]} ${day.getDate()} ${M_MON[day.getMonth()]} ${day.getFullYear() + 543}`;
     const nDone = list2.filter(x => x.done).length;
     el.querySelector("[data-mdaysum]").innerHTML = list2.length ? `<span class="ok">เสร็จ ${nDone}</span><span>ค้าง ${list2.length - nDone}</span>` : "";
-    list.innerHTML = mNotifBanner() + (list2.length ? list2.map(x => mWithBoard(x.bid, () => mCardHtml(x.t, x.due, x.dep, x.bid))).join("")
+    // ★ 2026-10-15 (owner): รายงานการผลิตประจำวัน on top of "งานวันนี้" (factory board) — starts at the day being viewed
+    list.innerHTML = mNotifBanner() + (fatBoardOn() ? `<button type="button" class="m-shiprep" data-mshiprep>${ico("file-text")}<span class="m-shiprep-t">รายงานการผลิตประจำวัน<small>FAT / ส่งมอบ · ดาวน์โหลดเป็นรูป</small></span>${ico("download")}</button>` : "") + (list2.length ? list2.map(x => mWithBoard(x.bid, () => mCardHtml(x.t, x.due, x.dep, x.bid))).join("")
       : `<div class="m-empty">${mine ? "ไม่มีงานที่มอบหมายให้คุณ" : "ไม่มีงานครบกำหนด"}${mDay === 0 ? "วันนี้" : "วันนั้น"}</div>`);
+    list.querySelector("[data-mshiprep]")?.addEventListener("click", () => openShipReport(iso));
     window.scrollTo(0, y);
     return;
   }
@@ -14576,6 +14746,8 @@ function renderAll() {
   renderTodayPanel();
   renderBell();
   renderHoldBtn();
+  { const b = document.getElementById("tpPrint"), f = fatBoardOn();
+    if (b && b.dataset.mode !== (f ? "rep" : "wo")) { b.dataset.mode = f ? "rep" : "wo"; b.title = f ? "รายงานการผลิตประจำวัน (รูป)" : "พิมพ์ใบสั่งงาน — แผนกที่ดู + วันที่ดู"; b.innerHTML = ico(f ? "file-text" : "printer"); } }
   applySidebarPerm();
   renderUserBadge();   // keep the department chip in sync when it changes
   try { renderMobile(); } catch (e) { console.warn("mobile view", e); }   // phone layout (never breaks the desktop one)
@@ -14684,7 +14856,7 @@ document.getElementById("tpPrevDay").addEventListener("click", () => { tpDayOffs
 document.getElementById("tpNextDay").addEventListener("click", () => { tpDayOffset++; renderTodayPanel(); });
 document.getElementById("tpDayBtn").addEventListener("click", () => { if (tpDayOffset !== 0) { tpDayOffset = 0; renderTodayPanel(); } });
 document.getElementById("tpReport").addEventListener("click", openStatusReport);   // manual open — ignores the auto-show frequency
-document.getElementById("tpPrint").addEventListener("click", openWorkOrderPrint);
+document.getElementById("tpPrint").addEventListener("click", () => fatBoardOn() ? openShipReport() : openWorkOrderPrint());   // ★ 2026-10-15 (owner): โรงงาน → รายงาน FAT / ส่ง
 document.getElementById("btnQuickAdd").addEventListener("click", () => { if (!canFull()) return permDenied("สิทธิ์ของคุณเพิ่มงานใหม่ไม่ได้"); openTaskModal(null); });
 document.getElementById("btnDrawReq").addEventListener("click", () => {
   if (!canSeeDrawReq()) return permDenied("สิทธิ์ของคุณยื่นขอแบบไม่ได้ (จำกัดเฉพาะบางแผนก)");
