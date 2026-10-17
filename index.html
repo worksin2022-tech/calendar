@@ -3481,13 +3481,44 @@ const AVATAR_COLORS = ["#7b68ee", "#2563eb", "#0e9384", "#d97706", "#db2777", "#
    of the ~5MB quota). */
 let teamProfiles = new Map();
 let _teamLoading = null;
+// ★ 2026-10-17 (Supabase egress 83%): profile photos are data URLs (~20–30KB each) and were downloaded for EVERYONE on
+//   every app open. Now the list comes without photos; photos come from a small IndexedDB cache on this device and only
+//   missing / >1 day old ones are fetched. (Own photo change updates the cache at once.)
+const PROFILE_COLS = "id,email,display_name,role,created_at,approved,dept_id,name_set,blocked,perm,board_ids,is_owner,starred";
+const AVATAR_TTL = 24 * 3600 * 1000;
+function avatarDb() {
+  return new Promise((res, rej) => {
+    try { const r = indexedDB.open("qc_cache", 1); r.onupgradeneeded = () => r.result.createObjectStore("kv"); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }
+    catch (e) { rej(e); }
+  });
+}
+async function avatarCacheGet() {
+  try { const db = await avatarDb(); return await new Promise(res => { const q = db.transaction("kv").objectStore("kv").get("avatars"); q.onsuccess = () => res(q.result || {}); q.onerror = () => res({}); }); }
+  catch (_) { return {}; }
+}
+async function avatarCacheSet(map) {
+  try { const db = await avatarDb(); await new Promise(res => { const tx = db.transaction("kv", "readwrite"); tx.objectStore("kv").put(map, "avatars"); tx.oncomplete = res; tx.onerror = res; }); } catch (_) {}
+}
+async function avatarCachePut(id, url) { const m = await avatarCacheGet(); m[id] = { u: url || null, t: Date.now() }; await avatarCacheSet(m); }
+async function fetchProfilesLean(sb) {
+  let { data, error } = await sb.from("profiles").select(PROFILE_COLS);
+  if (error) return await sb.from("profiles").select("*");   // older database (a column missing) → as before
+  const cache = await avatarCacheGet(), now = Date.now();
+  const need = (data || []).filter(p => !(cache[p.id] && now - cache[p.id].t < AVATAR_TTL)).map(p => p.id);
+  if (need.length) {
+    const r = await sb.from("profiles").select("id,avatar_url").in("id", need);
+    if (!r.error && Array.isArray(r.data)) { r.data.forEach(x => { cache[x.id] = { u: x.avatar_url || null, t: now }; }); avatarCacheSet(cache); }
+  }
+  (data || []).forEach(p => { p.avatar_url = cache[p.id] ? cache[p.id].u : null; });
+  return { data, error: null };
+}
 function loadTeam() {
   if (_teamLoading) return _teamLoading;
   const sb = getSupabase();
   if (!sb) return Promise.resolve();
   _teamLoading = (async () => {
     try {
-      const { data, error } = await sb.from("profiles").select("*");
+      const { data, error } = await fetchProfilesLean(sb);
       if (!error && Array.isArray(data)) {
         teamProfiles = new Map(data.filter(p => p.approved && !p.blocked).map(p => [p.id, p]));
         renderAll();
@@ -4872,6 +4903,7 @@ function openMyProfileModal() {
     btn.disabled = false; btn.textContent = "บันทึก";
     if (error) { q("[data-msg]").textContent = "บันทึกไม่สำเร็จ: " + error.message; return; }
     Object.assign(currentProfile, { display_name: name, avatar_url: avatar, name_set: true });
+    avatarCachePut(currentProfile.id, avatar);   // my new photo shows from the device cache right away
     renderUserBadge();
     toast("บันทึกโปรไฟล์แล้ว");
     close();
@@ -5925,6 +5957,18 @@ let _cloudReady = false, _cloudRetryTimer = null, _offlineEditWarned = false;
 const _boardBaseAt = {};   // board id → cloud updated_at (ms) of the version this device's copy is based on
 const _boardBaseIso = {};  // same, as the exact string the server returned — used for the compare-and-swap update
 function setBoardBase(id, iso) { _boardBaseIso[id] = iso; _boardBaseAt[id] = tsMs(iso); }
+// ★ 2026-10-17 (Supabase egress 83%): remember which cloud version each calendar in this device's cache IS
+//   ({ id: { at: updated_at, h: hash of its JSON } }). On the next open/refresh a calendar whose cloud updated_at and
+//   cached content still match is reused from the device instead of downloaded again (opening the app / pull-to-refresh
+//   used to download every calendar in full every time). Any doubt (edited offline, other version) → download as before.
+const CLOUD_COPY_KEY = "qc_cloud_copy";
+function strHash(str) { let h = 2166136261; for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0).toString(36) + ":" + str.length; }
+function cloudCopies() { try { const m = JSON.parse(localStorage.getItem(CLOUD_COPY_KEY) || "{}"); return m && typeof m === "object" ? m : {}; } catch (_) { return {}; } }
+function rememberCloudCopy(id, iso, json) {
+  if (!id || !iso || typeof json !== "string") return;
+  const m = cloudCopies(); m[id] = { at: iso, h: strHash(json), u: currentProfile && currentProfile.id };
+  try { localStorage.setItem(CLOUD_COPY_KEY, JSON.stringify(m)); } catch (_) {}
+}
 const tsMs = (v) => { const n = Date.parse(v); return isNaN(n) ? 0 : n; };
 function scheduleCloudSave() {
   if (!currentProfile) return;   // not signed in yet (e.g. still on the login screen) — nothing to push
@@ -6079,6 +6123,7 @@ async function pushChangedBoards(sb) {
       if (Array.isArray(res.data) && res.data.length) {
         _lastPushedJson[b.id] = json;
         setBoardBase(b.id, stamp);
+        rememberCloudCopy(b.id, stamp, json);
         break;
       }
       // 0 rows → the cloud row changed since my base (or was removed) → merge and retry
@@ -6116,6 +6161,7 @@ async function adoptCloudBoards(ids) {
     root.boards[row.id] = row.data;
     _lastPushedJson[row.id] = JSON.stringify(row.data);
     setBoardBase(row.id, row.updated_at);
+    rememberCloudCopy(row.id, row.updated_at, _lastPushedJson[row.id]);
     const meta = root.boardMeta.find(b => b.id === row.id);
     if (meta) meta.name = row.name; else root.boardMeta.push({ id: row.id, name: row.name });
   });
@@ -6153,7 +6199,22 @@ async function syncRootFromCloud() {
   const sb = getSupabase();
   if (!sb) { toast("⚠️ ไม่มีอินเทอร์เน็ต — แสดงข้อมูลในเครื่องไปก่อน (ยังไม่บันทึกขึ้น cloud จนกว่าจะเชื่อมต่อได้)"); retryLater(); return; }
   let data, error;
-  try { ({ data, error } = await sb.from("boards").select("*")); } catch (e) { error = e; }
+  // ★ heads first (tiny) → full rows only for calendars this device doesn't already hold at that exact version
+  try {
+    let heads; ({ data: heads, error } = await sb.from("boards").select("id,name,updated_at"));
+    if (!error && Array.isArray(heads)) {
+      const copies = cloudCopies(), me = currentProfile && currentProfile.id;
+      const cached = {};
+      heads.forEach(h => {
+        const c = copies[h.id], local = root.boards && root.boards[h.id];
+        if (c && local && c.u === me && tsMs(c.at) === tsMs(h.updated_at) && c.h === strHash(JSON.stringify(local))) cached[h.id] = local;
+      });
+      const need = heads.filter(h => !cached[h.id]).map(h => h.id);
+      let rows = [];
+      if (need.length) ({ data: rows, error } = await sb.from("boards").select("*").in("id", need));
+      if (!error) data = heads.map(h => cached[h.id] ? { ...h, data: cached[h.id] } : (rows || []).find(r => r.id === h.id)).filter(Boolean);
+    }
+  } catch (e) { error = e; }
   if (error) { toast("⚠️ โหลดข้อมูลจาก cloud ไม่สำเร็จ — แสดงข้อมูลในเครื่องไปก่อน (ยังไม่บันทึกขึ้น cloud): " + (error.message || error)); retryLater(); return; }
 
   if (!data || !data.length) {
@@ -6169,7 +6230,7 @@ async function syncRootFromCloud() {
   root.boardMeta = boardMeta;
   root.boards = boards;
   Object.keys(boards).forEach(id => { _lastPushedJson[id] = JSON.stringify(boards[id]); });   // this IS the cloud's current content — don't re-push it unchanged
-  data.forEach(row => setBoardBase(row.id, row.updated_at));
+  data.forEach(row => { setBoardBase(row.id, row.updated_at); rememberCloudCopy(row.id, row.updated_at, _lastPushedJson[row.id]); });
   _cloudReady = true;
   // clouds created before the Service calendar existed won't have it yet → add it here and push it up
   const hadService = !!root.boards[SERVICE_BOARD];
@@ -6301,6 +6362,7 @@ function handleRealtimeBoardChange(payload) {
     root.boards[row.id] = newWs;
     _lastPushedJson[row.id] = JSON.stringify(newWs);
     setBoardBase(row.id, row.updated_at);
+    rememberCloudCopy(row.id, row.updated_at, _lastPushedJson[row.id]);
   }
   if (isNewBoard && !root.boardMeta.some(b => b.id === row.id)) root.boardMeta.push({ id: row.id, name: row.name });
   localStorage.setItem(STORAGE_KEY, JSON.stringify(root));
