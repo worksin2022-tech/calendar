@@ -1140,6 +1140,11 @@ html, body { touch-action: manipulation; }
 .ds-table th { text-align: left; font-size: 11px; color: var(--text-faint); font-weight: 700; padding: 4px 6px; border-bottom: 1px solid var(--border-strong); }
 .ds-table td { padding: 5px 6px; border-bottom: 1px solid var(--border); }
 .ds-table td.warn { color: var(--t-b54708, #b54708); font-weight: 700; } .ds-table td.bad { color: var(--danger); font-weight: 700; }
+.arc-banner { display: flex; align-items: center; gap: 8px; padding: 8px 18px; background: var(--b-fffaeb, #fffaeb); color: var(--t-b54708, #b54708); font-size: 13px; font-weight: 700; border-bottom: 1px solid var(--t-fec84b, #fec84b); }
+.arc-banner .ico { width: 16px; height: 16px; }
+.arc-banner .btn { margin-left: auto; }
+.sd-arcitem .sd-arctag { font-size: 10.5px; font-weight: 700; padding: 0 7px; border-radius: 999px; background: var(--b-fffaeb, #fffaeb); color: var(--t-b54708, #b54708); border: 1px solid var(--t-fec84b, #fec84b); margin-left: 6px; }
+.sd-arc-h { font-size: 11px; font-weight: 700; color: var(--text-faint); padding: 8px 9px 2px; border-top: 1px solid var(--border); margin-top: 4px; }
 .arc-modal { width: min(720px, 96vw); max-height: 88vh; display: flex; flex-direction: column; }
 .arc-top { padding: 10px 18px; display: flex; }
 .arc-list { overflow-y: auto; padding: 0 18px 16px; }
@@ -3481,7 +3486,10 @@ function myPerm() {
   const p = currentProfile && currentProfile.perm;
   return (p in PERM_RANK) ? p : "full";
 }
-function permRank() { const r = PERM_RANK[myPerm()]; return (r === undefined) ? 3 : r; }
+// ★ 2026-10-17: while an ARCHIVED task is open in the popup everything is read-only (nothing can write into the calendar)
+let _archiveView = false, _archiveViewAt = 0;
+// (archive card gone some other way → back to normal permissions)
+function permRank() { if (_archiveView) { if (Date.now() - _archiveViewAt < 3000 || document.querySelector(".arc-banner")) return 0; _archiveView = false; } const r = PERM_RANK[myPerm()]; return (r === undefined) ? 3 : r; }
 function canComment() { return permRank() >= 1; }
 function canTick()    { return permRank() >= 1.5; } // tick / untick checklist items
 function canEdit()    { return permRank() >= 2; }   // dates, statuses, checklists
@@ -4716,7 +4724,7 @@ function openArchiveBrowser(q0) {
       b.disabled = true;
       if (await restoreArchived(bid, r.task_id)) { toast("นำกลับเข้าปฏิทินแล้ว"); close(); openTaskModal(r.task_id); } else b.disabled = false;
     }));
-    list.querySelectorAll("[data-view]").forEach(b => b.addEventListener("click", () => viewArchived(data[+b.dataset.view])));
+    list.querySelectorAll("[data-view]").forEach(b => b.addEventListener("click", () => openArchivedTask(bid, data[+b.dataset.view].task_id)));
   }
   async function viewArchived(r) {
     list.innerHTML = `<div class="cf-empty">กำลังโหลด...</div>`;
@@ -4738,6 +4746,43 @@ function openArchiveBrowser(q0) {
   load();
   setTimeout(() => qi.focus(), 50);
 }
+// ★ 2026-10-17 (owner): auto-archive switch (per calendar, ⚙ ข้อมูล). Runs at most once a day per calendar, a little
+//   after the app has synced, on the device of someone with full edit rights — same safe path as the button
+//   (copy to the archive first, take out only what the database confirmed). The day it ran is stored in the
+//   calendar's settings so other devices skip it.
+let _autoArchiveDone = false;
+async function maybeAutoArchive() {
+  if (_autoArchiveDone || !_cloudReady || !currentProfile || !canFull()) return;
+  _autoArchiveDone = true;
+  const today = todayIso();
+  let total = 0;
+  for (const b of (root.boardMeta || [])) {
+    const ws = root.boards[b.id];
+    if (!ws || !ws.settings || !ws.settings.autoArchive || ws.settings.autoArchiveAt === today) continue;
+    ws.settings.autoArchiveAt = today;   // claim today first (even if nothing to move) → one run per day
+    const list = archiveCandidates(b.id);
+    if (list.length) { try { total += await archiveTasks(b.id, list); } catch (e) { console.warn("auto archive", e); } }
+    else saveState();
+  }
+  if (total) toast(`เก็บเข้าคลังอัตโนมัติ ${total} งาน (งานที่เสร็จนานแล้ว)`);
+}
+// open one archived task as the normal (read-only) project card
+async function openArchivedTask(bid, taskId) {
+  const sb = getSupabase(); if (!sb) { toast("ไม่มีอินเทอร์เน็ต"); return; }
+  const { data, error } = await sb.from("task_archive").select("data").eq("board_id", bid).eq("task_id", taskId).maybeSingle();
+  if (error || !data || !data.data) { toast(error ? archiveErr(error) : "ไม่พบงานนี้ในคลัง"); return; }
+  if ((state.tasks || []).some(t => t.id === taskId)) { openTaskModal(taskId); return; }   // already back in the calendar
+  openTaskModal(taskId, { archived: data.data });
+}
+// archived matches for the toolbar search (title / SO / AVT) — a few rows, light columns only
+let _arcSearchSeq = 0;
+async function searchArchive(term, limit = 5) {
+  const sb = getSupabase(); term = String(term || "").replace(/[,()%*]/g, " ").trim();
+  if (!sb || !currentProfile || term.length < 2) return [];
+  const { data, error } = await sb.from("task_archive").select("task_id,title,so,avt,due_date").eq("board_id", root.activeBoard).is("restored_at", null)
+    .or(`title.ilike.%${term}%,so.ilike.%${term}%,avt.ilike.%${term}%`).order("archived_at", { ascending: false }).limit(limit);
+  return error || !Array.isArray(data) ? [] : data;
+}
 function buildDataSizePanel(container) {
   const sec = document.createElement("div");
   sec.className = "settings-section";
@@ -4755,6 +4800,7 @@ function buildDataSizePanel(container) {
     <h4 class="settings-h" style="margin-top:16px">${ico("archive")} คลังงาน · ${escapeHtml(boardNameOf(root.activeBoard))}</h4>
     <div class="ds-row"><span>เก็บงานที่เสร็จแล้วนานกว่า</span>
       <select data-arcdays ${full ? "" : "disabled"}>${ARCHIVE_DAYS_OPTS.map(d => `<option value="${d}" ${archiveDays() === d ? "selected" : ""}>${d} วัน</option>`).join("")}</select></div>
+    <label class="settings-toggle-row"><input type="checkbox" data-arcauto ${state.settings.autoArchive ? "checked" : ""} ${full ? "" : "disabled"} /><span class="settings-toggle-text"><span class="settings-toggle-title">เก็บเข้าคลังอัตโนมัติ (วันละครั้ง)</span></span></label>
     <div class="row" style="gap:8px;flex-wrap:wrap;margin-top:8px">
       ${full ? `<button class="btn btn-primary" data-arcnow>${ico("archive")} เก็บเข้าคลัง <span data-arcn></span></button>` : ""}
       <button class="btn" data-arcopen>${ico("search")} เปิดคลังงาน</button></div>`;
@@ -4762,6 +4808,10 @@ function buildDataSizePanel(container) {
   const paintN = () => { const n = archiveCandidates(root.activeBoard).length, el = sec.querySelector("[data-arcn]"); if (el) { el.textContent = n ? `(${n} งาน)` : "(ไม่มี)"; el.closest("button").disabled = !n; } };
   paintN();
   sec.querySelector("[data-arcdays]")?.addEventListener("change", e => { state.settings.archiveDays = +e.target.value; saveState(); paintN(); });
+  sec.querySelector("[data-arcauto]")?.addEventListener("change", e => {
+    state.settings.autoArchive = e.target.checked; saveState();
+    toast(e.target.checked ? `เปิดเก็บเข้าคลังอัตโนมัติ — งานที่เสร็จนานกว่า ${archiveDays()} วันจะถูกเก็บวันละครั้ง` : "ปิดเก็บเข้าคลังอัตโนมัติแล้ว");
+  });
   sec.querySelector("[data-arcopen]").addEventListener("click", () => openArchiveBrowser(""));
   sec.querySelector("[data-arcnow]")?.addEventListener("click", async (e) => {
     const btn = e.currentTarget;   // ★ read BEFORE any await — currentTarget is null once the click event is over
@@ -6122,14 +6172,23 @@ function saveState() {
   if (!_deptSyncing && root && root.activeBoard === "factory") {   // a department edit at โรงงาน → ออกไซต์ follows
     _deptSyncing = true; try { syncLinkedDepts(); } catch (e) { console.warn("dept sync", e); } _deptSyncing = false;
   }
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(root));   // local cache/backup — always kept, cloud push is best-effort on top
-  } catch (e) {
-    // most likely QuotaExceededError — attached photos (base64) can fill localStorage (~5MB)
-    console.warn("saveState failed", e);
-    try { toast("⚠️ พื้นที่จัดเก็บเต็ม (รูปแนบอาจมากไป) — บันทึกไม่สำเร็จ · ลองลบรูปเก่า หรือ Export ข้อมูลออก"); } catch (_) {}
-  }
+  writeLocalRoot();   // local cache/backup — cloud push is best-effort on top
   scheduleCloudSave();
+}
+// ★ 2026-10-17: the ONE place that writes this device's copy of all calendars (localStorage, ~5MB per site).
+//   When it's full the write is skipped (the previous copy stays; the cloud keeps working and the next app open
+//   downloads what changed) and the person is told ONCE per session what to do — never an error that stops the app.
+let _localFullWarned = false;
+function writeLocalRoot() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(root)); return true; }
+  catch (e) {
+    console.warn("local cache write failed", e);
+    if (!_localFullWarned) {
+      _localFullWarned = true;
+      try { toast("⚠️ หน่วยความจำในเครื่องเต็ม — งานยังบันทึกขึ้น cloud ตามปกติ · ควรเก็บงานเก่าเข้าคลัง (⚙ › ข้อมูล)"); } catch (_) {}
+    }
+    return false;
+  }
 }
 
 /* ----- Phase 2, slice 2b: board data synced to Supabase (public.boards, one row per board) -----
@@ -6333,7 +6392,7 @@ async function pushChangedBoards(sb) {
     }
   }
   if (mergedAny) {
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(root)); } catch (_) {}
+    writeLocalRoot();
     renderAll();
     toast("🔀 มีคนแก้บอร์ดนี้พร้อมกัน — รวมการแก้ไขของทั้งสองฝ่ายให้แล้ว");
   }
@@ -6354,7 +6413,7 @@ async function adoptCloudBoards(ids) {
     if (meta) meta.name = row.name; else root.boardMeta.push({ id: row.id, name: row.name });
   });
   state = root.boards[root.activeBoard] || state;
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(root)); } catch (_) {}
+  writeLocalRoot();
   renderAll();
 }
 // back to the app after a while (iPad tab woke up, network came back) → pull boards that changed meanwhile.
@@ -6427,9 +6486,10 @@ async function syncRootFromCloud() {
   if (mayService) ensureServiceBoard(root);
   if (!root.boards[root.activeBoard]) root.activeBoard = (boardMeta[0] || {}).id || "factory";
   state = root.boards[root.activeBoard];
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(root));   // refresh the local cache to match the cloud
+  writeLocalRoot();   // refresh the local cache to match the cloud
   if (wasRetry) { _offlineEditWarned = false; renderAll(); toast("✅ เชื่อมต่อ cloud แล้ว — แสดงข้อมูลล่าสุด"); }
   if (!hadService && mayService) scheduleCloudSave();
+  setTimeout(() => { maybeAutoArchive(); }, 20000);   // ★ auto-archive (if switched on), after things have settled
 }
 
 /* ----- Phase 2, slice 3: realtime sync across devices (Supabase Realtime on public.boards) -----
@@ -6553,7 +6613,7 @@ function handleRealtimeBoardChange(payload) {
     rememberCloudCopy(row.id, row.updated_at, _lastPushedJson[row.id]);
   }
   if (isNewBoard && !root.boardMeta.some(b => b.id === row.id)) root.boardMeta.push({ id: row.id, name: row.name });
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(root));
+  writeLocalRoot();
   if (row.id === root.activeBoard) { state = root.boards[root.activeBoard]; renderAll(); }
   else { renderBoardSwitcher(); renderBell(); }   // new/renamed board from another device shows up in the sidebar right away
   // something NEW waiting for me (in any calendar) → pop it; already-seen items stay on the bell
@@ -8362,8 +8422,11 @@ function openDrawRequestModal() {
 
 /* ---------- Task modal ---------- */
 function openTaskModal(taskId, defaults={}) {
+  const archView = !!defaults.archived;   // ★ a task from the คลังงาน, shown read-only as the normal project card
+  const canRestoreArc = archView && canFull();   // decided BEFORE the read-only switch below
+  if (archView) { taskId = defaults.archived.id; _archiveView = true; _archiveViewAt = Date.now(); }
   const isNew = !taskId;
-  const task = isNew
+  const task = archView ? JSON.parse(JSON.stringify(defaults.archived)) : isNew
     ? { id: uid("t"), title: "", description: "",
         startDate: defaults.startDate || null,
         date: defaults.date || todayIso(),
@@ -8394,6 +8457,7 @@ function openTaskModal(taskId, defaults={}) {
           <button class="btn btn-ghost" data-act="close" title="ปิด">✕</button>
         </div>
       </div>
+      ${archView ? `<div class="arc-banner">${ico("archive")}<span>งานในคลังงาน — ดูอย่างเดียว</span>${canRestoreArc ? `<button type="button" class="btn btn-sm" data-arc-restore>นำกลับเข้าปฏิทิน</button>` : ""}</div>` : ""}
       <div class="task-split">
       <div class="modal-body">
         <div class="field tm-title-row">
@@ -9745,6 +9809,7 @@ function openTaskModal(taskId, defaults={}) {
     if (closed) return;
     if (commitTimer) commitNow();
     closed = true;
+    if (archView) _archiveView = false;
     if (!created && ((task.title || "").trim() === "") && (task.comments.length || (task.subtasks || []).length)) toast("ยังไม่ได้สร้างงาน — ต้องใส่ชื่องานก่อน");
     overlay.remove();
     document.removeEventListener("app-rendered", refreshFromReal);
@@ -9754,6 +9819,14 @@ function openTaskModal(taskId, defaults={}) {
   }
   overlay.addEventListener("click", (e) => { if (e.target === overlay) close(); });
   modal.querySelectorAll('[data-act="close"]').forEach(b => b.addEventListener("click", close));
+  if (archView) modal.querySelectorAll(".modal-body input, .modal-body textarea, .modal-body select, .task-activity textarea, .task-activity input, .task-activity select").forEach(el => { el.disabled = true; });   // read-only card: nothing can be typed
+  modal.querySelector("[data-arc-restore]")?.addEventListener("click", async () => {
+    if (!(await confirmDialog({ title: "นำงานกลับเข้าปฏิทิน?", message: `${(task.so || "").trim()} ${task.title || ""}`.trim(), confirmText: "นำกลับ" }))) return;
+    _archiveView = false;
+    const ok = await restoreArchived(root.activeBoard, task.id);
+    if (!ok) { _archiveView = true; return; }
+    close(); toast("นำกลับเข้าปฏิทินแล้ว"); openTaskModal(task.id);
+  });
   modal.querySelector('[data-act="dashboard"]')?.addEventListener("click", () => openProjectDashboard(task.id));
   modal.querySelectorAll('[data-act="attachments"]').forEach(b => b.addEventListener("click", () => openAttachmentsGallery(task)));
   modal.querySelector('[data-f="title"]').addEventListener("input", (e) => { task.title = e.target.value; e.target.title = e.target.value; scheduleCommit(created ? 800 : 600); renderDup(); });
@@ -9854,6 +9927,7 @@ function openTaskModal(taskId, defaults={}) {
   }
   // someone else changed / this device changed elsewhere (chip, alert popup, upload finished) → show it here
   function refreshFromReal() {
+    if (archView) return;   // archived copy — not in the calendar, nothing to follow
     if (closed || !created || commitTimer) return;   // a pending edit of mine merges first
     const real = state.tasks.find(t => t.id === task.id);
     if (!real) { goneElsewhere(); return; }
@@ -15702,6 +15776,22 @@ document.getElementById("btnImportReq").addEventListener("click", () => { if (!c
     }
     dropdown.querySelector("[data-arc]")?.addEventListener("mousedown", (e) => { e.preventDefault(); closeDropdown(); openArchiveBrowser(q.trim()); });
     dropdown.classList.add("open");
+    // ★ 2026-10-17 (owner): archived matches show right here, marked "คลัง" (fetched after a short pause in typing)
+    const my = ++_arcSearchSeq;
+    clearTimeout(renderDropdown._t);
+    renderDropdown._t = setTimeout(async () => {
+      const rows = await searchArchive(q.trim());
+      if (my !== _arcSearchSeq || !rows.length || !dropdown.classList.contains("open")) return;
+      const link = dropdown.querySelector("[data-arc]");
+      const html = `<div class="sd-arc-h">ในคลังงาน</div>` + rows.map(r => `<div class="sd-item sd-arcitem" data-arcid="${escapeHtml(r.task_id)}">
+          <span class="sd-dot" style="background:var(--text-faint)"></span>
+          <span class="sd-main"><span class="sd-title">${highlight(r.title || "(ไม่มีชื่อ)", q)}<span class="sd-arctag">คลัง</span></span>
+            <span class="sd-sub">${r.so ? `<span class="chip-so">${highlight(r.so, q)}</span>` : ""}${r.avt ? `<span>AVT ${highlight(r.avt, q)}</span>` : ""}<span>${r.due_date ? formatDateShort(r.due_date) : ""}</span></span></span></div>`).join("");
+      if (link) { link.insertAdjacentHTML("beforebegin", html); link.innerHTML = `${ico("archive")} ดูทั้งหมดในคลังงาน`; }
+      else dropdown.insertAdjacentHTML("beforeend", html);
+      dropdown.querySelector(".sd-empty")?.remove();
+      dropdown.querySelectorAll("[data-arcid]").forEach(el => el.addEventListener("mousedown", (e) => { e.preventDefault(); closeDropdown(); openArchivedTask(root.activeBoard, el.dataset.arcid); }));
+    }, 300);
   }
 
   const applySearch = () => {
