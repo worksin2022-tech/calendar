@@ -223,6 +223,35 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
 .perm-badge { font-size: 11px; font-weight: 700; padding: 2px 9px; border-radius:9px; background:var(--b-eef4ff, #eef4ff); color:var(--t-2563eb, #2563eb); margin-left: 8px; white-space: nowrap; }
 .ta-compose.perm-off-note::after { content: "โหมดของคุณคอมเมนต์ไม่ได้"; display: block; font-size: 11px; color:var(--text-dim); padding: 4px 2px; }
 .um-count { font-size: 12px; color:var(--text-dim); margin-bottom: 6px; }
+.um-count:empty { display: none; }
+/* ★ 2026-10-17 แบบ 1: one aligned row per person */
+.um-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+.um-search { flex: 1 1 200px; display: flex; align-items: center; gap: 6px; border: 1px solid var(--border-strong); border-radius: 8px; padding: 0 9px; background: var(--b-ffffff, #fff); }
+.um-search .ico { width: 14px; height: 14px; color: var(--text-faint); }
+.um-search input { border: 0; outline: 0; background: transparent; font: inherit; font-size: 13px; padding: 6px 0; width: 100%; color: var(--text); }
+.um-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.um-chips .ov-chip.warn:not(.on) { color: var(--t-b54708, #b54708); border-color: var(--t-f79009, #f79009); background: var(--b-fffaeb, #fffaeb); }
+.settings-section .um-row { display: grid; grid-template-columns: minmax(160px, 1.3fr) 140px 160px minmax(120px, 1.5fr) auto; align-items: center; gap: 10px; flex-wrap: nowrap; position: relative; }
+.settings-section .um-row.um-blocked-row { display: flex; }
+.um-row.um-head { padding: 4px 6px; font-size: 11px; font-weight: 700; color: var(--text-faint); border-bottom: 1px solid var(--border-strong); }
+.um-row select { width: 100%; min-width: 0; }
+.um-row-pend { background: var(--b-fffaeb, #fffaeb); border: 1px solid var(--t-fec84b, #fec84b) !important; border-radius: 10px; margin-bottom: 6px; }
+.um-row .um-boards { flex-basis: auto; padding-left: 0; gap: 4px; }
+.um-row .um-boards .um-boards-lbl { display: none; }
+.um-row .um-board { padding: 1px 8px 1px 5px; font-size: 11.5px; }
+.um-act { display: flex; align-items: center; gap: 6px; justify-content: flex-end; position: relative; }
+.um-more { border: 1px solid var(--border); background: var(--b-ffffff, #fff); border-radius: 7px; width: 30px; height: 28px; cursor: pointer; font-size: 16px; line-height: 1; color: var(--text-dim); }
+.um-more:hover { border-color: var(--accent); color: var(--accent); }
+.um-menu { position: absolute; right: 0; top: calc(100% + 4px); z-index: 20; min-width: 190px; background: var(--b-ffffff, #fff); border: 1px solid var(--border); border-radius: 10px; box-shadow: var(--shadow-md, 0 6px 20px rgba(0,0,0,.12)); padding: 6px; display: flex; flex-direction: column; gap: 4px; }
+.um-menu.hidden { display: none; }
+.um-menu-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12.5px; color: var(--text-dim); padding: 4px 6px; }
+.um-menu-row select { width: auto; }
+.um-menu-btn { display: flex; align-items: center; gap: 6px; border: 0; background: transparent; font: inherit; font-size: 12.5px; padding: 6px 8px; border-radius: 6px; cursor: pointer; text-align: left; color: var(--text); }
+.um-menu-btn:hover:not([disabled]) { background: var(--b-f3f4f6, #f3f4f6); }
+.um-menu-btn.danger { color: var(--danger); }
+.um-menu-btn[disabled] { opacity: .45; cursor: not-allowed; }
+.um-menu-btn .ico { width: 14px; height: 14px; }
+@media (max-width: 760px) { .settings-section .um-row { grid-template-columns: 1fr 1fr; } .um-row .um-who { grid-column: 1 / -1; } .um-row.um-head { display: none; } }
 /* per-person calendar access (slice 6) — second line of each user row */
 .um-boards { flex-basis: 100%; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding-left: 38px; font-size: 12px; color:var(--text-dim); }
 .um-boards-lbl { font-weight: 700; }
@@ -2893,6 +2922,7 @@ body.chip-dragging .task-chip.span-bar { pointer-events: none; }   /* let the da
 
 /* ===== Settings modal (categorized) ===== */
 .settings-modal { max-width: 760px; width: 100%; min-height: min(480px, calc(100vh - 40px)); }
+.settings-modal.wide { max-width: 1120px; }
 /* fill the modal below the head; min-height:0 lets the grid shrink so .settings-content can scroll */
 .settings-layout { display: grid; grid-template-columns: 190px 1fr; grid-template-rows: minmax(0, 1fr); flex: 1 1 auto; min-height: 0; }
 .settings-nav {
@@ -5022,6 +5052,8 @@ function automationRuleLabel(r) {
   return automationConds(r).map(c => automationWhenLabel({ ...c, target: r.target })).join(r.logic === "or" ? " หรือ " : " และ ");
 }
 function automationCond(task, r) {
+  if (r.when === "cabany") return !!r.stat && (task.subtasks || []).some(x => x.statusId === r.stat);
+  if (r.when === "caball") { const subs = task.subtasks || []; return !!r.stat && subs.length > 0 && subs.every(x => x.statusId === r.stat); }
   if (r.when === "status") return !!r.stat && task.statusId === r.stat;   // project is currently in this status
   if (r.when === "nstatus") return !!r.stat && task.statusId !== r.stat;  // …is NOT in this status
   if (r.when === "subs") { const subs = task.subtasks || []; return subs.length > 0 && subs.every(subtaskDone); }
@@ -5043,6 +5075,7 @@ function automationCond(task, r) {
 }
 // the same conditions, on one cabinet's own checklist
 function automationSubCond(sub, r) {
+  if (r.when === "cabany" || r.when === "caball") return false;   // project-only conditions
   if (r.when === "status") return !!r.stat && sub.statusId === r.stat;    // cabinet is currently in this status
   if (r.when === "nstatus") return !!r.stat && sub.statusId !== r.stat;   // …is NOT in this status
   if (r.when === "subs") return subtaskDone(sub);
@@ -5063,6 +5096,9 @@ function automationSnapshot(task) {
   return m;
 }
 function automationWhenLabel(r) {
+  // ★ 2026-10-17 (owner): project rules can look at the CABINETS' status — any one cabinet / every cabinet
+  if (r.when === "cabany") return `มีตู้สถานะ “${((state.statuses || []).find(x => x.id === r.stat) || {}).name || "(ถูกลบแล้ว)"}”`;
+  if (r.when === "caball") return `ตู้ทุกตู้สถานะ “${((state.statuses || []).find(x => x.id === r.stat) || {}).name || "(ถูกลบแล้ว)"}”`;
   if (r.when === "nstatus") return `สถานะไม่ใช่ “${((state.statuses || []).find(x => x.id === r.stat) || {}).name || "(ถูกลบแล้ว)"}”`;
   if (r.when === "status") return `สถานะเป็น “${((state.statuses || []).find(x => x.id === r.stat) || {}).name || "(ถูกลบแล้ว)"}”`;
   if (r.when === "subs") return "ตู้เสร็จครบทุกตู้";
@@ -7083,15 +7119,19 @@ function escapeHtml(s) {
 }
 /* Floating status picker — anchored to an element, calls onChange(newStatusId) */
 // change a task's (or a cabinet's) status — same rules as the Today panel: log + notify + save
+// ★ 2026-10-17: run the ⚡ rules after a status picked by hand (the picked one itself is left alone — manualBase)
+function autoAfterManual(t, base, snap) { try { runAutomations(t, snap, base); } catch (e) { console.warn("automation", e); } }
 function applyStatusChange(t, sub, id) {
   const oldId = sub ? sub.statusId : t.statusId;
   if (oldId === id) return;
   if (statusBlocked(t, sub, id)) return;
+  const autoSnap = automationSnapshot(t), autoBase = JSON.parse(JSON.stringify(t));
   if (sub) sub.statusId = id; else t.statusId = id;
   const ns = getStatus(id);
   if (sub) logActivity(t, (isStatusDone(ns) && !isStatusDone(getStatus(oldId))) ? `ตู้ “${sub.text || "(ไม่มีชื่อ)"}” เสร็จ` : `ตู้ “${sub.text || "(ไม่มีชื่อ)"}” → ${ns.name}`);
   else logActivity(t, `เปลี่ยนสถานะ: ${getStatus(oldId).name} → ${ns.name}`);
   notifyStatusChange(t, sub || null, oldId, id);
+  autoAfterManual(t, autoBase, autoSnap);
   t.updatedAt = Date.now(); saveState(); renderAll();
 }
 // clickable left edge on a calendar chip (only for people who may change status)
@@ -9861,11 +9901,13 @@ function buildTpCabRow(t, sub, ed, today, deptId) {
     openStatusPopover(dot, targetId, (id) => {
       if (statusBlocked(t, sub, id)) return;
       const oldId = sub ? sub.statusId : t.statusId;
+      const autoSnap = automationSnapshot(t), autoBase = JSON.parse(JSON.stringify(t));
       if (sub) sub.statusId = id; else t.statusId = id;
       const ns = getStatus(id);
       if (sub) logActivity(t, (isStatusDone(ns) && !isStatusDone(getStatus(oldId))) ? `ตู้ “${sub.text || "(ไม่มีชื่อ)"}” เสร็จ` : `ตู้ “${sub.text || "(ไม่มีชื่อ)"}” → ${ns.name}`);
       else logActivity(t, `เปลี่ยนสถานะ: ${getStatus(oldId).name} → ${ns.name}`);
       notifyStatusChange(t, sub || null, oldId, id);
+      autoAfterManual(t, autoBase, autoSnap);
       t.updatedAt = Date.now(); saveState(); renderAll();
     });
   });
@@ -10225,6 +10267,7 @@ function openSettingsModal(initialTab = "statuses") {
   function showTab(tab) {
     if (!isAdmin() && !memberTabs.includes(tab)) tab = "notify";
     navBtns.forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+    overlay.querySelector(".settings-modal")?.classList.toggle("wide", tab === "users");   // ★ the user table needs room
     content.innerHTML = "";
     (PANELS[tab] || PANELS.statuses)(content);
   }
@@ -10288,12 +10331,16 @@ function buildUsersAdminPanel(container) {
   sec.className = "settings-section";
   sec.innerHTML = `
     <h4 class="settings-h">จัดการผู้ใช้</h4>
+    <div class="um-top"><label class="um-search">${ico("search")}<input type="search" data-q placeholder="ค้นหาชื่อ / อีเมล" autocomplete="off" /></label><div class="um-chips" data-chips></div></div>
     <div class="um-count" data-count></div>
     <div data-list><div class="cf-empty">กำลังโหลด...</div></div>
   `;
   container.appendChild(sec);
   const listEl = sec.querySelector("[data-list]");
   const countEl = sec.querySelector("[data-count]");
+  // ★ 2026-10-17 (owner, แบบ 1): search + filter over the loaded list (no reload)
+  let umQ = "", umF = "all", umLast = null;
+  sec.querySelector("[data-q]").addEventListener("input", (e) => { umQ = e.target.value.trim().toLowerCase(); if (umLast) render(umLast); });
   // departments from EVERY calendar (deduped) — so e.g. "Service" (only defined on the Service board)
   // can be assigned while the admin is looking at โรงงาน
   // opened from the Service calendar → list only Service people (+ unassigned newcomers so a Service
@@ -10387,9 +10434,6 @@ function buildUsersAdminPanel(container) {
           ${p._similar ? `<div class="um-similar">${ico("alert")} คล้ายกับ ${escapeHtml(p._similar.email)}${p._similar.display_name ? " (" + escapeHtml(p._similar.display_name) + ")" : ""}</div>` : ""}
         </div>
       </div>
-      <select data-role ${roleLocked ? "disabled" : ""} title="${isMe ? "เปลี่ยนสิทธิ์ตัวเองไม่ได้ (กันล็อกตัวเองออก)" : roleLocked ? "แต่งตั้ง/ถอด admin ได้เฉพาะ Owner" : "สิทธิ์"}">
-        <option value="member">member</option><option value="admin">admin</option>
-      </select>
       <select data-dept title="${locked ? "จัดการ admin ได้เฉพาะ Owner" : "แผนก (ใช้ทุกปฏิทิน)"}" ${locked ? "disabled" : ""}>${deptOptions}</select>
       <select data-perm class="um-perm-sel" title="ระดับสิทธิ์การแก้ไข (admin = เต็มเสมอ)" ${p.role === "admin" || locked ? "disabled" : ""}>
         <option value="read">ดูอย่างเดียว</option>
@@ -10398,13 +10442,36 @@ function buildUsersAdminPanel(container) {
         <option value="edit">แก้วัน/สถานะ</option>
         <option value="full">แก้ไขเต็ม</option>
       </select>
-      ${p.approved
-        ? `<button class="btn btn-ghost btn-sm btn-danger" data-revoke ${isMe || locked ? "disabled" : ""} title="${isMe ? "ถอดสิทธิ์ตัวเองไม่ได้" : locked ? "จัดการ admin ได้เฉพาะ Owner" : "ถอดสิทธิ์ — ย้ายกลับไปสถานะรออนุมัติ"}">${ico("ban")} ถอดสิทธิ์</button>`
-        : `<button class="btn btn-sm btn-primary" data-approve>✓ อนุมัติ</button>
-           <button class="btn btn-ghost btn-sm btn-danger" data-block ${isMe ? "disabled" : ""} title="${isMe ? "บล็อกตัวเองไม่ได้" : "ติดธงแดง (บล็อก) — ซ่อนออกจากลิสต์ เข้าไม่ได้ · ปลดบล็อกภายหลังได้"}">${ico("flag")}</button>`}
+      <div class="um-act">
+        ${p.approved ? "" : `<button class="btn btn-sm btn-primary" data-approve>✓ อนุมัติ</button>`}
+        <button type="button" class="um-more" data-more title="เพิ่มเติม">⋯</button>
+        <div class="um-menu hidden">
+          <label class="um-menu-row">บทบาท
+            <select data-role ${roleLocked ? "disabled" : ""} title="${isMe ? "เปลี่ยนสิทธิ์ตัวเองไม่ได้ (กันล็อกตัวเองออก)" : roleLocked ? "แต่งตั้ง/ถอด admin ได้เฉพาะ Owner" : "บทบาท"}">
+              <option value="member">member</option><option value="admin">admin</option>
+            </select></label>
+          ${p.approved
+            ? `<button class="um-menu-btn danger" data-revoke ${isMe || locked ? "disabled" : ""} title="${isMe ? "ถอดสิทธิ์ตัวเองไม่ได้" : locked ? "จัดการ admin ได้เฉพาะ Owner" : "ย้ายกลับไปสถานะรออนุมัติ"}">${ico("ban")} ถอดสิทธิ์</button>`
+            : `<button class="um-menu-btn danger" data-block ${isMe ? "disabled" : ""} title="${isMe ? "บล็อกตัวเองไม่ได้" : "ซ่อนออกจากลิสต์ เข้าไม่ได้ · ปลดบล็อกภายหลังได้"}">${ico("flag")} บล็อก</button>`}
+        </div>
+      </div>
     `;
+    if (!p.approved) row.classList.add("um-row-pend");
     wireRoleDept(row, p, isMe);
-    if (p.approved || !p.blocked) row.appendChild(boardTicks(p, locked));
+    const bt = (p.approved || !p.blocked) ? boardTicks(p, locked) : document.createElement("div");
+    row.insertBefore(bt, row.querySelector(".um-act"));
+    // ⋯ menu (opens over the row, closes on any outside click)
+    const menu = row.querySelector(".um-menu"), moreBtn = row.querySelector("[data-more]");
+    moreBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const open = menu.classList.contains("hidden");
+      document.querySelectorAll(".um-menu").forEach(m => m.classList.add("hidden"));
+      if (open) {
+        menu.classList.remove("hidden");
+        const off = (ev) => { if (!menu.contains(ev.target)) { menu.classList.add("hidden"); document.removeEventListener("mousedown", off, true); } };
+        setTimeout(() => document.addEventListener("mousedown", off, true), 0);
+      }
+    });
     const approveBtn = row.querySelector("[data-approve]");
     if (approveBtn) approveBtn.addEventListener("click", async (e) => {
       e.target.disabled = true; e.target.textContent = "กำลังอนุมัติ...";
@@ -10493,24 +10560,33 @@ function buildUsersAdminPanel(container) {
   };
 
   function render(users) {
+    umLast = users;
     if (svcOnly) users = users.filter(u => u.dept_id === SERVICE_DEPT || (!u.dept_id && !u.approved && !u.blocked));
+    const allUsers = users;
+    const nPend = users.filter(u => !u.blocked && !u.approved).length, nAdmin = users.filter(u => !u.blocked && u.role === "admin").length, nAll = users.filter(u => !u.blocked).length;
+    const chips = sec.querySelector("[data-chips]");
+    chips.innerHTML = [["all", "ทั้งหมด", nAll], ["pend", "รออนุมัติ", nPend], ["admin", "admin", nAdmin]].map(([k, l, n]) => `<button type="button" class="ov-chip${umF === k ? " on" : ""}${k === "pend" && n ? " warn" : ""}" data-f="${k}">${l} ${n}</button>`).join("");
+    chips.querySelectorAll("[data-f]").forEach(b => b.addEventListener("click", () => { umF = b.dataset.f; render(umLast); }));
+    if (umQ) users = users.filter(u => ((u.display_name || "") + " " + (u.email || "")).toLowerCase().includes(umQ));
+    if (umF === "pend") users = users.filter(u => !u.approved && !u.blocked);
+    else if (umF === "admin") users = users.filter(u => u.role === "admin" && !u.blocked);
     const active  = users.filter(u => !u.blocked && u.approved);
     const pending = users.filter(u => !u.blocked && !u.approved);
     const blocked = users.filter(u => u.blocked);
-    const adminCount = users.filter(u => !u.blocked && u.role === "admin").length;
-    countEl.textContent = `ทั้งหมด ${users.length} คน · admin ${adminCount} · รออนุมัติ ${pending.length}` + (blocked.length ? ` · ถูกบล็อก ${blocked.length}` : "");
+    countEl.textContent = (umQ || umF !== "all") ? `แสดง ${active.length + pending.length} คน` : "";
     listEl.innerHTML = "";
-    if (!users.length) { listEl.innerHTML = `<div class="cf-empty">ยังไม่มีผู้ใช้</div>`; return; }
+    if (!users.length) { listEl.innerHTML = `<div class="cf-empty">${allUsers.length ? "ไม่พบผู้ใช้" : "ยังไม่มีผู้ใช้"}</div>`; return; }
 
     // 1) "รออนุมัติ" first — the priority action, kept together across all departments
     if (pending.length) {
       // ★ 2026-10-12 (owner): a pending email 1–2 letters off an existing account = probably a typo of that person
-      pending.forEach(p => { p._similar = similarEmailUser(p, users.filter(u => u !== p && u.approved)); });
+      pending.forEach(p => { p._similar = similarEmailUser(p, allUsers.filter(u => u !== p && u.approved)); });
       listEl.appendChild(groupHead(`${ico("clock")} รออนุมัติ`, pending.length));
       pending.forEach(p => listEl.appendChild(makeRow(p)));
     }
 
     // 2) approved users grouped BY DEPARTMENT (department order, then a "no department" group last)
+    if (active.length) { const hd = document.createElement("div"); hd.className = "um-row um-head"; hd.innerHTML = `<span>ผู้ใช้</span><span>แผนก</span><span>สิทธิ์</span><span>ปฏิทิน</span><span></span>`; listEl.appendChild(hd); }
     const byDept = new Map();
     active.forEach(u => {
       const k = (u.dept_id && allDepts.some(d => d.id === canonicalDeptId(u.dept_id))) ? canonicalDeptId(u.dept_id) : "";
@@ -11131,10 +11207,14 @@ function buildAutomationPanel(container) {
   const condValue = c => (c.when === "all" || c.when === "subs") ? c.when
     : c.when === "status" ? "st:" + (c.stat || "")
     : c.when === "nstatus" ? "nst:" + (c.stat || "")
+    : c.when === "cabany" ? "cany:" + (c.stat || "")
+    : c.when === "caball" ? "call:" + (c.stat || "")
     : c.when === "item" ? "item:" + c.deptId + ":" + encodeURIComponent(c.item || "") : c.when + ":" + c.deptId;
   const parseCond = v => {
     if (v.startsWith("st:")) return { when: "status", deptId: null, stat: v.slice(3) };
     if (v.startsWith("nst:")) return { when: "nstatus", deptId: null, stat: v.slice(4) };
+    if (v.startsWith("cany:")) return { when: "cabany", deptId: null, stat: v.slice(5) };
+    if (v.startsWith("call:")) return { when: "caball", deptId: null, stat: v.slice(5) };
     if (v.startsWith("item:")) { const r = v.slice(5), j = r.indexOf(":"); return { when: "item", deptId: r.slice(0, j), item: decodeURIComponent(r.slice(j + 1)) }; }
     const i = v.indexOf(":"); return i < 0 ? { when: v, deptId: null } : { when: v.slice(0, i), deptId: v.slice(i + 1) };
   };
@@ -11150,7 +11230,12 @@ function buildAutomationPanel(container) {
     const sts = state.statuses || [];
     h += `<optgroup label="สถานะปัจจุบัน">` + sts.map(st => opt("st:" + st.id, `สถานะเป็น “${st.name}”`)).join("") + `</optgroup>`;
     h += `<optgroup label="ยกเว้นสถานะ">` + sts.map(st => opt("nst:" + st.id, `สถานะไม่ใช่ “${st.name}”`)).join("") + `</optgroup>`;
-    if (c.when === "status" || c.when === "nstatus") { if (!sts.some(st => st.id === c.stat)) h += opt(condValue(c), "(สถานะถูกลบแล้ว)"); }
+    if (target === "task") {
+      h += `<optgroup label="สถานะตู้ (มีตู้ใดตู้หนึ่ง)">` + sts.map(st => opt("cany:" + st.id, `มีตู้สถานะ “${st.name}”`)).join("") + `</optgroup>`;
+      h += `<optgroup label="สถานะตู้ (ทุกตู้)">` + sts.map(st => opt("call:" + st.id, `ตู้ทุกตู้สถานะ “${st.name}”`)).join("") + `</optgroup>`;
+    }
+    if (c.when === "cabany" || c.when === "caball") { if (target !== "task" || !sts.some(st => st.id === c.stat)) h += opt(condValue(c), target !== "task" ? automationWhenLabel(c) + " (ใช้กับงานเท่านั้น)" : "(สถานะถูกลบแล้ว)"); }
+    else if (c.when === "status" || c.when === "nstatus") { if (!sts.some(st => st.id === c.stat)) h += opt(condValue(c), "(สถานะถูกลบแล้ว)"); }
     else if (c.when !== "all" && c.when !== "subs" && !depts.some(d => d.id === c.deptId)) h += opt(condValue(c), "(แผนกถูกลบแล้ว)");
     else if (c.when === "item" && !((getDept(c.deptId) || {}).checklist || []).map(x => String(x || "").trim()).includes(c.item)) h += opt(condValue(c), `ติ๊ก “${c.item}” (รายการไม่อยู่ในเช็คลิสต์แล้ว)`);
     return h;
@@ -14847,10 +14932,12 @@ function mListClick(e) {
       mWithBoard(bid, () => {
         const oldId = sub.statusId;
         if (oldId === id || statusBlocked(t, sub, id)) return;
+        const autoSnap = automationSnapshot(t), autoBase = JSON.parse(JSON.stringify(t));
         sub.statusId = id; ok = true;
         const ns = getStatus(id);
         logActivity(t, (isStatusDone(ns) && !isStatusDone(getStatus(oldId))) ? `ตู้ “${sub.text || "(ไม่มีชื่อ)"}” เสร็จ` : `ตู้ “${sub.text || "(ไม่มีชื่อ)"}” → ${ns.name}`);
         notifyStatusChange(t, sub, oldId, id);
+        autoAfterManual(t, autoBase, autoSnap);   // that calendar's ⚡ rules
       });
       if (ok) { t.updatedAt = Date.now(); saveState(); renderAll(); }
     }));
