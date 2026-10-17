@@ -344,6 +344,15 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
 .shift-list { display: flex; flex-direction: column; gap: 2px; margin: 10px 0 4px; text-align: left; max-height: 280px; overflow: auto; }
 .shift-row { display: flex; align-items: center; gap: 10px; padding: 7px 10px; border-radius: 8px; cursor: pointer; }
 .shift-row:hover { background: var(--b-f3f4f6, #f3f4f6); }
+.subtask-dd-btn { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border: 1px solid var(--border-strong); background: var(--b-ffffff, #fff); border-radius: 6px; padding: 0; font-size: 11px; line-height: 1; color: var(--text-dim); cursor: pointer; flex: 0 0 auto; }
+.subtask-dd-btn.own { color: var(--t-185fa5, #185fa5); border-color: var(--t-85b7eb, #85b7eb); }
+.subtask-dd-btn.on { background: var(--b-e6f1fb, #e6f1fb); color: var(--t-185fa5, #185fa5); border-color: var(--t-378add, #378add); }
+.subtask-dd { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 4px 26px; padding: 8px 10px; border-left: 2px solid var(--t-378add, #378add); background: var(--b-f7fafd, #f7fafd); border-radius: 0 8px 8px 0; }
+.subtask-dd-cell { display: flex; flex-direction: column; gap: 3px; }
+.subtask-dd-name { font-size: 11.5px; font-weight: 600; color: var(--text-dim); display: flex; align-items: center; gap: 4px; }
+.subtask-dd-name i { font-style: normal; font-weight: 400; color: var(--text-faint); }
+.subtask-dd-cell:not(.own) .datefield-input { color: var(--text-faint); }
+.shift-extra { margin-top: 6px; border: 1px dashed var(--t-f79009, #f79009); background: var(--b-fffaeb, #fffaeb); }
 .shift-row input { width: 16px; height: 16px; margin: 0; flex: 0 0 auto; cursor: pointer; }
 .shift-name { flex: 1 1 auto; min-width: 0; display: inline-flex; align-items: center; gap: 6px; font-size: 13.5px; font-weight: 600; color: var(--text); }
 .shift-name .ico { width: 15px; height: 15px; color: var(--text-dim); }
@@ -533,6 +542,7 @@ html:has(body.m-mode), body.m-mode { overscroll-behavior-y: contain; }
 .m-sheet .tm-title-row { flex-wrap: wrap; }
 .m-sheet .tm-title-row .tm-so { flex: 1 1 calc(50% - 4px); }
 .m-sheet .tm-title-row .tm-name { flex: 1 1 100%; }
+.m-sheet .tm-title-row .tm-name-wrap { flex: 1 1 100%; }
 .m-sheet .subtask-main { flex-wrap: wrap; row-gap: 4px; }
 .m-sheet .subtask-row input.sub-mo { flex: 0 0 auto; width: 120px; }
 .m-sheet .subtask-row input.sub-name { flex: 1 1 calc(100% - 160px); min-width: 140px; }
@@ -638,8 +648,16 @@ html, body { touch-action: manipulation; }
 #mPill .ico { width: 17px; height: 17px; }
 @media print { #mobileRoot, #mPill { display: none !important; } body.m-mode #appRoot { display: block !important; } }
 .field.tm-title-row { flex-direction: row; gap: 8px; }
-.tm-title-row .tm-so { flex: 0 0 calc((100% - 8px) / 5); min-width: 0; }   /* SO = 1/4 of the name field */
-.tm-title-row .tm-name { flex: 1 1 0; min-width: 0; }
+.tm-title-row .tm-so { flex: 0 0 140px; min-width: 0; }   /* ★ 2026-10-17 (owner): just wide enough for "AVT961000" / "SO26090077" */
+.tm-title-row .tm-name-wrap { flex: 1 1 0; min-width: 0; position: relative; display: flex; }
+.tm-title-row .tm-name { flex: 1 1 0; min-width: 0; padding-right: 40px !important; }
+.tm-copy { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); width: 30px; height: 30px; border: 0; border-radius: 7px; background: transparent; color: var(--text-faint); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
+.tm-copy:hover { background: var(--b-f3f4f6, #f3f4f6); color: var(--accent); }
+.tm-copy .ico { width: 16px; height: 16px; }
+.stage-add-pop { position: fixed; z-index: 1450; background: var(--b-ffffff, #fff); border: 1px solid var(--border); border-radius: 10px; box-shadow: var(--shadow-md, 0 6px 20px rgba(0,0,0,.12)); padding: 6px; display: flex; flex-direction: column; gap: 2px; min-width: 180px; max-height: 320px; overflow-y: auto; }
+.stage-add-pop button { display: flex; align-items: center; gap: 6px; border: 0; background: transparent; font: inherit; font-size: 13px; padding: 7px 10px; border-radius: 7px; cursor: pointer; text-align: left; color: var(--text); }
+.stage-add-pop button:hover { background: var(--b-f3f4f6, #f3f4f6); }
+.stage-add-pop .sap-empty { font-size: 12px; color: var(--text-faint); padding: 8px 10px; }
 .extra-input { flex: 1; min-width: 0; border:1px solid var(--border-strong); border-radius:6px; padding: 5px 8px; font: inherit; font-size: 12.5px; background:var(--b-ffffff, #fff); }
 .extra-input:focus { outline:none; border-color:var(--accent); }
 .extra-row .datefield.req-date { flex: 1; min-width: 0; }
@@ -2144,7 +2162,7 @@ body.chip-dragging .task-chip.span-bar { pointer-events: none; }   /* let the da
   overflow: hidden;
 }
 .modal.wide { max-width: 720px; }
-.modal.task-modal { max-width: 1000px; }
+.modal.task-modal { max-width: 1180px; }   /* ★ 2026-10-17 (owner): was 1000 — the extra width all goes to the left side (cabinet names); activity stays 320px */
 /* status report popup (on app open) */
 .report-modal { max-width: 540px; }
 .report-body { padding: 16px 20px; overflow-y: auto; flex: 1; min-height: 0; }
@@ -2341,11 +2359,20 @@ body.chip-dragging .task-chip.span-bar { pointer-events: none; }   /* let the da
 .subtask-main { display: flex; align-items: center; gap: 8px; }
 /* per-cabinet checklist progress — ★ 2026-10-11 (owner): ~1/4 of the old full-width bar, on the cabinet's own line
    (before the checklist count) with the % beside it → one line per cabinet instead of two */
-.subtask-progress { flex: 0 1 15%; max-width: 150px; min-width: 64px; display: flex; align-items: center; gap: 6px; }
+.subtask-progress { flex: 0 0 66px; display: flex; align-items: center; gap: 4px; }   /* ★ narrower → more room for MO / cabinet name */
 .subtask-row .subtask-main > .tm-date { flex: 0 0 132px; }   /* same width with/without a date → the columns line up */
+.subtask-row .subtask-main > .cdate { flex: 0 0 88px; }
+.subtask-main { gap: 6px; }
+.cdate { display: inline-flex; align-items: center; border: 1px solid var(--border-strong); border-radius: 7px; background: var(--b-ffffff, #fff); overflow: hidden; height: 28px; max-width: 100%; }
+.cdate-btn { flex: 1; min-width: 0; border: 0; background: transparent; font: inherit; font-size: 12.5px; font-weight: 600; color: var(--text); padding: 0 8px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: left; height: 100%; }
+.cdate-btn:hover { color: var(--accent); }
+.cdate.cdate-empty .cdate-btn, .cdate.faint .cdate-btn { color: var(--text-faint); font-weight: 500; }
+.cdate-x { flex: 0 0 auto; border: 0; background: transparent; color: var(--text-faint); font-size: 14px; line-height: 1; width: 20px; height: 100%; cursor: pointer; padding: 0; }
+.cdate-x:hover { color: var(--danger); }
+.subtask-dd .cdate { width: 96px; }
 .subtask-progress-track { flex: 1 1 auto; min-width: 30px; height: 6px; background:var(--b-eef0f3, #eef0f3); border-radius:3px; overflow: hidden; }
 .subtask-progress-bar { height: 100%; width: 0%; background:var(--accent); border-radius:3px; transition: width .2s; }
-.subtask-progress-pct { flex: 0 0 32px; font-size: 11px; font-weight: 600; color:var(--text-dim); text-align: right; font-variant-numeric: tabular-nums; }
+.subtask-progress-pct { flex: 0 0 30px; font-size: 11px; font-weight: 600; color:var(--text-dim); text-align: right; font-variant-numeric: tabular-nums; }
 .subtask-progress-pct.full { color: #10b981; }
 @media (max-width: 640px) { .subtask-progress { display: none; } }
 .subtask-cl-btn {
@@ -2470,7 +2497,7 @@ body.chip-dragging .task-chip.span-bar { pointer-events: none; }   /* let the da
 }
 .stage-prog.full { background:var(--b-10b981, #10b981); color:var(--t-ffffff, #fff); }
 /* delete-stage button: hidden until the row is hovered (like checklist items) */
-.stage-row .subtask-del { color:var(--text-faint); flex: 0 0 auto; }
+.stage-row .subtask-del { color:var(--text-faint); flex: 0 0 auto; opacity: 0; }
 .stage-row:hover .subtask-del { opacity: 1; }
 .stage-row .subtask-del:hover { color:var(--danger); background:var(--b-fef3f2, #fef3f2); }
 
@@ -2639,8 +2666,8 @@ body.chip-dragging .task-chip.span-bar { pointer-events: none; }   /* let the da
   color:var(--text);
 }
 .subtask-row input[type=text]:focus { outline:none; background:var(--b-ffffff, #fff); border-bottom:1px solid var(--accent); }
-.subtask-row input.sub-mo { flex: 1 1 0; min-width: 44px; color:var(--text-dim); }
-.subtask-row input.sub-name { flex: 4 1 0; }
+.subtask-row input.sub-mo { flex: 0 0 104px; min-width: 0; color:var(--text-dim); font-size: 12px; padding-left: 6px; padding-right: 4px; }   /* ★ 2026-10-17: fits "WH/MO/05100" */
+.subtask-row input.sub-name { flex: 1 1 0; min-width: 120px; }
 .subtask-row.done input[type=text] { text-decoration: line-through; color:var(--text-faint); }
 .subtask-row input[type=date].subtask-date {
   flex: 0 0 auto;
@@ -2659,9 +2686,10 @@ body.chip-dragging .task-chip.span-bar { pointer-events: none; }   /* let the da
   opacity: 0;
   transition: opacity .12s;
   border:none; background:transparent; color:var(--danger);
-  font-size: 16px; line-height: 1; padding: 2px 6px; cursor: pointer;
-  border-radius:4px;
+  font-size: 16px; line-height: 1; padding: 3px 5px; cursor: pointer;
+  border-radius:4px; display: inline-flex; align-items: center;
 }
+.subtask-del .ico { width: 15px; height: 15px; }
 .subtask-row:hover .subtask-del { opacity: 1; }
 .subtask-del:hover { background:var(--b-fef3f2, #fef3f2); }
 .add-sub-btn {
@@ -4506,11 +4534,15 @@ function renderProdTable() {
       }
       openCalendarPopover(td, shipOf(t, sb), iso => {
         if (!iso) return;
-        if (ss) {
-          if (sb) { if (!sb.deptDates) sb.deptDates = {}; if (iso === ss.due) delete sb.deptDates[shipDept.id]; else sb.deptDates[shipDept.id] = iso; }
-          else { const old = ss.due; ss.due = iso; (t.subtasks || []).forEach(x => { if (x.deptDates && x.deptDates[shipDept.id] === old) delete x.deptDates[shipDept.id]; }); }
-        } else if (sb) sb.date = iso; else t.date = iso;
-        saved(t, `วันส่ง${cabTxt} → ${formatDateTH(iso)}`);
+        const old = shipOf(t, sb), diff = old ? Math.round((fromIso(iso) - fromIso(old)) / 86400000) : 0;
+        askShiftCabinet(t, sb, diff, ss ? shipDept.id : null, iso).then(pick => {
+          if (!pick) return;
+          if (pick.extra && iso > t.date) { logActivity(t, `เลื่อนวันจบโครงการ ${formatDateTH(t.date)} → ${formatDateTH(iso)} (ตามตู้ “${sb.text || "-"}”)`); t.date = iso; }
+          if (ss) { if (!sb.deptDates) sb.deptDates = {}; if (iso === ss.due) delete sb.deptDates[shipDept.id]; else sb.deptDates[shipDept.id] = iso; }
+          else sb.date = iso;
+          const n = shiftCabinetDepts(t, sb, diff, pick);
+          saved(t, `วันส่ง${cabTxt} → ${formatDateTH(iso)}${n ? ` (${n} แผนกเลื่อน ${diff > 0 ? "+" : ""}${diff} วันตาม)` : ""}`);
+        });
       });
     } else if (kind === "f") {
       openCalendarPopover(td, nf ? nf.date : null, iso => {
@@ -4929,10 +4961,32 @@ function shiftTaskDeptDates(t, diff, pick) {
 // ★ 2026-10-11 (owner): moving the project's end date no longer drags every department along silently — ask first and
 //   let the user tick which departments (and the cabinets' own dates) move by the same number of days.
 //   Resolves { depts:Set, cabinets:bool } · null = cancel the whole change. Nothing to move → resolves an empty pick at once.
-function askShiftDepts(t, diff) {
+// ★ 2026-10-17 (owner): moving ONE cabinet's end date moves that cabinet's department dates by the same number of days
+//   (asks which, like the project end date) — each department keeps its gap to the cabinet's end. Written as the
+//   cabinet's own per-department dates (sub.deptDates); `skipDept` = the department whose date was the one just edited.
+// newEnd past the project's end → one more (unticked) choice: move the project's end date to it too (pick.extra)
+function askShiftCabinet(t, sb, diff, skipDept, newEnd) {
+  const stages = ((t && t.deptStages) || []).filter(st => getDept(st.deptId) && st.deptId !== skipDept)
+    .map(st => ({ deptId: st.deptId, due: cabinetDeptDue(t, sb, st.deptId) })).filter(x => x.due);
+  const late = !!(newEnd && t && t.date && newEnd > t.date);
+  if (!diff || (!stages.length && !late)) return Promise.resolve({ depts: new Set(), cabinets: false, extra: false });
+  return askShiftDepts({ deptStages: stages, subtasks: [] }, diff, `เลื่อนวันตู้ “${sb.text || "-"}”`,
+    late ? { label: `เลื่อนวันจบโครงการ ${formatDateTH(t.date)} → ${formatDateTH(newEnd)} ด้วย` } : null);
+}
+function shiftCabinetDepts(t, sb, diff, pick) {
+  let n = 0;
+  ((t && t.deptStages) || []).forEach(st => {
+    if (!pick || !pick.depts.has(st.deptId)) return;
+    const cur = cabinetDeptDue(t, sb, st.deptId); if (!cur) return;
+    if (!sb.deptDates) sb.deptDates = {};
+    sb.deptDates[st.deptId] = addDaysIso(cur, diff); n++;
+  });
+  return n;
+}
+function askShiftDepts(t, diff, title, extra) {   // extra = { label } → one more tick (unticked), returned as pick.extra
   const stages = (t.deptStages || []).filter(st => st.due || st.start);
   const hasCab = (t.subtasks || []).some(sb => sb.date);
-  if (!stages.length && !hasCab) return Promise.resolve({ depts: new Set(), cabinets: false });
+  if (!stages.length && !hasCab && !extra) return Promise.resolve({ depts: new Set(), cabinets: false, extra: false });
   const fmt = iso => iso ? formatDateTH(iso) : "—";
   const sign = (diff > 0 ? "+" : "") + diff;
   return new Promise(resolve => {
@@ -4941,8 +4995,8 @@ function askShiftDepts(t, diff) {
     overlay.innerHTML = `
       <div class="confirm-dialog shift-dialog" role="alertdialog" aria-modal="true">
         <div class="confirm-icon">${ico("calendar")}</div>
-        <div class="confirm-title">เลื่อนวันครบกำหนด ${sign} วัน</div>
-        <div class="confirm-msg">เลือกแผนกที่จะเลื่อนตาม</div>
+        <div class="confirm-title">${escapeHtml(title || "เลื่อนวันครบกำหนด")} ${sign} วัน</div>
+        <div class="confirm-msg">${stages.length || hasCab ? "เลือกแผนกที่จะเลื่อนตาม" : ""}</div>
         <div class="shift-list">
           ${stages.map(st => { const d = getDept(st.deptId) || { name: "?" }; return `
             <label class="shift-row"><input type="checkbox" data-dept="${escapeHtml(st.deptId)}" checked />
@@ -4950,6 +5004,7 @@ function askShiftDepts(t, diff) {
               <span class="shift-dates">${fmt(st.due)} → <b>${fmt(st.due && addDaysIso(st.due, diff))}</b></span></label>`; }).join("")}
           ${hasCab ? `<label class="shift-row"><input type="checkbox" data-cab checked /><span class="shift-name">${ico("archive")}วันของตู้</span><span class="shift-dates">${(t.subtasks || []).filter(sb => sb.date).length} ตู้</span></label>` : ""}
         </div>
+        ${extra ? `<label class="shift-row shift-extra"><input type="checkbox" data-extra /><span class="shift-name">${ico("flag")}${escapeHtml(extra.label)}</span></label>` : ""}
         <div class="shift-quick"><button type="button" class="btn btn-ghost btn-sm" data-all>เลือกทั้งหมด</button><button type="button" class="btn btn-ghost btn-sm" data-none>ไม่เลือก</button></div>
         <div class="confirm-actions">
           <button class="btn" data-act="cancel">ยกเลิก</button>
@@ -4962,7 +5017,7 @@ function askShiftDepts(t, diff) {
     overlay.querySelector("[data-none]").addEventListener("click", () => boxes().forEach(b => { b.checked = false; }));
     function close(val) { overlay.remove(); document.removeEventListener("keydown", onKey, true); resolve(val); }
     const pickNow = () => ({ depts: new Set(boxes().filter(b => b.dataset.dept && b.checked).map(b => b.dataset.dept)),
-      cabinets: !!overlay.querySelector("[data-cab]:checked") });
+      cabinets: !!overlay.querySelector("[data-cab]:checked"), extra: !!overlay.querySelector("[data-extra]:checked") });
     function onKey(e) {
       if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); close(null); }
       else if (e.key === "Enter") { e.preventDefault(); e.stopPropagation(); close(pickNow()); }
@@ -6646,11 +6701,17 @@ function renderMonth() {
         const t = state.tasks.find(x => x.id === dragSub.taskId);
         const s = t && (t.subtasks || []).find(x => x.id === dragSub.subId);
         if (s && s.date !== iso) {
-          s.date = iso;
-          logActivity(t, `เลื่อนวันตู้ “${s.text||"(ไม่มีชื่อ)"}” → ${formatDateTH(iso)}`);
-          t.updatedAt = Date.now();
-          saveState();
-          renderAll();
+          const old = s.date || t.date, diff = old ? Math.round((fromIso(iso) - fromIso(old)) / 86400000) : 0;
+          askShiftCabinet(t, s, diff, null, iso).then(pick => {
+            if (!pick) return;
+            s.date = iso;
+            const n = shiftCabinetDepts(t, s, diff, pick);
+            if (pick.extra && iso > t.date) { logActivity(t, `เลื่อนวันจบโครงการ ${formatDateTH(t.date)} → ${formatDateTH(iso)} (ตามตู้ “${s.text || "-"}”)`); t.date = iso; }
+            logActivity(t, `เลื่อนวันตู้ “${s.text||"(ไม่มีชื่อ)"}” → ${formatDateTH(iso)}${n ? ` (${n} แผนกเลื่อน ${diff > 0 ? "+" : ""}${diff} วันตาม)` : ""}`);
+            t.updatedAt = Date.now();
+            saveState();
+            renderAll();
+          });
         }
         return;
       }
@@ -7434,6 +7495,24 @@ function createDateField({ value = null, allowClear = false, onChange = () => {}
   return wrap;
 }
 
+// ★ 2026-10-17 (owner): small date chip "29 ต.ค." (like the department chips) — click = calendar; small × clears.
+//   Same interface as createDateField (getValue / setValue / title) so it can stand in for it.
+function compactDateField({ value = null, allowClear = false, onChange = () => {}, placeholder = "+ วัน", faint = false } = {}) {
+  const wrap = document.createElement("span");
+  wrap.className = "cdate" + (faint ? " faint" : "");
+  let cur = value || null;
+  const lbl = iso => { if (!iso) return placeholder; const d = fromIso(iso), y = d.getFullYear() !== new Date().getFullYear() ? " " + String(d.getFullYear() + 543).slice(2) : ""; return `${d.getDate()} ${TH_MON[d.getMonth()]}${y}`; };
+  const paint = () => {
+    wrap.classList.toggle("cdate-empty", !cur);
+    wrap.innerHTML = `<button type="button" class="cdate-btn">${escapeHtml(lbl(cur))}</button>${allowClear && cur ? `<button type="button" class="cdate-x" title="ล้างวันที่">×</button>` : ""}`;
+    wrap.querySelector(".cdate-btn").addEventListener("click", (e) => { e.stopPropagation(); openCalendarPopover(wrap, cur, (iso) => { if (iso === cur) return; cur = iso || null; paint(); onChange(cur); }); });
+    wrap.querySelector(".cdate-x")?.addEventListener("click", (e) => { e.stopPropagation(); cur = null; paint(); onChange(null); });
+  };
+  paint();
+  wrap.getValue = () => cur;
+  wrap.setValue = (iso) => { cur = iso || null; paint(); };
+  return wrap;
+}
 function openCalendarPopover(anchorEl, currentIso, onPick) {
   document.querySelectorAll(".dp-cal").forEach(n => n.remove());
   const today = todayIso();
@@ -8069,7 +8148,7 @@ function openTaskModal(taskId, defaults={}) {
           <input type="text" class="title-input tm-so" data-f="avt" placeholder="AVT" />
           <input type="text" class="title-input tm-so" data-f="so" placeholder="SO" />
           ${task.ext && task.ext.src === "it" ? `<span class="tm-it-badge" title="เชื่อมกับระบบไอที">${ico("link")}</span>` : ""}
-          <input type="text" class="title-input tm-name" data-f="title" placeholder="ชื่อโครงการ" />
+          <span class="tm-name-wrap"><input type="text" class="title-input tm-name" data-f="title" placeholder="ชื่อโครงการ" /><button type="button" class="tm-copy" data-copy-name title="คัดลอก SO + ชื่อโครงการ">${ico("copy")}</button></span>
         </div>
         <div class="dup-warn" data-dup hidden></div>
         <div class="tm-meta">
@@ -8189,6 +8268,15 @@ function openTaskModal(taskId, defaults={}) {
     const ta = modal.querySelector("[data-comment]"); if (ta) ta.placeholder = "พิมพ์ข้อความ…";
   }
   modal.querySelector('[data-f="title"]').value = task.title;
+  modal.querySelector('[data-f="title"]').title = task.title || "";   // ★ full name on hover
+  modal.querySelector("[data-copy-name]")?.addEventListener("click", async (e) => {
+    e.preventDefault();
+    const txt = [(task.so || "").trim(), (task.title || "").trim()].filter(Boolean).join(" ");
+    if (!txt) return;
+    try { await navigator.clipboard.writeText(txt); }
+    catch (_) { const ta = document.createElement("textarea"); ta.value = txt; document.body.appendChild(ta); ta.select(); try { document.execCommand("copy"); } catch (__) {} ta.remove(); }
+    toast(`คัดลอกแล้ว: ${txt}`);
+  });
   modal.querySelector('[data-f="so"]').value = task.so || "";
   modal.querySelector('[data-f="so"]').addEventListener("input", (e) => { task.so = e.target.value; scheduleCommit(created ? 800 : 600); });
   modal.querySelector('[data-f="avt"]').value = taskAvt(task);
@@ -8355,6 +8443,7 @@ function openTaskModal(taskId, defaults={}) {
     modal.querySelector(".bom-tip")?.remove(); e.currentTarget.classList.remove("bom-spot");
     openBomBulkImport(task, { commit: () => { renderSubs(); scheduleCommit(0); } });
   });
+  const ddOpen = new Set();   // ★ 2026-10-17 (แบบ B): cabinets whose per-department dates are unfolded
   function renderSubs() {
     if (modal._flowReady) renderFlow();   // a cabinet checklist tick can finish a department (not during setup: renderFlow's helpers come later)
     subWrap.innerHTML = "";
@@ -8368,6 +8457,7 @@ function openTaskModal(taskId, defaults={}) {
       row.dataset.sid = s.id;
       row.innerHTML = `
         <div class="subtask-main">
+          ${!modalDept && (task.deptStages || []).some(st => getDept(st.deptId)) ? `<button type="button" class="subtask-dd-btn${ddOpen.has(s.id) ? " on" : ""}${s.deptDates && Object.keys(s.deptDates).length ? " own" : ""}" title="วันของแต่ละแผนกในตู้นี้">${ddOpen.has(s.id) ? "▾" : "▸"}</button>` : ""}
           <button type="button" class="subtask-dot" aria-label="เปลี่ยนสถานะ"></button>
           <input type="text" class="sub-mo" value="${escapeHtml(s.mo || "")}" placeholder="MO" />
           <input type="text" class="sub-name" value="${escapeHtml(s.text)}" placeholder="ชื่อตู้" />
@@ -8376,21 +8466,24 @@ function openTaskModal(taskId, defaults={}) {
           ${(() => { const bp = bomProgress(s); return bp.total ? `<button type="button" class="subtask-bom-btn${bp.done === bp.total ? " full" : ""}" title="รายการอุปกรณ์">${ico("archive")} <span>${bp.done}/${bp.total}</span></button>`
             : (canEdit() ? `<button type="button" class="subtask-bom-btn empty" title="นำเข้ารายการอุปกรณ์ (PDF ใบสั่งผลิต)">${ico("archive")}</button>` : ""); })()}
           <span class="subtask-date-mount" title="วันที่ของตู้นี้ (ไม่ใส่ = ตามวันโปรเจค)"></span>
-          <button class="subtask-del" title="ลบ">✕</button>
+          <button class="subtask-del" title="ลบตู้">${ico("trash")}</button>
         </div>
       `;
       const dotBtn = row.querySelector(".subtask-dot");
       const txt = row.querySelector('input.sub-name');
       const moInp = row.querySelector('input.sub-mo');
-      moInp.addEventListener("input", () => { s.mo = moInp.value; scheduleCommit(800); });
+      // ★ 2026-10-17 (owner): hover shows the full MO / cabinet name when the box cuts it off
+      txt.title = s.text || ""; moInp.title = s.mo || "";
+      txt.addEventListener("input", () => { txt.title = txt.value; });
+      moInp.addEventListener("input", () => { s.mo = moInp.value; moInp.title = moInp.value; scheduleCommit(800); });
       const clBtn = row.querySelector(".subtask-cl-btn");
       const del = row.querySelector(".subtask-del");
       const progBar = row.querySelector(".subtask-progress-bar");
       // date field — in a department context it edits THIS cabinet's per-dept due date
       // (sub.deptDates[dept]); with no dept context it edits the cabinet's overall date (sub.date)
-      const dateField = createDateField({
+      const dateField = compactDateField({
         value: modalDept ? ((s.deptDates && s.deptDates[modalDept]) || null) : (s.date || null),
-        allowClear: true, extraClass: "tm-date",
+        allowClear: true, placeholder: modalDept ? "ตามแผนก" : "ตามโครงการ",
         onChange: (iso) => {
           if (modalDept) {
             if (iso) {
@@ -8400,6 +8493,18 @@ function openTaskModal(taskId, defaults={}) {
             if (!s.deptDates) s.deptDates = {};
             if (iso) s.deptDates[modalDept] = iso; else delete s.deptDates[modalDept];
           } else {
+            const old = s.date || task.date, diff = (iso && old) ? Math.round((fromIso(iso) - fromIso(old)) / 86400000) : 0;
+            if (diff) {
+              askShiftCabinet(task, s, diff, null, iso).then(pick => {
+                if (!pick) { dateField.setValue(s.date || null); return; }   // cancelled → keep the old date
+                s.date = iso;
+                const n = shiftCabinetDepts(task, s, diff, pick);
+                if (n) toast(`${n} แผนกของตู้นี้เลื่อน ${diff > 0 ? "+" : ""}${diff} วันตาม`);
+                if (pick.extra && iso > task.date) { task.date = iso; try { dueField.setValue(iso); } catch (_) {} toast(`เลื่อนวันจบโครงการเป็น ${formatDateTH(iso)}`); }
+                scheduleCommit(0);
+              });
+              return;
+            }
             s.date = iso || null;
           }
           scheduleCommit(0);
@@ -8409,6 +8514,32 @@ function openTaskModal(taskId, defaults={}) {
         ? `วันที่ของตู้นี้สำหรับแผนก ${(getDept(modalDept) || {}).name || ""} (ไม่ใส่ = ตามวันของแผนก)`
         : "วันที่ของตู้นี้ (ไม่ใส่ = ตามวันโปรเจค)";
       row.querySelector(".subtask-date-mount").replaceWith(dateField);
+      // ★ แบบ B: unfold this cabinet's date for every assigned department — edit here (this cabinet only)
+      const ddBtn = row.querySelector(".subtask-dd-btn");
+      if (ddBtn) {
+        ddBtn.addEventListener("click", (e) => { e.stopPropagation(); if (ddOpen.has(s.id)) ddOpen.delete(s.id); else ddOpen.add(s.id); renderSubs(); });
+        if (ddOpen.has(s.id)) {
+          const pane = document.createElement("div");
+          pane.className = "subtask-dd";
+          (task.deptStages || []).filter(st => getDept(st.deptId)).forEach(st => {
+            const d = getDept(st.deptId), own = !!(s.deptDates && s.deptDates[st.deptId]);
+            const cell = document.createElement("div");
+            cell.className = "subtask-dd-cell" + (own ? " own" : "");
+            cell.innerHTML = `<span class="subtask-dd-name">${deptIco(d)}${escapeHtml(d.name)}${own ? "" : ` <i>ตามโครงการ</i>`}</span>`;
+            const f = compactDateField({ value: cabinetDeptDue(task, s, st.deptId), allowClear: own, faint: !own,
+              onChange: (iso) => {
+                if (iso) { const max = dateLimitViolation(task, st.deptId, iso, s); if (max) { toast(dateLimitMsg(st.deptId, max)); f.setValue(cabinetDeptDue(task, s, st.deptId)); return; } }
+                if (!s.deptDates) s.deptDates = {};
+                if (!iso || iso === st.due) delete s.deptDates[st.deptId]; else s.deptDates[st.deptId] = iso;   // cleared / same as the stage → follows the project again
+                scheduleCommit(0); renderSubs();
+              } });
+            f.title = own ? `วัน${d.name}ของตู้นี้ (ลบ = กลับไปตามโครงการ)` : `ตามวัน${d.name}ของโครงการ — แก้ที่นี่ = เฉพาะตู้นี้`;
+            cell.appendChild(f);
+            pane.appendChild(cell);
+          });
+          row.appendChild(pane);
+        }
+      }
 
       const paintProg = () => {
         const p = checklistProgress(s, modalDept);
@@ -9074,15 +9205,31 @@ function openTaskModal(taskId, defaults={}) {
       || !!task.actualEnd || !!(task.request && (task.request.dwgNo || task.request.submitter));
     if (!moreTouched && filled) moreEl.open = true;
   }
-  function addStage() {
+  // ★ 2026-10-17 (owner): "+" opens a list to PICK the department — nothing is added until one is chosen
+  //   (it used to add the first unused department, which then had to be changed → extra Activity lines)
+  function addStage(ev) {
     if (!canFull()) { permDenied("สิทธิ์ของคุณเพิ่มด่านแผนกไม่ได้"); return; }
-    // pick first department not yet used, else the first
+    if (!(state.departments || []).length) { alert("ยังไม่มีแผนก — เพิ่มได้ที่ ⚙ ตั้งค่า › แผนก"); return; }
+    document.querySelectorAll(".stage-add-pop").forEach(n => n.remove());
+    const anchor = ev && ev.currentTarget;
     const used = new Set(task.deptStages.map(s => s.deptId));
-    const dept = (state.departments || []).find(d => !used.has(d.id)) || (state.departments || [])[0];
-    if (!dept) { alert("ยังไม่มีแผนก — เพิ่มได้ที่ ⚙ ตั้งค่า › แผนก"); return; }
-    task.deptStages.push({ deptId: dept.id, due: null, done: false });
-    syncStageChecklists();
-    renderStages(); scheduleCommit(0);
+    const free = (state.departments || []).filter(d => !used.has(d.id));
+    const pop = document.createElement("div");
+    pop.className = "stage-add-pop";
+    pop.innerHTML = free.length ? free.map(d => `<button type="button" data-d="${escapeHtml(d.id)}">${deptIco(d)}${escapeHtml(d.name)}</button>`).join("") : `<div class="sap-empty">มอบหมายครบทุกแผนกแล้ว</div>`;
+    document.body.appendChild(pop);
+    if (anchor) { const r = anchor.getBoundingClientRect(); pop.style.top = Math.min(r.bottom + 4, window.innerHeight - pop.offsetHeight - 8) + "px"; pop.style.left = Math.max(8, Math.min(r.left, window.innerWidth - pop.offsetWidth - 8)) + "px"; }
+    const close = () => { pop.remove(); document.removeEventListener("mousedown", out, true); document.removeEventListener("keydown", esc, true); };
+    const out = (e) => { if (!pop.contains(e.target) && e.target !== anchor) close(); };
+    const esc = (e) => { if (e.key === "Escape") { e.stopPropagation(); close(); } };
+    setTimeout(() => { document.addEventListener("mousedown", out, true); document.addEventListener("keydown", esc, true); }, 0);
+    pop.querySelectorAll("[data-d]").forEach(b => b.addEventListener("click", () => {
+      close();
+      if (task.deptStages.some(s => s.deptId === b.dataset.d)) return;
+      task.deptStages.push({ deptId: b.dataset.d, due: null, done: false });
+      syncStageChecklists();
+      renderStages(); scheduleCommit(0);
+    }));
   }
   renderStages();
   modal._flowReady = true;
@@ -9357,7 +9504,7 @@ function openTaskModal(taskId, defaults={}) {
   modal.querySelectorAll('[data-act="close"]').forEach(b => b.addEventListener("click", close));
   modal.querySelector('[data-act="dashboard"]')?.addEventListener("click", () => openProjectDashboard(task.id));
   modal.querySelectorAll('[data-act="attachments"]').forEach(b => b.addEventListener("click", () => openAttachmentsGallery(task)));
-  modal.querySelector('[data-f="title"]').addEventListener("input", (e) => { task.title = e.target.value; scheduleCommit(created ? 800 : 600); renderDup(); });
+  modal.querySelector('[data-f="title"]').addEventListener("input", (e) => { task.title = e.target.value; e.target.title = e.target.value; scheduleCommit(created ? 800 : 600); renderDup(); });
   // ★ 2026-10-13 (owner) another project on THIS calendar with the same SO / name → warn (link to it); never blocks
   function renderDup() {
     const el = modal.querySelector("[data-dup]"); if (!el) return;
