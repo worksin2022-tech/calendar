@@ -4640,12 +4640,13 @@ async function archiveTasks(bid, tasks) {
     due_date: t.date || null, actual_end: t.actualEnd || null, dept_ids: (t.deptStages || []).map(x => x.deptId),
     data: JSON.parse(JSON.stringify(t)), archived_at: now, archived_by: who, restored_at: null }));
   const ok = new Set();
+  let failed = false;
   for (let i = 0; i < rows.length; i += 40) {
     const { data, error } = await sb.from("task_archive").upsert(rows.slice(i, i + 40), { onConflict: "board_id,task_id" }).select("task_id");
-    if (error) { toast(archiveErr(error)); break; }
+    if (error) { toast(archiveErr(error)); failed = true; break; }
     (data || []).forEach(r => ok.add(r.task_id));
   }
-  if (!ok.size) return 0;
+  if (!ok.size) { if (!failed) toast("ฐานข้อมูลไม่ยืนยันการเก็บ — ยังไม่ได้ย้ายงานออก (ลองใหม่ หรือเช็คสิทธิ์ปฏิทินนี้)"); return 0; }
   ws.tasks = (ws.tasks || []).filter(t => !ok.has(t.id));   // only what the archive confirmed it holds
   if (bid === root.activeBoard) state = ws;
   delete _archSum[bid];
@@ -4763,11 +4764,13 @@ function buildDataSizePanel(container) {
   sec.querySelector("[data-arcdays]")?.addEventListener("change", e => { state.settings.archiveDays = +e.target.value; saveState(); paintN(); });
   sec.querySelector("[data-arcopen]").addEventListener("click", () => openArchiveBrowser(""));
   sec.querySelector("[data-arcnow]")?.addEventListener("click", async (e) => {
+    const btn = e.currentTarget;   // ★ read BEFORE any await — currentTarget is null once the click event is over
     const list = archiveCandidates(root.activeBoard); if (!list.length) return;
     const ok = await confirmDialog({ title: `เก็บ ${list.length} งานเข้าคลัง?`, message: `งานที่เสร็จแล้วนานกว่า ${archiveDays()} วัน จะย้ายออกจากปฏิทินไปเก็บในคลังงาน — ค้นหาและนำกลับได้ตลอด`, confirmText: "เก็บเข้าคลัง", icon: "archive" });
     if (!ok) return;
-    const btn = e.currentTarget; btn.disabled = true;
-    const n = await archiveTasks(root.activeBoard, list);
+    btn.disabled = true; toast("กำลังเก็บเข้าคลัง...");
+    let n = 0;
+    try { n = await archiveTasks(root.activeBoard, list); } catch (err) { toast("เก็บเข้าคลังไม่สำเร็จ: " + (err.message || err)); }
     if (n) toast(`เก็บเข้าคลังแล้ว ${n} งาน`);
     sec.remove(); buildDataSizePanel(container);
   });
