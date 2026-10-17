@@ -4199,7 +4199,7 @@ function shipReportData(from, end) {
   };
   let nFat = 0, nShip = 0, nLate = 0;
   (state.tasks || []).forEach(t => {
-    if (taskOnHold(t)) return;
+    if (taskOnHold(t) || internalDeptOf(t)) return;   // ★ no งานภายในแผนก in the production report
     const subs = (t.subtasks || []).filter(sb => !subOnHold(sb));
     const units = subs.length ? subs.map(sb => ({ sb, done: subtaskDone(sb) || !!(shipDept && taskStage(t, shipDept.id) && cabDeptDone(t, sb, shipDept.id)),
         due: shipDept && taskStage(t, shipDept.id) ? deptDueForView(t, sb, shipDept.id) : (sb.date || t.date) }))
@@ -7050,9 +7050,23 @@ function currentFilter() {
     mine: mineFilterOn(),
   };
 }
+// ★ 2026-10-17 (owner) งานภายในแผนก: a task whose ONLY department is one ticked in ⚙ แผนก › "ซ่อนงานภายในแผนก"
+//   (e.g. ส่งมอบ's own errands) is that department's business — hidden from the all-departments view, the dashboard and
+//   the daily production report; shown when that department is the one being viewed (its own staff, or a PM who picks it)
+function internalDeptOf(t) {
+  const ids = [...new Set(((t && t.deptStages) || []).map(s => s.deptId).filter(id => getDept(id)))];
+  if (ids.length !== 1) return "";
+  const d = getDept(ids[0]);
+  return d && d.internalHide ? d.id : "";
+}
+function internalHidden(t) {
+  const d = internalDeptOf(t); if (!d) return false;
+  return !(myViewDeptId() === d || activeViewDepts().includes(d));
+}
 function matchesFilter(filter) {
   return (t) => {
     if (taskOnHold(t)) return false;   // ★ เลื่อนส่ง → off the plan (every view that uses this filter)
+    if (internalHidden(t)) return false;   // ★ งานภายในแผนก of a department not being viewed
     if (filter.mine && !isMyTask(t)) return false;
     if (filter.priority && filter.priority !== "all" && t.priority !== filter.priority) return false;
     if (filter.search) {
@@ -10659,6 +10673,24 @@ function buildDeptsPanel(container) {
   }
   renderPm();
 
+  // ★ 2026-10-17 งานภายในแผนก: hidden from the all-departments view / dashboard / production report
+  const inSec = document.createElement("div");
+  inSec.className = "settings-section";
+  inSec.innerHTML = `<h4 class="settings-h">ซ่อนงานภายในแผนก (งานที่มีแค่แผนกนี้)</h4><div class="default-stage-list" data-in-list></div>`;
+  container.appendChild(inSec);
+  function renderInternal() {
+    const el = inSec.querySelector("[data-in-list]");
+    el.innerHTML = "";
+    state.departments.forEach(d => {
+      const row = document.createElement("label");
+      row.className = "default-stage-row";
+      row.innerHTML = `<input type="checkbox" ${d.internalHide ? "checked" : ""} />${deptIco(d)}<span class="default-stage-name">${escapeHtml(d.name)}</span>`;
+      row.querySelector("input").addEventListener("change", (e) => { d.internalHide = e.target.checked; saveState(); renderAll(); });
+      el.appendChild(row);
+    });
+  }
+  renderInternal();
+
   // third section: date-limit rule — block chosen departments from being scheduled past an anchor dept
   const limSec = document.createElement("div");
   limSec.className = "settings-section";
@@ -10713,7 +10745,7 @@ function buildDeptsPanel(container) {
   });
 
   function renderDefaults() {
-    renderPm();
+    renderPm(); renderInternal();
     if (!Array.isArray(state.settings.defaultStages)) state.settings.defaultStages = [];
     defListEl.innerHTML = "";
     if (state.departments.length === 0) {
@@ -12089,7 +12121,7 @@ function renderDashboard() {
   const wrap = document.getElementById("dashWrap");
   document.getElementById("monthLabel").textContent = "แดชบอร์ด";
   const today = todayIso();
-  const allTasks = state.tasks.filter(matchesFilter(currentFilter()));
+  const allTasks = state.tasks.filter(matchesFilter(currentFilter())).filter(t => !internalDeptOf(t));   // ★ no งานภายในแผนก on the dashboard
   // ★ 2026-10-11 (owner): department staff see ONLY their own department here (like the calendar) — a department with
   //   "เห็นงานทั้งหมด (PM)" or no department (planner/admin) keeps the free department filter
   const lockDept = isServiceBoard() ? "" : myViewDeptId();
@@ -14472,6 +14504,7 @@ const M_GROUPS = [["over", "เลยกำหนด"], ["today", "วันน�
 function mItems() {
   const dep = mDept(), q = mSearch.trim().toLowerCase();
   return (state.tasks || []).filter(t => {
+    if (internalDeptOf(t) && internalDeptOf(t) !== dep) return false;   // ★ งานภายในแผนก only on that department's list
     if (dep) { if (!taskStage(t, dep)) return false; if (isDeptComplete(t, dep) && !mKeep.has(t.id)) return false; }
     else if (projectComplete(t) && !mKeep.has(t.id)) return false;
     if (q) {
@@ -14485,7 +14518,7 @@ function mItems() {
 // งานวันนี้: what is due on the chosen day for this department (finished ones too — shown as done, after the open ones)
 function mDayItems(dayIso) {
   const dep = mDept();
-  return (state.tasks || []).filter(t => !taskOnHold(t)).map(t => ({ t, due: dep ? (taskStage(t, dep) ? ((taskStage(t, dep) || {}).due || t.date) : null) : t.date }))
+  return (state.tasks || []).filter(t => !taskOnHold(t) && (!internalDeptOf(t) || internalDeptOf(t) === dep)).map(t => ({ t, due: dep ? (taskStage(t, dep) ? ((taskStage(t, dep) || {}).due || t.date) : null) : t.date }))
     .filter(x => x.due === dayIso || (fatBoardOn() && x.due !== null && fatOnDay(x.t, dayIso)))   // ★ 2026-10-13 + FAT that day
     .map(x => ({ ...x, done: dep ? isDeptComplete(x.t, dep) : projectComplete(x.t) }))
     .sort((a, b) => (a.done - b.done) || (a.t.title || "").localeCompare(b.t.title || "", "th"));
