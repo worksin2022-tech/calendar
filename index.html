@@ -7217,6 +7217,15 @@ function deptOrderIds(task) {
   (state.departments || []).forEach(d => { if (!ids.includes(d.id)) ids.push(d.id); });
   return ids;
 }
+// ★ 2026-10-17 (owner): hovering a checklist button opens it only after the pointer RESTS on it — passing over a
+//   neighbouring cabinet on the way no longer swaps the open checklist (clicking still opens at once)
+const HOVER_OPEN_MS = 450;
+function hoverDelay(el, fn, ms = HOVER_OPEN_MS) {
+  let tm = null;
+  el.addEventListener("mouseenter", () => { clearTimeout(tm); tm = setTimeout(() => { if (el.isConnected && el.matches(":hover")) fn(); }, ms); });
+  el.addEventListener("mouseleave", () => clearTimeout(tm));
+  el.addEventListener("click", () => clearTimeout(tm));
+}
 function openChecklistPopover(anchorEl, sub, onChange, opts = {}) {
   if (!canTick()) { permDenied("สิทธิ์ของคุณแก้เช็คลิสต์ไม่ได้"); return; }
   const structOk = canEdit();   // "ติ๊กเช็คลิสต์" tier: tick only — no rename / add / delete
@@ -8430,7 +8439,7 @@ function openTaskModal(taskId, defaults={}) {
         openBomPanel({ task, sub: s, commit: (now) => scheduleCommit(now ? 0 : 500), onClose: () => { flushIfPending(); renderSubs(); } });
       });
       clBtn.addEventListener("click", (e) => { e.stopPropagation(); openCl(); });
-      clBtn.addEventListener("mouseenter", openCl);
+      hoverDelay(clBtn, openCl);
       txt.addEventListener("input", () => { s.text = txt.value; scheduleCommit(800); });
       txt.addEventListener("keydown", (e) => {
         if (e.key === "Enter") { e.preventDefault(); addSub(""); setTimeout(() => { subWrap.lastChild?.querySelector('input[type=text]')?.focus(); }, 0); }
@@ -9927,7 +9936,7 @@ function buildTpCabRow(t, sub, ed, today, deptId) {
       }, { deptId, task: t, onClose: () => { if (autoFired) { autoFired = false; renderAll(); } } });
     };
     clBtn.addEventListener("click", (e) => { e.stopPropagation(); openCl(); });
-    clBtn.addEventListener("mouseenter", openCl);
+    hoverDelay(clBtn, openCl);
   }
   row.addEventListener("click", () => openTaskModal(t.id));
   return row;
@@ -11262,6 +11271,8 @@ function buildAutomationPanel(container) {
           <select data-when="0">${whenOptions(tg, c0)}</select>
           <span class="auto-word">→ สถานะ</span>
           <select data-status>${statusOptions(r)}</select>
+          <button class="btn btn-ghost btn-sm" data-mv="-1" title="เลื่อนขึ้น" ${rules.indexOf(r) === 0 ? "disabled" : ""}>↑</button>
+          <button class="btn btn-ghost btn-sm" data-mv="1" title="เลื่อนลง" ${rules.indexOf(r) === rules.length - 1 ? "disabled" : ""}>↓</button>
           <button class="btn btn-ghost btn-sm btn-danger" data-act="del" title="ลบกฎ">✕</button>
         </div>
         ${more.map((c, i) => `
@@ -11307,6 +11318,13 @@ function buildAutomationPanel(container) {
         r.more.push(d0 ? { when: "done", deptId: d0.id } : { when: "all", deptId: null });
         saveState(); renderRows();
       });
+      // ★ 2026-10-17 (owner): order matters — when two rules fire together the LOWER one wins
+      card.querySelectorAll("[data-mv]").forEach(b => b.addEventListener("click", () => {
+        const i = rules.indexOf(r), j = i + (+b.dataset.mv);
+        if (i < 0 || j < 0 || j >= rules.length) return;
+        [rules[i], rules[j]] = [rules[j], rules[i]];
+        saveState(); renderRows();
+      }));
       card.querySelector('[data-act="del"]').addEventListener("click", async () => {
         if (!(await confirmDialog({ title: "ลบกฎนี้?", message: `${automationRuleLabel(r)} → ${getStatus(r.statusId).name}` }))) return;
         const idx = rules.indexOf(r); if (idx >= 0) rules.splice(idx, 1);
