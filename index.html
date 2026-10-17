@@ -803,7 +803,7 @@ html, body { touch-action: manipulation; }
 .toolbar-search {
   position: relative;
   display: flex; align-items: center; gap: 6px;
-  flex: 0 1 320px;
+  flex: 0 1 220px;   /* ★ 2026-10-16: was 320 — the ตาราง view button pushed ทั้งหมด/ด่วน/สูง onto the 2nd row */
   min-width: 130px;
   border:1px solid var(--border-strong);
   border-radius:8px;
@@ -896,6 +896,41 @@ html, body { touch-action: manipulation; }
 
 /* ---------- Gantt / timeline view (project-level) ---------- */
 .gantt-wrap { flex: 1; min-height: 0; display: flex; }
+.ptab-wrap { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.ptab-wrap.hidden { display: none; }
+.pt-bar { display: flex; gap: 6px; flex-wrap: wrap; padding: 10px 14px; border-bottom: 1px solid var(--border); }
+.pt-bar .ov-chip.bad:not(.on) { color: var(--danger); }
+.pt-scroll { flex: 1; min-height: 0; overflow: auto; }
+.pt-table { border-collapse: separate; border-spacing: 0; width: 100%; font-size: 12.5px; }
+.pt-table th { position: sticky; top: 0; z-index: 2; background: var(--b-f8f9fb, #f8f9fb); color: var(--text-dim); font-weight: 700; font-size: 11.5px; text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border-strong); white-space: nowrap; }
+.pt-table td { padding: 6px 10px; border-bottom: 1px solid var(--border); white-space: nowrap; color: var(--text); }
+.pt-table tbody tr:hover td { background: var(--b-fafbfc, #fafbfc); }
+.pt-table tr.pt-done td { color: var(--text-faint); }
+.pt-open { cursor: pointer; }
+.pt-open:hover { color: var(--accent); text-decoration: underline; }
+.pt-proj { max-width: 220px; overflow: hidden; text-overflow: ellipsis; font-weight: 600; }
+.pt-cab { max-width: 240px; overflow: hidden; text-overflow: ellipsis; }
+.pt-table td.pt-mo { font-family: ui-monospace, Consolas, monospace; font-size: 11.5px; color: var(--text-faint); }
+.pt-table td.pt-note { max-width: 220px; overflow: hidden; text-overflow: ellipsis; color: var(--text-dim); }
+.pt-ok, .pt-table td.pt-ok { color: #10b981; font-weight: 600; }
+.pt-late, .pt-table td.pt-late { color: var(--danger); font-weight: 700; }
+.pt-na, .pt-table td.pt-na { color: var(--text-faint); }
+.pt-fat { color: var(--fat, #ac00eb); font-weight: 700; }
+.pt-st { border: 0; border-radius: 999px; padding: 2px 10px; font: inherit; font-size: 11.5px; font-weight: 700; cursor: pointer; white-space: nowrap;
+  color: var(--st); background: color-mix(in srgb, var(--st) 15%, transparent); }
+.pt-st:hover { background: color-mix(in srgb, var(--st) 25%, transparent); }
+.pt-empty { text-align: center; color: var(--text-faint); padding: 30px !important; }
+.pt-cnt { margin-left: auto; align-self: center; font-size: 12px; color: var(--text-faint); }
+.pt-table tr.pt-prow td { background: var(--b-f4f2ff, #f4f2ff); border-top: 2px solid var(--border-strong); font-weight: 600; }
+.pt-table tbody tr.pt-prow:first-child td { border-top: 0; }
+.pt-table tr.pt-prow:hover td { background: var(--b-ece8ff, #ece8ff); }
+.pt-table tr.pt-crow td:nth-child(1) { padding-left: 22px; }
+.pt-table tr.pt-crow td:nth-child(2) { padding-left: 22px; position: relative; }
+.pt-table tr.pt-crow td:nth-child(2)::before { content: ""; position: absolute; left: 10px; top: 0; bottom: 50%; width: 7px; border-left: 1.5px solid var(--border-strong); border-bottom: 1.5px solid var(--border-strong); border-bottom-left-radius: 4px; }
+.pt-n { margin-left: 8px; font-size: 11px; font-weight: 600; color: var(--text-faint); background: var(--b-ffffff, #fff); border: 1px solid var(--border); border-radius: 999px; padding: 0 7px; }
+.pt-table td.pt-ed { cursor: pointer; }
+.pt-table td.pt-ed:hover { box-shadow: inset 0 0 0 1.5px var(--accent); border-radius: 6px; }
+.pt-table td.pt-inh:not(.pt-late) { color: var(--text-faint); }
 .g-scroll { flex: 1; min-height: 0; overflow: auto; }
 .g-inner { width: max-content; min-width: 100%; }
 .g-head { display: flex; position: sticky; top: 0; z-index: 6; background:var(--b-ffffff, #fff); border-bottom:1px solid var(--border); }
@@ -1269,7 +1304,7 @@ html, body { touch-action: manipulation; }
   .sidebar, .toolbar, .overlay, #appToast { display: none !important; }
   .app { display: block !important; height: auto !important; }
   .main, .calendar, .dash-wrap { display: block !important; height: auto !important; min-height: 0 !important; overflow: visible !important; }
-  #calWrap, #ganttWrap { display: none !important; }
+  #calWrap, #ganttWrap, #tableWrap { display: none !important; }
   .dash-wrap { background:var(--b-ffffff, #fff) !important; }
   .dash-print-hide { display: none !important; }
   .dash-card, .dash-table tr { break-inside: avoid; }
@@ -3239,6 +3274,7 @@ body.chip-dragging .task-chip.span-bar { pointer-events: none; }   /* let the da
       <div class="tb-nav" id="viewToggle" title="สลับมุมมอง">
         <button class="tb-nav-btn active" data-view="calendar">เดือน</button>
         <button class="tb-nav-btn" data-view="gantt">ไทม์ไลน์</button>
+        <button class="tb-nav-btn" data-view="table">ตาราง</button>
         <button class="tb-nav-btn" data-view="dashboard">แดชบอร์ด</button>
       </div>
       <div class="spacer"></div>
@@ -3280,6 +3316,7 @@ body.chip-dragging .task-chip.span-bar { pointer-events: none; }   /* let the da
         <div class="cal-grid" id="calGrid"></div>
       </div>
       <div class="gantt-wrap hidden" id="ganttWrap"></div>
+      <div class="ptab-wrap hidden" id="tableWrap"></div>
       <div class="dash-wrap hidden" id="dashWrap"></div>
     </div>
   </main>
@@ -4290,6 +4327,163 @@ function openShipReport(startIso) {
   });
   draw();
 }
+// ★ 2026-10-15 (owner, แบบ 2) มุมมอง "ตาราง" — one row per cabinet like the production admin's Excel. Nothing new is
+//   stored: SO / project / MO / cabinet / ship date / each department's date (✓ + finish date when done) / FAT / cabinet
+//   status (click to change) / latest comment. Filters on top; sorted by ship date.
+let ptabFilter = "open";
+// ★ 2026-10-15 (owner): projects grouped — a project row (SO, name, its own dates) with its cabinets under it; date cells
+//   are editable: department due (project row = the stage, cabinet row = that cabinet only), ship date, FAT date
+function renderProdTable() {
+  const wrap = document.getElementById("tableWrap");
+  document.getElementById("monthLabel").textContent = "ตาราง";
+  const today = todayIso(), in7 = isoDate(new Date(fromIso(today).getTime() + 6 * 86400000));
+  const filter = currentFilter(), pass = matchesFilter(filter);
+  const gDept = isServiceBoard() ? "" : myViewDeptId();
+  const shipDept = (state.departments || []).find(d => d.id === "d_deliver") || (state.departments || []).find(d => /ส่งมอบ|deliver/i.test(d.name || "")) || null;
+  const depts = (state.departments || []).filter(d => !shipDept || d.id !== shipDept.id).filter(d => (state.tasks || []).some(t => taskStage(t, d.id)));
+  const searchHit = t => !filter.search || ((t.so || "") + " " + taskAvt(t) + " " + t.title + " " + (t.subtasks || []).map(x => (x.mo || "") + " " + (x.text || "")).join(" ")).toLowerCase().includes(filter.search);
+  const shipStg = t => shipDept ? taskStage(t, shipDept.id) : null;
+  const shipOf = (t, sb) => shipStg(t) ? (sb ? deptDueForView(t, sb, shipDept.id) : (shipStg(t).due || t.date)) : (sb ? (sb.date || t.date) : t.date);
+  const test = {
+    open: r => !r.done && !r.hold, late: r => !r.done && !r.hold && r.ship && r.ship < today,
+    week: r => !r.done && !r.hold && r.ship && r.ship >= today && r.ship <= in7, fat: r => !r.hold && !!r.nf,
+    hold: r => r.hold, done: r => r.done && !r.hold,
+  };
+  const cnt = { open: 0, late: 0, week: 0, fat: 0, hold: 0, done: 0 };
+  const groups = [];
+  (state.tasks || []).forEach(t => {
+    const hold = taskOnHold(t);
+    if (hold ? !searchHit(t) : !pass(t)) return;
+    if (gDept && !taskStage(t, gDept)) return;
+    const nf = nextFat(t);
+    const units = ((t.subtasks || []).length ? t.subtasks : [null]).map(sb => {
+      const ship = shipOf(t, sb);
+      const done = sb ? (subtaskDone(sb) || !!(shipStg(t) && cabDeptDone(t, sb, shipDept.id))) : projectComplete(t);
+      return { t, sb, ship, done, hold: hold || subOnHold(sb), nf };
+    });
+    units.forEach(r => Object.keys(cnt).forEach(k => { if (test[k](r)) cnt[k]++; }));
+    const shown = units.filter(test[ptabFilter] || test.open);
+    if (!shown.length) return;
+    const lastNote = [...(t.comments || [])].reverse().find(c => c.type !== "system" && (c.text || "").trim());
+    groups.push({ t, nf, rows: shown.filter(r => r.sb), first: shown.map(r => r.ship || "9999").sort()[0], note: lastNote ? lastNote.text.replace(/\s+/g, " ").trim() : "" });
+  });
+  groups.sort((a, b) => a.first.localeCompare(b.first) || (a.t.so || "").localeCompare(b.t.so || ""));
+  groups.forEach(g => g.rows.sort((a, b) => (a.ship || "9999").localeCompare(b.ship || "9999") || (a.sb.mo || "").localeCompare(b.sb.mo || "")));
+  const dl = iso => { const d = fromIso(iso); return `${d.getDate()} ${TH_MON[d.getMonth()]}`; };
+  const edit = canEdit();
+  const cell = (key, inner, cls, title) => `<td class="${cls || ""}${edit && key ? " pt-ed" : ""}"${key ? ` data-ed="${key}"` : ""}${title ? ` title="${escapeHtml(title)}"` : ""}>${inner}</td>`;
+  const deptCell = (gi, ci, t, sb, d) => {
+    const stg = taskStage(t, d.id); if (!stg) return `<td class="pt-na">—</td>`;
+    const due = sb ? cabinetDeptDue(t, sb, d.id) : stg.due;
+    const ok = sb ? cabDeptDone(t, sb, d.id) : isDeptComplete(t, d.id);
+    const key = `d|${gi}|${ci}|${d.id}`;
+    if (ok) {   // ★ owner: same deadline date as before, just ✓ + green once finished (actual finish day only in the tooltip)
+      const at = sb ? Math.max(0, ...(sb.checklist || []).filter(i => i.deptId === d.id && i.done && i.doneAt).map(i => +i.doneAt)) : 0;
+      return cell(key, `✓${due ? " " + dl(due) : ""}`, "pt-ok", `${d.name} เสร็จแล้ว${due ? " · กำหนด " + formatDateTH(due) : ""}${at ? " · ติ๊กเสร็จ " + formatDateTH(isoDate(new Date(at))) : ""}`);
+    }
+    if (!due) return cell(key, `<span class="pt-na">+ วัน</span>`, "", d.name);
+    const inherit = sb && !(sb.deptDates && sb.deptDates[d.id]);
+    return cell(key, dl(due), (due < today ? "pt-late" : "") + (inherit ? " pt-inh" : ""), `${d.name} · กำหนด ${formatDateTH(due)}`);
+  };
+  const stPill = (k, st) => `<button type="button" class="pt-st" data-st="${k}" style="--st:${st.color}">${escapeHtml(st.name)}</button>`;
+  let body = "";
+  groups.forEach((g, gi) => {
+    const t = g.t, so = (t.so || "").trim(), nCab = (t.subtasks || []).length;
+    const pShip = t.date, pDone = projectComplete(t);   // project row "ส่ง" = the project's end date (same field as "จบ" in the popup)
+    const fat = g.nf ? `<span class="pt-fat">${dl(g.nf.date)}${g.nf.time ? " " + g.nf.time : ""}</span>` : taskFats(t).length ? `<span class="pt-ok">ผ่าน</span>` : `<span class="pt-na">+ นัด</span>`;
+    body += `<tr class="pt-prow${pDone ? " pt-done" : ""}" data-g="${gi}">
+      <td>${so ? `<span class="chip-so">${escapeHtml(so)}</span>` : ""}</td>
+      <td class="pt-open pt-proj" title="${escapeHtml(t.title || "")}">${escapeHtml(t.title || "(ไม่มีชื่อ)")}${nCab ? `<span class="pt-n">${nCab} ตู้</span>` : ""}${taskOnHold(t) ? `<span class="pt-n">เลื่อนส่ง</span>` : ""}</td>
+      ${cell(`s|${gi}|-1`, pShip ? dl(pShip) : `<span class="pt-na">+ วัน</span>`, !pDone && pShip && pShip < today ? "pt-late" : "", "วันส่ง")}
+      ${depts.map(d => deptCell(gi, -1, t, null, d)).join("")}
+      ${fatBoardOn() ? cell(`f|${gi}|-1`, fat, "", "วัน FAT") : ""}
+      <td>${stPill(`${gi}|-1`, getStatus(t.statusId))}</td>
+      <td class="pt-note" title="${escapeHtml(g.note)}">${escapeHtml(g.note) || ""}</td>
+    </tr>`;
+    g.rows.forEach((r, ci) => {
+      const mo = (r.sb.mo || "").trim();
+      body += `<tr class="pt-crow${r.done ? " pt-done" : ""}" data-g="${gi}">
+        <td class="pt-mo">${escapeHtml(mo.replace(/^WH\/MO\//i, ""))}</td>
+        <td class="pt-open pt-cab" title="${escapeHtml(r.sb.text || "")}">${escapeHtml(r.sb.text || "(ไม่มีชื่อตู้)")}${r.hold && !taskOnHold(t) ? `<span class="pt-n">เลื่อนส่ง</span>` : ""}</td>
+        ${cell(`s|${gi}|${ci}`, r.ship ? dl(r.ship) : "—", (!r.done && r.ship && r.ship < today ? "pt-late" : "") + (r.ship === pShip ? " pt-inh" : ""), "วันส่งของตู้นี้")}
+        ${depts.map(d => deptCell(gi, ci, t, r.sb, d)).join("")}
+        ${fatBoardOn() ? "<td></td>" : ""}
+        <td>${stPill(`${gi}|${ci}`, getStatus(r.sb.statusId))}</td>
+        <td></td>
+      </tr>`;
+    });
+  });
+  const F = [["open", "ยังไม่เสร็จ"], ["late", "เลยกำหนด"], ["week", "ส่ง 7 วัน"], ["fat", "FAT"], ["hold", "เลื่อนส่ง"], ["done", "เสร็จแล้ว"]].filter(([k]) => k !== "fat" || fatBoardOn());
+  const nCol = 5 + depts.length + (fatBoardOn() ? 1 : 0);
+  wrap.innerHTML = `<div class="pt-bar">${F.map(([k, l]) => `<button type="button" class="ov-chip${ptabFilter === k ? " on" : ""}${k === "late" && cnt.late ? " bad" : ""}" data-pf="${k}">${l} ${cnt[k]}</button>`).join("")}<span class="pt-cnt">${groups.length} โครงการ</span></div>
+    <div class="pt-scroll"><table class="pt-table"><thead><tr><th>SO / MO</th><th>โครงการ / ตู้</th><th>ส่ง</th>${depts.map(d => `<th>${escapeHtml(d.name)}</th>`).join("")}${fatBoardOn() ? "<th>FAT</th>" : ""}<th>สถานะ</th><th>หมายเหตุล่าสุด</th></tr></thead>
+    <tbody>${body || `<tr><td colspan="${nCol}" class="pt-empty">ไม่มีรายการ</td></tr>`}</tbody></table></div>`;
+  const rowOf = (gi, ci) => { const g = groups[+gi]; return { t: g.t, sb: +ci >= 0 ? g.rows[+ci].sb : null, nf: g.nf }; };
+  wrap.querySelectorAll("[data-pf]").forEach(b => b.addEventListener("click", () => { ptabFilter = b.dataset.pf; renderProdTable(); }));
+  wrap.querySelectorAll(".pt-open").forEach(td => td.addEventListener("click", () => openTaskModal(groups[+td.parentElement.dataset.g].t.id)));
+  wrap.querySelectorAll("[data-st]").forEach(b => b.addEventListener("click", e => {
+    e.stopPropagation();
+    const [gi, ci] = b.dataset.st.split("|"), r = rowOf(gi, ci);
+    if (!canEdit()) { permDenied("สิทธิ์ของคุณเปลี่ยนสถานะไม่ได้"); return; }
+    openStatusPopover(b, r.sb ? r.sb.statusId : r.t.statusId, id => applyStatusChange(r.t, r.sb, id));
+  }));
+  const saved = (t, msg) => { if (msg) logActivity(t, msg); t.updatedAt = Date.now(); saveState(); renderAll(); };
+  wrap.querySelectorAll("[data-ed]").forEach(td => td.addEventListener("click", e => {
+    e.stopPropagation();
+    if (!canEdit()) { permDenied("สิทธิ์ของคุณแก้วันที่ไม่ได้"); return; }
+    const [kind, gi, ci, did] = td.dataset.ed.split("|"), { t, sb, nf } = rowOf(gi, ci);
+    const cabTxt = sb ? ` · ตู้ “${sb.text || "-"}”` : "";
+    if (kind === "d") {
+      const stg = taskStage(t, did), dn = (getDept(did) || {}).name || "";
+      openCalendarPopover(td, sb ? cabinetDeptDue(t, sb, did) : stg.due, iso => {
+        if (!iso) return;
+        const max = dateLimitViolation(t, did, iso, sb || undefined);
+        if (max) { toast(dateLimitMsg(did, max)); return; }
+        if (sb) {
+          if (!sb.deptDates) sb.deptDates = {};
+          if (iso === stg.due) delete sb.deptDates[did]; else sb.deptDates[did] = iso;
+        } else {
+          const old = stg.due; stg.due = iso;
+          (t.subtasks || []).forEach(x => { if (x.deptDates && x.deptDates[did] === old) delete x.deptDates[did]; });   // cabinets that just followed the stage follow it again
+        }
+        saved(t, `กำหนด ${dn}${cabTxt} → ${formatDateTH(iso)}`);
+      });
+    } else if (kind === "s") {
+      const ss = shipStg(t);
+      if (!sb) {   // ★ 2026-10-15 (owner): moving the project's end date asks which departments move with it — same as the popup
+        openCalendarPopover(td, t.date, iso => {
+          if (!iso || iso === t.date) return;
+          const diff = t.date ? Math.round((fromIso(iso) - fromIso(t.date)) / 86400000) : 0;
+          if (!diff) { t.date = iso; saved(t, `วันส่ง → ${formatDateTH(iso)}`); return; }
+          const oldDate = t.date;
+          askShiftDepts(t, diff).then(pick => {
+            if (!pick || t.date !== oldDate) return;
+            t.date = iso;
+            const moved = shiftTaskDeptDates(t, diff, pick), who = moved ? shiftPickLabel(t, pick) : "";
+            saved(t, `วันส่ง ${formatDateTH(oldDate)} → ${formatDateTH(iso)}${who ? ` (${who} เลื่อน ${diff > 0 ? "+" : ""}${diff} วันตาม)` : ""}`);
+            if (who) toast(`${who} เลื่อน ${diff > 0 ? "+" : ""}${diff} วันตาม`);
+          });
+        });
+        return;
+      }
+      openCalendarPopover(td, shipOf(t, sb), iso => {
+        if (!iso) return;
+        if (ss) {
+          if (sb) { if (!sb.deptDates) sb.deptDates = {}; if (iso === ss.due) delete sb.deptDates[shipDept.id]; else sb.deptDates[shipDept.id] = iso; }
+          else { const old = ss.due; ss.due = iso; (t.subtasks || []).forEach(x => { if (x.deptDates && x.deptDates[shipDept.id] === old) delete x.deptDates[shipDept.id]; }); }
+        } else if (sb) sb.date = iso; else t.date = iso;
+        saved(t, `วันส่ง${cabTxt} → ${formatDateTH(iso)}`);
+      });
+    } else if (kind === "f") {
+      openCalendarPopover(td, nf ? nf.date : null, iso => {
+        if (!iso) return;
+        if (nf) nf.date = iso;
+        else { if (!Array.isArray(t.fats)) t.fats = []; t.fats.push({ id: uid("fat"), date: iso, time: "", result: "wait" }); }
+        saved(t, `FAT รอบ ${nf ? fatRoundNo(t, nf) : t.fats.length} → ${formatDateTH(iso)}`);
+      });
+    }
+  }));
+}
 function editDistance(a, b) {
   const m = a.length, n = b.length; if (Math.abs(m - n) > 2) return 3;
   let prev = Array.from({ length: n + 1 }, (_, j) => j);
@@ -4781,7 +4975,14 @@ function deptProgress(task, deptId) {
   return { done, total };
 }
 // is a department finished for a task? auto from checklist; fallback to manual tick if it has no items
+// ★ 2026-10-17 (owner): a project whose STATUS is finished (เสร็จสิ้น) counts as finished for EVERY department — even one
+//   with no checklist / never ticked — so phones, the timeline and dashboards stop showing it at that step / as late.
+//   Automations keep reading the raw checklist/tick state (isDeptCompleteRaw) so this can't trigger status rules.
 function isDeptComplete(task, deptId) {
+  if (task && isStatusDone(getStatus(task.statusId))) return true;
+  return isDeptCompleteRaw(task, deptId);
+}
+function isDeptCompleteRaw(task, deptId) {
   const p = deptProgress(task, deptId);
   if (p.total > 0) return p.done === p.total;
   const stg = taskStage(task, deptId);
@@ -4819,7 +5020,7 @@ function automationCond(task, r) {
   if (r.when === "all") {
     const cl = overallChecklist(task);
     const stages = task.deptStages || [];
-    if (stages.length) return stages.every(s => isDeptComplete(task, s.deptId)) && cl.done === cl.total;
+    if (stages.length) return stages.every(s => isDeptCompleteRaw(task, s.deptId)) && cl.done === cl.total;
     return cl.total > 0 && cl.done === cl.total;
   }
   if (!r.deptId || !getDept(r.deptId)) return false;
@@ -4828,7 +5029,7 @@ function automationCond(task, r) {
     const its = (task.subtasks || []).map(sub => (sub.checklist || []).find(i => i.deptId === r.deptId && i.text === r.item)).filter(Boolean);
     return its.length > 0 && its.every(i => i.done);
   }
-  if (r.when === "done") return deptUsesChecklist(task, r.deptId) && isDeptComplete(task, r.deptId);
+  if (r.when === "done") return deptUsesChecklist(task, r.deptId) && isDeptCompleteRaw(task, r.deptId);
   if (r.when === "start") return deptProgress(task, r.deptId).done > 0;
   return false;
 }
@@ -4951,6 +5152,7 @@ function deptDueForView(task, sub, deptId) {
 // is one cabinet finished for this department? checklist depts → all their items ticked;
 // depts without a checklist → fall back to that stage's manual "done" tick
 function cabDeptDone(task, sub, deptId) {
+  if ((task && isStatusDone(getStatus(task.statusId))) || (sub && subtaskDone(sub))) return true;   // ★ 2026-10-17: finished project / cabinet → every department done
   const p = checklistProgress(sub, deptId);
   if (p.total > 0) return p.done === p.total;
   const stg = taskStage(task, deptId);
@@ -5053,11 +5255,22 @@ function applyMyDeptDefaultView() { /* handled at render time by activeViewDepts
 // ★ a user WITH an assigned department always views ONLY their own — never the shared viewDepts
 // setting (which is board-wide and synced; a stale value there used to force e.g. a QC member to see
 // the first department's dates). Planners (no department) fall back to the multi-select viewDepts.
+// ★ 2026-10-16 (owner): the department-view picker ("ดูเฉพาะแผนก…" of people who see every department) is PERSONAL (this
+//   person, this calendar, this device) — it used to be a board setting, so one person's pick changed everyone's view. The old shared value stays untouched in the data
+//   (never reset) and is only the starting point until the person picks their own.
+function viewPrefKey() { return "qc_viewpref_" + ((currentProfile && currentProfile.id) || "anon") + "_" + root.activeBoard; }
+function viewPrefs() { try { const p = JSON.parse(localStorage.getItem(viewPrefKey()) || "{}"); return p && typeof p === "object" ? p : {}; } catch (_) { return {}; } }
+function viewPref(k) {
+  const p = viewPrefs(), st = state.settings || {};
+  if (k in p) return p[k];
+  return k === "viewDepts" ? (Array.isArray(st.viewDepts) ? st.viewDepts.slice() : []) : null;
+}
+function setViewPref(k, v) { const p = viewPrefs(); p[k] = v; try { localStorage.setItem(viewPrefKey(), JSON.stringify(p)); } catch (_) {} }
 function activeViewDepts() {
   if (isServiceBoard()) return [];   // Service has no department hand-offs → always the project dates
   const my = myViewDeptId();
   if (my) return [my];
-  return ((state.settings && state.settings.viewDepts) || []).filter(id => getDept(id));
+  return (viewPref("viewDepts") || []).filter(id => getDept(id));
 }
 // count subtasks (cabinets) per status within a task (project)
 function subStatusCounts(t) {
@@ -6181,14 +6394,14 @@ function openDeptDropdown(anchor) {
     pop.querySelector("[data-all]").classList.toggle("active", activeViewDepts().length === 0);
   };
   pop.querySelector("[data-all]").addEventListener("click", () => {
-    state.settings.viewDepts = [];
+    setViewPref("viewDepts", []);
     pop.querySelectorAll("input[data-dept]").forEach(cb => { cb.checked = false; });
     refresh();
   });
   pop.querySelectorAll("input[data-dept]").forEach(cb => {
     cb.addEventListener("change", () => {
       const arr = activeViewDepts();
-      state.settings.viewDepts = cb.checked ? [...new Set([...arr, cb.dataset.dept])] : arr.filter(id => id !== cb.dataset.dept);
+      setViewPref("viewDepts", cb.checked ? [...new Set([...arr, cb.dataset.dept])] : arr.filter(id => id !== cb.dataset.dept));
       refresh();
     });
   });
@@ -10032,7 +10245,7 @@ function buildUserPanel(container) {
     deptSel.addEventListener("change", () => {
       state.settings.myDept = deptSel.value;
       // changing your department switches the calendar/today view to it
-      if (deptSel.value && getDept(deptSel.value)) state.settings.viewDepts = [deptSel.value];
+      if (deptSel.value && getDept(deptSel.value)) setViewPref("viewDepts", [deptSel.value]);
       saveState(); renderAll(); checkAlerts();
     });
   }
@@ -12755,7 +12968,9 @@ function renderMainView() {
   const dashWrap = document.getElementById("dashWrap");
   document.querySelectorAll('#viewToggle .tb-nav-btn').forEach(b => b.classList.toggle('active', b.dataset.view === viewMode));
   calWrap.classList.add("hidden"); ganttWrap.classList.add("hidden"); dashWrap.classList.add("hidden");
+  const tableWrap = document.getElementById("tableWrap"); tableWrap.classList.add("hidden");
   if (viewMode === "gantt") { ganttWrap.classList.remove("hidden"); renderGantt(); }
+  else if (viewMode === "table") { tableWrap.classList.remove("hidden"); renderProdTable(); }
   else if (viewMode === "dashboard") { dashWrap.classList.remove("hidden"); renderDashboard(); }
   else { calWrap.classList.remove("hidden"); renderMonth(); }
 }
