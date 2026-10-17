@@ -836,6 +836,14 @@ html, body { touch-action: manipulation; }
 .sd-title { flex: 1; min-width: 0; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sd-title mark { background:var(--b-fff3bf, #fff3bf); color:inherit; padding: 0 1px; border-radius:2px; }
 .sd-meta { flex: 0 0 auto; font-size: 11px; color:var(--text-faint); }
+/* ★ 2026-10-17 (owner): results wider than the (now narrower) box, project name on its own line, SO + date under it */
+.search-dropdown { min-width: 380px; max-width: 92vw; }
+.sd-item { align-items: flex-start; }
+.sd-item .sd-dot { margin-top: 5px; }
+.sd-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.sd-main .sd-title { white-space: normal; overflow: visible; line-height: 1.35; font-weight: 600; }
+.sd-sub { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--text-faint); }
+.sd-sub mark { background:var(--b-fff3bf, #fff3bf); color:inherit; padding: 0 1px; border-radius:2px; }
 .sd-empty { padding: 12px; text-align: center; font-size: 12px; color:var(--text-faint); }
 .toolbar-search:focus-within { border-color:var(--accent); box-shadow: 0 0 0 3px rgba(123,104,238,.15); }
 .toolbar-search .ts-icon { font-size: 12px; opacity: .55; flex: 0 0 auto; }
@@ -7148,6 +7156,13 @@ function openStatusPopover(anchorEl, currentId, onChange) {
 /* Floating checklist editor for one cabinet (sub).
    onChange() fires after any change so the caller can repaint/save. */
 let _clPopAnchor = null;
+// ★ 2026-10-17 (owner): checklist groups follow the PROJECT's department order (the chips as dragged), then any other
+//   department in ⚙ order — they used to follow ⚙ order (desktop) / the order items were added (phone)
+function deptOrderIds(task) {
+  const ids = ((task && task.deptStages) || []).map(s => s.deptId).filter(id => getDept(id));
+  (state.departments || []).forEach(d => { if (!ids.includes(d.id)) ids.push(d.id); });
+  return ids;
+}
 function openChecklistPopover(anchorEl, sub, onChange, opts = {}) {
   if (!canTick()) { permDenied("สิทธิ์ของคุณแก้เช็คลิสต์ไม่ได้"); return; }
   const structOk = canEdit();   // "ติ๊กเช็คลิสต์" tier: tick only — no rename / add / delete
@@ -7221,8 +7236,8 @@ function openChecklistPopover(anchorEl, sub, onChange, opts = {}) {
       sub.checklist.filter(i => i.deptId === deptId).forEach(it => itemsEl.appendChild(buildItemRow(it)));
       pop.querySelector('[data-act="add"]')?.addEventListener("click", () => addItem(deptId));
     } else {
-      // grouped by department
-      (state.departments || []).forEach(d => {
+      // grouped by department (project's department order)
+      deptOrderIds(task || (state.tasks || []).find(t => (t.subtasks || []).includes(sub))).map(getDept).filter(Boolean).forEach(d => {
         const items = sub.checklist.filter(i => i.deptId === d.id);
         if (!items.length) return;
         const grp = document.createElement("div");
@@ -14622,7 +14637,8 @@ function mCardHtml(t, due, dep, bid) {
     const rows = cabs.map(x => {
       const p = checklistProgress(x, dep || null), so = mOpenSub.has(x.id);
       const items = (x.checklist || []).filter(i => !dep || i.deptId === dep);
-      const groups = dep ? [[null, items]] : [...new Set(items.map(i => i.deptId))].map(id => [id, items.filter(i => i.deptId === id)]);
+      const groups = dep ? [[null, items]] : (() => { const ord = deptOrderIds(t), has = new Set(items.map(i => i.deptId));
+        return [...ord.filter(id => has.has(id)), ...[...has].filter(id => !ord.includes(id))].map(id => [id, items.filter(i => i.deptId === id)]); })();
       return `<div class="m-cab${p.done === p.total ? " full" : ""}${so ? " open" : ""}">
         <div class="m-cab-head" data-sub="${escapeHtml(x.id)}">
           <button type="button" class="m-dot" data-substatus="${escapeHtml(x.id)}" style="--dot:${getStatus(x.statusId).color}" aria-label="สถานะตู้"></button>
@@ -15093,7 +15109,8 @@ document.getElementById("btnImportReq").addEventListener("click", () => { if (!c
     q = q.trim().toLowerCase();
     if (!q) return [];
     return state.tasks.filter(t => {
-      const hay = (t.title + " " + (t.description || "") + " " + (t.labels || []).join(" ")).toLowerCase();
+      // ★ 2026-10-17 (owner): also SO / AVT / MO / cabinet names — same text the calendar filter searches
+      const hay = ((t.so || "") + " " + taskAvt(t) + " " + t.title + " " + (t.description || "") + " " + (t.labels || []).join(" ") + " " + (t.subtasks || []).map(x => (x.mo || "") + " " + (x.text || "")).join(" ")).toLowerCase();
       return hay.includes(q);
     }).sort((a, b) => {
       // exact title-prefix matches first, then by title
@@ -15133,8 +15150,8 @@ document.getElementById("btnImportReq").addEventListener("click", () => { if (!c
         const pr = getPriority(t.priority);
         return `<div class="sd-item" data-i="${i}" data-id="${t.id}">
           <span class="sd-dot" style="background:${st.color}"></span>
-          <span class="sd-title">${pr.id !== "none" ? priFlag(pr) + " " : ""}${highlight(t.title, q)}</span>
-          <span class="sd-meta">${t.date ? formatDateShort(t.date) : ""}</span>
+          <span class="sd-main"><span class="sd-title">${pr.id !== "none" ? priFlag(pr) + " " : ""}${highlight(t.title, q)}</span>
+            <span class="sd-sub">${(t.so || "").trim() ? `<span class="chip-so">${highlight(t.so.trim(), q)}</span>` : ""}${taskAvt(t) ? `<span>AVT ${highlight(taskAvt(t), q)}</span>` : ""}<span>${t.date ? formatDateShort(t.date) : ""}</span></span></span>
         </div>`;
       }).join("");
       dropdown.querySelectorAll(".sd-item").forEach(el => {
