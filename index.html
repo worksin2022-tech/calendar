@@ -654,6 +654,8 @@ html, body { touch-action: manipulation; }
 .tm-copy { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); width: 30px; height: 30px; border: 0; border-radius: 7px; background: transparent; color: var(--text-faint); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
 .tm-copy:hover { background: var(--b-f3f4f6, #f3f4f6); color: var(--accent); }
 .tm-copy .ico { width: 16px; height: 16px; }
+.stage-chip.stage-ro { opacity: .5; cursor: default; filter: grayscale(.4); }
+.stage-chip.stage-ro:hover { box-shadow: none; transform: none; }
 .stage-add-pop { position: fixed; z-index: 1450; background: var(--b-ffffff, #fff); border: 1px solid var(--border); border-radius: 10px; box-shadow: var(--shadow-md, 0 6px 20px rgba(0,0,0,.12)); padding: 6px; display: flex; flex-direction: column; gap: 2px; min-width: 180px; max-height: 320px; overflow-y: auto; }
 .stage-add-pop button { display: flex; align-items: center; gap: 6px; border: 0; background: transparent; font: inherit; font-size: 13px; padding: 7px 10px; border-radius: 7px; cursor: pointer; text-align: left; color: var(--text); }
 .stage-add-pop button:hover { background: var(--b-f3f4f6, #f3f4f6); }
@@ -8767,16 +8769,10 @@ function openTaskModal(taskId, defaults={}) {
       stageWrap.innerHTML = `<div class="muted" style="font-size:12px">ยังไม่มีแผนก — เพิ่มได้ที่ ⚙ ตั้งค่า › แผนก</div>`;
       return;
     }
-    // ★ show only the user's OWN department here — except full/admin, who see every stage. (Non-full
-    // members with no assigned department fall back to seeing all, since there's nothing to scope to.)
-    const visibleStages = (canFull() || !modalDept)
-      ? task.deptStages
-      : task.deptStages.filter(s => s.deptId === modalDept);
-    if (!visibleStages.length && task.deptStages.length) {
-      stageWrap.innerHTML = `<div class="muted" style="font-size:12px">งานนี้ไม่มีด่านของแผนกคุณ</div>`;
-      renderExtraFields();
-      return;
-    }
+    // ★ 2026-10-17 (owner): everyone sees EVERY assigned department (the whole chain). A member who isn't full/admin
+    //   sees the other departments faded and read-only — only their own department's chip opens / edits.
+    const visibleStages = task.deptStages;
+    const readOnlyStage = stg => !canFull() && !!modalDept && stg.deptId !== modalDept;
     visibleStages.forEach((stg, i) => {
       if (i > 0) stageWrap.insertAdjacentHTML("beforeend", `<span class="stage-flow-arrow">›</span>`);
       const chip = document.createElement("button");
@@ -8784,6 +8780,12 @@ function openTaskModal(taskId, defaults={}) {
       chip.className = "stage-chip" + (isDeptComplete(task, stg.deptId) ? " done" : "") + (stg.due ? "" : " no-date") + (stagePastEnd(stg) ? " past-end" : "");
       chip.dataset.deptId = stg.deptId;
       chip.innerHTML = stageChipHtml(stg);
+      if (readOnlyStage(stg)) {
+        chip.classList.add("stage-ro");
+        chip.title = `${(getDept(stg.deptId) || {}).name || "แผนกอื่น"} — ดูอย่างเดียว`;
+        stageWrap.appendChild(chip);
+        return;
+      }
       chip.addEventListener("click", (e) => { e.stopPropagation(); openStagePop(stg, chip); });
       // hover opens the same popup (after a short delay so sweeping across chips doesn't flicker); touch screens just tap
       let hoverTimer = null;
