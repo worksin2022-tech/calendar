@@ -1129,6 +1129,31 @@ html, body { touch-action: manipulation; }
 .srp-bar { flex-wrap: wrap; }
 .srp-img { overflow-y: auto; padding: 0 18px 16px; }
 .srp-img img { width: 100%; display: block; border: 1px solid var(--border); border-radius: 10px; }
+.ds-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 13px; margin: 6px 0; }
+.ds-bar { height: 8px; border-radius: 4px; background: var(--b-eef0f3, #eef0f3); overflow: hidden; }
+.ds-bar i { display: block; height: 100%; background: #10b981; }
+.ds-bar.warn i { background: #f59e0b; } .ds-bar.bad i { background: #ef4444; }
+.ds-note { font-size: 12px; margin-top: 6px; display: flex; gap: 6px; align-items: center; }
+.ds-note.warn { color: var(--t-b54708, #b54708); } .ds-note.bad { color: var(--danger); }
+.ds-note .ico { width: 14px; height: 14px; }
+.ds-table { width: 100%; border-collapse: collapse; font-size: 12.5px; margin-top: 10px; }
+.ds-table th { text-align: left; font-size: 11px; color: var(--text-faint); font-weight: 700; padding: 4px 6px; border-bottom: 1px solid var(--border-strong); }
+.ds-table td { padding: 5px 6px; border-bottom: 1px solid var(--border); }
+.ds-table td.warn { color: var(--t-b54708, #b54708); font-weight: 700; } .ds-table td.bad { color: var(--danger); font-weight: 700; }
+.arc-modal { width: min(720px, 96vw); max-height: 88vh; display: flex; flex-direction: column; }
+.arc-top { padding: 10px 18px; display: flex; }
+.arc-list { overflow-y: auto; padding: 0 18px 16px; }
+.arc-row { display: flex; align-items: center; gap: 8px; padding: 8px 4px; border-bottom: 1px solid var(--border); }
+.arc-m { flex: 1; min-width: 0; }
+.arc-t { font-weight: 700; font-size: 13.5px; }
+.arc-s { font-size: 11.5px; color: var(--text-dim); margin-top: 2px; }
+.arc-detail { padding: 10px 2px; }
+.arc-h { font-size: 12px; font-weight: 700; color: var(--text-dim); margin: 12px 0 4px; }
+.arc-chip { display: inline-block; font-size: 11px; padding: 1px 8px; border-radius: 999px; background: var(--b-f1f3f5, #f1f3f5); margin: 2px 4px 2px 0; }
+.arc-cab { font-size: 12.5px; padding: 3px 0; }
+.arc-cmt { font-size: 12.5px; padding: 3px 0; color: var(--text-dim); }
+.sd-arc { color: var(--accent); font-size: 12.5px; border-top: 1px solid var(--border); margin-top: 4px; gap: 6px; }
+.sd-arc .ico { width: 14px; height: 14px; }
 .ov-click { cursor: pointer; transition: border-color .12s; }
 .ov-click:hover { border-color: var(--accent); }
 .ovl-overlay .ovl-modal { width: min(640px, 96vw); max-height: 86vh; display: flex; flex-direction: column; }
@@ -4586,6 +4611,166 @@ function renderProdTable() {
       });
     }
   }));
+}
+/* ---------- 📦 ขนาดข้อมูล + คลังงาน (2026-10-17, owner) ----------
+   Every calendar is one JSON row that every device downloads/keeps (localStorage ~5MB) and that every save resends.
+   Finished projects older than N days (⚙ ข้อมูล, per calendar, default 90) can be moved to the Supabase table
+   task_archive (supabase-slice12.sql): the whole task is copied there FIRST and only the rows the database confirms
+   are then taken out of the calendar. Archived work is searchable (คลังงาน / the search box) and can be put back
+   ("นำกลับ"). Nothing is ever deleted from the archive by the app. */
+const ARCHIVE_DAYS_OPTS = [60, 90, 180, 365];
+function jsonBytes(o) { const j = JSON.stringify(o) || ""; try { return new Blob([j]).size; } catch (_) { return j.length; } }
+function fmtSize(b) { return b >= 1048576 ? (b / 1048576).toFixed(2) + " MB" : Math.max(1, Math.round(b / 1024)) + " KB"; }
+function archiveDays(ws) { const v = +(((ws || state).settings || {}).archiveDays); return ARCHIVE_DAYS_OPTS.includes(v) ? v : 90; }
+function archiveCandidates(bid) {
+  const ws = root.boards[bid]; if (!ws) return [];
+  const cut = isoDate(new Date(Date.now() - archiveDays(ws) * 86400000));
+  return mWithBoard(bid, () => (ws.tasks || []).filter(t => !taskOnHold(t)
+    && (projectComplete(t) || isStatusDone(getStatus(t.statusId))) && (t.actualEnd || t.date || "9999") < cut));
+}
+function archiveErr(error) {
+  const m = (error && (error.message || error.code)) || "";
+  return /task_archive|42P01|relation/i.test(m) ? "ยังไม่ได้สร้างตารางคลังงาน — ต้องรัน supabase-slice12.sql ใน Supabase ก่อน" : "คลังงานไม่สำเร็จ: " + m;
+}
+async function archiveTasks(bid, tasks) {
+  const sb = getSupabase(); if (!sb) { toast("ไม่มีอินเทอร์เน็ต — ลองใหม่"); return 0; }
+  const ws = root.boards[bid]; if (!ws || !tasks.length) return 0;
+  const who = currentUser(), now = new Date().toISOString();
+  const rows = tasks.map(t => ({ board_id: bid, task_id: t.id, title: t.title || "", so: (t.so || "").trim() || null, avt: mWithBoard(bid, () => taskAvt(t)) || null,
+    due_date: t.date || null, actual_end: t.actualEnd || null, dept_ids: (t.deptStages || []).map(x => x.deptId),
+    data: JSON.parse(JSON.stringify(t)), archived_at: now, archived_by: who, restored_at: null }));
+  const ok = new Set();
+  for (let i = 0; i < rows.length; i += 40) {
+    const { data, error } = await sb.from("task_archive").upsert(rows.slice(i, i + 40), { onConflict: "board_id,task_id" }).select("task_id");
+    if (error) { toast(archiveErr(error)); break; }
+    (data || []).forEach(r => ok.add(r.task_id));
+  }
+  if (!ok.size) return 0;
+  ws.tasks = (ws.tasks || []).filter(t => !ok.has(t.id));   // only what the archive confirmed it holds
+  if (bid === root.activeBoard) state = ws;
+  delete _archSum[bid];
+  saveState(); renderAll();
+  return ok.size;
+}
+async function restoreArchived(bid, taskId) {
+  const sb = getSupabase(); if (!sb) { toast("ไม่มีอินเทอร์เน็ต — ลองใหม่"); return false; }
+  const ws = root.boards[bid]; if (!ws) return false;
+  const { data, error } = await sb.from("task_archive").select("data").eq("board_id", bid).eq("task_id", taskId).maybeSingle();
+  if (error || !data || !data.data) { toast(error ? archiveErr(error) : "ไม่พบงานนี้ในคลัง"); return false; }
+  if (!(ws.tasks || []).some(t => t.id === taskId)) {
+    const t = data.data;
+    if (!Array.isArray(t.comments)) t.comments = [];
+    t.comments.push({ id: uid("ac"), type: "system", author: currentUser(), text: "นำกลับจากคลังงาน", at: Date.now() });
+    ws.tasks.push(t);
+  }
+  await sb.from("task_archive").update({ restored_at: new Date().toISOString() }).eq("board_id", bid).eq("task_id", taskId);
+  delete _archSum[bid];
+  saveState(); renderAll();
+  return true;
+}
+// archived projects' due / actual end — so the on-time stats keep counting work that was moved to the archive
+const _archSum = {};
+function archSummary(bid) {
+  if (_archSum[bid]) return _archSum[bid].rows;
+  const sb = getSupabase(); if (!sb || !currentProfile) return [];
+  _archSum[bid] = { rows: [] };
+  const from = isoDate(new Date(Date.now() - 800 * 86400000));
+  sb.from("task_archive").select("due_date,actual_end,dept_ids").eq("board_id", bid).is("restored_at", null).gte("actual_end", from)
+    .then(({ data, error }) => { if (error || !Array.isArray(data) || !data.length) return; _archSum[bid].rows = data; if (viewMode === "dashboard" && bid === root.activeBoard) renderDashboard(); }, () => {});
+  return [];
+}
+function openArchiveBrowser(q0) {
+  const bid = root.activeBoard, ov = document.createElement("div");
+  ov.className = "overlay ovl-overlay";
+  ov.innerHTML = `<div class="modal ovl-modal arc-modal" role="dialog" aria-modal="true">
+    <div class="modal-head"><h3>${ico("archive")} คลังงาน · ${escapeHtml(boardNameOf(bid))}</h3><button class="btn btn-ghost" data-x title="ปิด">✕</button></div>
+    <div class="arc-top"><label class="um-search">${ico("search")}<input type="search" data-q placeholder="ค้นหา SO / AVT / ชื่อโครงการ" autocomplete="off" /></label></div>
+    <div class="arc-list" data-list><div class="cf-empty">กำลังโหลด...</div></div></div>`;
+  document.body.appendChild(ov);
+  const close = () => ov.remove();
+  ov.querySelector("[data-x]").addEventListener("click", close);
+  ov.addEventListener("mousedown", e => { if (e.target === ov) close(); });
+  const list = ov.querySelector("[data-list]"), qi = ov.querySelector("[data-q]");
+  qi.value = q0 || "";
+  const dl = iso => iso ? formatDateTH(iso) : "—";
+  let seq = 0, timer = null;
+  async function load() {
+    const my = ++seq, sb = getSupabase();
+    if (!sb) { list.innerHTML = `<div class="cf-empty">ไม่มีอินเทอร์เน็ต</div>`; return; }
+    let q = sb.from("task_archive").select("task_id,title,so,avt,due_date,actual_end,archived_at,archived_by").eq("board_id", bid).is("restored_at", null).order("archived_at", { ascending: false }).limit(100);
+    const term = qi.value.trim().replace(/[,()%*]/g, " ").trim();
+    if (term) q = q.or(`title.ilike.%${term}%,so.ilike.%${term}%,avt.ilike.%${term}%`);
+    const { data, error } = await q;
+    if (my !== seq) return;
+    if (error) { list.innerHTML = `<div class="cf-empty">${escapeHtml(archiveErr(error))}</div>`; return; }
+    if (!data || !data.length) { list.innerHTML = `<div class="cf-empty">${term ? "ไม่พบในคลังงาน" : "คลังงานยังว่าง"}</div>`; return; }
+    list.innerHTML = data.map((r, i) => `<div class="arc-row">
+      <div class="arc-m"><div class="arc-t">${r.so ? `<span class="chip-so">${escapeHtml(r.so)}</span> ` : ""}${escapeHtml(r.title || "(ไม่มีชื่อ)")}</div>
+        <div class="arc-s">${r.avt ? `AVT ${escapeHtml(r.avt)} · ` : ""}ส่ง ${dl(r.due_date)} · จบจริง ${dl(r.actual_end)} · เก็บเมื่อ ${escapeHtml(formatDateTH(isoDate(new Date(r.archived_at))))}</div></div>
+      <button type="button" class="btn btn-sm" data-view="${i}">ดู</button>
+      ${canFull() ? `<button type="button" class="btn btn-sm" data-back="${i}">นำกลับ</button>` : ""}</div>`).join("") + (data.length >= 100 ? `<div class="cf-empty">แสดง 100 รายการล่าสุด — พิมพ์ค้นหาเพื่อหาเพิ่ม</div>` : "");
+    list.querySelectorAll("[data-back]").forEach(b => b.addEventListener("click", async () => {
+      const r = data[+b.dataset.back];
+      if (!(await confirmDialog({ title: "นำงานกลับเข้าปฏิทิน?", message: `${r.so ? r.so + " " : ""}${r.title || ""}`, confirmText: "นำกลับ" }))) return;
+      b.disabled = true;
+      if (await restoreArchived(bid, r.task_id)) { toast("นำกลับเข้าปฏิทินแล้ว"); close(); openTaskModal(r.task_id); } else b.disabled = false;
+    }));
+    list.querySelectorAll("[data-view]").forEach(b => b.addEventListener("click", () => viewArchived(data[+b.dataset.view])));
+  }
+  async function viewArchived(r) {
+    list.innerHTML = `<div class="cf-empty">กำลังโหลด...</div>`;
+    const { data, error } = await getSupabase().from("task_archive").select("data").eq("board_id", bid).eq("task_id", r.task_id).maybeSingle();
+    if (error || !data) { list.innerHTML = `<div class="cf-empty">${escapeHtml(error ? archiveErr(error) : "ไม่พบ")}</div>`; return; }
+    const t = data.data, st = getStatus(t.statusId);
+    const stages = (t.deptStages || []).map(x => `<span class="arc-chip">${escapeHtml((getDept(x.deptId) || {}).name || "?")} ${x.due ? escapeHtml(formatDateTH(x.due)) : ""}</span>`).join("");
+    const cabs = (t.subtasks || []).map(x => `<div class="arc-cab"><span class="pt-mo">${escapeHtml(x.mo || "")}</span> ${escapeHtml(x.text || "")} <span class="arc-chip">${escapeHtml(getStatus(x.statusId).name)}</span></div>`).join("");
+    const cmts = (t.comments || []).filter(c => c.type !== "system" && c.text).slice(-5).map(c => `<div class="arc-cmt"><b>${escapeHtml(c.author || "")}</b> ${escapeHtml(c.text)}</div>`).join("");
+    list.innerHTML = `<button type="button" class="btn btn-sm" data-backlist>‹ กลับไปรายการ</button>
+      <div class="arc-detail"><div class="arc-t" style="font-size:15px">${t.so ? `<span class="chip-so">${escapeHtml(t.so)}</span> ` : ""}${escapeHtml(t.title || "")}</div>
+      <div class="arc-s">สถานะ ${escapeHtml(st.name)} · ส่ง ${dl(t.date)} · จบจริง ${dl(t.actualEnd)}${t.avt ? " · AVT " + escapeHtml(t.avt) : ""}</div>
+      ${stages ? `<div class="arc-h">แผนก</div><div>${stages}</div>` : ""}
+      ${cabs ? `<div class="arc-h">ตู้ (${(t.subtasks || []).length})</div>${cabs}` : ""}
+      ${cmts ? `<div class="arc-h">คอมเมนต์ล่าสุด</div>${cmts}` : ""}</div>`;
+    list.querySelector("[data-backlist]").addEventListener("click", load);
+  }
+  qi.addEventListener("input", () => { clearTimeout(timer); timer = setTimeout(load, 300); });
+  load();
+  setTimeout(() => qi.focus(), 50);
+}
+function buildDataSizePanel(container) {
+  const sec = document.createElement("div");
+  sec.className = "settings-section";
+  const cacheChars = (() => { try { return (localStorage.getItem(STORAGE_KEY) || "").length; } catch (_) { return 0; } })();
+  const LIMIT = 5 * 1024 * 1024, cachePct = Math.min(100, Math.round(cacheChars / LIMIT * 100));
+  const lvl = p => p >= 85 ? "bad" : p >= 60 ? "warn" : "ok";
+  const boards = (root.boardMeta || []).filter(b => root.boards[b.id]).map(b => ({ b, size: jsonBytes(root.boards[b.id]), n: (root.boards[b.id].tasks || []).length, arc: archiveCandidates(b.id).length }));
+  const full = canFull();
+  sec.innerHTML = `<h4 class="settings-h">${ico("database")} ขนาดข้อมูล</h4>
+    <div class="ds-row"><span>หน่วยความจำในเครื่องนี้ (ทุกปฏิทินรวมกัน)</span><b>${fmtSize(cacheChars)} / ~5 MB</b></div>
+    <div class="ds-bar ${lvl(cachePct)}"><i style="width:${cachePct}%"></i></div>
+    ${cachePct >= 60 ? `<div class="ds-note ${lvl(cachePct)}">${ico("alert")} ใกล้เต็ม — ควรเก็บงานเก่าเข้าคลัง</div>` : ""}
+    <table class="ds-table"><tr><th>ปฏิทิน</th><th>ขนาด</th><th>งาน</th><th>เก็บเข้าคลังได้</th></tr>
+    ${boards.map(x => `<tr><td>${escapeHtml(x.b.name)}</td><td class="${x.size > 3 * 1048576 ? "bad" : x.size > 1.5 * 1048576 ? "warn" : ""}">${fmtSize(x.size)}</td><td>${x.n}</td><td>${x.arc || "—"}</td></tr>`).join("")}</table>
+    <h4 class="settings-h" style="margin-top:16px">${ico("archive")} คลังงาน · ${escapeHtml(boardNameOf(root.activeBoard))}</h4>
+    <div class="ds-row"><span>เก็บงานที่เสร็จแล้วนานกว่า</span>
+      <select data-arcdays ${full ? "" : "disabled"}>${ARCHIVE_DAYS_OPTS.map(d => `<option value="${d}" ${archiveDays() === d ? "selected" : ""}>${d} วัน</option>`).join("")}</select></div>
+    <div class="row" style="gap:8px;flex-wrap:wrap;margin-top:8px">
+      ${full ? `<button class="btn btn-primary" data-arcnow>${ico("archive")} เก็บเข้าคลัง <span data-arcn></span></button>` : ""}
+      <button class="btn" data-arcopen>${ico("search")} เปิดคลังงาน</button></div>`;
+  container.appendChild(sec);
+  const paintN = () => { const n = archiveCandidates(root.activeBoard).length, el = sec.querySelector("[data-arcn]"); if (el) { el.textContent = n ? `(${n} งาน)` : "(ไม่มี)"; el.closest("button").disabled = !n; } };
+  paintN();
+  sec.querySelector("[data-arcdays]")?.addEventListener("change", e => { state.settings.archiveDays = +e.target.value; saveState(); paintN(); });
+  sec.querySelector("[data-arcopen]").addEventListener("click", () => openArchiveBrowser(""));
+  sec.querySelector("[data-arcnow]")?.addEventListener("click", async (e) => {
+    const list = archiveCandidates(root.activeBoard); if (!list.length) return;
+    const ok = await confirmDialog({ title: `เก็บ ${list.length} งานเข้าคลัง?`, message: `งานที่เสร็จแล้วนานกว่า ${archiveDays()} วัน จะย้ายออกจากปฏิทินไปเก็บในคลังงาน — ค้นหาและนำกลับได้ตลอด`, confirmText: "เก็บเข้าคลัง", icon: "archive" });
+    if (!ok) return;
+    const btn = e.currentTarget; btn.disabled = true;
+    const n = await archiveTasks(root.activeBoard, list);
+    if (n) toast(`เก็บเข้าคลังแล้ว ${n} งาน`);
+    sec.remove(); buildDataSizePanel(container);
+  });
 }
 function editDistance(a, b) {
   const m = a.length, n = b.length; if (Math.abs(m - n) > 2) return 3;
@@ -11717,6 +11902,7 @@ function buildDataPanel(container) {
     
   `;
   container.appendChild(sec);
+  buildDataSizePanel(container);
   sec.querySelector('[data-act="export"]').addEventListener("click", exportJson);
   sec.querySelector('[data-act="import"]').addEventListener("click", () => document.getElementById("fileImport").click());
   buildClickUpImport(container);
@@ -12828,7 +13014,8 @@ function renderDashboard() {
         return `<button type="button" class="ov-pseg${isNeck ? " neck" : ""}" style="flex:${Math.max(L.length, 1)}" data-wip="${escapeHtml(d.id)}" title="${escapeHtml(d.name)} ${L.length} ตู้"><b>${L.length}</b>${late ? `<span>เลยกำหนด ${late}</span>` : ""}</button>`; }).join("")}</div>
       <div class="ov-plbl">${wipOrder.map(d => `<span style="flex:${Math.max(wip[d.id].length, 1)}">${escapeHtml(d.name)}</span>`).join("")}</div></div>` : "";
     // on-time = actual end ≤ due date (projects with a recorded actual end)
-    const ended = allTasks.filter(t => t.actualEnd && t.date);
+    const ended = allTasks.filter(t => t.actualEnd && t.date)
+      .concat(archSummary(root.activeBoard).filter(r => r.actual_end && r.due_date && (!dep || (r.dept_ids || []).includes(dep))).map(r => ({ actualEnd: r.actual_end, date: r.due_date })));   // ★ + คลังงาน
     const winOf = days => { const from = isoDate(new Date(fromIso(today).getTime() - days * DAY)); return ended.filter(t => t.actualEnd >= from && t.actualEnd <= today); };
     const winRange = (fromD, toD) => { const a = isoDate(new Date(fromIso(today).getTime() - fromD * DAY)), b = isoDate(new Date(fromIso(today).getTime() - toD * DAY)); return ended.filter(t => t.actualEnd > a && t.actualEnd <= b); };
     const w90 = winOf(otdDays), wPrev = winRange(otdDays * 2, otdDays), onT = L => L.filter(t => t.actualEnd <= t.date);
@@ -15491,8 +15678,9 @@ document.getElementById("btnImportReq").addEventListener("click", () => { if (!c
     activeIndex = -1;
     if (!q.trim()) { closeDropdown(); dropdown.innerHTML = ""; return; }
     results = matchTasks(q);
+    const arcLink = `<div class="sd-item sd-arc" data-arc>${ico("archive")} ค้นหา “${escapeHtml(q.trim())}” ในคลังงาน</div>`;
     if (results.length === 0) {
-      dropdown.innerHTML = `<div class="sd-empty">ไม่พบงานที่ตรงกับ “${escapeHtml(q.trim())}”</div>`;
+      dropdown.innerHTML = `<div class="sd-empty">ไม่พบงานที่ตรงกับ “${escapeHtml(q.trim())}”</div>` + arcLink;
     } else {
       dropdown.innerHTML = results.map((t, i) => {
         const st = getStatus(t.statusId);
@@ -15503,11 +15691,13 @@ document.getElementById("btnImportReq").addEventListener("click", () => { if (!c
             <span class="sd-sub">${(t.so || "").trim() ? `<span class="chip-so">${highlight(t.so.trim(), q)}</span>` : ""}${taskAvt(t) ? `<span>AVT ${highlight(taskAvt(t), q)}</span>` : ""}<span>${t.date ? formatDateShort(t.date) : ""}</span></span></span>
         </div>`;
       }).join("");
-      dropdown.querySelectorAll(".sd-item").forEach(el => {
+      dropdown.insertAdjacentHTML("beforeend", arcLink);
+      dropdown.querySelectorAll(".sd-item:not(.sd-arc)").forEach(el => {
         el.addEventListener("mousedown", (e) => { e.preventDefault(); openResult(el.dataset.id); });
         el.addEventListener("mouseenter", () => setActive(+el.dataset.i));
       });
     }
+    dropdown.querySelector("[data-arc]")?.addEventListener("mousedown", (e) => { e.preventDefault(); closeDropdown(); openArchiveBrowser(q.trim()); });
     dropdown.classList.add("open");
   }
 
