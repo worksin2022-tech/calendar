@@ -10828,7 +10828,11 @@ function buildUsersAdminPanel(container) {
   // opened from the Service calendar → list only Service people (+ unassigned newcomers so a Service
   // admin can still approve new staff) and only offer the Service department
   const svcOnly = root.activeBoard === SERVICE_BOARD;
-  const allDepts = svcOnly ? allDepartments().filter(d => d.id === SERVICE_DEPT) : allDepartments().filter((d, i, arr) => arr.findIndex(x => deptNameKey(x.name) === deptNameKey(d.name)) === i);
+  // ★ 2026-10-19 (owner: "อนุมัติเข้าเฉพาะ Service ไม่ได้"): the Service department is ALWAYS offered — even when this admin's
+  //   device hasn't loaded the Service calendar (not ticked for them), and never dropped by the same-name de-dup
+  //   (another calendar may also have a department called "Service" with a different id)
+  const svcDept = allDepartments().find(d => d.id === SERVICE_DEPT) || { id: SERVICE_DEPT, name: "Service", icon: "🛠️" };
+  const allDepts = svcOnly ? [svcDept] : [...allDepartments().filter(d => d.id !== SERVICE_DEPT).filter((d, i, arr) => arr.findIndex(x => deptNameKey(x.name) === deptNameKey(d.name)) === i), svcDept];
   const deptOptions = `<option value="">— ไม่ระบุแผนก —</option>` +
     allDepts.map(d => `<option value="${d.id}">${escapeHtml(d.name)}</option>`).join("");
   const sb = getSupabase();
