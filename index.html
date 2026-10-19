@@ -4262,7 +4262,9 @@ function runDashTour() {
   runTour(wrap, ALL);
 }
 // step = { sel, up?, title, text, before? } — `before` runs first (e.g. unfold a pane); a step whose element is missing is skipped
-function runTour(wrap, ALL) {
+// opts.force (★ 2026-10-19 owner: "บังคับกดตามจนเสร็จ"): no ข้าม / Esc, clicks + keys outside the tip (or the element of a
+//   click step) are swallowed · opts.onDone: only when the last step is finished
+function runTour(wrap, ALL, opts = {}) {
   document.querySelectorAll(".tour-tip").forEach(n => n.remove());
   const steps = ALL.filter(st => st.before || wrap.querySelector(st.sel));
   if (!steps.length) return;
@@ -4270,8 +4272,20 @@ function runTour(wrap, ALL) {
   const tip = document.createElement("div");
   tip.className = "tour-tip";
   document.body.appendChild(tip);
-  const end = () => { clickOff && clickOff(); tip.remove(); spot && spot.classList.remove("tour-spot"); window.removeEventListener("resize", place); document.removeEventListener("keydown", onKey, true); };
-  const onKey = (e) => { if (e.key === "Escape") { e.stopPropagation(); end(); } };
+  const BLOCK = ["pointerdown", "mousedown", "mouseup", "click", "dblclick", "touchstart", "contextmenu", "auxclick"];
+  let bypass = false;   // a step's own before() may click (e.g. unfold ▸)
+  const guard = (e) => {
+    if (bypass || tip.contains(e.target)) return;
+    if (steps[i] && steps[i].click && spot && spot.contains(e.target)) return;
+    e.stopPropagation(); e.preventDefault();
+  };
+  const end = () => { clickOff && clickOff(); tip.remove(); spot && spot.classList.remove("tour-spot"); window.removeEventListener("resize", place); document.removeEventListener("keydown", onKey, true);
+    if (opts.force) BLOCK.forEach(t => document.removeEventListener(t, guard, true)); };
+  const finish = () => { end(); opts.onDone && opts.onDone(); };
+  const onKey = (e) => {
+    if (opts.force) { if (!tip.contains(e.target)) { e.stopPropagation(); e.preventDefault(); } return; }
+    if (e.key === "Escape") { e.stopPropagation(); end(); }
+  };
   function place() {
     if (!spot || !spot.isConnected) return;
     const r = spot.getBoundingClientRect(), tw = tip.offsetWidth, th = tip.offsetHeight;
@@ -4285,20 +4299,20 @@ function runTour(wrap, ALL) {
     const st = steps[i];
     clickOff && clickOff();
     spot && spot.classList.remove("tour-spot");
-    if (st.before) { try { st.before(wrap); } catch (_) {} }
+    if (st.before) { bypass = true; try { st.before(wrap); } catch (_) {} bypass = false; }
     let el = wrap.querySelector(st.sel);
-    if (!el) { if (!wrap.isConnected) return end(); i += dir; if (i < 0 || i >= steps.length) return end(); return show(dir); }
+    if (!el) { if (!wrap.isConnected) return end(); i += dir; if (i >= steps.length) return finish(); if (i < 0) return end(); return show(dir); }
     if (st.up) el = el.closest(st.up) || el;
     spot = el; spot.classList.add("tour-spot");
     spot.scrollIntoView({ block: "center", behavior: "smooth" });
     const text = typeof st.text === "function" ? st.text(wrap) : st.text;
     tip.innerHTML = `<div class="tour-n">${i + 1} / ${steps.length}</div><b>${escapeHtml(st.title)}</b><p>${escapeHtml(text)}</p>
-      <div class="tour-btns"><button type="button" class="tour-skip">ข้าม</button>${i > 0 ? `<button type="button" class="tour-prev">ก่อนหน้า</button>` : ""}${st.click ? "" : `<button type="button" class="tour-next">${i === steps.length - 1 ? "เสร็จ" : "ถัดไป"}</button>`}</div>`;
-    tip.querySelector(".tour-skip").addEventListener("click", end);
+      <div class="tour-btns">${opts.force ? `<span style="margin-right:auto"></span>` : `<button type="button" class="tour-skip">ข้าม</button>`}${i > 0 ? `<button type="button" class="tour-prev">ก่อนหน้า</button>` : ""}${st.click ? "" : `<button type="button" class="tour-next">${i === steps.length - 1 ? "เสร็จ" : "ถัดไป"}</button>`}</div>`;
+    tip.querySelector(".tour-skip")?.addEventListener("click", end);
     tip.querySelector(".tour-prev")?.addEventListener("click", () => { i--; show(-1); });
-    tip.querySelector(".tour-next")?.addEventListener("click", () => { if (i === steps.length - 1) end(); else { i++; show(1); } });
+    tip.querySelector(".tour-next")?.addEventListener("click", () => { if (i === steps.length - 1) finish(); else { i++; show(1); } });
     if (st.click) {
-      const el0 = spot, h = () => { clickOff(); setTimeout(() => { if (i === steps.length - 1) end(); else { i++; show(1); } }, 150); };
+      const el0 = spot, h = () => { clickOff(); setTimeout(() => { if (i === steps.length - 1) finish(); else { i++; show(1); } }, 150); };
       el0.addEventListener("click", h, true);
       clickOff = () => { el0.removeEventListener("click", h, true); clickOff = null; };
     }
@@ -4306,13 +4320,14 @@ function runTour(wrap, ALL) {
   }
   window.addEventListener("resize", place);
   document.addEventListener("keydown", onKey, true);
+  if (opts.force) BLOCK.forEach(t => document.addEventListener(t, guard, true));
   show();
 }
 // ★ 2026-10-19 (owner) การ์ดนำทาง "วิธีตั้งวันที่ของตู้" — Planning department only. Runs on the open project popup, or opens the first
 //   unfinished project on this calendar that has cabinets + departments (audience: isPlanningUser). Read-only: only unfolds ▸ of the first cabinet.
-// ★ 2026-10-19 (owner): starts by itself when a Planning user opens the app (once per device, localStorage qc_cab_tour) —
+// ★ 2026-10-19 (owner): starts by itself when a Planning user opens the app, forced (no ข้าม), until finished once on this device —
 //   not behind a button in มีอะไรใหม่. Not marked seen while this calendar has no project with cabinets.
-const CAB_TOUR_KEY = "qc_cab_tour";
+const CAB_TOUR_KEY = "qc_cab_tour_done";   // set only when the tour is finished (old "qc_cab_tour" = set at start, ignored)
 // ★ 2026-10-19 (owner): audience = the Planning department (user profile department named Planning / แพลนนิ่ง / วางแผน), not Admins
 function isPlanningUser() { const d = currentProfile && currentProfile.dept_id && deptAnywhere(currentProfile.dept_id); return !!(d && /plan|แพลน|วางแผน/i.test(d.name || "")); }
 function cabTourTask() {
@@ -4326,7 +4341,6 @@ function cabTourDue() {
 }
 function openCabDateTour() {
   if (!isPlanningUser()) return;
-  try { localStorage.setItem(CAB_TOUR_KEY, "1"); } catch (_) {}
   if (isMobileMode && isMobileMode()) { toast("เปิดบนคอมหรือแท็บเล็ตเพื่อดูการ์ดนำทาง"); return; }
   const hasRows = () => document.querySelector(".overlay .subtask-row .cdate");
   if (!hasRows()) {
@@ -4338,6 +4352,7 @@ function openCabDateTour() {
 }
 function runCabDateTour(wrap) {
   const deptMode = w => !w.querySelector(".subtask-row .subtask-dd-btn");
+  const dm = deptMode(wrap);   // own-department popup has no ▸ → the two date steps only
   runTour(wrap, [
     { sel: ".subtask-row .cdate", title: "วันที่ของตู้",
       text: w => deptMode(w) ? "ช่องนี้ = วันของแผนกคุณในตู้นี้ · ว่าง (ตามแผนก) = ใช้วันของแผนกจากโครงการ · ใส่วัน = เฉพาะตู้นี้"
@@ -4350,7 +4365,7 @@ function runCabDateTour(wrap) {
     { sel: ".subtask-row .subtask-dd", title: "วันแผนกในตู้นี้",
       before: w => { const r = w.querySelector(".subtask-row"); if (r && !r.querySelector(".subtask-dd")) r.querySelector(".subtask-dd-btn")?.click(); },
       text: "สีจาง + ‘ตามโครงการ’ = ใช้วันแผนกของโครงการ · แก้ตรงนี้ = เฉพาะตู้นี้ · กด × = กลับไปตามโครงการ" },
-  ]);
+  ].filter((st, k) => !dm || k < 2), { force: true, onDone: () => { try { localStorage.setItem(CAB_TOUR_KEY, "1"); } catch (_) {} } });
 }
 function openOvList({ title, rows, filters, open }) {
   const ov = document.createElement("div");
