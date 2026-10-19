@@ -4113,14 +4113,9 @@ function openBomPanel(ctx) {
 // ★ 2026-10-13 (owner) "มีอะไรใหม่" — shown once per release on this device (after login, before the daily report).
 //   Next release: change WHATS_NEW.id and the items; everyone sees it once again.
 // ★ 2026-10-13b: + แดชบอร์ดภาพรวม (new id → everyone sees it once more; FAT / ใบสั่งผลิต kept for people who missed them)
-// ★ 2026-10-19 (owner): + วิธีตั้งวันที่ของตู้ — Admin only (admin:true). fresh:true = new in this release; someone who saw
-//   `prev` and has no fresh item visible (non-admins) is not shown the popup again.
+// item flags: admin:true = Admins only · fresh:true = new in this release (someone who saw `prev` and has no fresh item
+//   visible is not shown the popup again). 2026-10-19: the cabinet-date item moved to an auto-start tour (openCabDateTour).
 const WHATS_NEW = { id: "2026-10-19", prev: "2026-10-13b", date: "19 ต.ค. 2569", items: [
-  { icon: "calendar", title: "วิธีตั้งวันที่ของตู้", admin: true, fresh: true, go: "cabdate", steps: [
-    "ป๊อปอัปโครงการ → ช่องวันที่ (ไอคอนปฏิทิน) ท้ายแถวตู้ = วันจบของตู้ (ว่าง = ตามวันจบโครงการ)",
-    "เปลี่ยนวันตู้ → เลือกแผนกที่จะเลื่อนตามด้วยจำนวนวันเท่ากัน (เฉพาะตู้นี้ ตู้อื่นไม่ขยับ)",
-    "วันใหม่เลยวันจบโครงการ → ติ๊กเลื่อนวันจบโครงการด้วยได้",
-    "กด ▸ หน้าแถวตู้ เพื่อตรวจ/แก้วันของแต่ละแผนกในตู้นั้น" ] },
   { icon: "chart", title: "แดชบอร์ด · ภาพรวมโรงงาน", go: "dashboard", steps: [
     "กดการ์ดตัวเลข (กำลังทำ, เลยกำหนด, ตู้ผลิตเดือนนี้ ฯลฯ) เพื่อดูรายการ",
     "กำลังการผลิต 6 สัปดาห์ — หักคนที่ไปออกไซต์ให้อัตโนมัติ · กดแท่งเพื่อดูตู้",
@@ -4271,11 +4266,11 @@ function runTour(wrap, ALL) {
   document.querySelectorAll(".tour-tip").forEach(n => n.remove());
   const steps = ALL.filter(st => st.before || wrap.querySelector(st.sel));
   if (!steps.length) return;
-  let i = 0, spot = null;
+  let i = 0, spot = null, clickOff = null;
   const tip = document.createElement("div");
   tip.className = "tour-tip";
   document.body.appendChild(tip);
-  const end = () => { tip.remove(); spot && spot.classList.remove("tour-spot"); window.removeEventListener("resize", place); document.removeEventListener("keydown", onKey, true); };
+  const end = () => { clickOff && clickOff(); tip.remove(); spot && spot.classList.remove("tour-spot"); window.removeEventListener("resize", place); document.removeEventListener("keydown", onKey, true); };
   const onKey = (e) => { if (e.key === "Escape") { e.stopPropagation(); end(); } };
   function place() {
     if (!spot || !spot.isConnected) return;
@@ -4288,6 +4283,7 @@ function runTour(wrap, ALL) {
   }
   function show(dir = 1) {
     const st = steps[i];
+    clickOff && clickOff();
     spot && spot.classList.remove("tour-spot");
     if (st.before) { try { st.before(wrap); } catch (_) {} }
     let el = wrap.querySelector(st.sel);
@@ -4297,25 +4293,44 @@ function runTour(wrap, ALL) {
     spot.scrollIntoView({ block: "center", behavior: "smooth" });
     const text = typeof st.text === "function" ? st.text(wrap) : st.text;
     tip.innerHTML = `<div class="tour-n">${i + 1} / ${steps.length}</div><b>${escapeHtml(st.title)}</b><p>${escapeHtml(text)}</p>
-      <div class="tour-btns"><button type="button" class="tour-skip">ข้าม</button>${i > 0 ? `<button type="button" class="tour-prev">ก่อนหน้า</button>` : ""}<button type="button" class="tour-next">${i === steps.length - 1 ? "เสร็จ" : "ถัดไป"}</button></div>`;
+      <div class="tour-btns"><button type="button" class="tour-skip">ข้าม</button>${i > 0 ? `<button type="button" class="tour-prev">ก่อนหน้า</button>` : ""}${st.click ? "" : `<button type="button" class="tour-next">${i === steps.length - 1 ? "เสร็จ" : "ถัดไป"}</button>`}</div>`;
     tip.querySelector(".tour-skip").addEventListener("click", end);
     tip.querySelector(".tour-prev")?.addEventListener("click", () => { i--; show(-1); });
-    tip.querySelector(".tour-next").addEventListener("click", () => { if (i === steps.length - 1) end(); else { i++; show(1); } });
+    tip.querySelector(".tour-next")?.addEventListener("click", () => { if (i === steps.length - 1) end(); else { i++; show(1); } });
+    if (st.click) {
+      const el0 = spot, h = () => { clickOff(); setTimeout(() => { if (i === steps.length - 1) end(); else { i++; show(1); } }, 150); };
+      el0.addEventListener("click", h, true);
+      clickOff = () => { el0.removeEventListener("click", h, true); clickOff = null; };
+    }
     setTimeout(place, 0); setTimeout(place, 400);
   }
   window.addEventListener("resize", place);
   document.addEventListener("keydown", onKey, true);
   show();
 }
-// ★ 2026-10-19 (owner) การ์ดนำทาง "วิธีตั้งวันที่ของตู้" — Admin only. Runs on the open project popup, or opens the first
-//   unfinished project on this calendar that has cabinets + departments. Read-only: only unfolds ▸ of the first cabinet.
+// ★ 2026-10-19 (owner) การ์ดนำทาง "วิธีตั้งวันที่ของตู้" — Planning department only. Runs on the open project popup, or opens the first
+//   unfinished project on this calendar that has cabinets + departments (audience: isPlanningUser). Read-only: only unfolds ▸ of the first cabinet.
+// ★ 2026-10-19 (owner): starts by itself when a Planning user opens the app (once per device, localStorage qc_cab_tour) —
+//   not behind a button in มีอะไรใหม่. Not marked seen while this calendar has no project with cabinets.
+const CAB_TOUR_KEY = "qc_cab_tour";
+// ★ 2026-10-19 (owner): audience = the Planning department (user profile department named Planning / แพลนนิ่ง / วางแผน), not Admins
+function isPlanningUser() { const d = currentProfile && currentProfile.dept_id && deptAnywhere(currentProfile.dept_id); return !!(d && /plan|แพลน|วางแผน/i.test(d.name || "")); }
+function cabTourTask() {
+  const ok = t => (t.subtasks || []).length && (t.deptStages || []).some(st => getDept(st.deptId));
+  return (state.tasks || []).find(t => ok(t) && !isStatusDone(getStatus(t.statusId))) || (state.tasks || []).find(ok) || null;
+}
+function cabTourDue() {
+  if (!isPlanningUser() || (isMobileMode && isMobileMode())) return false;
+  try { if (localStorage.getItem(CAB_TOUR_KEY) === "1") return false; } catch (_) { return false; }
+  return !!cabTourTask();
+}
 function openCabDateTour() {
-  if (!isAdmin()) return;
+  if (!isPlanningUser()) return;
+  try { localStorage.setItem(CAB_TOUR_KEY, "1"); } catch (_) {}
   if (isMobileMode && isMobileMode()) { toast("เปิดบนคอมหรือแท็บเล็ตเพื่อดูการ์ดนำทาง"); return; }
   const hasRows = () => document.querySelector(".overlay .subtask-row .cdate");
   if (!hasRows()) {
-    const ok = t => (t.subtasks || []).length && (t.deptStages || []).some(st => getDept(st.deptId));
-    const t = (state.tasks || []).find(t => ok(t) && !isStatusDone(getStatus(t.statusId))) || (state.tasks || []).find(ok);
+    const t = cabTourTask();
     if (!t) { toast("ปฏิทินนี้ยังไม่มีโครงการที่มีตู้"); return; }
     openTaskModal(t.id);
   }
@@ -4330,8 +4345,8 @@ function runCabDateTour(wrap) {
     { sel: ".subtask-row .cdate", title: "วันของแผนกขยับยังไง",
       text: w => deptMode(w) ? "วันที่ใส่ห้ามเกินแผนกอ้างอิงตามกฎจำกัดวัน (เช่น ก่อน QC ห้ามเกิน QC) — ถ้าเกินแอปจะไม่รับ"
         : "เปลี่ยนวันตู้ แอปจะถามว่าแผนกไหนเลื่อนตาม — แผนกที่ติ๊กเลื่อนเท่ากัน (เช่น +3 วัน) ระยะห่างจากวันจบตู้คงเดิม · ขยับเฉพาะตู้นี้ ตู้อื่นไม่ขยับ · ถ้าวันใหม่เลยวันจบโครงการ ติ๊กเลื่อนวันจบโครงการด้วยได้" },
-    { sel: ".subtask-row .subtask-dd-btn", title: "ตรวจวันของแต่ละแผนก",
-      text: "กด ▸ เพื่อกางดูวันของทุกแผนกในตู้นี้ · ปุ่มสีน้ำเงิน = ตู้นี้มีวันแผนกของตัวเอง" },
+    { sel: ".subtask-row .subtask-dd-btn", title: "ตรวจวันของแต่ละแผนก", click: true,
+      text: "กดปุ่ม ▸ ที่ไฮไลต์อยู่ เพื่อกางดูวันของทุกแผนกในตู้นี้ · ปุ่มสีน้ำเงิน = ตู้นี้มีวันแผนกของตัวเอง" },
     { sel: ".subtask-row .subtask-dd", title: "วันแผนกในตู้นี้",
       before: w => { const r = w.querySelector(".subtask-row"); if (r && !r.querySelector(".subtask-dd")) r.querySelector(".subtask-dd-btn")?.click(); },
       text: "สีจาง + ‘ตามโครงการ’ = ใช้วันแผนกของโครงการ · แก้ตรงนี้ = เฉพาะตู้นี้ · กด × = กลับไปตามโครงการ" },
@@ -15961,6 +15976,7 @@ async function startApp() {
   // it used to fire on every single open, which people found too noisy. 📋 opens it on demand.
   if (openTaskFromUrl()) { /* opened from a notification → straight to that task */ }
   else if (pendingAlerts().length) openAlertPopup();
+  else if (cabTourDue()) openCabDateTour();
   else if (whatsNewDue()) openWhatsNew(() => { if (shouldAutoShowReport()) { markReportSeen(); openStatusReport(); } });
   else if (shouldAutoShowReport()) { markReportSeen(); openStatusReport(); }
   refreshPushSub();
