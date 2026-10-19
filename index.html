@@ -2393,7 +2393,9 @@ body.chip-dragging .task-chip.span-bar { pointer-events: none; }   /* let the da
    (before the checklist count) with the % beside it → one line per cabinet instead of two */
 .subtask-progress { flex: 0 0 66px; display: flex; align-items: center; gap: 4px; }   /* ★ narrower → more room for MO / cabinet name */
 .subtask-row .subtask-main > .tm-date { flex: 0 0 132px; }   /* same width with/without a date → the columns line up */
-.subtask-row .subtask-main > .cdate { flex: 0 0 88px; }
+.subtask-row .subtask-main > .cdate { flex: 0 0 106px; }
+.cdate-ico { width: 13px; height: 13px; margin-right: 4px; vertical-align: -2px; color: var(--text-faint); }
+.cdate-btn:hover .cdate-ico { color: var(--accent); }
 .subtask-main { gap: 6px; }
 .cdate { display: inline-flex; align-items: center; border: 1px solid var(--border-strong); border-radius: 7px; background: var(--b-ffffff, #fff); overflow: hidden; height: 28px; max-width: 100%; }
 .cdate-btn { flex: 1; min-width: 0; border: 0; background: transparent; font: inherit; font-size: 12.5px; font-weight: 600; color: var(--text); padding: 0 8px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: left; height: 100%; }
@@ -4111,7 +4113,14 @@ function openBomPanel(ctx) {
 // ★ 2026-10-13 (owner) "มีอะไรใหม่" — shown once per release on this device (after login, before the daily report).
 //   Next release: change WHATS_NEW.id and the items; everyone sees it once again.
 // ★ 2026-10-13b: + แดชบอร์ดภาพรวม (new id → everyone sees it once more; FAT / ใบสั่งผลิต kept for people who missed them)
-const WHATS_NEW = { id: "2026-10-13b", date: "13 ต.ค. 2569", items: [
+// ★ 2026-10-19 (owner): + วิธีตั้งวันที่ของตู้ — Admin only (admin:true). fresh:true = new in this release; someone who saw
+//   `prev` and has no fresh item visible (non-admins) is not shown the popup again.
+const WHATS_NEW = { id: "2026-10-19", prev: "2026-10-13b", date: "19 ต.ค. 2569", items: [
+  { icon: "calendar", title: "วิธีตั้งวันที่ของตู้", admin: true, fresh: true, go: "cabdate", steps: [
+    "ป๊อปอัปโครงการ → ช่องวันที่ (ไอคอนปฏิทิน) ท้ายแถวตู้ = วันจบของตู้ (ว่าง = ตามวันจบโครงการ)",
+    "เปลี่ยนวันตู้ → เลือกแผนกที่จะเลื่อนตามด้วยจำนวนวันเท่ากัน (เฉพาะตู้นี้ ตู้อื่นไม่ขยับ)",
+    "วันใหม่เลยวันจบโครงการ → ติ๊กเลื่อนวันจบโครงการด้วยได้",
+    "กด ▸ หน้าแถวตู้ เพื่อตรวจ/แก้วันของแต่ละแผนกในตู้นั้น" ] },
   { icon: "chart", title: "แดชบอร์ด · ภาพรวมโรงงาน", go: "dashboard", steps: [
     "กดการ์ดตัวเลข (กำลังทำ, เลยกำหนด, ตู้ผลิตเดือนนี้ ฯลฯ) เพื่อดูรายการ",
     "กำลังการผลิต 6 สัปดาห์ — หักคนที่ไปออกไซต์ให้อัตโนมัติ · กดแท่งเพื่อดูตู้",
@@ -4125,13 +4134,19 @@ const WHATS_NEW = { id: "2026-10-13b", date: "13 ต.ค. 2569", items: [
     "ติ๊กเช็คอุปกรณ์ทีละรายการที่ปุ่ม อุปกรณ์ ของแต่ละตู้" ] },
 ] };
 const WHATS_NEW_KEY = "qc_whatsnew_seen";
-function whatsNewDue() { try { return localStorage.getItem(WHATS_NEW_KEY) !== WHATS_NEW.id; } catch (_) { return false; } }
+function whatsNewItems() { return WHATS_NEW.items.filter(it => !it.admin || isAdmin()); }
+function whatsNewDue() {
+  let seen; try { seen = localStorage.getItem(WHATS_NEW_KEY); } catch (_) { return false; }
+  if (seen === WHATS_NEW.id) return false;
+  if (seen === WHATS_NEW.prev && !whatsNewItems().some(it => it.fresh)) return false;
+  return whatsNewItems().length > 0;
+}
 function openWhatsNew(after) {
   const ov = document.createElement("div");
   ov.className = "overlay wn-overlay";
   ov.innerHTML = `<div class="modal wn-modal" role="dialog" aria-modal="true">
     <div class="wn-head"><span class="wn-tag">ใหม่</span><h3>มีอะไรใหม่</h3><span class="wn-date">${escapeHtml(WHATS_NEW.date)}</span></div>
-    <div class="wn-list">${WHATS_NEW.items.map((it, i) => `<div class="wn-item"><span class="wn-ico">${ico(it.icon)}</span><div class="wn-body"><b>${escapeHtml(it.title)}</b>
+    <div class="wn-list">${whatsNewItems().map((it, i) => `<div class="wn-item"><span class="wn-ico">${ico(it.icon)}</span><div class="wn-body"><b>${escapeHtml(it.title)}</b>
       ${it.text ? `<p>${escapeHtml(it.text)}</p>` : ""}${it.steps ? `<ol class="wn-steps">${it.steps.map(x => `<li>${escapeHtml(x)}</li>`).join("")}</ol>` : ""}
       ${it.go ? `<button type="button" class="wn-go" data-wn-go="${i}">ไปดูพร้อมการ์ดนำทาง ${ico("arrow-right") || "›"}</button>` : ""}</div></div>`).join("")}</div>
     <div class="wn-foot"><button type="button" class="btn btn-primary" data-wn-ok>เข้าใจแล้ว</button></div></div>`;
@@ -4139,9 +4154,10 @@ function openWhatsNew(after) {
   const done = () => { try { localStorage.setItem(WHATS_NEW_KEY, WHATS_NEW.id); } catch (_) {} ov.remove(); after && after(); };
   ov.querySelector("[data-wn-ok]").addEventListener("click", done);
   ov.querySelectorAll("[data-wn-go]").forEach(b => b.addEventListener("click", () => {
-    const it = WHATS_NEW.items[+b.dataset.wnGo];
+    const it = whatsNewItems()[+b.dataset.wnGo];
     try { localStorage.setItem(WHATS_NEW_KEY, WHATS_NEW.id); } catch (_) {} ov.remove();
     if (it && it.go === "dashboard") openDashTour(true);
+    if (it && it.go === "cabdate") openCabDateTour();
   }));
   ov.addEventListener("mousedown", (e) => { if (e.target === ov) done(); });
 }
@@ -4246,9 +4262,15 @@ function runDashTour() {
     { sel: "[data-otd]", up: ".ov-mg", title: "ส่งตรงเวลา", text: "เลือกช่วงเวลา 30 วัน – 1 ปี · ▲▼ เทียบกับช่วงก่อนหน้า" },
     { sel: ".ov-projs, .ov-empty", title: "การ์ดโครงการ", text: "วงแหวน = ความคืบหน้า · ป้ายแดงบอกแผนกที่ช้า · กดการ์ดเพื่อเปิดแดชบอร์ดโครงการ" },
   ];
-  const steps = ALL.filter(st => wrap.querySelector(st.sel));
-  if (!steps.length) return;
+  if (!ALL.some(st => wrap.querySelector(st.sel))) return;
   try { localStorage.setItem(DASH_TOUR_KEY, "1"); } catch (_) {}
+  runTour(wrap, ALL);
+}
+// step = { sel, up?, title, text, before? } — `before` runs first (e.g. unfold a pane); a step whose element is missing is skipped
+function runTour(wrap, ALL) {
+  document.querySelectorAll(".tour-tip").forEach(n => n.remove());
+  const steps = ALL.filter(st => st.before || wrap.querySelector(st.sel));
+  if (!steps.length) return;
   let i = 0, spot = null;
   const tip = document.createElement("div");
   tip.className = "tour-tip";
@@ -4256,7 +4278,7 @@ function runDashTour() {
   const end = () => { tip.remove(); spot && spot.classList.remove("tour-spot"); window.removeEventListener("resize", place); document.removeEventListener("keydown", onKey, true); };
   const onKey = (e) => { if (e.key === "Escape") { e.stopPropagation(); end(); } };
   function place() {
-    if (!spot) return;
+    if (!spot || !spot.isConnected) return;
     const r = spot.getBoundingClientRect(), tw = tip.offsetWidth, th = tip.offsetHeight;
     let top = r.bottom + 12, left = Math.min(Math.max(12, r.left + 16), window.innerWidth - tw - 12);
     tip.classList.toggle("above", false);
@@ -4264,23 +4286,56 @@ function runDashTour() {
     tip.style.top = top + "px"; tip.style.left = left + "px";
     tip.style.setProperty("--ax", Math.max(18, Math.min(tw - 18, r.left + 30 - left)) + "px");
   }
-  function show() {
+  function show(dir = 1) {
     const st = steps[i];
     spot && spot.classList.remove("tour-spot");
+    if (st.before) { try { st.before(wrap); } catch (_) {} }
     let el = wrap.querySelector(st.sel);
+    if (!el) { if (!wrap.isConnected) return end(); i += dir; if (i < 0 || i >= steps.length) return end(); return show(dir); }
     if (st.up) el = el.closest(st.up) || el;
     spot = el; spot.classList.add("tour-spot");
     spot.scrollIntoView({ block: "center", behavior: "smooth" });
-    tip.innerHTML = `<div class="tour-n">${i + 1} / ${steps.length}</div><b>${escapeHtml(st.title)}</b><p>${escapeHtml(st.text)}</p>
+    const text = typeof st.text === "function" ? st.text(wrap) : st.text;
+    tip.innerHTML = `<div class="tour-n">${i + 1} / ${steps.length}</div><b>${escapeHtml(st.title)}</b><p>${escapeHtml(text)}</p>
       <div class="tour-btns"><button type="button" class="tour-skip">ข้าม</button>${i > 0 ? `<button type="button" class="tour-prev">ก่อนหน้า</button>` : ""}<button type="button" class="tour-next">${i === steps.length - 1 ? "เสร็จ" : "ถัดไป"}</button></div>`;
     tip.querySelector(".tour-skip").addEventListener("click", end);
-    tip.querySelector(".tour-prev")?.addEventListener("click", () => { i--; show(); });
-    tip.querySelector(".tour-next").addEventListener("click", () => { if (i === steps.length - 1) end(); else { i++; show(); } });
+    tip.querySelector(".tour-prev")?.addEventListener("click", () => { i--; show(-1); });
+    tip.querySelector(".tour-next").addEventListener("click", () => { if (i === steps.length - 1) end(); else { i++; show(1); } });
     setTimeout(place, 0); setTimeout(place, 400);
   }
   window.addEventListener("resize", place);
   document.addEventListener("keydown", onKey, true);
   show();
+}
+// ★ 2026-10-19 (owner) การ์ดนำทาง "วิธีตั้งวันที่ของตู้" — Admin only. Runs on the open project popup, or opens the first
+//   unfinished project on this calendar that has cabinets + departments. Read-only: only unfolds ▸ of the first cabinet.
+function openCabDateTour() {
+  if (!isAdmin()) return;
+  if (isMobileMode && isMobileMode()) { toast("เปิดบนคอมหรือแท็บเล็ตเพื่อดูการ์ดนำทาง"); return; }
+  const hasRows = () => document.querySelector(".overlay .subtask-row .cdate");
+  if (!hasRows()) {
+    const ok = t => (t.subtasks || []).length && (t.deptStages || []).some(st => getDept(st.deptId));
+    const t = (state.tasks || []).find(t => ok(t) && !isStatusDone(getStatus(t.statusId))) || (state.tasks || []).find(ok);
+    if (!t) { toast("ปฏิทินนี้ยังไม่มีโครงการที่มีตู้"); return; }
+    openTaskModal(t.id);
+  }
+  setTimeout(() => { const c = hasRows(); if (c) runCabDateTour(c.closest(".overlay")); }, 450);
+}
+function runCabDateTour(wrap) {
+  const deptMode = w => !w.querySelector(".subtask-row .subtask-dd-btn");
+  runTour(wrap, [
+    { sel: ".subtask-row .cdate", title: "วันที่ของตู้",
+      text: w => deptMode(w) ? "ช่องนี้ = วันของแผนกคุณในตู้นี้ · ว่าง (ตามแผนก) = ใช้วันของแผนกจากโครงการ · ใส่วัน = เฉพาะตู้นี้"
+        : "กดช่องนี้เพื่อตั้งวันจบของตู้ · ว่าง (ตามโครงการ) = ใช้วันจบของโครงการ · กด × = กลับไปตามโครงการ" },
+    { sel: ".subtask-row .cdate", title: "วันของแผนกขยับยังไง",
+      text: w => deptMode(w) ? "วันที่ใส่ห้ามเกินแผนกอ้างอิงตามกฎจำกัดวัน (เช่น ก่อน QC ห้ามเกิน QC) — ถ้าเกินแอปจะไม่รับ"
+        : "เปลี่ยนวันตู้ แอปจะถามว่าแผนกไหนเลื่อนตาม — แผนกที่ติ๊กเลื่อนเท่ากัน (เช่น +3 วัน) ระยะห่างจากวันจบตู้คงเดิม · ขยับเฉพาะตู้นี้ ตู้อื่นไม่ขยับ · ถ้าวันใหม่เลยวันจบโครงการ ติ๊กเลื่อนวันจบโครงการด้วยได้" },
+    { sel: ".subtask-row .subtask-dd-btn", title: "ตรวจวันของแต่ละแผนก",
+      text: "กด ▸ เพื่อกางดูวันของทุกแผนกในตู้นี้ · ปุ่มสีน้ำเงิน = ตู้นี้มีวันแผนกของตัวเอง" },
+    { sel: ".subtask-row .subtask-dd", title: "วันแผนกในตู้นี้",
+      before: w => { const r = w.querySelector(".subtask-row"); if (r && !r.querySelector(".subtask-dd")) r.querySelector(".subtask-dd-btn")?.click(); },
+      text: "สีจาง + ‘ตามโครงการ’ = ใช้วันแผนกของโครงการ · แก้ตรงนี้ = เฉพาะตู้นี้ · กด × = กลับไปตามโครงการ" },
+  ]);
 }
 function openOvList({ title, rows, filters, open }) {
   const ov = document.createElement("div");
@@ -7809,14 +7864,14 @@ function createDateField({ value = null, allowClear = false, onChange = () => {}
 
 // ★ 2026-10-17 (owner): small date chip "29 ต.ค." (like the department chips) — click = calendar; small × clears.
 //   Same interface as createDateField (getValue / setValue / title) so it can stand in for it.
-function compactDateField({ value = null, allowClear = false, onChange = () => {}, placeholder = "+ วัน", faint = false } = {}) {
+function compactDateField({ value = null, allowClear = false, onChange = () => {}, placeholder = "+ วัน", faint = false, icon = false } = {}) {
   const wrap = document.createElement("span");
   wrap.className = "cdate" + (faint ? " faint" : "");
   let cur = value || null;
   const lbl = iso => { if (!iso) return placeholder; const d = fromIso(iso), y = d.getFullYear() !== new Date().getFullYear() ? " " + String(d.getFullYear() + 543).slice(2) : ""; return `${d.getDate()} ${TH_MON[d.getMonth()]}${y}`; };
   const paint = () => {
     wrap.classList.toggle("cdate-empty", !cur);
-    wrap.innerHTML = `<button type="button" class="cdate-btn">${escapeHtml(lbl(cur))}</button>${allowClear && cur ? `<button type="button" class="cdate-x" title="ล้างวันที่">×</button>` : ""}`;
+    wrap.innerHTML = `<button type="button" class="cdate-btn">${icon ? ico("calendar", "ico cdate-ico") : ""}${escapeHtml(lbl(cur))}</button>${allowClear && cur ? `<button type="button" class="cdate-x" title="ล้างวันที่">×</button>` : ""}`;
     wrap.querySelector(".cdate-btn").addEventListener("click", (e) => { e.stopPropagation(); openCalendarPopover(wrap, cur, (iso) => { if (iso === cur) return; cur = iso || null; paint(); onChange(cur); }); });
     wrap.querySelector(".cdate-x")?.addEventListener("click", (e) => { e.stopPropagation(); cur = null; paint(); onChange(null); });
   };
@@ -8799,7 +8854,7 @@ function openTaskModal(taskId, defaults={}) {
       // (sub.deptDates[dept]); with no dept context it edits the cabinet's overall date (sub.date)
       const dateField = compactDateField({
         value: modalDept ? ((s.deptDates && s.deptDates[modalDept]) || null) : (s.date || null),
-        allowClear: true, placeholder: modalDept ? "ตามแผนก" : "ตามโครงการ",
+        allowClear: true, placeholder: modalDept ? "ตามแผนก" : "ตามโครงการ", icon: true,
         onChange: (iso) => {
           if (modalDept) {
             if (iso) {
