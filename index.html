@@ -6471,7 +6471,7 @@ async function pushChangedBoards(sb) {
       const before = root.boards[b.id];
       const oldById = {}; ((before && before.tasks) || []).forEach(t => oldById[t.id] = t);
       migrateState(cloudRow.data);
-      if (!savedByMe(cloudRow)) notifyRemoteBoardChange(cloudRow.data, cloudRow.data.tasks || [], oldById, cloudRow.updated_by);
+      if (!savedByMe(cloudRow)) notifyRemoteBoardChange(cloudRow.data, cloudRow.data.tasks || [], oldById, cloudRow.updated_by, b.id);
       mergeBoardInto(b.id, cloudRow.data, cloudRow.updated_at);
       mergedAny = true;
     }
@@ -6602,7 +6602,8 @@ function changedByName(t, before, fallback) {
   const sys = (t.comments || []).filter(c => c.type === "system" && c.author && !old.has(c.id));
   return sys.length ? sys[sys.length - 1].author : (fallback || "");
 }
-function notifyRemoteBoardChange(ws, newTasks, oldTasksById, savedBy) {
+function notifyRemoteBoardChange(ws, newTasks, oldTasksById, savedBy, boardId) {
+  const L = t => ({ board: boardId || "", task: t && t.id });   // ★ 2026-10-21: click the notification → open this task
   const notify = myNotifyPrefs();
   if (!(typeof window !== "undefined" && "Notification" in window) || !notify.enabled || Notification.permission !== "granted") return;
   // personal alerts (assignments) — for me regardless of department, also on brand-new tasks
@@ -6613,10 +6614,10 @@ function notifyRemoteBoardChange(ws, newTasks, oldTasksById, savedBy) {
     (t.comments || []).forEach(c => {
       const seen = iSeeTask(t, ws);   // no cross-department personal notifications (mentions: unless ⚙ allows them)
       if (commentFresh(c, before) && Array.isArray(c.mentions) && c.mentions.includes(meId) && (seen || crossMentionOn(ws))) {
-        try { sysNotify("💬 มีคนกล่าวถึงคุณ", { body: `${t.title} · ${c.author || ""}: ${c.text || ""}`.slice(0, 180), tag: "rt-men-" + c.id, renotify: true }); } catch (e) {}
+        try { sysNotify("💬 มีคนกล่าวถึงคุณ", { body: `${t.title} · ${c.author || ""}: ${c.text || ""}`.slice(0, 180), tag: "rt-men-" + c.id, renotify: true }, L(t)); } catch (e) {}
       }
       if ((seen || c.kind === "drawdone") && c.type === "alert" && !c.ack && c.toUser === meId && commentFresh(c, before)) {
-        try { sysNotify(c.kind === "drawdone" ? "📐 เขียนแบบเสร็จแล้ว" : "📌 มีงานมอบหมายให้คุณ", { body: `${t.title}${c.author ? (c.kind === "drawdone" ? " · โดย " : " · จาก ") + c.author : ""}`, tag: "rt-asg-" + c.id, renotify: true }); } catch (e) {}
+        try { sysNotify(c.kind === "drawdone" ? "📐 เขียนแบบเสร็จแล้ว" : "📌 มีงานมอบหมายให้คุณ", { body: `${t.title}${c.author ? (c.kind === "drawdone" ? " · โดย " : " · จาก ") + c.author : ""}`, tag: "rt-asg-" + c.id, renotify: true }, L(t)); } catch (e) {}
       }
     });
   });
@@ -6626,13 +6627,13 @@ function notifyRemoteBoardChange(ws, newTasks, oldTasksById, savedBy) {
   const myDept = profDept || (getDeptIn(ws, ws.settings.myDept) ? ws.settings.myDept : "");
   // ★ no department set = admin/planner mode → receive no cross-device notifications either (matches
   //   the local rule in taskRelevantToMe/pendingAlerts). Exception: "notify me about everything" mode.
-  const fire = (type, title, body, tag) => { if (type === "alert" || notify[type]) sysNotify(title, { body: body || "", tag, renotify: true }); };
+  const fire = (type, title, body, tag, t) => { if (type === "alert" || notify[type]) sysNotify(title, { body: body || "", tag, renotify: true }, L(t)); };
   // alerts aimed at my department → always (like assignments / mentions), whatever the other preferences say
   if (myDept) newTasks.forEach(t => {
     const before = oldTasksById[t.id];
     const oldIds = new Set(((before && before.comments) || []).map(c => c.id));
     (t.comments || []).forEach(c => {
-      if (c.type === "alert" && !c.ack && commentFresh(c, before) && c.toDept === myDept) fire("alert", "🔔 การแจ้งเตือนใหม่", `${t.title}${c.text ? " · " + c.text : ""}`, "rt-alert-" + c.id);
+      if (c.type === "alert" && !c.ack && commentFresh(c, before) && c.toDept === myDept) fire("alert", "🔔 การแจ้งเตือนใหม่", `${t.title}${c.text ? " · " + c.text : ""}`, "rt-alert-" + c.id, t);
     });
   });
   if (!myDept && notify.onlyMyDept) return;
@@ -6645,7 +6646,7 @@ function notifyRemoteBoardChange(ws, newTasks, oldTasksById, savedBy) {
       const ns = getStatusIn(ws, t.statusId), os = getStatusIn(ws, before.statusId);
       if (ns && os) {
         const done = ns.isDone && !os.isDone;
-        fire(done ? "done" : "status", done ? "✅ เสร็จแล้ว" : "🔁 เปลี่ยนสถานะ", `${t.title} → ${ns.name}${by}`, "rt-st-" + t.id);
+        fire(done ? "done" : "status", done ? "✅ เสร็จแล้ว" : "🔁 เปลี่ยนสถานะ", `${t.title} → ${ns.name}${by}`, "rt-st-" + t.id, t);
       }
     }
     // cabinets: status / done
@@ -6655,22 +6656,22 @@ function notifyRemoteBoardChange(ws, newTasks, oldTasksById, savedBy) {
       const ns = getStatusIn(ws, sub.statusId), os = getStatusIn(ws, b.statusId);
       if (!ns || !os) return;
       const done = ns.isDone && !os.isDone;
-      fire(done ? "done" : "status", done ? "✅ ตู้เสร็จ" : "🔁 เปลี่ยนสถานะตู้", `${t.title} · ตู้ “${sub.text || "-"}” → ${ns.name}${by}`, "rt-sub-" + sub.id);
+      fire(done ? "done" : "status", done ? "✅ ตู้เสร็จ" : "🔁 เปลี่ยนสถานะตู้", `${t.title} · ตู้ “${sub.text || "-"}” → ${ns.name}${by}`, "rt-sub-" + sub.id, t);
     });
     // department finished
     (t.deptStages || []).forEach(stg => {
       const b = (before.deptStages || []).find(x => x.deptId === stg.deptId);
-      if (b && !b.done && stg.done) fire("done", "✅ แผนกเสร็จ", `${t.title} · ${(getDeptIn(ws, stg.deptId) || {}).name || ""}${by}`, "rt-dd-" + t.id + stg.deptId);
+      if (b && !b.done && stg.done) fire("done", "✅ แผนกเสร็จ", `${t.title} · ${(getDeptIn(ws, stg.deptId) || {}).name || ""}${by}`, "rt-dd-" + t.id + stg.deptId, t);
     });
     // new comments / replies from others (mentions + alerts are handled above)
     const oldC = {}; (before.comments || []).forEach(c => oldC[c.id] = c);
     (t.comments || []).forEach(c => {
       if (c.type === "system" || (c.author && currentProfile && c.author === currentProfile.display_name)) return;
       const mentionsMe = meId && Array.isArray(c.mentions) && c.mentions.includes(meId);
-      if (commentFresh(c, before) && c.type !== "alert" && !mentionsMe) fire("comment", "💬 คอมเมนต์ใหม่", `${t.title} · ${c.author || ""}: ${c.text || ""}`.slice(0, 180), "rt-cm-" + c.id);
+      if (commentFresh(c, before) && c.type !== "alert" && !mentionsMe) fire("comment", "💬 คอมเมนต์ใหม่", `${t.title} · ${c.author || ""}: ${c.text || ""}`.slice(0, 180), "rt-cm-" + c.id, t);
       const oldReps = new Set(((oldC[c.id] && oldC[c.id].replies) || []).map(r => r.id));
       (c.replies || []).forEach(r => {
-        if (!oldReps.has(r.id) && !(currentProfile && r.author === currentProfile.display_name)) fire("comment", "💬 ตอบกลับ", `${t.title} · ${r.author || ""}: ${r.text || ""}`.slice(0, 180), "rt-rp-" + r.id);
+        if (!oldReps.has(r.id) && !(currentProfile && r.author === currentProfile.display_name)) fire("comment", "💬 ตอบกลับ", `${t.title} · ${r.author || ""}: ${r.text || ""}`.slice(0, 180), "rt-rp-" + r.id, t);
       });
     });
   });
@@ -6683,7 +6684,7 @@ function handleRealtimeBoardChange(payload) {
   migrateState(newWs);
   if (oldWs && !savedByMe(row)) {
     const oldTasksById = {}; (oldWs.tasks || []).forEach(t => oldTasksById[t.id] = t);
-    notifyRemoteBoardChange(newWs, newWs.tasks || [], oldTasksById, row.updated_by);
+    notifyRemoteBoardChange(newWs, newWs.tasks || [], oldTasksById, row.updated_by, row.id);
   }
   // this device has unsent edits on that board → merge (keep both sides) instead of dropping either one;
   // the pending push then sends the merged copy with the new base
@@ -13703,10 +13704,15 @@ function ico(name, cls = "ico") { return ICONS[name] ? `<svg class="${cls}" ${IC
 // confirm dialogs used to take an emoji — map the old ones, or pass an icon name
 const EMOJI_ICON = { "🗑️": "trash", "🚩": "flag", "🚫": "ban", "👋": "logout", "⧉": "copy", "⚠️": "alert" };
 // iPad home-screen apps (and Android) don't support `new Notification()` — show it through the service worker
-function sysNotify(title, opts) {
+// ★ 2026-10-21 (owner): link = { board, task } → clicking the notification opens that task (sw.js notificationclick reads
+//   data.url "./?board=…&task=…": app already open → postMessage open-task, else opens the app at that URL)
+function sysNotify(title, opts, link) {
   try {
+    const q = link && link.task ? new URLSearchParams({ board: link.board || "", task: link.task }).toString() : "";
+    if (q) opts = { ...opts, data: { url: "./?" + q } };
     if (_swReg && _swReg.showNotification) { _swReg.showNotification(title, { icon: "icon-192.png", ...opts }).catch(() => {}); return; }
-    new Notification(title, opts);
+    const n = new Notification(title, opts);
+    if (q) n.onclick = () => { try { window.focus(); } catch (_) {} n.close(); openTaskFromLink(link.board, link.task); };
   } catch (e) { /* ignore */ }
 }
 // ★ notification preferences are PER PERSON (this device, localStorage) since 2026-09-28 — they used to be one
