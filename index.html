@@ -15384,8 +15384,13 @@ function mCardHtml(t, due, dep, bid) {
   const open = mOpen.has(t.id);
   const fatDay = mFatOfDay(t, bid);
   const done = dep ? isDeptComplete(t, dep) : projectComplete(t);
-  const cabs = mCabs(t, dep);
-  const cabDone = cabs.filter(x => { const p = checklistProgress(x, dep || null); return p.done === p.total; }).length;
+  // ★ 2026-10-22 (owner): an Admin sees + ticks every department's cabinet checklist on the phone too (grouped; not on the
+  //   Service calendar, Service department left out) — the card itself still belongs to `dep` (done / ring / list)
+  const clAll = isAdmin() && (bid ? bid !== SERVICE_BOARD : !isServiceBoard()), clDep = clAll ? null : dep;
+  const clItems = x => (x.checklist || []).filter(i => clDep ? i.deptId === clDep : !(clAll && sameDept(i.deptId, SERVICE_DEPT)));
+  const clProg = x => { const L = clItems(x), d = L.filter(i => i.done).length; return { done: d, total: L.length }; };
+  const cabs = clAll ? (t.subtasks || []).filter(x => clItems(x).length) : mCabs(t, dep);
+  const cabDone = cabs.filter(x => { const p = clAll ? clProg(x) : checklistProgress(x, dep || null); return p.done === p.total; }).length;
   const pct = cabs.length ? Math.round(cabDone / cabs.length * 100) : (done ? 100 : 0);
   const st = getStatus(t.statusId);
   const hold = !done && taskOnHold(t);
@@ -15395,9 +15400,9 @@ function mCardHtml(t, due, dep, bid) {
   if (open) {
     const stg = dep ? taskStage(t, dep) : null;
     const rows = cabs.map(x => {
-      const p = checklistProgress(x, dep || null), so = mOpenSub.has(x.id);
-      const items = (x.checklist || []).filter(i => !dep || i.deptId === dep);
-      const groups = dep ? [[null, items]] : (() => { const ord = deptOrderIds(t), has = new Set(items.map(i => i.deptId));
+      const p = clAll ? clProg(x) : checklistProgress(x, dep || null), so = mOpenSub.has(x.id);
+      const items = clAll ? clItems(x) : (x.checklist || []).filter(i => !dep || i.deptId === dep);
+      const groups = clDep ? [[null, items]] : (() => { const ord = deptOrderIds(t), has = new Set(items.map(i => i.deptId));
         return [...ord.filter(id => has.has(id)), ...[...has].filter(id => !ord.includes(id))].map(id => [id, items.filter(i => i.deptId === id)]); })();
       return `<div class="m-cab${p.done === p.total ? " full" : ""}${so ? " open" : ""}">
         <div class="m-cab-head" data-sub="${escapeHtml(x.id)}">
