@@ -8723,7 +8723,7 @@ function openTaskModal(taskId, defaults={}) {
         <div class="field tm-title-row">
           <input type="text" class="title-input tm-so" data-f="avt" placeholder="AVT" />
           <input type="text" class="title-input tm-so" data-f="so" placeholder="SO" />
-          ${task.ext && task.ext.src === "it" ? `<span class="tm-it-badge" title="เชื่อมกับระบบไอที">${ico("link")}</span>` : ""}
+          ${task.ext && task.ext.src === "it" ? `<span class="tm-it-badge" title="เชื่อมต่อภายนอก">${ico("link")}</span>` : ""}
           <span class="tm-name-wrap"><input type="text" class="title-input tm-name" data-f="title" placeholder="ชื่อโครงการ" /><button type="button" class="tm-copy" data-copy-name title="คัดลอก SO + ชื่อโครงการ">${ico("copy")}</button></span>
         </div>
         <div class="dup-warn" data-dup hidden></div>
@@ -10989,7 +10989,7 @@ function openSettingsModal(initialTab = "statuses") {
           <button class="settings-nav-item" data-tab="fields">${ico("sliders")} ฟิลด์เพิ่มเติม</button>
           <button class="settings-nav-item" data-tab="checklist">${ico("list-check")} เช็คลิสต์ตู้</button>
           <button class="settings-nav-item" data-tab="automation">${ico("zap")} อัตโนมัติ</button>
-          <button class="settings-nav-item" data-tab="itsync">${ico("link")} เชื่อมระบบไอที</button>
+          <button class="settings-nav-item" data-tab="itsync">${ico("link")} เชื่อมต่อภายนอก</button>
           <button class="settings-nav-item" data-tab="display">${ico("monitor")} การแสดงผล</button>
           <button class="settings-nav-item" data-tab="notify">${ico("bell")} การแจ้งเตือน</button>
           <button class="settings-nav-item" data-tab="theme">${ico("moon")} ธีม</button>
@@ -11884,10 +11884,10 @@ function buildItSyncPanel(container) {
   const sec = document.createElement("div");
   sec.className = "settings-section";
   sec.innerHTML = `
-    <h4 class="settings-h">${ico("link")} เชื่อมระบบไอที</h4>
-    <label class="default-stage-row"><input type="checkbox" data-it-on ${cfg.enabled ? "checked" : ""} /><span class="default-stage-name">รับงานจากระบบไอทีเข้าปฏิทิน “${escapeHtml(boardNameOf(root.activeBoard))}”</span>${linked ? `<span class="muted it-count">${linked} งาน</span>` : ""}</label>
+    <h4 class="settings-h">${ico("link")} เชื่อมต่อภายนอก</h4>
+    <label class="default-stage-row"><input type="checkbox" data-it-on ${cfg.enabled ? "checked" : ""} /><span class="default-stage-name">รับงานจากภายนอกเข้าปฏิทิน “${escapeHtml(boardNameOf(root.activeBoard))}”</span>${linked ? `<span class="muted it-count">${linked} งาน</span>` : ""}</label>
     <div class="it-url-row"><input type="text" readonly value="${escapeHtml(IT_SYNC_URL)}" /><button type="button" class="btn" data-it-copy>${ico("copy")} คัดลอก</button></div>
-    <h4 class="settings-h" style="margin-top:16px">รหัสแผนกของระบบไอที</h4>
+    <h4 class="settings-h" style="margin-top:16px">รหัสแผนกของระบบภายนอก</h4>
     <div class="it-code-list" data-it-codes></div>
     <div class="it-unknown" data-it-unknown></div>
     <h4 class="settings-h" style="margin-top:16px">รับข้อมูลล่าสุด</h4>
