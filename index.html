@@ -6475,6 +6475,7 @@ async function pushChangedBoards(sb) {
       else res = await sb.from("boards").upsert({ id: b.id, ...row }).select("id");             // board not in the cloud yet
       if (res.error) { toast("⚠️ บันทึกขึ้น cloud ไม่สำเร็จ (บันทึกในเครื่องไว้แล้ว): " + res.error.message); return; }
       if (Array.isArray(res.data) && res.data.length) {
+        sendBoardDelta(b, baseIso, stamp, _lastPushedJson[b.id], json);   // ★ slice 13: other devices get only what changed
         _lastPushedJson[b.id] = json;
         setBoardBase(b.id, stamp);
         rememberCloudCopy(b.id, stamp, json);
@@ -6522,6 +6523,7 @@ async function adoptCloudBoards(ids) {
   state = root.boards[root.activeBoard] || state;
   writeLocalRoot();
   renderAll();
+  ensureDeltaChannels();
 }
 // back to the app after a while (iPad tab woke up, network came back) → pull boards that changed meanwhile.
 // Only boards with no unsent local edit are replaced; ones with a pending edit go through the push guard.
@@ -6595,6 +6597,7 @@ async function syncRootFromCloud() {
   state = root.boards[root.activeBoard];
   writeLocalRoot();   // refresh the local cache to match the cloud
   if (wasRetry) { _offlineEditWarned = false; renderAll(); toast("✅ เชื่อมต่อ cloud แล้ว — แสดงข้อมูลล่าสุด"); }
+  ensureDeltaChannels();
   if (!hadService && mayService) scheduleCloudSave();
   setTimeout(() => { maybeAutoArchive(); }, 20000);   // ★ auto-archive (if switched on), after things have settled
 }
@@ -6607,6 +6610,11 @@ async function syncRootFromCloud() {
 const _clientId = uid("client");   // tags our own writes so the echo of our own realtime event is ignored, not reprocessed as "remote"
 let _realtimeChannel = null;
 function startRealtimeSync() {
+  if (_deltaFailed) startLegacyRealtime(); else ensureDeltaChannels();
+}
+// before slice 13 (and the fallback when the private channels can't be joined, e.g. slice13.sql not run yet):
+//   every save reaches every device as the WHOLE calendar row
+function startLegacyRealtime() {
   const sb = getSupabase();
   if (!sb || _realtimeChannel) return;
   _realtimeChannel = sb.channel("boards-sync")
@@ -6727,6 +6735,149 @@ function handleRealtimeBoardChange(payload) {
   // something NEW waiting for me (in any calendar) → pop it; already-seen items stay on the bell
   if (pendingAlerts().some(x => x.boardId === row.id && !pendBefore.has(x.c.id))) openAlertPopup();
 }
+/* ----- slice 13 (2026-10-22, Supabase egress): realtime sends only WHAT CHANGED -----
+   postgres_changes delivered the whole calendar (~all tasks) to every open device on every save — the bulk of the egress.
+   Now the device that saved broadcasts a small patch on a private channel per calendar ('qcb:<id>', access = can_see_board,
+   supabase-slice13.sql): the top-level parts that changed + only the tasks that changed (+ the task order if it changed).
+   The DATABASE SAVE IS UNCHANGED (whole board, compare-and-swap). A receiver applies the patch to the exact version it holds
+   (_lastPushedJson at updated_at == patch.from) and checks the result against the sender's hash; anything that doesn't add
+   up (missed a step, too big, other version, hash differs) → it downloads the full row like before. So a device can never
+   end up with (and later save) a copy that differs from the cloud.
+   Devices still on the old version don't send patches → a light heads check (id + updated_at, once a minute while the app is
+   on screen) downloads a calendar that stays behind for two checks in a row. */
+const DELTA_MAX = 180000;   // bytes — the Realtime message limit is 256 KB; a bigger patch goes out as "changed" only
+const _deltaCh = {};        // board id → its channel
+let _deltaFailed = false;   // the private channels can't be used → back to the old whole-row listener
+let _deltaEverOk = false, _deltaWatch = null;
+function deltaHash(str) {   // two independent 32-bit hashes + length
+  let h = 0x811c9dc5, g = 0x01000193 ^ 0x5bd1e995;
+  for (let i = 0; i < str.length; i++) { const c = str.charCodeAt(i); h = Math.imul(h ^ c, 16777619); g = Math.imul(g ^ c, 2246822519) ^ (g >>> 13); }
+  return (h >>> 0).toString(36) + "." + (g >>> 0).toString(36) + ":" + str.length;
+}
+function boardPatch(oldJson, newJson) {
+  let a, b;
+  try { a = JSON.parse(oldJson); b = JSON.parse(newJson); } catch (_) { return null; }
+  if (!isPlainObj(a) || !isPlainObj(b)) return null;
+  const p = { keys: Object.keys(b), set: {} }, S = JSON.stringify;   // exact text compare (key order counts — the receiver rebuilds the same text)
+  const keyed = Array.isArray(b.tasks) && Array.isArray(a.tasks);
+  p.keys.forEach(k => { if (!(k === "tasks" && keyed) && S(a[k]) !== S(b[k])) p.set[k] = b[k]; });
+  if (keyed) {
+    const old = new Map(a.tasks.map(t => [t && t.id, S(t)]));
+    p.t = b.tasks.filter(t => !t || old.get(t.id) !== S(t));
+    const ids = b.tasks.map(t => t && t.id), oldIds = a.tasks.map(t => t && t.id);
+    if (ids.length !== oldIds.length || ids.some((x, i) => x !== oldIds[i])) p.ids = ids;
+  }
+  return p;
+}
+function applyBoardPatch(base, p) {
+  if (!isPlainObj(base) || !p || !Array.isArray(p.keys) || !isPlainObj(p.set)) return null;
+  const out = {};
+  for (const k of p.keys) {
+    if (k === "tasks" && Array.isArray(p.t)) {
+      if (!Array.isArray(base.tasks)) return null;
+      const had = new Map(base.tasks.map(t => [t && t.id, t])), ch = new Map(p.t.map(t => [t && t.id, t]));
+      const arr = (p.ids || base.tasks.map(t => t && t.id)).map(id => ch.has(id) ? ch.get(id) : had.get(id));
+      if (arr.some(x => x === undefined)) return null;
+      out.tasks = arr;
+    } else if (Object.prototype.hasOwnProperty.call(p.set, k)) out[k] = p.set[k];
+    else if (Object.prototype.hasOwnProperty.call(base, k)) out[k] = base[k];
+    else return null;
+  }
+  return out;
+}
+function sendBoardDelta(b, fromIso, toIso, prevJson, json) {
+  const ch = _deltaCh[b.id];
+  if (!ch) ensureDeltaChannels();   // a calendar created here → its channel from now on (this save: others catch up via the heads check)
+  if (_deltaFailed || !ch || !ch._qcOk) return;
+  try {
+    const m = { b: b.id, name: b.name, from: fromIso || "", to: toIso, by: currentProfile.display_name, c: _clientId, h: deltaHash(json) };
+    if (fromIso && typeof prevJson === "string") {
+      const p = boardPatch(prevJson, json);
+      if (p && new TextEncoder().encode(JSON.stringify(p)).length <= DELTA_MAX) m.p = p;
+    }
+    Promise.resolve(ch.send({ type: "broadcast", event: "d", payload: m })).catch(() => {});
+  } catch (e) { console.warn("delta send", e); }
+}
+// the full row, like before (one download at a time per calendar)
+const _rowFetching = {};
+async function fetchBoardRow(id) {
+  if (_rowFetching[id]) { _rowFetching[id] = 2; return; }
+  _rowFetching[id] = 1;
+  try {
+    const sb = getSupabase();
+    if (!sb) return;
+    const { data, error } = await sb.from("boards").select("*").eq("id", id);
+    const row = !error && Array.isArray(data) && data[0];
+    if (row && tsMs(row.updated_at) > (_boardBaseAt[id] || 0)) { handleRealtimeBoardChange({ new: row }); ensureDeltaChannels(); }
+  } catch (e) { console.warn("board fetch", e); }
+  finally {
+    const again = _rowFetching[id] === 2;
+    delete _rowFetching[id];
+    if (again) fetchBoardRow(id);
+  }
+}
+function onBoardDelta(msg) {
+  const m = msg && msg.payload;
+  if (!m || !m.b || m.c === _clientId || !_cloudReady) return;
+  const id = m.b, base = _boardBaseAt[id] || 0;
+  if (tsMs(m.to) <= base) return;   // already have this version (or newer)
+  let data = null;
+  if (m.p && root.boards[id] && typeof _lastPushedJson[id] === "string" && tsMs(m.from) === base) {
+    try {
+      const nb = applyBoardPatch(JSON.parse(_lastPushedJson[id]), m.p);
+      if (nb && deltaHash(JSON.stringify(nb)) === m.h) data = nb;
+    } catch (e) { console.warn("delta apply", e); }
+  }
+  if (!data) { fetchBoardRow(id); return; }
+  handleRealtimeBoardChange({ new: { id, name: m.name, data, updated_at: m.to, updated_by: m.by, updated_by_client: m.c } });
+}
+function ensureDeltaChannels() {
+  const sb = getSupabase();
+  if (!sb || _deltaFailed || !root || !root.boardMeta) return;
+  root.boardMeta.forEach(({ id }) => {
+    if (_deltaCh[id] || !root.boards[id]) return;
+    const ch = sb.channel("qcb:" + id, { config: { private: true, broadcast: { self: false } } });
+    ch.on("broadcast", { event: "d" }, onBoardDelta);
+    ch.subscribe((status, err) => {
+      if (status === "SUBSCRIBED") { ch._qcOk = true; _deltaEverOk = true; }
+      // refused (policy / slice13.sql missing) → old whole-row realtime; a network hiccup just rejoins by itself
+      else if (status === "CHANNEL_ERROR" && !ch._qcOk && /unauthori|permission|denied|private/i.test(String((err && err.message) || err || ""))) deltaFallback(status, err);
+    });
+    _deltaCh[id] = ch;
+  });
+  if (!_deltaWatch) _deltaWatch = setTimeout(function watch() {   // never managed to join any channel (while online) → old way
+    if (_deltaEverOk || _deltaFailed) return;
+    if (navigator.onLine === false) { _deltaWatch = setTimeout(watch, 45000); return; }
+    deltaFallback("NO_JOIN", null);
+  }, 45000);
+}
+function deltaFallback(status, err) {
+  if (_deltaFailed) return;
+  console.warn("realtime patches unavailable → whole-row realtime", status, err);
+  _deltaFailed = true;
+  const sb = getSupabase();
+  Object.keys(_deltaCh).forEach(id => { try { sb && sb.removeChannel(_deltaCh[id]); } catch (_) {} delete _deltaCh[id]; });
+  startLegacyRealtime();
+}
+let _headsBehind = {};
+async function pollBoardHeads() {
+  if (!_cloudReady || _deltaFailed || !currentProfile || document.visibilityState !== "visible") return;
+  const sb = getSupabase();
+  if (!sb) return;
+  try {
+    const { data, error } = await sb.from("boards").select("id,updated_at");
+    if (error || !Array.isArray(data)) return;
+    const now = {}, due = [];
+    data.forEach(h => {
+      if (tsMs(h.updated_at) <= (_boardBaseAt[h.id] || 0)) return;
+      now[h.id] = h.updated_at;
+      if (_headsBehind[h.id] === h.updated_at) due.push(h.id);   // still behind on the same version → no patch is coming
+    });
+    _headsBehind = now;
+    for (const id of due) await fetchBoardRow(id);
+  } catch (e) { console.warn("heads poll", e); }
+}
+setInterval(pollBoardHeads, 60000);
 function uid(prefix = "id") {
   return prefix + "_" + Math.random().toString(36).slice(2, 9) + Date.now().toString(36).slice(-4);
 }
