@@ -2467,6 +2467,7 @@ body.chip-dragging .task-chip.span-bar { pointer-events: none; }   /* let the da
 .stage-chip.past-end { position: relative; margin-bottom: 15px; border-color: var(--danger); }
 .stage-chip.past-end::after { content: "เลยวันจบโครงการ"; position: absolute; left: 4px; top: calc(100% + 2px); font-size: 10.5px; font-weight: 700; color: var(--danger); white-space: nowrap; pointer-events: none; }
 .stage-flow-arrow { color:var(--text-faint); font-size: 15px; line-height: 1; padding: 0 1px; }
+.stage-flow-arrow.par { color: var(--accent); font-weight: 700; font-size: 13px; }
 .stage-chip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border:1px solid var(--border-strong); border-radius:8px; background:var(--b-ffffff, #fff); color:var(--text); font: inherit; font-size: 12.5px; cursor: pointer; white-space: nowrap; }
 .stage-chip:hover { border-color:var(--accent); background:var(--b-f8f7ff, #f8f7ff); }
 .stage-chip .dept-ico, .stage-chip .ico { flex: 0 0 auto; }
@@ -5432,6 +5433,25 @@ function isDeptComplete(task, deptId) {
   if (task && isStatusDone(getStatus(task.statusId))) return true;
   return isDeptCompleteRaw(task, deptId);
 }
+// ★ 2026-10-22 (owner, แบบ A): departments that work AT THE SAME TIME = ฝ่ายผลิต (Busbar / Wiring Control / LV/MV Power /
+//   Nameplate/Poly). dept.group = "ฝ่ายผลิต" (⚙ แผนก › แผนกที่ทำพร้อมกัน). The departments stay separate (own dates, checklists,
+//   people) — consecutive stages of one group are ONE step: every unfinished department in it is "current" together, and the
+//   step is done when all are (it no longer looks stuck at the first one, Busbar).
+const PROD_GROUP = "ฝ่ายผลิต";
+const PROD_GROUP_RE = /^\s*(busbar|wiring\s*control|lv\s*\/\s*mv\s*power|nam[e]?plate\s*\/\s*poly)\s*$/i;   // tagged once if dept.group is missing
+function deptGroupOf(deptId) { const d = getDept(deptId); return (d && typeof d.group === "string" && d.group.trim()) || ""; }
+// → { done:[bool], first: index of the first unfinished stage (-1 = all done), cur: Set of the stages being worked now }
+function stageFlow(task, stages, doneFn) {
+  const done = stages.map(st => doneFn ? doneFn(st) : isDeptComplete(task, st.deptId));
+  const first = done.indexOf(false), cur = new Set();
+  if (first >= 0) {
+    const g = deptGroupOf(stages[first].deptId);
+    let b = first;
+    if (g) while (b < stages.length - 1 && deptGroupOf(stages[b + 1].deptId) === g) b++;
+    for (let k = first; k <= b; k++) if (!done[k]) cur.add(k);
+  }
+  return { done, first, cur };
+}
 function isDeptCompleteRaw(task, deptId) {
   const p = deptProgress(task, deptId);
   if (p.total > 0) return p.done === p.total;
@@ -6116,7 +6136,8 @@ function migrateState(s) {
   const qcLegacy = s.departments.find(d => d.id === "d_qc");
   const seedQcChecklist = !!(qcLegacy && !Array.isArray(qcLegacy.checklist));
   s.departments.forEach(d => { if (!Array.isArray(d.checklist)) d.checklist = []; });
-  s.departments.forEach(d => { if (typeof d.seeAll !== "boolean") d.seeAll = false; });   // "เห็นงานทั้งหมด (PM)" — off unless an admin ticks it
+  s.departments.forEach(d => { if (typeof d.seeAll !== "boolean") d.seeAll = false; });
+  s.departments.forEach(d => { if (d.group === undefined && PROD_GROUP_RE.test(d.name || "")) d.group = PROD_GROUP; });   // ฝ่ายผลิต (2026-10-22) — only when missing   // "เห็นงานทั้งหมด (PM)" — off unless an admin ticks it
   // department emoji marker (replaces colour dot) — seed defaults / a generic for custom depts
   s.departments.forEach(d => { if (!d.icon) d.icon = DEFAULT_DEPT_ICONS[d.id] || "🏷️"; });
   // custom dropdown fields per department: [{ id, name, showOnChip, groups:[{ id, name, options:[{id,label}] }] }]
@@ -6200,6 +6221,7 @@ function syncLinkedDepts() {
       }
       map[sd.id] = td.id;
       td.name = sd.name; td.color = sd.color; td.icon = sd.icon; td.seeAll = !!sd.seeAll;
+      if (typeof sd.group === "string") td.group = sd.group;
     });
     // removed at the source → remove here too, but only when unused (else it stays and is retried next time)
     Object.keys(map).forEach(fid => {
@@ -9083,8 +9105,7 @@ function openTaskModal(taskId, defaults={}) {
     if (!flowEl) return;
     const stages = isServiceBoard() ? [] : (task.deptStages || []).filter(st => getDept(st.deptId));
     if (stages.length < 2) { flowEl.hidden = true; flowEl.innerHTML = ""; return; }
-    const done = stages.map(st => isDeptComplete(task, st.deptId));
-    const cur = done.indexOf(false);   // -1 = every step done
+    const { done, first: cur, cur: curSet } = stageFlow(task, stages);   // cur -1 = every step done · curSet = ฝ่ายผลิต together
     const n = stages.length, my = myViewDeptId();
     const pct = cur === -1 ? 100 : Math.round(cur / (n - 1) * 100);
     flowEl.hidden = false;
@@ -9092,9 +9113,10 @@ function openTaskModal(taskId, defaults={}) {
     flowEl.innerHTML = `<div class="tf-track"><div class="tf-fill" style="width:${pct}%"></div></div><div class="tf-steps">` + stages.map((st, i) => {
       const d = getDept(st.deptId);
       const info = stageDueInfo(st.due, done[i]);
-      const state = done[i] ? "done" : (i === cur ? "cur" : "next");
+      const state = done[i] ? "done" : (curSet.has(i) ? "cur" : "next");
+      const grp = deptGroupOf(st.deptId);
       const over = info && info.cls === "over";
-      const tip = `${d.name} — ${done[i] ? "เสร็จแล้ว" : i === cur ? "กำลังทำ" : "ยังไม่ถึง"}${st.due ? " · กำหนด " + formatDateTH(st.due) : ""}`;
+      const tip = `${d.name}${grp ? ` (${grp} · ทำพร้อมกัน)` : ""} — ${done[i] ? "เสร็จแล้ว" : curSet.has(i) ? "กำลังทำ" : "ยังไม่ถึง"}${st.due ? " · กำหนด " + formatDateTH(st.due) : ""}`;
       return `<div class="tf-step ${state}${over ? " over" : ""}${my && sameDept(my, st.deptId) ? " mine" : ""}" title="${escapeHtml(tip)}">
         <span class="tf-dot">${done[i] ? ico("check") : `<span class="tf-ico">${escapeHtml(d.icon || "•")}</span>`}</span>
         <span class="tf-name">${escapeHtml(d.name)}</span>
@@ -9178,7 +9200,8 @@ function openTaskModal(taskId, defaults={}) {
     const visibleStages = task.deptStages;
     const readOnlyStage = stg => !canFull() && !!modalDept && stg.deptId !== modalDept;
     visibleStages.forEach((stg, i) => {
-      if (i > 0) stageWrap.insertAdjacentHTML("beforeend", `<span class="stage-flow-arrow">›</span>`);
+      const par = i > 0 && deptGroupOf(stg.deptId) && deptGroupOf(stg.deptId) === deptGroupOf(visibleStages[i - 1].deptId);
+      if (i > 0) stageWrap.insertAdjacentHTML("beforeend", par ? `<span class="stage-flow-arrow par" title="ทำพร้อมกัน (${escapeHtml(deptGroupOf(stg.deptId))})">+</span>` : `<span class="stage-flow-arrow">›</span>`);
       const chip = document.createElement("button");
       chip.type = "button";
       chip.className = "stage-chip" + (isDeptComplete(task, stg.deptId) ? " done" : "") + (stg.due ? "" : " no-date") + (stagePastEnd(stg) ? " past-end" : "");
@@ -11325,6 +11348,28 @@ function buildDeptsPanel(container) {
   }
   renderPm();
 
+  // ★ 2026-10-22 ฝ่ายผลิต: departments that work at the same time (one step in the flow; each keeps its own dates/checklist)
+  const grpSec = document.createElement("div");
+  grpSec.className = "settings-section";
+  grpSec.innerHTML = `
+    <h4 class="settings-h">แผนกที่ทำพร้อมกัน (${PROD_GROUP})</h4>
+    <div class="default-stage-list" data-grp-list></div>
+  `;
+  container.appendChild(grpSec);
+  function renderGrp() {
+    const el = grpSec.querySelector("[data-grp-list]");
+    el.innerHTML = "";
+    if (!state.departments.length) { el.innerHTML = `<div class="muted" style="font-size:12px">ยังไม่มีแผนก</div>`; return; }
+    state.departments.forEach(d => {
+      const row = document.createElement("label");
+      row.className = "default-stage-row";
+      row.innerHTML = `<input type="checkbox" ${deptGroupOf(d.id) ? "checked" : ""} />${deptIco(d)}<span class="default-stage-name">${escapeHtml(d.name)}</span>`;
+      row.querySelector("input").addEventListener("change", (e) => { d.group = e.target.checked ? PROD_GROUP : ""; saveState(); renderAll(); });
+      el.appendChild(row);
+    });
+  }
+  renderGrp();
+
   // ★ 2026-10-17 งานภายในแผนก: hidden from the all-departments view / dashboard / production report
   const inSec = document.createElement("div");
   inSec.className = "settings-section";
@@ -13085,11 +13130,12 @@ function renderDashboard() {
     }).join("")}</div>` : "";
     // project cards
     let showDone = false; try { showDone = localStorage.getItem("qc_dash_showdone") === "1"; } catch (_) {}
-    const curStage = t => { const st = (t.deptStages || []).filter(x => getDept(x.deptId)); const i = st.findIndex(x => !isDeptComplete(t, x.deptId)); return { st, i }; };
+    const curStage = t => { const st = (t.deptStages || []).filter(x => getDept(x.deptId)); const f = stageFlow(t, st); return { st, i: f.first, cur: f.cur }; };   // cur = ฝ่ายผลิต together
     let cards = tasks.filter(ofPerson).filter(t => !isComp(t) || (showDone && ((t.actualEnd || t.date || "").slice(0, 7) === month)));
     const daysTo = d => Math.round((fromIso(d) - fromIso(today)) / 86400000);
     const isOver = t => { if (isComp(t)) return false; const d = dueOf(t); return d && d < today; };
-    const lateStep = t => { if (isComp(t) || dep) return null; const { st, i } = curStage(t); const x = i >= 0 ? st[i] : null; const d = x && (x.due || t.date); return d && d < today ? { x, d } : null; };
+    const lateStep = t => { if (isComp(t) || dep) return null; const { st, cur } = curStage(t); let best = null;
+      cur.forEach(k => { const x = st[k], d = x.due || t.date; if (d && d < today && (!best || d < best.d)) best = { x, d }; }); return best; };
     const isLate = t => isOver(t) || !!lateStep(t);
     const shortTH = d => { const x = fromIso(d); return `${x.getDate()} ${TH_MON[x.getMonth()]}`; };
     if (dashCardFilter === "over") cards = cards.filter(isLate);
@@ -13097,11 +13143,12 @@ function renderDashboard() {
     else if (dashCardFilter === "fat") cards = cards.filter(t => taskFats(t).some(f => fatRes(f) !== "pass"));
     cards.sort((a, b) => (isComp(a) - isComp(b)) || ((dueOf(a) || "9999").localeCompare(dueOf(b) || "9999")));
     const cardHtml = t => {
-      const comp = isComp(t), over = isOver(t), ls = lateStep(t), p = pctOf(t), { st, i } = curStage(t);
-      const segs = st.length ? `<div class="ov-seg">${st.map((x, k) => `<i class="${isDeptComplete(t, x.deptId) ? "d" : k === i ? (((x.due || t.date) || "9") < today ? "o" : "c") : ""}" title="${escapeHtml((getDept(x.deptId) || {}).name || "")}"></i>`).join("")}</div>` : "";
+      const comp = isComp(t), over = isOver(t), ls = lateStep(t), p = pctOf(t), { st, i, cur } = curStage(t);
+      const stepName = i < 0 ? "" : (cur.size > 1 && deptGroupOf(st[i].deptId)) || (getDept(st[i].deptId) || {}).name || "";
+      const segs = st.length ? `<div class="ov-seg">${st.map((x, k) => `<i class="${isDeptComplete(t, x.deptId) ? "d" : cur.has(k) ? (((x.due || t.date) || "9") < today ? "o" : "c") : ""}" title="${escapeHtml((getDept(x.deptId) || {}).name || "")}"></i>`).join("")}</div>` : "";
       const f = fatOn ? nextFat(t) : null, d = dueOf(t);
       const tag = comp ? `<span class="ov-tag ok">${ico("check")} เสร็จแล้ว</span>`
-        : over ? `<span class="ov-tag bad">เลย ${-daysTo(d)} วัน${i >= 0 ? " · " + escapeHtml((getDept(st[i].deptId) || {}).name || "") : ""}</span>`
+        : over ? `<span class="ov-tag bad">เลย ${-daysTo(d)} วัน${stepName ? " · " + escapeHtml(stepName) : ""}</span>`
         : ls ? `<span class="ov-tag bad">${escapeHtml((getDept(ls.x.deptId) || {}).name || "")} เลย ${-daysTo(ls.d)} วัน</span>`
         : f ? `<span class="ov-tag fat">FAT ${escapeHtml(fatWhen(f))}</span>`
         : d ? `<span class="ov-tag">${dep ? "กำหนด" : "ส่ง"} ${escapeHtml(shortTH(d))}</span>` : "";
@@ -13170,15 +13217,18 @@ function renderDashboard() {
     const capHtml = capDepts.length ? `<div class="ov-card ov-mg"><div class="ov-mgh"><b>กำลังการผลิต</b><span class="ov-sub">6 สัปดาห์ข้างหน้า · ตู้ที่ถึงกำหนดของแผนกและยังไม่เสร็จ${Object.keys(capSet).length ? " · เส้นประ = กำลังผลิตสัปดาห์นั้น (หักคนออกไซต์แล้ว)" : ""}</span>
         ${canFull() ? `<button type="button" class="ov-mgbtn dash-print-hide" data-capset>${ico("settings")} ตั้งกำลังผลิต</button>` : ""}</div>
       <div class="ov-caps">${capDepts.map(capCard).join("")}</div></div>` : "";
-    // where cabinets wait now = the first department (in the project's order) not done for that cabinet
+    // where cabinets wait now = the first department (in the project's order) not done for that cabinet —
+    //   ★ 2026-10-22: in the ฝ่ายผลิต step, every unfinished department of the group (a cabinet is counted once in the total)
     const wip = {}, wipOrder = [];
+    let wipUnits = 0;
     if (!lockDept) allTasks.forEach(t => { if (projectComplete(t)) return;
       const stg = (t.deptStages || []).filter(x => getDept(x.deptId));
-      unitsOf(t).forEach(sb => { const cur = stg.find(x => !unitDone(t, sb, x.deptId)); if (!cur) return;
-        const due = unitDue(t, sb, cur.deptId);
-        (wip[cur.deptId] = wip[cur.deptId] || []).push({ t, sb, due, late: !!due && due < today }); }); });
+      unitsOf(t).forEach(sb => { const f = stageFlow(t, stg, x => unitDone(t, sb, x.deptId)); if (f.first < 0) return;
+        wipUnits++;
+        f.cur.forEach(k => { const id = stg[k].deptId, due = unitDue(t, sb, id);
+          (wip[id] = wip[id] || []).push({ t, sb, due, late: !!due && due < today }); }); }); });
     (state.departments || []).forEach(d => { if (wip[d.id]) wipOrder.push(d); });
-    const wipTot = wipOrder.reduce((a, d) => a + wip[d.id].length, 0);
+    const wipTot = wipUnits;
     const neck = wipOrder.reduce((m, d) => (!m || wip[d.id].length > wip[m.id].length) ? d : m, null);
     const pipeHtml = wipOrder.length ? `<div class="ov-card ov-mg"><div class="ov-mgh"><b>งานค้างแต่ละขั้น</b><span class="ov-sub">${wipTot} ตู้ที่ยังไม่เสร็จ</span>${neck && wipOrder.length > 1 ? `<span class="ov-neck">${ico("alert")} คอขวด: ${escapeHtml(neck.name)}</span>` : ""}</div>
       <div class="ov-pipe">${wipOrder.map(d => { const L = wip[d.id], late = L.filter(x => x.late).length, isNeck = neck && d.id === neck.id && wipOrder.length > 1;
@@ -15263,10 +15313,10 @@ function mFlowHtml(t) {
   if (isServiceBoard()) return "";
   const stages = (t.deptStages || []).filter(st => getDept(st.deptId));
   if (stages.length < 2) return "";
-  const done = stages.map(st => isDeptComplete(t, st.deptId)), cur = done.indexOf(false), n = stages.length;
+  const { done, first: cur, cur: curSet } = stageFlow(t, stages), n = stages.length;
   const pct = cur === -1 ? 100 : Math.round(cur / (n - 1) * 100);
   return `<div class="m-flow" style="--n:${n}"><div class="m-flow-track"><div class="m-flow-fill" style="width:${pct}%"></div></div><div class="m-flow-steps">${stages.map((st, i) => {
-    const d = getDept(st.deptId), state_ = done[i] ? "done" : i === cur ? "cur" : "next";
+    const d = getDept(st.deptId), state_ = done[i] ? "done" : curSet.has(i) ? "cur" : "next";
     return `<div class="m-flow-step ${state_}"><span class="m-flow-dot">${done[i] ? ico("check") : ""}</span><span class="m-flow-name">${escapeHtml(d.name)}</span></div>`;
   }).join("")}</div></div>`;
 }
@@ -15377,10 +15427,13 @@ function mCardHtml(t, due, dep, bid) {
   const ringTxt = done && (!items.total || iPct === 100) ? ico("check") : items.total ? `${iPct}%` : "—";
   const ring = `<div class="m-ring${done ? " full" : ""}"><svg viewBox="0 0 46 46" aria-hidden="true"><circle cx="23" cy="23" r="${R}" class="m-ring-bg"/>${iPct > 0 ? `<circle cx="23" cy="23" r="${R}" class="m-ring-fg" style="stroke:${ringCol}" stroke-dasharray="${(C * iPct / 100).toFixed(1)} ${C.toFixed(1)}"/>` : ""}</svg><span class="m-ring-t">${ringTxt}</span><span class="m-ring-sub">${items.total ? `${items.done}/${items.total}` : "ไม่มีเช็คลิสต์"}</span></div>`;
   const stages = isServiceBoard() ? [] : (t.deptStages || []).filter(x => getDept(x.deptId));
-  const sDone = stages.map(x => isDeptComplete(t, x.deptId)), cur = sDone.indexOf(false);
-  const curOver = !hold && cur >= 0 && (() => { const d = stages[cur].due || t.date; return d && d < todayIso(); })();
-  const segs = stages.length >= 2 ? `<div class="m-segbar">${stages.map((x, i) => `<span class="${sDone[i] ? "done" : i === cur ? (curOver ? "cur over" : "cur") : ""}" title="${escapeHtml((getDept(x.deptId) || {}).name || "")}"></span>`).join("")}</div>` : "";
+  const sFlow = stageFlow(t, stages), sDone = sFlow.done, cur = sFlow.first;
+  const curOver = !hold && cur >= 0 && [...sFlow.cur].some(k => { const d = stages[k].due || t.date; return d && d < todayIso(); });
+  const curGrp = cur >= 0 ? deptGroupOf(stages[cur].deptId) : "";   // ฝ่ายผลิต step → named by the group
+  const grpIdx = curGrp ? stages.map((x, i) => i).filter(i => i >= cur && deptGroupOf(stages[i].deptId) === curGrp) : [];
+  const segs = stages.length >= 2 ? `<div class="m-segbar">${stages.map((x, i) => `<span class="${sDone[i] ? "done" : sFlow.cur.has(i) ? (curOver ? "cur over" : "cur") : ""}" title="${escapeHtml((getDept(x.deptId) || {}).name || "")}"></span>`).join("")}</div>` : "";
   const stepTxt = !stages.length ? "" : cur === -1 ? `<span class="m-step ok">ครบทุกแผนก</span>`
+    : curGrp && grpIdx.length > 1 ? `<span class="m-step${curOver ? " over" : ""}">ขั้น ${escapeHtml(curGrp)}</span><span class="m-step-n">(เสร็จ ${grpIdx.filter(i => sDone[i]).length}/${grpIdx.length} แผนก)</span>`
     : `<span class="m-step${curOver ? " over" : ""}">ขั้น ${escapeHtml((getDept(stages[cur].deptId) || {}).name || "")}</span>${stages.length >= 2 ? `<span class="m-step-n">(${cur + 1}/${stages.length})</span>` : ""}`;
   const cabTxt = cabs.length ? `<span class="m-step-n">· ตู้ ${cabDone}/${cabs.length}</span>` : "";
   const canAsg = canEdit();
