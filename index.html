@@ -7759,7 +7759,8 @@ function openChecklistPopover(anchorEl, sub, onChange, opts = {}) {
       pop.querySelector('[data-act="add"]')?.addEventListener("click", () => addItem(deptId));
     } else {
       // grouped by department (project's department order)
-      deptOrderIds(task || (state.tasks || []).find(t => (t.subtasks || []).includes(sub))).map(getDept).filter(Boolean).forEach(d => {
+      deptOrderIds(task || (state.tasks || []).find(t => (t.subtasks || []).includes(sub))).map(getDept).filter(Boolean)
+        .filter(d => !(opts.noService && sameDept(d.id, SERVICE_DEPT))).forEach(d => {
         const items = sub.checklist.filter(i => i.deptId === d.id);
         if (!items.length) return;
         const grp = document.createElement("div");
@@ -8814,6 +8815,9 @@ function openTaskModal(taskId, defaults={}) {
   const subWrap = modal.querySelector('[data-subtasks]');
   // show each cabinet's checklist for the user's own department (else all, grouped)
   const modalDept = effectiveUserDept();
+  // ★ 2026-10-22 (owner): an Admin sees + ticks EVERY department's cabinet checklist (grouped), not only their own —
+  //   except on the Service calendar (unchanged). Dates / other per-department views still follow modalDept.
+  const clDept = (isAdmin() && !isServiceBoard()) ? null : modalDept;
   const clHintEl = modal.querySelector('[data-cl-hint]');
   if (clHintEl) clHintEl.textContent = modalDept ? `(checklist: ${(getDept(modalDept) || {}).name || ""})` : "(checklist: ทุกแผนก)";
   function paintDot(btn, statusObj) {
@@ -8821,7 +8825,7 @@ function openTaskModal(taskId, defaults={}) {
     btn.title = statusObj.name + (statusObj.isDone ? " (เสร็จ)" : "");
   }
   function paintClBtn(btn, sub) {
-    const p = checklistProgress(sub, modalDept);
+    const p = checklistProgress(sub, clDept);
     btn.querySelector(".cl-count").textContent = `${p.done}/${p.total}`;
     btn.classList.toggle("full", p.total > 0 && p.done === p.total);
   }
@@ -8944,7 +8948,7 @@ function openTaskModal(taskId, defaults={}) {
       }
 
       const paintProg = () => {
-        const p = checklistProgress(s, modalDept);
+        const p = checklistProgress(s, clDept);
         progBar.style.width = p.pct + "%";
         progBar.style.background = p.pct === 100 ? "#10b981" : "var(--accent)";
         const pctEl = row.querySelector(".subtask-progress-pct");
@@ -8965,7 +8969,7 @@ function openTaskModal(taskId, defaults={}) {
           scheduleCommit(0);
         });
       });
-      const openCl = () => openChecklistPopover(clBtn, s, () => { paintProg(); scheduleCommit(600); }, { task, deptId: modalDept });
+      const openCl = () => openChecklistPopover(clBtn, s, () => { paintProg(); scheduleCommit(600); }, { task, deptId: clDept, noService: clDept !== modalDept });
       row.querySelector(".subtask-bom-btn")?.addEventListener("click", (e) => {
         e.stopPropagation();
         document.querySelectorAll(".checklist-popover").forEach(n => n.remove()); _clPopAnchor = null;
