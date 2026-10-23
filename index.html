@@ -2421,6 +2421,12 @@ body.chip-dragging .task-chip.span-bar { pointer-events: none; }   /* let the da
   cursor: pointer;
 }
 .subtask-cl-btn:hover { background:var(--b-f3f4f6, #f3f4f6); border-color:var(--accent); color:var(--accent); }
+.subtask-cl-btn.cl-spot { border-color: var(--accent); color: var(--accent); animation: clSpot 2s ease-in-out infinite; }
+@keyframes clSpot { 0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 0%, transparent); } 50% { box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 28%, transparent); } }
+@media (prefers-reduced-motion: reduce) { .subtask-cl-btn.cl-spot { animation: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent); } }
+.cl-hint { display: flex; align-items: center; gap: 8px; margin: 0 0 8px 0; padding: 7px 10px; border-radius: 8px; background: color-mix(in srgb, var(--accent) 10%, transparent); color: var(--text); font-size: 12.5px; }
+.cl-hint span { flex: 1; }
+.cl-hint button { border: 0; border-radius: 7px; padding: 4px 10px; background: var(--accent); color: #fff; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
 .subtask-cl-btn.full { color:var(--t-10b981, #10b981); border-color:var(--l-10b981, #10b981); }
 
 /* department stage rows (in task modal) */
@@ -3496,6 +3502,18 @@ function permRank() { if (_archiveView) { if (Date.now() - _archiveViewAt < 3000
 function canComment() { return permRank() >= 1; }
 function canTick()    { return permRank() >= 1.5; } // tick / untick checklist items
 function canEdit()    { return permRank() >= 2; }   // dates, statuses, checklists
+/* ★ 2026-10-23 (owner): people change a cabinet's status by hand instead of ticking its checklist (⚡ อัตโนมัติ would do it).
+   For 7 days per person (the clock starts the first time they would see it, "เข้าใจแล้ว" ends it) the task window gets a one-line
+   reminder above the cabinets + a soft highlight on the checklist button of every cabinet whose checklist isn't finished.
+   Only where an automation rule exists and the person may tick. Nothing is blocked; this device only (localStorage). */
+const CL_HINT_KEY = "qc_cl_hint", CL_HINT_DAYS = 7;
+function clHintState() { try { return JSON.parse(localStorage.getItem(CL_HINT_KEY) || "{}") || {}; } catch (_) { return {}; } }
+function clHintSet(p) { try { localStorage.setItem(CL_HINT_KEY, JSON.stringify({ ...clHintState(), ...p })); } catch (_) {} }
+function clHintOn() {
+  if (!canTick() || !automationRules().length) return false;
+  const h = clHintState();
+  return !h.done && (!h.start || Date.now() - h.start < CL_HINT_DAYS * 86400e3);
+}
 function canFull()    { return permRank() >= 3; }   // create/delete tasks, titles, structure
 function permDenied(msg) { toast(msg || "สิทธิ์ของคุณทำรายการนี้ไม่ได้ — ติดต่อผู้ดูแลระบบ"); }
 const PERM_LABEL = { read: "ดูอย่างเดียว", comment: "คอมเมนต์ได้", checklist: "ติ๊กเช็คลิสต์ + คอมเมนต์", edit: "แก้วัน/สถานะ", full: "แก้ไขเต็ม" };
@@ -6476,6 +6494,7 @@ async function pushChangedBoards(sb) {
       if (res.error) { toast("⚠️ บันทึกขึ้น cloud ไม่สำเร็จ (บันทึกในเครื่องไว้แล้ว): " + res.error.message); return; }
       if (Array.isArray(res.data) && res.data.length) {
         sendBoardDelta(b, baseIso, stamp, _lastPushedJson[b.id], json);   // ★ slice 13: other devices get only what changed
+        try { queueItTicks(_lastPushedJson[b.id], json); } catch (e) { console.warn("it ticks", e); }   // ★ 2026-10-22: ticks → external system
         _lastPushedJson[b.id] = json;
         setBoardBase(b.id, stamp);
         rememberCloudCopy(b.id, stamp, json);
@@ -9001,6 +9020,7 @@ function openTaskModal(taskId, defaults={}) {
     const p = checklistProgress(sub, clDept);
     btn.querySelector(".cl-count").textContent = `${p.done}/${p.total}`;
     btn.classList.toggle("full", p.total > 0 && p.done === p.total);
+    btn.classList.toggle("cl-spot", clHintOn() && p.total > 0 && p.done < p.total);
   }
   function showBomTip() {
     const btn = modal.querySelector("[data-bom-bulk]");
@@ -9041,7 +9061,7 @@ function openTaskModal(taskId, defaults={}) {
           <input type="text" class="sub-mo" value="${escapeHtml(s.mo || "")}" placeholder="MO" />
           <input type="text" class="sub-name" value="${escapeHtml(s.text)}" placeholder="ชื่อตู้" />
           <div class="subtask-progress" title="ความคืบหน้า checklist"><div class="subtask-progress-track"><div class="subtask-progress-bar"></div></div><span class="subtask-progress-pct"></span></div>
-          <button type="button" class="subtask-cl-btn" title="Checklist ของตู้นี้ (ชี้เมาส์หรือคลิก)">${ico("check-square")} <span class="cl-count">${prog.done}/${prog.total}</span></button>
+          <button type="button" class="subtask-cl-btn${clHintOn() && (() => { const q = checklistProgress(s, clDept); return q.total > 0 && q.done < q.total; })() ? " cl-spot" : ""}" title="Checklist ของตู้นี้ (ชี้เมาส์หรือคลิก)">${ico("check-square")} <span class="cl-count">${prog.done}/${prog.total}</span></button>
           ${(() => { const bp = bomProgress(s); return bp.total ? `<button type="button" class="subtask-bom-btn${bp.done === bp.total ? " full" : ""}" title="รายการอุปกรณ์">${ico("archive")} <span>${bp.done}/${bp.total}</span></button>`
             : (canEdit() ? `<button type="button" class="subtask-bom-btn empty" title="นำเข้ารายการอุปกรณ์ (PDF ใบสั่งผลิต)">${ico("archive")}</button>` : ""); })()}
           <span class="subtask-date-mount" title="วันที่ของตู้นี้ (ไม่ใส่ = ตามวันโปรเจค)"></span>
@@ -9168,6 +9188,17 @@ function openTaskModal(taskId, defaults={}) {
       });
       subWrap.appendChild(row);
     });
+    paintClHint();
+  }
+  function paintClHint() {
+    subWrap.parentNode.querySelectorAll(":scope > .cl-hint").forEach(n => n.remove());
+    if (!clHintOn() || !subWrap.querySelector(".subtask-cl-btn.cl-spot")) return;
+    if (!clHintState().start) clHintSet({ start: Date.now() });   // the 7 days start now, for this person
+    const bar = document.createElement("div");
+    bar.className = "cl-hint";
+    bar.innerHTML = `${ico("check-square")}<span>ติ๊กเช็คลิสต์ สถานะจะเปลี่ยนให้เอง</span><button type="button">เข้าใจแล้ว</button>`;
+    bar.querySelector("button").addEventListener("click", () => { clHintSet({ done: true }); bar.remove(); subWrap.querySelectorAll(".cl-spot").forEach(b => b.classList.remove("cl-spot")); });
+    subWrap.before(bar);
   }
   function addSub(text) {
     if (!canFull()) { permDenied("สิทธิ์ของคุณเพิ่มตู้ไม่ได้"); return; }
@@ -11876,6 +11907,66 @@ function buildChecklistTemplatePanel(container) {
 /* ⚙ เชื่อมระบบไอที — the IT system pushes projects into the calendar through the Edge Function "it-sync"
    (handoff/supabase-functions/it-sync). Here: which calendar receives new SOs, IT's department codes, recent log. */
 const IT_SYNC_URL = SUPABASE_URL + "/functions/v1/it-sync";
+/* ★ 2026-10-22 (owner): a checklist tick made in the app goes BACK to the external system (PMO). Contract: handoff/it-sync-webhook.md.
+   Only items that came from it (item.ext.id, on a project with ext.src="it") and only changes made on THIS device — we diff what this
+   save changed (previous cloud version → now), so what the external system sent us never echoes back. Events wait in a small
+   outbox (this device, 24 h) and go out through the Edge Function "it-push" (secret key stays on the server); a failed send is retried
+   every minute. ⚙ › เชื่อมต่อภายนอก › "ส่งผลการติ๊กกลับ" (settings.itSync.pushBack) switches it on per calendar. */
+const IT_OUTBOX_KEY = "qc_it_outbox", IT_OUTBOX_TTL = 24 * 3600e3;
+function itOutbox() { try { const a = JSON.parse(localStorage.getItem(IT_OUTBOX_KEY) || "[]"); return Array.isArray(a) ? a : []; } catch (_) { return []; } }
+function itOutboxSave(a) { try { localStorage.setItem(IT_OUTBOX_KEY, JSON.stringify(a.slice(-300))); } catch (_) {} }
+function itTickEvents(prevJson, json, who) {
+  let a, b;
+  try { a = JSON.parse(prevJson); b = JSON.parse(json); } catch (_) { return []; }
+  const cfg = b && b.settings && b.settings.itSync;
+  if (!cfg || !cfg.pushBack || !a || !Array.isArray(a.tasks) || !Array.isArray(b.tasks)) return [];
+  const was = new Map();
+  a.tasks.forEach(t => (t.subtasks || []).forEach(sb => (sb.checklist || []).forEach(i => was.set(t.id + "|" + sb.id + "|" + i.id, !!i.done))));
+  const out = [], at = new Date().toISOString();
+  b.tasks.forEach(t => {
+    if (!(t.ext && t.ext.src === "it" && t.ext.so)) return;
+    (t.subtasks || []).forEach(sb => {
+      const mo = (sb.ext && sb.ext.mo) || sb.mo;
+      if (!mo) return;
+      (sb.checklist || []).forEach(i => {
+        if (!(i.ext && i.ext.id)) return;
+        const k = t.id + "|" + sb.id + "|" + i.id;
+        if (!was.has(k) || was.get(k) === !!i.done) return;   // new item / unchanged → not a tick
+        const d = (b.departments || []).find(x => x.id === i.deptId);
+        const code = String((cfg.codes && cfg.codes[i.deptId]) || "").split(",")[0].trim() || (d && d.name) || "";
+        out.push({ event_id: uid("ev"), at, so: t.ext.so, mo, checklist: { id: i.ext.id, dept: code, text: i.text || "", done: !!i.done }, by: who });
+      });
+    });
+  });
+  return out;
+}
+function queueItTicks(prevJson, json) {
+  if (typeof prevJson !== "string" || !currentProfile) return;
+  const ev = itTickEvents(prevJson, json, currentProfile.display_name || "");
+  if (!ev.length) return;
+  itOutboxSave(itOutbox().concat(ev.map(e => ({ q: Date.now(), ev: e }))));
+  setTimeout(flushItOutbox, 0);
+}
+let _itFlushing = false;
+async function flushItOutbox() {
+  if (_itFlushing || !currentProfile) return;
+  const sb = getSupabase();
+  if (!sb) return;
+  const all = itOutbox(), q = all.filter(e => e && e.ev && Date.now() - e.q < IT_OUTBOX_TTL);
+  if (q.length !== all.length) itOutboxSave(q);
+  if (!q.length) return;
+  _itFlushing = true;
+  try {
+    const batch = q.slice(0, 50);
+    const { data, error } = await sb.functions.invoke("it-push", { body: { events: batch.map(e => e.ev) } });
+    if (error || !data || data.configured === false) return;   // not reachable / not set up yet → keep, retry later
+    const done = new Set((data.results || []).filter(r => r.ok || !r.retry).map(r => r.event_id));
+    itOutboxSave(itOutbox().filter(e => !(e && e.ev && done.has(e.ev.event_id))));
+    if (q.length > batch.length) setTimeout(flushItOutbox, 0);
+  } catch (e) { console.warn("it outbox", e); }
+  finally { _itFlushing = false; }
+}
+setInterval(flushItOutbox, 60000);
 function buildItSyncPanel(container) {
   const cfg = state.settings.itSync || (state.settings.itSync = { enabled: false, codes: {}, unknown: [] });
   if (!cfg.codes) cfg.codes = {};
@@ -11887,6 +11978,7 @@ function buildItSyncPanel(container) {
     <h4 class="settings-h">${ico("link")} เชื่อมต่อภายนอก</h4>
     <label class="default-stage-row"><input type="checkbox" data-it-on ${cfg.enabled ? "checked" : ""} /><span class="default-stage-name">รับงานจากภายนอกเข้าปฏิทิน “${escapeHtml(boardNameOf(root.activeBoard))}”</span>${linked ? `<span class="muted it-count">${linked} งาน</span>` : ""}</label>
     <div class="it-url-row"><input type="text" readonly value="${escapeHtml(IT_SYNC_URL)}" /><button type="button" class="btn" data-it-copy>${ico("copy")} คัดลอก</button></div>
+    <label class="default-stage-row" style="margin-top:10px"><input type="checkbox" data-it-back ${cfg.pushBack ? "checked" : ""} /><span class="default-stage-name">ส่งผลการติ๊กเช็คลิสต์กลับไปภายนอก</span><button type="button" class="btn btn-sm" data-it-test style="margin-left:auto">ทดสอบส่ง</button></label>
     <h4 class="settings-h" style="margin-top:16px">รหัสแผนกของระบบภายนอก</h4>
     <div class="it-code-list" data-it-codes></div>
     <div class="it-unknown" data-it-unknown></div>
@@ -11895,6 +11987,21 @@ function buildItSyncPanel(container) {
   container.appendChild(sec);
 
   sec.querySelector("[data-it-on]").addEventListener("change", (e) => { cfg.enabled = e.target.checked; saveState(); });
+  sec.querySelector("[data-it-back]").addEventListener("change", (e) => { cfg.pushBack = e.target.checked; saveState(); });
+  sec.querySelector("[data-it-test]").addEventListener("click", async (e) => {
+    const btn = e.currentTarget, sbx = getSupabase();
+    if (!sbx) { toast("ไม่มีอินเทอร์เน็ต"); return; }
+    btn.disabled = true;
+    try {
+      const { data, error } = await sbx.functions.invoke("it-push", { body: { test: true } });
+      let d = data, st = d && d.status;
+      if (error && error.context && typeof error.context.json === "function") { try { d = await error.context.json(); } catch (_) {} }
+      if (d && d.configured === false) toast("ยังไม่ได้ตั้งค่าปลายทาง (รอฝั่ง Admin ระบบตั้งค่า IT_WEBHOOK_URL)");
+      else if (d && d.ok) toast("ส่งทดสอบสำเร็จ (HTTP " + st + ")");
+      else toast("ส่งทดสอบไม่สำเร็จ" + (st ? " (HTTP " + st + ")" : "") + " — ดูรายการด้านล่าง");
+    } catch (_) { toast("ส่งทดสอบไม่สำเร็จ"); }
+    btn.disabled = false;
+  });
   sec.querySelector("[data-it-copy]").addEventListener("click", async () => {
     try { await navigator.clipboard.writeText(IT_SYNC_URL); toast("คัดลอกแล้ว"); }
     catch (_) { const i = sec.querySelector(".it-url-row input"); i.select(); }
@@ -11928,7 +12035,7 @@ function buildItSyncPanel(container) {
 
   const logEl = sec.querySelector("[data-it-log]");
   const sb = getSupabase();
-  const ACT = { created: "สร้าง", updated: "อัปเดต", deleted: "ลบ", unchanged: "ไม่เปลี่ยน", error: "ผิดพลาด" };
+  const ACT = { created: "สร้าง", updated: "อัปเดต", deleted: "ลบ", unchanged: "ไม่เปลี่ยน", sent: "ส่งกลับ", error: "ผิดพลาด" };
   if (!sb) { logEl.innerHTML = ""; return; }
   sb.from("it_sync_log").select("*").order("at", { ascending: false }).limit(20).then(({ data, error }) => {
     if (error) { logEl.innerHTML = `<div class="muted" style="font-size:12px">—</div>`; return; }
@@ -16199,6 +16306,7 @@ async function startApp() {
   loadTeam();   // team directory for assignee avatars/picker — renders again when it arrives
   await syncRootFromCloud();   // first login ever seeds the cloud from local data; every login after that pulls the cloud copy
   startRealtimeSync();   // slice 3: start listening for changes other devices push from this point on
+  setTimeout(flushItOutbox, 5000);   // ticks waiting to go back to the external system
   if (_cloudReady) purgeExpiredTrash();   // 🗑️ entries past 30 days
   if (_cloudReady && syncLinkedDepts()) saveState();   // ออกไซต์ = โรงงาน's departments
   startPendingUsersWatch();   // red count of people waiting for approval (admins)
