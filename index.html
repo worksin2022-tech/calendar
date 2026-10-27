@@ -1747,6 +1747,15 @@ html, body { touch-action: manipulation; }
 .ta-photo-rm { position: absolute; top: -7px; right: -7px; width: 20px; height: 20px; border-radius:50%; background:var(--danger); color:var(--t-ffffff, #fff); border:2px solid var(--l-ffffff, #fff); font-size: 11px; line-height: 1; cursor: pointer; }
 .ta-alert-dept { font-size: 12px; padding: 4px 6px; border:1px solid var(--border-strong); border-radius:6px; background:var(--b-ffffff, #fff); max-width: 150px; }
 .ta-alert-dept.armed { border-color:var(--danger); color:var(--danger); font-weight: 700; }
+button.ta-alert-dept { color: var(--text); font-family: inherit; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: left; }
+button.ta-alert-dept::after { content: " ▾"; color: var(--text-faint); }
+button.ta-alert-dept.armed { color: var(--danger); }
+.alert-dept-pop { position: fixed; z-index: 3000; min-width: 200px; max-height: 320px; overflow-y: auto; padding: 6px; border: 1px solid var(--border); border-radius: 10px; background: var(--b-ffffff, #fff); box-shadow: 0 10px 30px rgba(0,0,0,.16); }
+.alert-dept-pop .adp-row { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 6px; font-size: 13px; cursor: pointer; }
+.alert-dept-pop .adp-row:hover, .alert-dept-pop .adp-none:hover { background: var(--b-f3f4f6, #f3f4f6); }
+.alert-dept-pop .adp-row input { width: 16px; height: 16px; margin: 0; }
+.alert-dept-pop .adp-none { display: block; width: 100%; padding: 6px 8px; border: 0; border-bottom: 1px solid var(--border); border-radius: 6px 6px 0 0; background: transparent; font: inherit; font-size: 13px; color: var(--text-dim); text-align: left; cursor: pointer; margin-bottom: 4px; }
+.alert-dept-pop .adp-none.on { color: var(--text); font-weight: 700; }
 
 /* full-screen photo lightbox */
 .photo-lightbox { position: fixed; inset: 0; z-index: 1300; background:rgba(0,0,0,.82); display: flex; align-items: center; justify-content: center; cursor: zoom-out; }
@@ -2410,6 +2419,7 @@ body.chip-dragging .task-chip.span-bar { pointer-events: none; }   /* let the da
 .subtask-progress-pct.full { color: #10b981; }
 @media (max-width: 640px) { .subtask-progress { display: none; } }
 .subtask-cl-btn {
+  position: relative;
   flex: 0 0 auto;
   display: inline-flex; align-items: center; gap: 4px;
   padding: 3px 9px;
@@ -2890,7 +2900,39 @@ body.chip-dragging .task-chip.span-bar { pointer-events: none; }   /* let the da
 .cl-pop-track { height: 6px; background:var(--b-eef0f3, #eef0f3); border-radius:3px; overflow: hidden; margin-bottom: 10px; flex: 0 0 auto; }
 .cl-pop-bar { height: 100%; width: 0%; background:var(--accent); border-radius:3px; transition: width .2s; }
 .cl-pop-items { display: flex; flex-direction: column; gap: 2px; margin-bottom: 6px; flex: 1 1 auto; min-height: 0; overflow-y: auto; }
-.cl-pop-item { display: flex; align-items: center; gap: 8px; padding: 4px 4px; border-radius:6px; }
+.cl-pop-item { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 4px 4px; border-radius:6px; }
+.cl-note-btn { order: 2; flex: 0 0 auto; width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: 6px; background: transparent; color: var(--text-faint); cursor: pointer; opacity: .45; }
+.cl-note-btn .ico { width: 14px; height: 14px; }
+.cl-pop-item:hover .cl-note-btn, .cl-note-btn:focus-visible { opacity: 1; }
+.cl-note-btn.has { color: var(--red-text, #d92d20); opacity: 1; }
+.cl-note-line { order: 4; flex: 1 0 100%; box-sizing: border-box; min-width: 0; position: relative; display: flex; align-items: center; gap: 8px; padding-left: 24px; }
+.cl-note-line[hidden] { display: none; }
+.cl-note-shake { animation: clNoteShake .35s ease-in-out; }
+@keyframes clNoteShake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
+@media (prefers-reduced-motion: reduce) { .cl-note-shake { animation: none; } }
+.cl-note-line::before { content: ""; position: absolute; left: 7px; top: -9px; width: 11px; height: calc(50% + 9px); border-left: 1px solid var(--border-strong); border-bottom: 1px solid var(--border-strong); border-bottom-left-radius: 5px; pointer-events: none; }
+.cl-note-txt { flex: 1; min-width: 0; color: var(--red-text, #d92d20); font-size: 12.5px; font-weight: 600; cursor: text; overflow-wrap: anywhere; }
+.cl-note-clear { flex: 0 0 auto; width: 16px; height: 16px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border: 1.5px solid var(--red-text, #d92d20); border-radius: 4px; background: transparent; color: var(--t-10b981, #10b981); cursor: pointer; }
+.cl-note-clear .ico { width: 11px; height: 11px; stroke-width: 3.5; opacity: 0; }
+.cl-note-clear:hover .ico, .cl-note-clear:focus-visible .ico { opacity: 1; }
+.cl-note-clear:hover { border-color: var(--t-10b981, #10b981); }
+.cl-note-clear.on { background: var(--t-10b981, #10b981); border-color: var(--t-10b981, #10b981); color: #fff; }
+.cl-note-clear.on .ico { opacity: 1; }
+.cl-note-txt.done { color: var(--text-faint); font-weight: 400; }
+.cl-note-btn.old { opacity: 1; color: var(--text-faint); }
+.m-note.done { color: var(--text-faint); font-weight: 400; }
+.m-note.done::before { content: "✓ "; color: var(--t-10b981, #10b981); }
+.cl-note-line .cl-note-input { flex: 1 1 0; width: auto; }
+.cl-note-input { flex: 1; min-width: 0; padding: 4px 8px; border: 1px solid var(--red-text, #d92d20); border-radius: 6px; background: transparent; color: var(--red-text, #d92d20); font: inherit; font-size: 12.5px; font-weight: 600; outline: 0; }
+.cl-note-save { flex: 0 0 auto; border: 0; border-radius: 6px; padding: 4px 10px; background: var(--accent); color: #fff; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
+.cl-note-badge { position: absolute; top: -7px; right: -7px; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px; background: var(--red-text, #d92d20); color: #fff; font-size: 10px; font-weight: 700; line-height: 16px; text-align: center; box-shadow: 0 0 0 2px var(--surface, #fff); }
+.m-item-wrap { display: flex; align-items: center; gap: 4px; }
+.m-item-wrap .m-item { flex: 1 1 auto; min-width: 0; }
+.m-note { display: inline-block; width: 100%; color: var(--red-text, #d92d20); font-size: 13px; font-weight: 600; }
+.m-note-btn { flex: 0 0 auto; width: 40px; height: 40px; display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: 10px; background: transparent; color: var(--text-faint); }
+.m-note-btn .ico { width: 18px; height: 18px; }
+.m-note-btn.has { color: var(--red-text, #d92d20); }
+.m-cab-note { min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--red-text, #d92d20); color: #fff; font-size: 11px; font-weight: 700; line-height: 18px; text-align: center; }
 .cl-pop-item:hover { background:var(--b-fafbfc, #fafbfc); }
 .cl-pop-item input[type=checkbox] { width: 16px; height: 16px; cursor: pointer; flex: 0 0 auto; }
 .cl-item-name { flex: 1; min-width: 0; border:none; background:transparent; font-size: 13px; padding: 2px 2px; color:var(--text); }
@@ -5430,6 +5472,31 @@ function makeDefaultStages() {
     .map(d => ({ deptId: d.id, due: null, done: false }));
 }
 // progress over a cabinet's checklist; pass deptId to count only that department's items
+/* ★ 2026-10-27 (owner, แบบ 1): a NOTE on a checklist item — item.note (+ noteBy / noteAt). An open note is red and counted on the
+   cabinet's checklist button (red number). ✓ marks it done (item.noteDone + noteDoneBy / noteDoneAt): the text STAYS, grey, for
+   looking back; ✓ again reopens it. Writing a new text reopens it too; emptying the text removes the note. Whoever may tick may
+   write / clear (canTick). Logged in Activity and (⚙ เชื่อมต่อภายนอก › ส่งกลับ) sent back to the external system with the tick. */
+function noteItems(sub, deptId) { return ((sub && sub.checklist) || []).filter(i => i && i.note && !i.noteDone && (!deptId || i.deptId === deptId)); }
+// ★ 2026-10-27 (owner): an item with an OPEN note can't be ticked until its note is cleared (✓). Unticking is always allowed.
+const NOTE_BLOCK_MSG = "เคลียร์หมายเหตุของข้อนี้ก่อน จึงจะติ๊กได้";
+function noteBlocksTick(it) { return !!(it && !it.done && it.note && !it.noteDone); }
+function clearNoteDone(it) { delete it.noteDone; delete it.noteDoneBy; delete it.noteDoneAt; }
+function setItemNote(task, it, text) {
+  const v = String(text || "").trim().slice(0, 300);
+  if ((it.note || "") === v) return false;
+  const label = it.text || "รายการ";
+  clearNoteDone(it);
+  if (v) { it.note = v; it.noteBy = currentUser(); it.noteAt = Date.now(); logActivity(task, `หมายเหตุ "${label}": ${v}`); }
+  else { delete it.note; delete it.noteBy; delete it.noteAt; logActivity(task, `ลบหมายเหตุ "${label}"`); }
+  return true;
+}
+function setNoteDone(task, it, done) {
+  if (!it.note || !!it.noteDone === !!done) return false;
+  const label = it.text || "รายการ";
+  if (done) { it.noteDone = true; it.noteDoneBy = currentUser(); it.noteDoneAt = Date.now(); logActivity(task, `✓ เคลียร์หมายเหตุ "${label}": ${it.note}`); }
+  else { clearNoteDone(it); logActivity(task, `เปิดหมายเหตุอีกครั้ง "${label}": ${it.note}`); }
+  return true;
+}
 function checklistProgress(sub, deptId) {
   let items = (sub && sub.checklist) || [];
   if (deptId) items = items.filter(i => i.deptId === deptId);
@@ -6682,7 +6749,7 @@ function notifyRemoteBoardChange(ws, newTasks, oldTasksById, savedBy, boardId) {
     const before = oldTasksById[t.id];
     const oldIds = new Set(((before && before.comments) || []).map(c => c.id));
     (t.comments || []).forEach(c => {
-      if (c.type === "alert" && !c.ack && commentFresh(c, before) && c.toDept === myDept) fire("alert", "🔔 การแจ้งเตือนใหม่", `${t.title}${c.text ? " · " + c.text : ""}`, "rt-alert-" + c.id, t);
+      if (c.type === "alert" && !c.rejected && commentFresh(c, before) && alertDepts(c).includes(myDept) && !sentByMe(c)) fire("alert", "🔔 การแจ้งเตือนใหม่", `${t.title}${c.text ? " · " + c.text : ""}`, "rt-alert-" + c.id, t);
     });
   });
   if (!myDept && notify.onlyMyDept) return;
@@ -7906,10 +7973,45 @@ function openChecklistPopover(anchorEl, sub, onChange, opts = {}) {
       <input type="text" class="cl-item-name" value="${escapeHtml(it.text)}" placeholder="รายการ..." />
       <button type="button" class="cl-item-del" title="ลบ">✕</button>
       <span class="cl-who-slot">${tickWhoHtml(it)}</span>
+      <button type="button" class="cl-note-btn" title="หมายเหตุ">${ico("message")}</button>
     `;
-    const [cb, nameI, delB, whoS] = r.children;
+    const [cb, nameI, delB, whoS, noteB] = r.children;    const noteL = document.createElement("div");
+    noteL.className = "cl-note-line";
+    r.appendChild(noteL);
+    let noteEdit = false;
+    function saveNote(v) { noteEdit = false; if (setItemNote(task, it, v)) onChange && onChange(); paintNote(); }
+    function paintNote() {
+      noteB.classList.toggle("has", !!it.note && !it.noteDone);
+      noteB.classList.toggle("old", !!it.note && !!it.noteDone);
+      r.classList.toggle("has-note", !!it.note && !it.noteDone);
+      if (noteEdit) {
+        noteL.hidden = false;
+        noteL.innerHTML = `<input type="text" class="cl-note-input" maxlength="300" placeholder="หมายเหตุ…" /><button type="button" class="cl-note-save">บันทึก</button>`;
+        const inp = noteL.querySelector("input");
+        inp.value = it.note || "";
+        inp.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); saveNote(inp.value); } });
+        inp.addEventListener("blur", () => { if (noteEdit) saveNote(inp.value); });
+        noteL.querySelector(".cl-note-save").addEventListener("mousedown", (e) => { e.preventDefault(); saveNote(inp.value); });
+        setTimeout(() => inp.focus(), 0);
+      } else if (it.note) {
+        noteL.hidden = false;
+        const who = (by, at) => (by ? by + " · " : "") + (at ? new Date(at).toLocaleString("th-TH") : "");
+        const tip = "เขียน: " + who(it.noteBy, it.noteAt) + (it.noteDone ? "\nเคลียร์: " + who(it.noteDoneBy, it.noteDoneAt) : "");
+        const lbl = it.noteDone ? "เปิดหมายเหตุอีกครั้ง" : "เคลียร์หมายเหตุ";
+        noteL.innerHTML = `<button type="button" class="cl-note-clear${it.noteDone ? " on" : ""}" title="${lbl}" aria-label="${lbl}">${ico("check")}</button><span class="cl-note-txt${it.noteDone ? " done" : ""}" title="${escapeHtml(tip)}">${escapeHtml(it.note)}</span>`;
+        noteL.querySelector(".cl-note-txt").addEventListener("click", () => { noteEdit = true; paintNote(); });
+        noteL.querySelector(".cl-note-clear").addEventListener("click", () => { if (setNoteDone(task, it, !it.noteDone)) onChange && onChange(); paintNote(); });
+      } else { noteL.hidden = true; noteL.innerHTML = ""; }
+    }
+    noteB.addEventListener("click", () => { noteEdit = !noteEdit || !it.note ? true : false; paintNote(); });
+    paintNote();
     if (!structOk) { nameI.readOnly = true; delB.style.display = "none"; }
     cb.addEventListener("change", () => {
+      if (cb.checked && noteBlocksTick(it)) {
+        cb.checked = false; toast(NOTE_BLOCK_MSG);
+        noteL.classList.remove("cl-note-shake"); void noteL.offsetWidth; noteL.classList.add("cl-note-shake");
+        return;
+      }
       const was = task ? isDeptComplete(task, it.deptId) : false;
       it.done = cb.checked;
       stampTick(it); whoS.innerHTML = tickWhoHtml(it);
@@ -8222,7 +8324,7 @@ function confirmDialog({ title, message = "", confirmText = "ลบ", cancelText
 }
 
 /* in-app text prompt → resolves to the entered text (may be ""), or null if cancelled */
-function promptDialog({ title, message = "", placeholder = "", confirmText = "ตกลง", cancelText = "ยกเลิก", danger = false }) {
+function promptDialog({ title, message = "", placeholder = "", confirmText = "ตกลง", cancelText = "ยกเลิก", danger = false, value = "", altText = "" }) {
   return new Promise(resolve => {
     const overlay = document.createElement("div");
     overlay.className = "overlay confirm-overlay";
@@ -8232,12 +8334,15 @@ function promptDialog({ title, message = "", placeholder = "", confirmText = "�
         ${message ? `<div class="confirm-msg">${escapeHtml(message)}</div>` : ""}
         <textarea class="pd-input" rows="3" placeholder="${escapeHtml(placeholder)}"></textarea>
         <div class="confirm-actions">
+          ${altText ? `<button class="btn" data-act="alt" style="margin-right:auto">${escapeHtml(altText)}</button>` : ""}
           <button class="btn" data-act="cancel">${escapeHtml(cancelText)}</button>
           <button class="btn ${danger ? "btn-danger-solid" : "btn-primary"}" data-act="ok">${escapeHtml(confirmText)}</button>
         </div>
       </div>`;
     document.body.appendChild(overlay);
     const ta = overlay.querySelector(".pd-input");
+    ta.value = value || "";
+    overlay.querySelector('[data-act="alt"]')?.addEventListener("click", () => close({ alt: true }));
     function close(val) { overlay.remove(); document.removeEventListener("keydown", onKey, true); resolve(val); }
     function onKey(e) { if (e.key === "Escape") { e.preventDefault(); close(null); } }
     overlay.querySelector('[data-act="cancel"]').addEventListener("click", () => close(null));
@@ -8815,7 +8920,7 @@ function openTaskModal(taskId, defaults={}) {
           <div class="ta-compose-actions">
             <button type="button" class="ta-attach" data-act="attach" title="ถ่ายรูป / แนบรูป" aria-label="ถ่ายรูป / แนบรูป"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 4h-5L7.5 6.5H5A2 2 0 0 0 3 8.5v9a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2h-2.5z"/><circle cx="12" cy="12.5" r="3.5"/></svg></button>
             <button type="button" class="ta-attach" data-act="attach-file" title="แนบไฟล์ (PDF, DWG, Excel ฯลฯ) — เก็บใน Google Drive" aria-label="แนบไฟล์"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg></button>
-            <select class="ta-alert-dept" data-alert-dept title="ส่งเป็นการแจ้งเตือนไปแผนก (เด้ง popup)"></select>
+            <button type="button" class="ta-alert-dept" data-alert-dept title="ส่งเป็นการแจ้งเตือนไปแผนก (เด้ง popup)">ไม่แจ้งเตือน</button>
             <div style="flex:1"></div>
             <button type="button" class="btn btn-primary btn-sm" data-act="send-comment">ส่ง</button>
           </div>
@@ -9021,6 +9126,9 @@ function openTaskModal(taskId, defaults={}) {
     btn.querySelector(".cl-count").textContent = `${p.done}/${p.total}`;
     btn.classList.toggle("full", p.total > 0 && p.done === p.total);
     btn.classList.toggle("cl-spot", clHintOn() && p.total > 0 && p.done < p.total);
+    const notes = noteItems(sub, clDept), badge = btn.querySelector(".cl-note-badge");
+    if (badge) { badge.hidden = !notes.length; badge.textContent = notes.length; }
+    btn.title = notes.length ? `Checklist ของตู้นี้ · หมายเหตุ ${notes.length} รายการ` : "Checklist ของตู้นี้ (ชี้เมาส์หรือคลิก)";
   }
   function showBomTip() {
     const btn = modal.querySelector("[data-bom-bulk]");
@@ -9061,7 +9169,7 @@ function openTaskModal(taskId, defaults={}) {
           <input type="text" class="sub-mo" value="${escapeHtml(s.mo || "")}" placeholder="MO" />
           <input type="text" class="sub-name" value="${escapeHtml(s.text)}" placeholder="ชื่อตู้" />
           <div class="subtask-progress" title="ความคืบหน้า checklist"><div class="subtask-progress-track"><div class="subtask-progress-bar"></div></div><span class="subtask-progress-pct"></span></div>
-          <button type="button" class="subtask-cl-btn${clHintOn() && (() => { const q = checklistProgress(s, clDept); return q.total > 0 && q.done < q.total; })() ? " cl-spot" : ""}" title="Checklist ของตู้นี้ (ชี้เมาส์หรือคลิก)">${ico("check-square")} <span class="cl-count">${prog.done}/${prog.total}</span></button>
+          <button type="button" class="subtask-cl-btn${clHintOn() && (() => { const q = checklistProgress(s, clDept); return q.total > 0 && q.done < q.total; })() ? " cl-spot" : ""}" title="Checklist ของตู้นี้ (ชี้เมาส์หรือคลิก)">${ico("check-square")} <span class="cl-count">${prog.done}/${prog.total}</span><span class="cl-note-badge" hidden></span></button>
           ${(() => { const bp = bomProgress(s); return bp.total ? `<button type="button" class="subtask-bom-btn${bp.done === bp.total ? " full" : ""}" title="รายการอุปกรณ์">${ico("archive")} <span>${bp.done}/${bp.total}</span></button>`
             : (canEdit() ? `<button type="button" class="subtask-bom-btn empty" title="นำเข้ารายการอุปกรณ์ (PDF ใบสั่งผลิต)">${ico("archive")}</button>` : ""); })()}
           <span class="subtask-date-mount" title="วันที่ของตู้นี้ (ไม่ใส่ = ตามวันโปรเจค)"></span>
@@ -9895,6 +10003,13 @@ function openTaskModal(taskId, defaults={}) {
     };
     sorted.forEach((c) => {
       if (c.type === "system") { run.push(c); return; }
+      // ★ 2026-10-27 (owner): an assignment alert ("📌 มอบหมายงานนี้ให้คุณ") folds in with the automatic entries — unless it is still
+      //   waiting for ME to acknowledge, or pinned
+      if (c.type === "alert" && c.toUser && !c.kind && !c.pinned && !alertIsForMe(c)) {
+        const to = personName(teamProfiles.get(c.toUser)) || "—";
+        run.push({ id: c.id, author: c.author, at: c.at, text: `📌 มอบหมายงานให้ ${to}${c.ack ? " · รับทราบแล้ว" : ""}` });
+        return;
+      }
       flushRun();
       if (c.type === "alert") {
         const dept = alertTarget(c);
@@ -9913,7 +10028,7 @@ function openTaskModal(taskId, defaults={}) {
           ${attachmentsHtml(c, "ta-photo")}
           ${c.rejected
             ? `<div class="ta-alert-ack" style="color:var(--danger)">${ico("x-circle")} ปฏิเสธโดย ${escapeHtml(c.rejectedBy || "—")}${c.rejectReason ? " — " + escapeHtml(c.rejectReason) : ""} · ${formatDateTimeTH(c.rejectedAt)}</div>`
-            : (c.ack ? `<div class="ta-alert-ack">✓ รับทราบแล้วโดย ${escapeHtml(c.ackBy || "—")} · ${formatDateTimeTH(c.ackAt)}</div>` : "")}
+            : (c.ack ? `<div class="ta-alert-ack">✓ ${escapeHtml(alertAckText(c))}</div>` : "")}
           ${alertIsForMe(c) ? `<div class="ta-alert-btns"><button class="btn btn-sm btn-ack ta-alert-ackbtn" data-ackbtn>✓ รับทราบ</button><button class="btn btn-sm btn-reject" data-rejectbtn>✕ ปฏิเสธ</button></div>` : ""}
           <div class="alert-replies" data-replies></div>`;
         al.querySelector("[data-pin]").addEventListener("click", () => togglePin(c));
@@ -9926,7 +10041,7 @@ function openTaskModal(taskId, defaults={}) {
         // ack / reject buttons — only the targeted department sees them
         const ackBtn = al.querySelector("[data-ackbtn]");
         if (ackBtn) ackBtn.addEventListener("click", () => {
-          c.ack = true; c.ackBy = currentUser(); c.ackAt = Date.now();
+          ackAlert(c);
           if (mentionPendingForMe(c)) ackMention(c);
           logActivity(task, `รับทราบการแจ้งเตือน (${dept.name})`);
           persistComments(); renderFeed(); renderBell();
@@ -10021,10 +10136,41 @@ function openTaskModal(taskId, defaults={}) {
   const photoInput = modal.querySelector('[data-photo-input]');
   const fileInput = modal.querySelector('[data-file-input]');
   const attachList = createAttachList(modal.querySelector('[data-photo-preview]'));
+  // ★ 2026-10-27 (owner): an alert can go to several departments at once (one alert, c.toDepts)
   const alertSel = modal.querySelector('[data-alert-dept]');
-  alertSel.innerHTML = `<option value="">ไม่แจ้งเตือน</option>` +
-    (state.departments || []).map(d => `<option value="${d.id}">แจ้งเตือน → ${escapeHtml(d.name)}</option>`).join("");
-  alertSel.addEventListener("change", () => alertSel.classList.toggle("armed", !!alertSel.value));
+  let alertTo = [];
+  function paintAlertSel() {
+    alertTo = alertTo.filter(id => getDept(id));
+    const names = alertTo.map(id => getDept(id).name);
+    alertSel.textContent = !names.length ? "ไม่แจ้งเตือน" : names.length <= 2 ? `แจ้งเตือน → ${names.join(", ")}` : `แจ้งเตือน ${names.length} แผนก`;
+    alertSel.title = names.length ? "แจ้งเตือน → " + names.join(", ") : "ส่งเป็นการแจ้งเตือนไปแผนก (เด้ง popup)";
+    alertSel.classList.toggle("armed", names.length > 0);
+  }
+  alertSel.addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (document.querySelector(".alert-dept-pop")) { document.querySelector(".alert-dept-pop").remove(); return; }
+    const pop = document.createElement("div");
+    pop.className = "alert-dept-pop";
+    const paint = () => {
+      pop.innerHTML = `<button type="button" class="adp-none${alertTo.length ? "" : " on"}" data-none>ไม่แจ้งเตือน</button>` +
+        (state.departments || []).map(d => `<label class="adp-row"><input type="checkbox" value="${escapeHtml(d.id)}" ${alertTo.includes(d.id) ? "checked" : ""} />${deptIco(d)}<span>${escapeHtml(d.name)}</span></label>`).join("");
+      pop.querySelector("[data-none]").addEventListener("click", () => { alertTo = []; paintAlertSel(); off(); });
+      pop.querySelectorAll("input").forEach(i => i.addEventListener("change", () => {
+        alertTo = i.checked ? [...alertTo, i.value] : alertTo.filter(x => x !== i.value);
+        paintAlertSel(); paint();
+      }));
+    };
+    paint();
+    document.body.appendChild(pop);
+    const r = alertSel.getBoundingClientRect(), ph = pop.offsetHeight, pw = pop.offsetWidth;
+    pop.style.left = Math.max(8, Math.min(r.left, window.innerWidth - pw - 8)) + "px";
+    pop.style.top = (r.top - ph - 6 >= 8 ? r.top - ph - 6 : Math.min(r.bottom + 6, window.innerHeight - ph - 8)) + "px";
+    const offDoc = (ev) => { if (!pop.contains(ev.target) && ev.target !== alertSel) off(); };
+    const offKey = (ev) => { if (ev.key === "Escape") off(); };
+    function off() { pop.remove(); document.removeEventListener("mousedown", offDoc, true); document.removeEventListener("keydown", offKey, true); }
+    setTimeout(() => { document.addEventListener("mousedown", offDoc, true); document.addEventListener("keydown", offKey, true); }, 0);
+  });
+  paintAlertSel();
   modal.querySelector('[data-act="attach"]').addEventListener("click", () => photoInput.click());
   modal.querySelector('[data-act="attach-file"]').addEventListener("click", () => {
     if (!driveConfigured()) { toast("แนบไฟล์ได้เมื่อตั้งค่าโฟลเดอร์ Google Drive แล้ว — ตอนนี้แนบได้เฉพาะรูป (📷)"); return; }
@@ -10037,23 +10183,23 @@ function openTaskModal(taskId, defaults={}) {
   function postComment() {
     if (!canComment()) { permDenied("สิทธิ์ของคุณคอมเมนต์ไม่ได้"); return; }
     const text = commentInput.value.trim();
-    const toDept = alertSel.value;
+    const toDepts = alertTo.slice();
     const items = attachList.items;
     if (!text && !items.length) return;   // need a message or an attachment
-    if (!driveConfigured()) { finishPost(text, toDept, { photo: legacyPhoto(items), files: [] }); return; }
+    if (!driveConfigured()) { finishPost(text, toDepts, { photo: legacyPhoto(items), files: [] }); return; }
     // the comment appears right away; files show "กำลังอัปโหลด" and are filled in by the background queue
     const files = pendingEntries(items, taskFolderName(task));
-    finishPost(text, toDept, { photo: null, files });
+    finishPost(text, toDepts, { photo: null, files });
     if (files.length) queueUpload(files, task);
   }
-  function finishPost(text, toDept, { photo, files }) {
+  function finishPost(text, toDepts, { photo, files }) {
     const mentions = extractMentions(text);
     const att = Object.assign(files.length ? { files } : {}, mentions.length ? { mentions } : {});
     const lbl = attachLabel(photo, files);
     const waitKeys = (files || []).filter(f => f.up === "pending" && f.key).map(f => f.key);
-    if (toDept) {
-      const dept = getDept(toDept) || { name: toDept };
-      const c = { id: uid("al"), type: "alert", author: currentUser(), toDept, text, photo: photo || null, ...att, at: Date.now(), ack: false };
+    if (toDepts.length) {
+      const dept = { name: toDepts.map(id => (getDept(id) || { name: id }).name).join(", ") };
+      const c = { id: uid("al"), type: "alert", author: currentUser(), toDept: toDepts[0], toDepts, text, photo: photo || null, ...att, at: Date.now(), ack: false, acks: [] };
       task.comments.push(c);
       if (waitKeys.length) holdPushUntilUploaded(c, waitKeys, task); else pushForComment(task, c);
       toast(waitKeys.length ? `จะแจ้งเตือนแผนก “${dept.name}” เมื่ออัปโหลดเสร็จ` : `ส่งแจ้งเตือนไปแผนก “${dept.name}” แล้ว`);
@@ -10065,7 +10211,7 @@ function openTaskModal(taskId, defaults={}) {
       if (taskRelevantToMe(task)) pushNotify("comment", "💬 คอมเมนต์ใหม่", `${task.title} · ${currentUser()}: ${text || lbl}`, "cm-" + task.id);
     }
     commentInput.value = "";
-    attachList.clear(); alertSel.value = ""; alertSel.classList.remove("armed");
+    attachList.clear(); alertTo = []; paintAlertSel();
     autoGrow();
     persistComments(); renderFeed(); renderBell();
   }
@@ -11920,8 +12066,9 @@ function itTickEvents(prevJson, json, who) {
   try { a = JSON.parse(prevJson); b = JSON.parse(json); } catch (_) { return []; }
   const cfg = b && b.settings && b.settings.itSync;
   if (!cfg || !cfg.pushBack || !a || !Array.isArray(a.tasks) || !Array.isArray(b.tasks)) return [];
-  const was = new Map();
-  a.tasks.forEach(t => (t.subtasks || []).forEach(sb => (sb.checklist || []).forEach(i => was.set(t.id + "|" + sb.id + "|" + i.id, !!i.done))));
+  const was = new Map();   // key → "done|note"
+  const sig = i => (i.done ? "1" : "0") + "|" + (i.noteDone ? "1" : "0") + "|" + (i.note || "");
+  a.tasks.forEach(t => (t.subtasks || []).forEach(sb => (sb.checklist || []).forEach(i => was.set(t.id + "|" + sb.id + "|" + i.id, sig(i)))));
   const out = [], at = new Date().toISOString();
   b.tasks.forEach(t => {
     if (!(t.ext && t.ext.src === "it" && t.ext.so)) return;
@@ -11931,10 +12078,10 @@ function itTickEvents(prevJson, json, who) {
       (sb.checklist || []).forEach(i => {
         if (!(i.ext && i.ext.id)) return;
         const k = t.id + "|" + sb.id + "|" + i.id;
-        if (!was.has(k) || was.get(k) === !!i.done) return;   // new item / unchanged → not a tick
+        if (!was.has(k) || was.get(k) === sig(i)) return;   // new item / unchanged → nothing to send
         const d = (b.departments || []).find(x => x.id === i.deptId);
         const code = String((cfg.codes && cfg.codes[i.deptId]) || "").split(",")[0].trim() || (d && d.name) || "";
-        out.push({ event_id: uid("ev"), at, so: t.ext.so, mo, checklist: { id: i.ext.id, dept: code, text: i.text || "", done: !!i.done }, by: who });
+        out.push({ event_id: uid("ev"), at, so: t.ext.so, mo, checklist: { id: i.ext.id, dept: code, text: i.text || "", done: !!i.done, note: i.note || "", note_done: !!(i.note && i.noteDone) }, by: who });
       });
     });
   });
@@ -13014,10 +13161,10 @@ function pushForComment(task, c, boardId) {
   const who = c.author || currentUser();
   const snippet = (c.text || "").replace(/\s+/g, " ").trim();
   if (c.type === "alert" && c.toUser) sendPush({ userIds: [c.toUser], boardId: bid, taskId: task.id, title: "📌 มีงานมอบหมายให้คุณ", body: `${task.title} · จาก ${who}`, tag: "rt-asg-" + c.id });
-  else if (c.type === "alert" && c.toDept) {
-    const d = getDeptIn(root.boards[bid] || state, c.toDept);
-    sendPush({ deptId: c.toDept, boardId: bid, taskId: task.id, title: `🔔 แจ้งเตือนถึงแผนก${d ? " " + d.name : ""}`, body: `${task.title}${snippet ? " · " + snippet : ""}`, tag: "rt-alert-" + c.id });
-  }
+  else if (c.type === "alert" && alertDepts(c).length) alertDepts(c).forEach(dep => {
+    const d = getDeptIn(root.boards[bid] || state, dep);
+    sendPush({ deptId: dep, boardId: bid, taskId: task.id, title: `🔔 แจ้งเตือนถึงแผนก${d ? " " + d.name : ""}`, body: `${task.title}${snippet ? " · " + snippet : ""}`, tag: "rt-alert-" + c.id });
+  });
   const menIds = Array.isArray(c.mentions) ? c.mentions.filter(id => crossMentionOn(root.boards[bid]) || !teamProfiles.has(id) || personSeesTask(teamProfiles.get(id), task, root.boards[bid])) : [];
   if (menIds.length) sendPush({ userIds: menIds, boardId: bid, taskId: task.id, title: "💬 มีคนกล่าวถึงคุณ", body: `${task.title} · ${who}: ${snippet}`, tag: "rt-men-" + c.id });
 }
@@ -14777,11 +14924,40 @@ function attImgErr(img) {
 //   why the bell/popup/pins all go quiet for an admin who hasn't picked a department.
 // is this unacknowledged alert aimed at me? personal (toUser = assignment) or my department (toDept)
 const sentByMe = (c) => !!(c && c.author && currentProfile && c.author === currentProfile.display_name);
+/* ★ 2026-10-27 (owner): a DEPARTMENT alert is acknowledged PER PERSON — everyone in the target department(s) keeps seeing the
+   popup until they press รับทราบ themselves (c.acks = [{ id, name, at }]). c.ack / ackBy / ackAt still mean "someone acknowledged"
+   (the first) for older app versions. An alert acknowledged before this change (c.ack, no c.acks) stays done for everyone.
+   ปฏิเสธ still closes it for all. Personal alerts (toUser) unchanged. c.toDepts = [ids]: one alert to several departments
+   (c.toDept = the first, so older versions still show it to that department). */
+function alertDepts(c) { return c && Array.isArray(c.toDepts) && c.toDepts.length ? c.toDepts : (c && c.toDept ? [c.toDept] : []); }
+function alertDoneForMe(c) {
+  if (c.rejected) return true;
+  if (c.toUser || !Array.isArray(c.acks)) return !!c.ack;
+  const me = currentProfile && currentProfile.id;
+  return !!me && c.acks.some(a => a && a.id === me);
+}
+function ackAlert(c) {
+  const at = Date.now(), me = currentProfile && currentProfile.id;
+  if (!c.toUser) {
+    if (!Array.isArray(c.acks)) c.acks = [];
+    if (me && !c.acks.some(a => a && a.id === me)) c.acks.push({ id: me, name: currentUser(), at });
+  }
+  if (!c.ack) { c.ack = true; c.ackBy = currentUser(); c.ackAt = at; }
+}
+// "รับทราบแล้ว …" line: everyone who acknowledged (per person) or the single acknowledger (older alerts / personal)
+function alertAckText(c) {
+  const list = Array.isArray(c.acks) && c.acks.length ? c.acks : (c.ack ? [{ name: c.ackBy || "—", at: c.ackAt }] : []);
+  if (!list.length) return "";
+  const names = list.map(a => a.name || "—");
+  const last = list.reduce((m, a) => Math.max(m, a.at || 0), 0);
+  return `รับทราบแล้ว${list.length > 1 ? " " + list.length + " คน: " : "โดย "}${names.join(", ")}${last ? " · " + formatDateTimeTH(last) : ""}`;
+}
+function alertDeptNames(c, ws) { return alertDepts(c).map(id => ((ws ? getDeptIn(ws, id) : getDept(id)) || { name: id }).name).join(", "); }
 function alertIsForMe(c) {
-  if (!c || c.type !== "alert" || c.ack || sentByMe(c)) return false;   // an alert I sent myself never waits for me
+  if (!c || c.type !== "alert" || alertDoneForMe(c) || sentByMe(c)) return false;   // an alert I sent myself never waits for me
   if (c.toUser) return !!(currentProfile && c.toUser === currentProfile.id);
   const my = myDeptId();
-  return !!my && c.toDept === my;
+  return !!my && alertDepts(c).includes(my);
 }
 // @mentions: comment.mentions = [profileId]; each mentioned person acknowledges separately (mentionAck)
 function mentionPendingForMe(c) {
@@ -14898,7 +15074,7 @@ function attachMentionPicker(input) {
 function alertTarget(c) {
   if (c.type !== "alert") return { name: "กล่าวถึงคุณ" };
   if (c.toUser) return { name: personName(teamProfiles.get(c.toUser)) };
-  return getDept(c.toDept) || { name: c.toDept || "?" };
+  return { name: alertDeptNames(c) || "?" };
 }
 // my department in ANY board (same precedence as myDeptId(), which only covers the active board)
 function myDeptIn(ws) {
@@ -14908,10 +15084,10 @@ function myDeptIn(ws) {
   return (bd && getDeptIn(ws, bd)) ? bd : "";
 }
 function alertIsForMeIn(c, ws) {
-  if (!c || c.type !== "alert" || c.ack || sentByMe(c)) return false;
+  if (!c || c.type !== "alert" || alertDoneForMe(c) || sentByMe(c)) return false;
   if (c.toUser) return !!(currentProfile && c.toUser === currentProfile.id);
   const my = myDeptIn(ws);
-  return !!my && c.toDept === my;
+  return !!my && alertDepts(c).includes(my);
 }
 // ★ everything waiting for me in EVERY calendar I can open (bell + popup) — an assignment on another
 //   board no longer stays invisible until you happen to switch to it. Each entry knows its boardId.
@@ -15014,7 +15190,7 @@ function alertHistory() {
     const my = myDeptIn(ws);
     (ws.tasks || []).forEach(t => (t.comments || []).forEach(c => {
       if ((c.at || 0) < since) return;
-      const alertMine = c.type === "alert" && c.ack && !sentByMe(c) && (c.toUser ? c.toUser === me : (!!my && c.toDept === my));
+      const alertMine = c.type === "alert" && alertDoneForMe(c) && !sentByMe(c) && (c.toUser ? c.toUser === me : (!!my && alertDepts(c).includes(my)));
       const mentionMine = Array.isArray(c.mentions) && c.mentions.includes(me) && (c.mentionAck || []).includes(me);
       if (!alertMine && !mentionMine) return;
       if (c.toUser && !iSeeTask(t, ws)) return;
@@ -15059,13 +15235,13 @@ function openAlertPopup(list, opts = {}) {
     histEl.innerHTML = items.length ? "" : `<div class="am2-empty">${ico("history")}<span>ยังไม่มีประวัติใน 30 วัน</span></div>`;
     items.forEach(({ task, c, boardId, kind }) => {
       const bid = boardId || root.activeBoard, ws = root.boards[bid] || state;
-      const deptName = kind === "dept" ? ((getDeptIn(ws, c.toDept) || {}).name || c.toDept || "") : "";
+      const deptName = kind === "dept" ? alertDeptNames(c, ws) : "";
       const kindLabel = kind === "mention" ? `${ico("message")} กล่าวถึงคุณ` : kind === "personal" ? `${ico("user")} ถึงคุณ` : `${ico("bell")} แผนก ${escapeHtml(deptName)}`;
       const who = c.author || "—";
       const prof = [...teamProfiles.values()].find(p => p.display_name === who);
       const res = kind === "mention" ? `${ico("check-circle")} รับทราบแล้ว`
         : c.rejected ? `${ico("x-circle")} ปฏิเสธโดย ${escapeHtml(c.rejectedBy || "—")}${c.rejectReason ? " — " + escapeHtml(c.rejectReason) : ""} · ${escapeHtml(relTimeTH(c.rejectedAt))}`
-        : `${ico("check-circle")} รับทราบโดย ${escapeHtml(c.ackBy || "—")} · ${escapeHtml(relTimeTH(c.ackAt))}`;
+        : `${ico("check-circle")} ${escapeHtml(alertAckText(c))}`;
       const card = document.createElement("div");
       card.className = "alert-card am2-card am2-done am2-" + kind;
       card.innerHTML = `
@@ -15092,7 +15268,7 @@ function openAlertPopup(list, opts = {}) {
     const isAlert = alertIsForMeIn(c, ws);   // false = only an @mention of me (no reject / reply thread)
     const dept = !isAlert ? { name: "กล่าวถึงคุณ" }
       : c.toUser ? { name: personName(teamProfiles.get(c.toUser)) }
-      : (getDeptIn(ws, c.toDept) || { name: c.toDept || "?" });
+      : { name: alertDeptNames(c, ws) || "?" };
     const card = document.createElement("div");
     // ★ 2026-10-08 redesign: avatar · who + when · type pill · project · message bubble · actions
     const kind = !isAlert ? "mention" : c.toUser ? "personal" : "dept";
@@ -15130,7 +15306,7 @@ function openAlertPopup(list, opts = {}) {
     card.querySelector("[data-ack]").addEventListener("click", () => {
       if (mentionPendingForMe(c)) ackMention(c);
       if (!isAlert) { task.updatedAt = Date.now(); saveState(); renderAll(); resolveCard(); return; }
-      c.ack = true; c.ackBy = currentUser(); c.ackAt = Date.now();
+      ackAlert(c);
       logActivity(task, `รับทราบการแจ้งเตือน (${dept.name})`);
       task.updatedAt = Date.now(); saveState(); renderAll();
       resolveCard();
@@ -15667,10 +15843,10 @@ function mCardHtml(t, due, dep, bid) {
           <button type="button" class="m-dot" data-substatus="${escapeHtml(x.id)}" style="--dot:${getStatus(x.statusId).color}" aria-label="สถานะตู้"></button>
           <span class="m-cab-name">${x.mo ? `<span class="m-mo">${escapeHtml(x.mo)}</span>` : ""}${escapeHtml(x.text || "(ไม่มีชื่อตู้)")}</span>
           ${(() => { const bp = bomProgress(x); return bp.total ? `<button type="button" class="m-bom${bp.done === bp.total ? " full" : ""}" data-bom="${escapeHtml(x.id)}">${ico("archive")}${bp.done}/${bp.total}</button>` : ""; })()}
-          <span class="m-cab-n">${p.done}/${p.total}</span><span class="m-chev">${so ? "▴" : "▾"}</span>
+          ${(() => { const n = items.filter(i => i.note && !i.noteDone).length; return n ? `<span class="m-cab-note">${n}</span>` : ""; })()}<span class="m-cab-n">${p.done}/${p.total}</span><span class="m-chev">${so ? "▴" : "▾"}</span>
         </div>
         ${so ? `<div class="m-items">${groups.map(([gid, list]) => (gid ? `<div class="m-items-dept">${escapeHtml((getDept(gid) || {}).name || "")}</div>` : "") + list.map(i =>
-          `<button type="button" class="m-item${i.done ? " on" : ""}" data-item="${escapeHtml(x.id)}|${escapeHtml(i.id)}"><span class="m-box">${i.done ? ico("check") : ""}</span><span class="m-item-t">${escapeHtml(i.text || "")}</span>${tickWhoHtml(i)}</button>`).join("")).join("")}</div>` : ""}
+          `<div class="m-item-wrap"><button type="button" class="m-item${i.done ? " on" : ""}" data-item="${escapeHtml(x.id)}|${escapeHtml(i.id)}"><span class="m-box">${i.done ? ico("check") : ""}</span><span class="m-item-t">${escapeHtml(i.text || "")}${i.note ? `<span class="m-note${i.noteDone ? " done" : ""}">${escapeHtml(i.note)}</span>` : ""}</span>${tickWhoHtml(i)}</button><button type="button" class="m-note-btn${i.note && !i.noteDone ? " has" : ""}" data-note="${escapeHtml(x.id)}|${escapeHtml(i.id)}" aria-label="หมายเหตุ">${ico("message")}</button></div>`).join("")).join("")}</div>` : ""}
       </div>`;
     }).join("");
     const manual = dep && stg && !deptUsesChecklist(t, dep)
@@ -15796,12 +15972,28 @@ function mListClick(e) {
   if (!t) return;
   const who = e.target.closest("[data-who]");
   if (who && e.target.closest(".m-item")) { toast(who.dataset.who); return; }   // tap the face = who ticked + when (no untick)
+  const noteBtn = e.target.closest("[data-note]");
+  if (noteBtn) {
+    if (!canTick()) { permDenied("สิทธิ์ของคุณแก้เช็คลิสต์ไม่ได้"); return; }
+    const [sid, iid] = noteBtn.dataset.note.split("|"), tid = t.id;
+    const find = () => { const tt = ((root.boards[bid] || {}).tasks || []).find(x => x.id === tid), sb = tt && (tt.subtasks || []).find(x => x.id === sid);
+      return { tt, it: sb && (sb.checklist || []).find(i => i.id === iid) }; };
+    const f0 = find(); if (!f0.it) return;
+    promptDialog({ title: f0.it.text || "หมายเหตุ", placeholder: "หมายเหตุ…", value: f0.it.note || "", confirmText: "บันทึก", altText: !f0.it.note ? "" : f0.it.noteDone ? "เปิดอีกครั้ง" : "✓ เคลียร์" }).then(v => {
+      if (v === null) return;
+      const f = find(); if (!f.it) return;   // the calendar may have been refreshed while typing → look it up again
+      const changed = v && v.alt ? setNoteDone(f.tt, f.it, !f.it.noteDone) : setItemNote(f.tt, f.it, v);
+      if (changed) { f.tt.updatedAt = Date.now(); saveState(); renderAll(); }
+    });
+    return;
+  }
   const item = e.target.closest("[data-item]");
   if (item) {
     if (!canTick()) { permDenied("สิทธิ์ของคุณแก้เช็คลิสต์ไม่ได้"); return; }
     const [sid, iid] = item.dataset.item.split("|");
     const sub = (t.subtasks || []).find(x => x.id === sid), it = sub && (sub.checklist || []).find(i => i.id === iid);
     if (!it) return;
+    if (noteBlocksTick(it)) { toast(NOTE_BLOCK_MSG); return; }
     mWithBoard(bid, () => {   // that calendar's departments / automations
       const snap = automationSnapshot(t), was = isDeptComplete(t, it.deptId);
       it.done = !it.done; stampTick(it);
