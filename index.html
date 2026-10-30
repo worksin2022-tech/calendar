@@ -2195,7 +2195,7 @@ body.chip-dragging .task-chip.span-bar { pointer-events: none; }   /* let the da
 }
 .confirm-icon.danger { background:var(--b-fef3f2, #fef3f2); }
 .confirm-title { font-size: 17px; font-weight: 700; margin-bottom: 6px; color:var(--text); }
-.confirm-msg { font-size: 13.5px; color:var(--text-dim); line-height: 1.55; margin-bottom: 20px; }
+.confirm-msg { font-size: 13.5px; color:var(--text-dim); line-height: 1.55; margin-bottom: 20px; white-space: pre-line; }
 .confirm-actions { display: flex; gap: 10px; }
 .confirm-actions .btn { flex: 1; padding: 10px; font-weight: 600; justify-content: center; }
 .btn-danger-solid { background:var(--danger); border-color:var(--danger); color:var(--t-ffffff, #fff); }
@@ -8739,7 +8739,25 @@ function pmoTickCommands(prevJson, json) {
 function queuePmoTicks(prevJson, json, boardId) {
   if (typeof prevJson !== "string") return;
   const cmds = pmoTickCommands(prevJson, json);
-  if (cmds.length) pmoQueue(cmds, boardId);
+  if (!cmds.length) return;
+  pmoQueue(cmds, boardId);
+  // ★ 2026-10-30 (owner: ติ๊กซ้ำใน PMO แล้วแอปไม่รับ) — what we just sent is what the PMO will have → remember it as the PMO's value.
+  //   Otherwise: PMO ✓ (remembered) → we untick → someone re-ticks IN the PMO before the bot saw the ✗ → PMO ✓ = remembered
+  //   → looked like "no change in the PMO" and the app kept ✗.
+  const ws = root.boards[boardId]; let touched = false;
+  if (ws) cmds.forEach(({ op }) => {
+    if (op.type !== "checklist" && op.type !== "checklist_remark") return;
+    (ws.tasks || []).forEach(t => {
+      if (!(t.ext && t.ext.src === "pmo" && String(t.ext.pmoTaskId) === String(op.taskId))) return;
+      (t.subtasks || []).forEach(sb => [...(sb.checklist || []), ...((sb.bom && sb.bom.items) || [])].forEach(i => {
+        if (!(i.ext && String(i.ext.pmoItemId) === String(op.itemId))) return;
+        const last = { ...(i.ext.pmoLast || {}) };
+        if (op.type === "checklist") last.done = !!op.done; else last.remark = op.remark;
+        i.ext.pmoLast = last; touched = true;
+      }));
+    });
+  });
+  if (touched) saveState();
 }
 // accepted job → the task here (an existing task of the same PMO project gets this department added — never a second copy)
 function pmoUpsertTask(row) {
@@ -8875,7 +8893,7 @@ async function pullPmoState(opts = {}) {
     const { data, error } = await qy;
     if (error) { report = "อ่านข้อมูลไม่สำเร็จ: " + error.message; return report; }
     if (!Array.isArray(data) || bid !== root.activeBoard) return "สลับปฏิทินระหว่างดึง";
-    let last = since || "", save = false, changes = 0;
+    let last = since || "", save = false, changes = 0; const mismatch = [];
     data.forEach(row => {
       if (row.updated_at > last) last = row.updated_at;
       const t = (state.tasks || []).find(x => x.ext && x.ext.src === "pmo" && String(x.ext.pmoTaskId) === String(row.pmo_task_id));
@@ -8911,8 +8929,12 @@ async function pullPmoState(opts = {}) {
             added++; return;
           }
           const i = ci || bi, lastSeen = i.ext.pmoLast;
-          if ((!lastSeen || lastSeen.done !== done) && pmoSetDone(i, done)) ticks++;
-          if (ci && (!lastSeen || (lastSeen.remark || "") !== remark) && pmoNoteFromRemark(ci, remark)) notes++;
+          // opts.force (⚙ › ใช้ค่าตาม PMO): take the PMO value even if this app thinks it changed it last
+          if ((opts.force || !lastSeen || lastSeen.done !== done) && pmoSetDone(i, done)) ticks++;
+          if (ci && (opts.force || !lastSeen || (lastSeen.remark || "") !== remark) && pmoNoteFromRemark(ci, remark)) notes++;
+          if (!!i.done !== done || (ci && pmoRemark(ci) !== remark.trim())) {
+            mismatch.push({ name: i.text || i.code || i.name || "", here: { done: !!i.done, remark: ci ? pmoRemark(ci) : undefined }, pmo: { done, remark }, lastSeen: lastSeen || null, so: t.so || "" });
+          }
           // ★ renamed in the PMO (compared with what the PMO last had — a rename made here stays until the PMO changes it)
           const prevText = lastSeen && lastSeen.text !== undefined ? lastSeen.text : null;
           if (text && (prevText === null ? false : prevText !== text)) {
@@ -8939,7 +8961,9 @@ async function pullPmoState(opts = {}) {
     if (save) { saveState(); renderAll(); }
     if (last) { try { localStorage.setItem(KEY, last); } catch (_) {} }
     report = `งาน PMO ในปฏิทินนี้ ${tasks.length} · ได้สถานะ ${data.length} โครงการ · เปลี่ยน ${changes} รายการ`;
+    if (mismatch.length) console.warn("[pmo state] ไม่ตรงกับ PMO (แอปถือว่าแก้ในแอปล่าสุด)", mismatch);
     console.info("[pmo state]", report, { since, rows: data.map(r => [r.pmo_task_id, r.updated_at]) });
+    if (opts.withMismatch) return { report, mismatch };
     return report;
   } catch (e) { console.warn("pmo state", e); return "ผิดพลาด: " + (e.message || e); }
   finally { _pmoStBusy = false; }
@@ -12616,8 +12640,21 @@ function buildItSyncPanel(container) {
   botSec.querySelector("[data-pmo-on]").addEventListener("change", (e) => { pc.enabled = e.target.checked; saveState(); refreshPmoBadge(); });
   botSec.querySelector("[data-pmo-pull]").addEventListener("click", async (e) => {
     const b = e.currentTarget; b.disabled = true;
-    const r = await pullPmoState({ full: true }); await pullPmoComments(); refreshPmoBadge();
-    b.disabled = false; toast(r || "เสร็จแล้ว");
+    try {
+      const r = await pullPmoState({ full: true, withMismatch: true }); await pullPmoComments(); refreshPmoBadge();
+      if (typeof r === "string") { toast(r); return; }
+      if (!r.mismatch.length) { toast(r.report + " · ตรงกับ PMO ทุกรายการ"); return; }
+      // ★ some lines differ from the PMO because this app thinks it changed them last → offer to take the PMO's values
+      const sbx = getSupabase();
+      const ids = (state.tasks || []).filter(t => t.ext && t.ext.src === "pmo").map(t => t.id);
+      const { data: waiting } = sbx ? await sbx.from("pmo_commands").select("id").in("status", ["queued", "taken"]).in("task_id", ids.length ? ids : ["-"]) : { data: [] };
+      const pend = pmoOutbox().length + ((waiting || []).length);
+      const names = r.mismatch.slice(0, 6).map(m => `• ${m.so ? m.so + " · " : ""}${m.name}: แอป ${m.here.done ? "ติ๊ก" : "ไม่ติ๊ก"} / PMO ${m.pmo.done ? "ติ๊ก" : "ไม่ติ๊ก"}`).join("\n");
+      if (pend) { toast(`ไม่ตรงกับ PMO ${r.mismatch.length} รายการ แต่ยังมีคำสั่งรอบอททำ ${pend} รายการ — รอสักครู่แล้วลองใหม่`); return; }
+      if (!await confirmDialog({ icon: "restore", title: `ไม่ตรงกับ PMO ${r.mismatch.length} รายการ`, message: names + (r.mismatch.length > 6 ? `\n+${r.mismatch.length - 6} รายการ` : "") + "\n\nใช้ค่าตาม PMO?", confirmText: "ใช้ค่าตาม PMO" })) return;
+      const r2 = await pullPmoState({ full: true, force: true });
+      toast(typeof r2 === "string" ? r2 : "ใช้ค่าตาม PMO แล้ว");
+    } finally { b.disabled = false; }
   });
   const sbp = getSupabase();
   const paintMap = (pmoDepts) => {
