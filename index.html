@@ -8959,6 +8959,7 @@ function pmoSetDone(i, done) {
   return true;
 }
 // opts.full = ignore "since" (read every tracked project again) · returns a short report (⚙ บอท PMO › ดึงจาก PMO ตอนนี้)
+// ★ 2026-10-30 (owner): runs in whichever browser has the board open → activity lines are signed "PMO", not that person
 async function pullPmoState(opts = {}) {
   if (_pmoStBusy) return "กำลังดึงอยู่";
   if (!_cloudReady || !currentProfile) return "ยังไม่เชื่อมต่อ cloud";
@@ -9056,11 +9057,11 @@ async function pullPmoState(opts = {}) {
         });
       });
       const fatMsg = pmoApplyFat(t, row.data && row.data.fat);
-      if (fatMsg) { logActivity(t, "อัปเดตจาก PMO · " + fatMsg); changes++; save = true; t.updatedAt = Date.now(); }
-      if (gone.length) { logActivity(t, `ใน PMO ไม่มีรายการนี้แล้ว: ${gone.slice(0, 5).join(", ")}${gone.length > 5 ? " +" + (gone.length - 5) : ""}`); save = true; }
+      if (fatMsg) { logActivity(t, "อัปเดต · " + fatMsg, "PMO"); changes++; save = true; t.updatedAt = Date.now(); }
+      if (gone.length) { logActivity(t, `ไม่มีรายการนี้แล้ว: ${gone.slice(0, 5).join(", ")}${gone.length > 5 ? " +" + (gone.length - 5) : ""}`, "PMO"); save = true; }
       changes += ticks + notes + renamed + added + moved;
       if (ticks || notes || renamed || added || moved) {
-        logActivity(t, `อัปเดตจาก PMO${ticks ? " · ติ๊ก " + ticks + " รายการ" : ""}${notes ? " · หมายเหตุ " + notes + " รายการ" : ""}${renamed ? " · แก้ชื่อ " + renamed + " รายการ" : ""}${added ? " · เพิ่ม " + added + " รายการ" : ""}${moved ? " · ย้ายไปรายการอุปกรณ์ " + moved + " รายการ" : ""}`);
+        logActivity(t, `อัปเดต${ticks ? " · ติ๊ก " + ticks + " รายการ" : ""}${notes ? " · หมายเหตุ " + notes + " รายการ" : ""}${renamed ? " · แก้ชื่อ " + renamed + " รายการ" : ""}${added ? " · เพิ่ม " + added + " รายการ" : ""}${moved ? " · ย้ายไปรายการอุปกรณ์ " + moved + " รายการ" : ""}`, "PMO");
         if (snap && typeof runAutomations === "function") { try { runAutomations(t, snap); } catch (e) { console.warn("pmo automations", e); } }
         t.updatedAt = Date.now(); save = true;
       }
@@ -11263,10 +11264,10 @@ function formatDateTimeTH(ts) {
 /* ---------- Activity logging ---------- */
 // currentUser() is defined earlier, near the Supabase auth block (returns the signed-in profile's name)
 // append a system activity entry to a task's feed (records who did it)
-function logActivity(task, text) {
+function logActivity(task, text, author) {   // author: default = whoever is using this browser; "PMO" for changes pulled from PMO
   if (!task) return;
   if (!Array.isArray(task.comments)) task.comments = [];
-  task.comments.push({ id: uid("ac"), type: "system", author: currentUser(), text, at: Date.now() });
+  task.comments.push({ id: uid("ac"), type: "system", author: author || currentUser(), text, at: Date.now() });
 }
 // compare a task before/after editing in the modal -> list of activity messages
 function diffTaskActivity(before, after) {
