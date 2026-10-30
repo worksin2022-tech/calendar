@@ -8692,7 +8692,7 @@ function pmoTickCommands(prevJson, json) {
   if (!cfg || !cfg.enabled || !a || !Array.isArray(a.tasks) || !Array.isArray(b.tasks)) return [];
   const was = new Map();
   a.tasks.forEach(t => (t.subtasks || []).forEach(sb => {
-    (sb.checklist || []).forEach(i => was.set(t.id + "|" + sb.id + "|" + i.id, { done: !!i.done, remark: pmoRemark(i) }));
+    (sb.checklist || []).forEach(i => was.set(t.id + "|" + sb.id + "|" + i.id, { done: !!i.done, remark: pmoRemark(i), text: i.text || "" }));
     ((sb.bom && sb.bom.items) || []).forEach(i => was.set(t.id + "|" + sb.id + "|bom|" + i.id, { done: !!i.done }));
   }));
   const out = [];
@@ -8724,6 +8724,9 @@ function pmoTickCommands(prevJson, json) {
         const last = i.ext.pmoLast;
         if (w.done !== !!i.done && !(last && last.done === !!i.done)) out.push({ task_id: t.id, label: `${i.done ? "ติ๊ก" : "เอาติ๊กออก"} "${i.text || ""}" · ${where}`,
           op: { type: "checklist", taskId: t.ext.pmoTaskId, cabinetId: sb.ext.pmoCabinetId, itemId: i.ext.pmoItemId, done: !!i.done } });
+        const nt = String(i.text || "").trim();
+        if (nt && (w.text || "").trim() !== nt && !(last && (last.text || "").trim() === nt)) out.push({ task_id: t.id, label: `แก้ชื่อ "${nt}" · ${where}`,
+          op: { type: "checklist_rename", taskId: t.ext.pmoTaskId, itemId: i.ext.pmoItemId, text: nt } });
         const r = pmoRemark(i);
         if (w.remark !== r && !(last && (last.remark || "") === r)) out.push({ task_id: t.id, label: `หมายเหตุ "${i.text || ""}" · ${where}`,
           op: { type: "checklist_remark", taskId: t.ext.pmoTaskId, itemId: i.ext.pmoItemId, remark: r } });
@@ -8731,6 +8734,20 @@ function pmoTickCommands(prevJson, json) {
       // ★ 2026-10-30 (owner): a PMO checklist line deleted here → deleted in the PMO too. Checklist lines only, one by one — a removed
       //   cabinet / task / equipment list (e.g. a Beecy re-import) never deletes anything in the PMO.
       const oldSub = (oldTasks.get(t.id) || { subtasks: [] }).subtasks.find(x => x.id === sb.id);
+      // ★ 2026-10-30 (owner): a checklist line added HERE (in a department matched to the PMO) → added in the PMO, in that department's
+      //   checklist work group of this cabinet; it waits (ext.pmoPendingAdd) until the PMO's copy shows up and is linked to it
+      if (oldSub) (sb.checklist || []).forEach(i => {
+        const txt = String(i.text || "").trim();
+        if (!txt || (i.ext && (i.ext.pmoItemId != null || i.ext.pmoPendingAdd))) return;
+        const before = (oldSub.checklist || []).find(x => x.id === i.id);
+        if (before && String(before.text || "").trim() === txt) return;   // nothing new since last save
+        const pd = cfg.deptMap && cfg.deptMap[i.deptId];
+        const works = (sb.ext && sb.ext.pmoWorks) || [];
+        const w = pd && (works.find(x => x.deptId === pd && !/อุปกรณ์/.test(x.name || "")) || works.find(x => x.deptId === pd));
+        if (!w) return;   // this cabinet has no work group of that department in the PMO → stays here only
+        out.push({ task_id: t.id, item_id: i.id, label: `เพิ่ม "${txt}" · ${t.so || t.title || ""} · ${sb.mo || sb.text || ""}`,
+          op: { type: "checklist_add", taskId: t.ext.pmoTaskId, cabinetId: sb.ext.pmoCabinetId, deptId: pd, subtaskId: w.id, text: txt } });
+      });
       if (oldSub) {
         const nowIds = new Set((sb.checklist || []).map(i => i.id));
         (oldSub.checklist || []).forEach(i => {
@@ -8759,7 +8776,21 @@ function queuePmoTicks(prevJson, json, boardId) {
   //   Otherwise: PMO ✓ (remembered) → we untick → someone re-ticks IN the PMO before the bot saw the ✗ → PMO ✓ = remembered
   //   → looked like "no change in the PMO" and the app kept ✗.
   const ws = root.boards[boardId]; let touched = false;
-  if (ws) cmds.forEach(({ op }) => {
+  if (ws) cmds.forEach(({ op, item_id }) => {
+    if (op.type === "checklist_add") {
+      (ws.tasks || []).forEach(t => (t.subtasks || []).forEach(sb => (sb.checklist || []).forEach(i => {
+        if (i.id !== item_id || (i.ext && i.ext.pmoItemId != null)) return;
+        i.ext = { src: "pmo", pmoPendingAdd: true, pmoSentText: op.text }; touched = true;
+      })));
+      return;
+    }
+    if (op.type === "checklist_rename") {
+      (ws.tasks || []).forEach(t => (t.subtasks || []).forEach(sb => (sb.checklist || []).forEach(i => {
+        if (!(i.ext && String(i.ext.pmoItemId) === String(op.itemId) && t.ext && String(t.ext.pmoTaskId) === String(op.taskId))) return;
+        i.ext.pmoLast = { ...(i.ext.pmoLast || {}), text: op.text }; touched = true;
+      })));
+      return;
+    }
     if (op.type === "checklist_delete") {
       (ws.tasks || []).forEach(t => {
         if (!(t.ext && t.ext.src === "pmo" && String(t.ext.pmoTaskId) === String(op.taskId))) return;
@@ -8805,6 +8836,7 @@ function pmoUpsertTask(row) {
       sub = { id: uid("st"), text: c.text || c.mo || "ตู้", mo: c.mo || "", statusId: st0, date: c.date || null, checklist: [], ext: { src: "pmo", pmoCabinetId: c.id, mo: c.mo || "" } };
       t.subtasks.push(sub);
     }
+    if (Array.isArray(c.works) && sub.ext) sub.ext.pmoWorks = c.works;
     if (!Array.isArray(sub.checklist)) sub.checklist = [];
     (c.checklist || []).forEach(it => {
       if (pmoIsEquip(it)) { pmoAddEquip(sub, it, row.so || snap.so || ""); return; }   // equipment → รายการอุปกรณ์
@@ -8935,6 +8967,7 @@ async function pullPmoState(opts = {}) {
           t.subtasks.push(sub); added++;
         }
         if (!Array.isArray(sub.checklist)) sub.checklist = [];
+        if (Array.isArray(cab.works) && sub.ext && JSON.stringify(sub.ext.pmoWorks || null) !== JSON.stringify(cab.works)) { sub.ext.pmoWorks = cab.works; save = true; }
         const seenIds = new Set();
         (cab.items || []).forEach(it => {
           seenIds.add(String(it.id));
@@ -8942,6 +8975,17 @@ async function pullPmoState(opts = {}) {
           let ci = sub.checklist.find(x => x.ext && String(x.ext.pmoItemId) === String(it.id));
           let bi = !ci && sub.bom && Array.isArray(sub.bom.items) ? sub.bom.items.find(x => x.ext && String(x.ext.pmoItemId) === String(it.id)) : null;
           if (!ci && !bi && sub.ext && Array.isArray(sub.ext.pmoDeleted) && sub.ext.pmoDeleted.includes(String(it.id))) return;   // deleted here, waiting for the bot
+          if (!ci && !bi) {   // ★ the line we added from the app, now created in the PMO → link it (never a second copy)
+            const pend = sub.checklist.find(x => x.ext && x.ext.pmoPendingAdd && x.ext.pmoItemId == null && x.ext.pmoSentText === text);
+            if (pend) {
+              pend.ext = { src: "pmo", pmoItemId: it.id, pmoLast: { done, remark, text } };
+              const fix = [];   // edited / ticked here meanwhile → send that too
+              if ((pend.text || "") !== text && (pend.text || "").trim()) { fix.push({ task_id: t.id, label: `แก้ชื่อ "${pend.text}" · ${t.so || ""}`, op: { type: "checklist_rename", taskId: t.ext.pmoTaskId, itemId: it.id, text: pend.text } }); pend.ext.pmoLast.text = pend.text; }
+              if (!!pend.done !== done) { fix.push({ task_id: t.id, label: `${pend.done ? "ติ๊ก" : "เอาติ๊กออก"} "${pend.text || ""}" · ${t.so || ""}`, op: { type: "checklist", taskId: t.ext.pmoTaskId, cabinetId: cab.id, itemId: it.id, done: !!pend.done } }); pend.ext.pmoLast.done = !!pend.done; }
+              if (fix.length) pmoQueue(fix, bid);
+              save = true; return;
+            }
+          }
           if (!ci && !bi) {   // ★ a line added in the PMO
             if (pmoIsEquip(it)) pmoAddEquip(sub, it, t.so || "");
             else {
