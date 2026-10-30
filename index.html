@@ -8718,15 +8718,17 @@ function pmoTickCommands(prevJson, json) {
         if (!(i.ext && i.ext.pmoItemId != null)) return;
         const w = was.get(t.id + "|" + sb.id + "|" + i.id); if (!w) return;   // new item → nothing to send
         const where = `${t.so || t.title || ""} · ${sb.mo || sb.text || ""}`;
-        if (w.done !== !!i.done) out.push({ task_id: t.id, label: `${i.done ? "ติ๊ก" : "เอาติ๊กออก"} "${i.text || ""}" · ${where}`,
+        const last = i.ext.pmoLast;
+        if (w.done !== !!i.done && !(last && last.done === !!i.done)) out.push({ task_id: t.id, label: `${i.done ? "ติ๊ก" : "เอาติ๊กออก"} "${i.text || ""}" · ${where}`,
           op: { type: "checklist", taskId: t.ext.pmoTaskId, cabinetId: sb.ext.pmoCabinetId, itemId: i.ext.pmoItemId, done: !!i.done } });
         const r = pmoRemark(i);
-        if (w.remark !== r) out.push({ task_id: t.id, label: `หมายเหตุ "${i.text || ""}" · ${where}`,
+        if (w.remark !== r && !(last && (last.remark || "") === r)) out.push({ task_id: t.id, label: `หมายเหตุ "${i.text || ""}" · ${where}`,
           op: { type: "checklist_remark", taskId: t.ext.pmoTaskId, itemId: i.ext.pmoItemId, remark: r } });
       });
       ((sb.bom && sb.bom.items) || []).forEach(i => {
         if (!(i.ext && i.ext.pmoItemId != null)) return;
         const w = was.get(t.id + "|" + sb.id + "|bom|" + i.id); if (!w || w.done === !!i.done) return;
+        if (i.ext.pmoLast && i.ext.pmoLast.done === !!i.done) return;   // came from the PMO
         out.push({ task_id: t.id, label: `${i.done ? "ติ๊ก" : "เอาติ๊กออก"} อุปกรณ์ ${i.code || i.name || ""} · ${t.so || t.title || ""} · ${sb.mo || sb.text || ""}`,
           op: { type: "checklist", taskId: t.ext.pmoTaskId, cabinetId: sb.ext.pmoCabinetId, itemId: i.ext.pmoItemId, done: !!i.done } });
       });
@@ -8765,7 +8767,7 @@ function pmoUpsertTask(row) {
     (c.checklist || []).forEach(it => {
       if (it.from != null && it.from !== "") { pmoAddEquip(sub, it, row.so || snap.so || ""); return; }   // equipment → รายการอุปกรณ์
       if (sub.checklist.some(i => i.ext && String(i.ext.pmoItemId) === String(it.id))) return;
-      const item = { id: uid("cl"), text: it.text || "", done: !!it.done, deptId: ourDept, ext: { src: "pmo", pmoItemId: it.id } };
+      const item = { id: uid("cl"), text: it.text || "", done: !!it.done, deptId: ourDept, ext: { src: "pmo", pmoItemId: it.id, pmoLast: { done: !!it.done, remark: it.remark || "", text: it.text || "" } } };
       if (it.remark) { item.note = String(it.remark).slice(0, 300); item.noteBy = "PMO"; item.noteAt = Date.now(); }
       sub.checklist.push(item);
     });
@@ -8798,8 +8800,8 @@ function pmoAddEquip(sub, it, so) {
   if (items.some(b => b.ext && String(b.ext.pmoItemId) === String(it.id))) return;
   const p = pmoParseEquip(it.text);
   const same = p.code && items.find(b => !b.ext && bomKey(b) === bomKey(p));
-  if (same) { same.ext = { src: "pmo", pmoItemId: it.id }; if (it.done && !same.done) same.done = true; return; }
-  items.push({ id: uid("bm"), code: p.code, name: p.name, qty: p.qty, unit: p.unit, cons: false, done: !!it.done, ext: { src: "pmo", pmoItemId: it.id } });
+  if (same) { same.ext = { src: "pmo", pmoItemId: it.id, pmoLast: { done: !!it.done, text: it.text || "" } }; if (it.done && !same.done) same.done = true; return; }
+  items.push({ id: uid("bm"), code: p.code, name: p.name, qty: p.qty, unit: p.unit, cons: false, done: !!it.done, ext: { src: "pmo", pmoItemId: it.id, pmoLast: { done: !!it.done, text: it.text || "" } } });
 }
 // ★ 2026-10-30 PMO comments (pmo_comments, copied in by the bot) → the Activity of the project here, once (id "pmoc_<PMO id>",
 //   so two devices adding the same one merge into one). Author shown as "ชื่อ · PMO". They never go back (c.ext).
@@ -8836,6 +8838,104 @@ async function pullPmoComments() {
   finally { _pmoCmBusy = false; }
 }
 setInterval(() => { if (document.visibilityState === "visible") pullPmoComments(); }, 180000);
+// ★ 2026-10-30 (owner: ติ๊กใน PMO แล้วไม่มาที่แอป) — pmo_state (the bot keeps one row per tracked project) → ticks / remarks here.
+//   Each item remembers the PMO value it last saw (ext.pmoLast); a value is applied only when it CHANGED in the PMO since then, so a
+//   tick made here that the bot hasn't sent yet is never undone. PMO remark "✓ ข้อความ" = a cleared note (that's how we send it).
+let _pmoStBusy = false;
+function pmoNoteFromRemark(i, remark) {
+  const r = String(remark || "").trim();
+  if (pmoRemark(i) === r) return false;
+  if (!r) { delete i.note; delete i.noteBy; delete i.noteAt; delete i.noteDone; delete i.noteDoneBy; delete i.noteDoneAt; return true; }
+  const done = r.startsWith("✓ ");
+  i.note = (done ? r.slice(2) : r).slice(0, 300); i.noteBy = i.noteBy || "PMO"; i.noteAt = i.noteAt || Date.now();
+  if (done) { i.noteDone = true; i.noteDoneBy = "PMO"; i.noteDoneAt = Date.now(); } else { delete i.noteDone; delete i.noteDoneBy; delete i.noteDoneAt; }
+  return true;
+}
+function pmoSetDone(i, done) {
+  if (!!i.done === done) return false;
+  i.done = done;
+  if (done) { i.doneBy = ""; i.doneByName = "PMO"; i.doneAt = Date.now(); } else { delete i.doneBy; delete i.doneByName; delete i.doneAt; }
+  return true;
+}
+async function pullPmoState() {
+  if (_pmoStBusy || !_cloudReady || !currentProfile || !pmoCfg().enabled) return;
+  const tasks = (state.tasks || []).filter(t => t.ext && t.ext.src === "pmo" && t.ext.pmoTaskId != null);
+  if (!tasks.length) return;
+  const sb = getSupabase(); if (!sb) return;
+  const KEY = "qc_pmo_st_seen:" + root.activeBoard, bid = root.activeBoard;
+  let since = null; try { since = localStorage.getItem(KEY); } catch (_) {}
+  _pmoStBusy = true;
+  try {
+    let qy = sb.from("pmo_state").select("pmo_task_id,data,updated_at").in("pmo_task_id", [...new Set(tasks.map(t => String(t.ext.pmoTaskId)))]);
+    if (since) qy = qy.gte("updated_at", since);
+    const { data, error } = await qy;
+    if (error || !Array.isArray(data) || bid !== root.activeBoard) return;
+    let last = since || "", save = false;
+    data.forEach(row => {
+      if (row.updated_at > last) last = row.updated_at;
+      const t = (state.tasks || []).find(x => x.ext && x.ext.src === "pmo" && String(x.ext.pmoTaskId) === String(row.pmo_task_id));
+      if (!t) return;
+      const snap = typeof automationSnapshot === "function" ? automationSnapshot(t) : null;
+      let ticks = 0, notes = 0, renamed = 0, added = 0; const gone = [];
+      const st0 = (state.statuses[0] || {}).id;
+      ((row.data && row.data.cabinets) || []).forEach(cab => {
+        let sub = (t.subtasks || []).find(x => x.ext && String(x.ext.pmoCabinetId) === String(cab.id));
+        if (!sub) {   // ★ a cabinet added in the PMO
+          if (!Array.isArray(t.subtasks)) t.subtasks = [];
+          sub = { id: uid("st"), text: cab.text || cab.mo || "ตู้", mo: cab.mo || "", statusId: st0, date: cab.date || null, checklist: [], ext: { src: "pmo", pmoCabinetId: cab.id, mo: cab.mo || "" } };
+          t.subtasks.push(sub); added++;
+        }
+        if (!Array.isArray(sub.checklist)) sub.checklist = [];
+        const seenIds = new Set();
+        (cab.items || []).forEach(it => {
+          seenIds.add(String(it.id));
+          const done = !!it.done, remark = String(it.remark || ""), text = String(it.text || "");
+          const ci = sub.checklist.find(x => x.ext && String(x.ext.pmoItemId) === String(it.id));
+          const bi = !ci && sub.bom && Array.isArray(sub.bom.items) ? sub.bom.items.find(x => x.ext && String(x.ext.pmoItemId) === String(it.id)) : null;
+          if (!ci && !bi) {   // ★ a line added in the PMO
+            if (it.from != null && it.from !== "") pmoAddEquip(sub, it, t.so || "");
+            else {
+              const dep = ourDeptForPmo(it.deptId) || ((t.deptStages || [])[0] || {}).deptId || null;
+              const item = { id: uid("cl"), text, done, deptId: dep, ext: { src: "pmo", pmoItemId: it.id, pmoLast: { done, remark, text } } };
+              if (done) { item.doneBy = ""; item.doneByName = "PMO"; item.doneAt = Date.now(); }
+              pmoNoteFromRemark(item, remark);
+              sub.checklist.push(item);
+            }
+            const nb = sub.bom && sub.bom.items && sub.bom.items.find(x => x.ext && String(x.ext.pmoItemId) === String(it.id));
+            if (nb) nb.ext.pmoLast = { done, text };
+            added++; return;
+          }
+          const i = ci || bi, lastSeen = i.ext.pmoLast;
+          if ((!lastSeen || lastSeen.done !== done) && pmoSetDone(i, done)) ticks++;
+          if (ci && (!lastSeen || (lastSeen.remark || "") !== remark) && pmoNoteFromRemark(ci, remark)) notes++;
+          // ★ renamed in the PMO (compared with what the PMO last had — a rename made here stays until the PMO changes it)
+          const prevText = lastSeen && lastSeen.text !== undefined ? lastSeen.text : null;
+          if (text && (prevText === null ? false : prevText !== text)) {
+            if (ci && ci.text !== text) { ci.text = text; renamed++; }
+            if (bi) { const p = pmoParseEquip(text); if (bi.code !== p.code || bi.name !== p.name || bi.qty !== p.qty || bi.unit !== p.unit) { Object.assign(bi, { code: p.code, name: p.name, qty: p.qty, unit: p.unit }); renamed++; } }
+          }
+          if (i.ext.pmoGone) { delete i.ext.pmoGone; save = true; }
+          const now = ci ? { done, remark, text } : { done, text };
+          if (JSON.stringify(lastSeen || null) !== JSON.stringify(now)) { i.ext.pmoLast = now; save = true; }
+        });
+        // a line that is no longer in the PMO: never deleted here (it may carry ticks / notes) — noted once in Activity
+        [...sub.checklist, ...((sub.bom && sub.bom.items) || [])].forEach(x => {
+          if (x.ext && x.ext.pmoItemId != null && !seenIds.has(String(x.ext.pmoItemId)) && !x.ext.pmoGone) { x.ext.pmoGone = true; gone.push(x.text || x.code || x.name || ""); }
+        });
+      });
+      if (gone.length) { logActivity(t, `ใน PMO ไม่มีรายการนี้แล้ว: ${gone.slice(0, 5).join(", ")}${gone.length > 5 ? " +" + (gone.length - 5) : ""}`); save = true; }
+      if (ticks || notes || renamed || added) {
+        logActivity(t, `อัปเดตจาก PMO${ticks ? " · ติ๊ก " + ticks + " รายการ" : ""}${notes ? " · หมายเหตุ " + notes + " รายการ" : ""}${renamed ? " · แก้ชื่อ " + renamed + " รายการ" : ""}${added ? " · เพิ่ม " + added + " รายการ" : ""}`);
+        if (snap && typeof runAutomations === "function") { try { runAutomations(t, snap); } catch (e) { console.warn("pmo automations", e); } }
+        t.updatedAt = Date.now(); save = true;
+      }
+    });
+    if (save) { saveState(); renderAll(); }
+    if (last) { try { localStorage.setItem(KEY, last); } catch (_) {} }
+  } catch (e) { console.warn("pmo state", e); }
+  finally { _pmoStBusy = false; }
+}
+setInterval(() => { if (document.visibilityState === "visible") pullPmoState(); }, 180000);
 async function refreshPmoBadge() {
   const depts = pmoMyDepts();
   if (!depts.length) { _pmoCount = 0; paintPmoTab(); return; }
@@ -16876,7 +16976,7 @@ async function startApp() {
   else if (shouldAutoShowReport()) { markReportSeen(); openStatusReport(); }
   refreshPushSub();
   refreshImportBadge();   // fire-and-forget: check for pending online drawing requests (Supabase)
-  refreshPmoBadge(); setTimeout(flushPmoOutbox, 4000); setTimeout(pullPmoComments, 6000);   // PMO bot: jobs waiting · queued commands · PMO comments
+  refreshPmoBadge(); setTimeout(flushPmoOutbox, 4000); setTimeout(pullPmoComments, 6000); setTimeout(pullPmoState, 7000);   // PMO bot: jobs waiting · queued commands · PMO comments · PMO ticks
 }
 initAuth();
 </script>
