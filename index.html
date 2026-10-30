@@ -307,6 +307,13 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
 .side-tab:hover .side-tab-count { position: static; margin-left: auto; margin-right: 8px; }
 #starTab { color:var(--t-d97706, #d97706); }
 #starTab .ico { fill: #fbbf24; }
+#pmoTab { color: var(--accent); }
+#pmoTab .side-tab-count { background: var(--danger, #d92d20); }
+.board-drawer.pmo-drawer { width: min(380px, 92vw); }
+.pmo-item { padding: 10px; border: 1px solid var(--border); border-radius: 10px; background: var(--b-ffffff, #fff); }
+.pmo-item .star-title, .pmo-item .star-sub { white-space: normal; overflow: visible; text-overflow: clip; }
+.pmo-acts { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+.pmo-acts a.btn { text-decoration: none; margin-left: auto; }
 @media (hover: none) { .side-tab { width: 36px; } }
 .star-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border:1px solid var(--border); border-radius:10px; background:var(--b-ffffff, #fff); cursor: pointer; }
 .star-item:hover { background:var(--b-f9fafb, #f9fafb); }
@@ -1648,6 +1655,8 @@ html, body { touch-action: manipulation; }
 #sbReqSection .btn { flex: 1 1 auto; min-width: 0; justify-content: center; gap: 5px; padding: 5px 8px; font-size: 12px; white-space: nowrap; }
 #sbReqSection .btn .ico { width: 14px; height: 14px; }
 .dr-import-btn { position: relative; }
+[data-pmo-map] .it-code-row select { flex: 0 1 220px; min-width: 0; max-width: 60%; font-size: 13px; padding: 4px 6px; border: 1px solid var(--border-strong); border-radius: 6px; background: var(--b-ffffff, #fff); color: var(--text); }
+a.am2-btn { text-decoration: none; display: inline-flex; align-items: center; }
 .dr-import-btn .tb-bell-badge { position: absolute; top: -6px; right: -6px; }
 .dr-import-loading { text-align: center; color:var(--text-faint); padding: 32px 16px; font-size: 13px; }
 
@@ -3474,6 +3483,7 @@ body.chip-dragging .task-chip.span-bar { pointer-events: none; }   /* let the da
 <div class="side-tabs" id="sideTabs">
   <button type="button" class="side-tab" id="boardTab" title="สลับปฏิทิน" hidden></button>
   <button type="button" class="side-tab" id="starTab" title="โปรเจคที่ติดดาว"></button>
+  <button type="button" class="side-tab" id="pmoTab" title="งานรอรับจาก PMO" hidden></button>
 </div>
 <input type="file" id="fileImport" accept="application/json" class="hidden" />
 
@@ -3922,6 +3932,7 @@ function bomApply(task, sub, res, lines, fileName) {
     const o = old.get(bomLineKey(l));
     const it = { id: uid("bm"), code: l.code, name: l.name, qty: l.qty, unit: l.unit, cons: !!l.cons, done: false };
     if (o && o.done) { it.done = true; ["doneBy", "doneByName", "doneAt"].forEach(f => { if (o[f] !== undefined) it[f] = o[f]; }); }
+    if (o && o.ext) it.ext = o.ext;   // ★ 2026-10-30: keep the PMO link (ticks keep going back to the PMO)
     return it;
   }) };
 }
@@ -6562,6 +6573,7 @@ async function pushChangedBoards(sb) {
       if (Array.isArray(res.data) && res.data.length) {
         sendBoardDelta(b, baseIso, stamp, _lastPushedJson[b.id], json);   // ★ slice 13: other devices get only what changed
         try { queueItTicks(_lastPushedJson[b.id], json); } catch (e) { console.warn("it ticks", e); }   // ★ 2026-10-22: ticks → external system
+        try { queuePmoTicks(_lastPushedJson[b.id], json, b.id); } catch (e) { console.warn("pmo ticks", e); }   // ★ 2026-10-30: → PMO bot
         _lastPushedJson[b.id] = json;
         setBoardBase(b.id, stamp);
         rememberCloudCopy(b.id, stamp, json);
@@ -8621,6 +8633,305 @@ async function openImportRequestsModal() {
       resolveCard();
     });
     listEl.appendChild(card);
+  });
+}
+
+/* ---------- ★ 2026-10-30 PMO bot (supabase-slice14.sql · supabase-functions/pmo-bot · handoff/pmo-bot/pmo_bot.py) ----------
+   The company PMO has no public API yet. A bot on an office PC reads its planning board: jobs a department has to accept land in
+   pmo_inbox → "งานใหม่จาก PMO" (sidebar, count). A person presses รับงาน / ไม่รับ HERE → the task (+ cabinets + that department's
+   checklist, every PMO id kept in ext) is created on this calendar and a command is queued (pmo_commands); the bot does it in the
+   PMO and reads it back (done / failed). Ticks and notes on those items are queued the same way after each cloud save, so people
+   press in ONE place. ⚙ › เชื่อมต่อภายนอก › บอท PMO: switch + which PMO department is which department here + what the bot did.
+   The bot only ever does what a person pressed; it never decides by itself. */
+function pmoCfg(ws) { const c = ((ws || state).settings || {}).pmoBot; return c && typeof c === "object" ? c : { enabled: false, deptMap: {} }; }
+function pmoCfgEdit() {
+  if (!state.settings.pmoBot || typeof state.settings.pmoBot !== "object") state.settings.pmoBot = { enabled: false, deptMap: {} };
+  if (!state.settings.pmoBot.deptMap || typeof state.settings.pmoBot.deptMap !== "object") state.settings.pmoBot.deptMap = {};
+  return state.settings.pmoBot;
+}
+// PMO departments whose jobs this person handles on this calendar: their own (mapped) department · admins: every mapped one
+function pmoMyDepts() {
+  const c = pmoCfg(); if (!c.enabled || !currentProfile) return [];
+  const map = c.deptMap || {};
+  if (isAdmin()) return [...new Set(Object.values(map).filter(Boolean))];
+  const my = myDeptId(); return my && map[my] ? [map[my]] : [];
+}
+function ourDeptForPmo(pmoDeptId) { const map = pmoCfg().deptMap || {}; return Object.keys(map).find(k => map[k] === pmoDeptId && getDept(k)) || null; }
+function pmoRemark(i) { return !i.note ? "" : i.noteDone ? "✓ " + i.note : i.note; }   // the PMO has a remark per item, no "cleared" flag
+// queue what a person pressed → pmo_commands (a small local outbox keeps it when offline; retried every minute)
+const PMO_OUTBOX_KEY = "qc_pmo_outbox";
+function pmoOutbox() { try { const a = JSON.parse(localStorage.getItem(PMO_OUTBOX_KEY) || "[]"); return Array.isArray(a) ? a : []; } catch (_) { return []; } }
+function pmoOutboxSave(a) { try { localStorage.setItem(PMO_OUTBOX_KEY, JSON.stringify(a.slice(-500))); } catch (_) {} }
+function pmoQueue(cmds, boardId) {
+  if (!cmds.length || !currentProfile) return;
+  pmoOutboxSave(pmoOutbox().concat(cmds.map(c => ({ created_by_name: currentUser(), board_id: boardId || root.activeBoard, task_id: c.task_id || null, label: String(c.label || "").slice(0, 200), op: c.op }))));
+  setTimeout(flushPmoOutbox, 0);
+}
+let _pmoFlushing = false;
+async function flushPmoOutbox() {
+  if (_pmoFlushing || !currentProfile) return;
+  const rows = pmoOutbox(); if (!rows.length) return;
+  const sb = getSupabase(); if (!sb) return;
+  _pmoFlushing = true;
+  try {
+    const batch = rows.slice(0, 50);
+    const { error } = await sb.from("pmo_commands").insert(batch);
+    if (!error) { pmoOutboxSave(pmoOutbox().slice(batch.length)); if (rows.length > batch.length) setTimeout(flushPmoOutbox, 0); }
+    else console.warn("pmo queue", error.message);
+  } catch (e) { console.warn("pmo queue", e); }
+  finally { _pmoFlushing = false; }
+}
+setInterval(flushPmoOutbox, 60000);
+// after a confirmed cloud save: ticks / notes changed on THIS device on items that came from the PMO → commands
+function pmoTickCommands(prevJson, json) {
+  let a, b;
+  try { a = JSON.parse(prevJson); b = JSON.parse(json); } catch (_) { return []; }
+  const cfg = b && b.settings && b.settings.pmoBot;
+  if (!cfg || !cfg.enabled || !a || !Array.isArray(a.tasks) || !Array.isArray(b.tasks)) return [];
+  const was = new Map();
+  a.tasks.forEach(t => (t.subtasks || []).forEach(sb => {
+    (sb.checklist || []).forEach(i => was.set(t.id + "|" + sb.id + "|" + i.id, { done: !!i.done, remark: pmoRemark(i) }));
+    ((sb.bom && sb.bom.items) || []).forEach(i => was.set(t.id + "|" + sb.id + "|bom|" + i.id, { done: !!i.done }));
+  }));
+  const out = [];
+  const oldCm = new Map(a.tasks.map(t => [t.id, new Set((t.comments || []).map(c => c.id))]));
+  b.tasks.forEach(t => {
+    if (!(t.ext && t.ext.src === "pmo" && t.ext.pmoTaskId != null)) return;
+    // ★ 2026-10-30 (owner): talk across both apps — a comment / department alert written HERE goes to the PMO (never one that came from it)
+    const seen = oldCm.get(t.id);
+    if (seen) (t.comments || []).forEach(c => {
+      if (seen.has(c.id) || c.ext || c.type === "system" || (c.type === "alert" && c.toUser)) return;
+      const nFiles = (Array.isArray(c.files) ? c.files.length : 0) + (c.photo ? 1 : 0);
+      const head = c.type === "alert" ? `[แจ้งเตือน ${alertDepts(c).map(id => ((b.departments || []).find(d => d.id === id) || { name: id }).name).join(", ")}] ` : "";
+      // ★ (owner) only people of a department matched to the PMO (the team) — PMO staff who also use this app write in the PMO themselves
+      const prof = [...teamProfiles.values()].find(p => p.display_name === c.author);
+      const pdep = prof && prof.dept_id ? (deptIdIn(b, prof.dept_id) || prof.dept_id) : "";
+      if (!pdep || !(cfg.deptMap && cfg.deptMap[pdep])) return;
+      // the PMO shows the bot's account as the poster → say who really wrote it: "QC · สมชาย: …" (department here · name)
+      const dn = ((b.departments || []).find(d => d.id === pdep) || {}).name;
+      const text = `${dn ? dn + " · " : ""}${c.author || "—"}: ${head}${c.text || ""}${nFiles ? ` (แนบไฟล์ ${nFiles} ไฟล์ในแอป QC)` : ""}`.trim();
+      out.push({ task_id: t.id, label: `คอมเมนต์ ${t.so || t.title || ""}`, op: { type: "comment", taskId: t.ext.pmoTaskId, text, alertDept: "", mentions: [], replyTo: null } });
+    });
+    (t.subtasks || []).forEach(sb => {
+      if (!(sb.ext && sb.ext.pmoCabinetId != null)) return;
+      (sb.checklist || []).forEach(i => {
+        if (!(i.ext && i.ext.pmoItemId != null)) return;
+        const w = was.get(t.id + "|" + sb.id + "|" + i.id); if (!w) return;   // new item → nothing to send
+        const where = `${t.so || t.title || ""} · ${sb.mo || sb.text || ""}`;
+        if (w.done !== !!i.done) out.push({ task_id: t.id, label: `${i.done ? "ติ๊ก" : "เอาติ๊กออก"} "${i.text || ""}" · ${where}`,
+          op: { type: "checklist", taskId: t.ext.pmoTaskId, cabinetId: sb.ext.pmoCabinetId, itemId: i.ext.pmoItemId, done: !!i.done } });
+        const r = pmoRemark(i);
+        if (w.remark !== r) out.push({ task_id: t.id, label: `หมายเหตุ "${i.text || ""}" · ${where}`,
+          op: { type: "checklist_remark", taskId: t.ext.pmoTaskId, itemId: i.ext.pmoItemId, remark: r } });
+      });
+      ((sb.bom && sb.bom.items) || []).forEach(i => {
+        if (!(i.ext && i.ext.pmoItemId != null)) return;
+        const w = was.get(t.id + "|" + sb.id + "|bom|" + i.id); if (!w || w.done === !!i.done) return;
+        out.push({ task_id: t.id, label: `${i.done ? "ติ๊ก" : "เอาติ๊กออก"} อุปกรณ์ ${i.code || i.name || ""} · ${t.so || t.title || ""} · ${sb.mo || sb.text || ""}`,
+          op: { type: "checklist", taskId: t.ext.pmoTaskId, cabinetId: sb.ext.pmoCabinetId, itemId: i.ext.pmoItemId, done: !!i.done } });
+      });
+    });
+  });
+  return out;
+}
+function queuePmoTicks(prevJson, json, boardId) {
+  if (typeof prevJson !== "string") return;
+  const cmds = pmoTickCommands(prevJson, json);
+  if (cmds.length) pmoQueue(cmds, boardId);
+}
+// accepted job → the task here (an existing task of the same PMO project gets this department added — never a second copy)
+function pmoUpsertTask(row) {
+  const snap = row.data || {}, ourDept = ourDeptForPmo(row.pmo_dept_id);
+  const pid = snap.taskId != null ? snap.taskId : row.pmo_task_id;
+  let t = (state.tasks || []).find(x => x.ext && x.ext.src === "pmo" && String(x.ext.pmoTaskId) === String(pid));
+  const isNew = !t, st0 = (state.statuses[0] || {}).id;
+  if (!t) {
+    t = { id: uid("t"), title: snap.title || row.title || row.so || "งานจาก PMO", ...(row.so ? { so: row.so } : {}), description: "",
+          startDate: snap.startDate || null, date: snap.date || row.due || null, statusId: st0, priority: "none", labels: [],
+          subtasks: [], deptStages: [], comments: [], createdAt: Date.now(), updatedAt: Date.now(),
+          ext: { src: "pmo", pmoTaskId: pid, so: row.so || "" } };
+    state.tasks.push(t);
+  }
+  if (!Array.isArray(t.deptStages)) t.deptStages = [];
+  if (!Array.isArray(t.subtasks)) t.subtasks = [];
+  if (ourDept && !t.deptStages.some(x => x.deptId === ourDept)) t.deptStages.push({ deptId: ourDept, due: row.due || snap.due || null, done: false, fields: {} });
+  (snap.cabinets || []).forEach(c => {
+    let sub = t.subtasks.find(x => x.ext && String(x.ext.pmoCabinetId) === String(c.id));
+    if (!sub) {
+      sub = { id: uid("st"), text: c.text || c.mo || "ตู้", mo: c.mo || "", statusId: st0, date: c.date || null, checklist: [], ext: { src: "pmo", pmoCabinetId: c.id, mo: c.mo || "" } };
+      t.subtasks.push(sub);
+    }
+    if (!Array.isArray(sub.checklist)) sub.checklist = [];
+    (c.checklist || []).forEach(it => {
+      if (it.from != null && it.from !== "") { pmoAddEquip(sub, it, row.so || snap.so || ""); return; }   // equipment → รายการอุปกรณ์
+      if (sub.checklist.some(i => i.ext && String(i.ext.pmoItemId) === String(it.id))) return;
+      const item = { id: uid("cl"), text: it.text || "", done: !!it.done, deptId: ourDept, ext: { src: "pmo", pmoItemId: it.id } };
+      if (it.remark) { item.note = String(it.remark).slice(0, 300); item.noteBy = "PMO"; item.noteAt = Date.now(); }
+      sub.checklist.push(item);
+    });
+  });
+  logActivity(t, `${isNew ? "รับงานจาก PMO" : "รับงานเพิ่มจาก PMO"} (${(getDept(ourDept) || {}).name || row.pmo_dept_id})`);
+  t.updatedAt = Date.now();
+  return t;
+}
+// ★ 2026-10-30 (owner): jobs waiting live in a side tab "รอรับ" (next to ปฏิทิน / ติดดาว), red count
+var _pmoCount = 0;   // var: renderBoardSwitcher() may paint the tab before this line has run
+function paintPmoTab() {
+  const tab = document.getElementById("pmoTab"); if (!tab) return;
+  tab.hidden = !pmoMyDepts().length;
+  tab.innerHTML = `${ico("inbox")}<span class="side-tab-label">รอรับ</span>${_pmoCount ? `<span class="side-tab-count">${_pmoCount > 99 ? "99+" : _pmoCount}</span>` : ""}`;
+}
+/* ★ 2026-10-30 (owner): PMO checklist lines that are EQUIPMENT (linked to the warehouse list: item.from, group "…(ตรวจเช็คอุปกรณ์)",
+   text "[code] name qty" / "… = 2 Box") go to the cabinet's equipment list (sub.bom), not the checklist. A line already there
+   (same code, e.g. from the Beecy PDF) is linked instead of added twice; ticking it is sent back to the PMO like a checklist tick. */
+function pmoParseEquip(text) {
+  let t = String(text || "").trim(), code = "", qty = null, unit = "";
+  const m = t.match(/^\[([^\]]+)\]\s*/); if (m) { code = m[1].trim(); t = t.slice(m[0].length); }
+  let q = t.match(/\s*=\s*([\d.,]+)\s*([^\d\s]\S*)?\s*$/);
+  if (q) { qty = parseFloat(q[1].replace(/,/g, "")); unit = (q[2] || "").trim(); t = t.slice(0, q.index); }
+  else if ((q = t.match(/\s+([\d,]+\.\d+)\s*$/))) { qty = parseFloat(q[1].replace(/,/g, "")); t = t.slice(0, q.index); }
+  return { code, name: t.trim() || code, qty: isFinite(qty) ? qty : null, unit };
+}
+function pmoAddEquip(sub, it, so) {
+  if (!sub.bom || !Array.isArray(sub.bom.items)) sub.bom = { mo: sub.mo || "", so, file: "PMO", at: Date.now(), by: "PMO", items: [] };
+  const items = sub.bom.items;
+  if (items.some(b => b.ext && String(b.ext.pmoItemId) === String(it.id))) return;
+  const p = pmoParseEquip(it.text);
+  const same = p.code && items.find(b => !b.ext && bomKey(b) === bomKey(p));
+  if (same) { same.ext = { src: "pmo", pmoItemId: it.id }; if (it.done && !same.done) same.done = true; return; }
+  items.push({ id: uid("bm"), code: p.code, name: p.name, qty: p.qty, unit: p.unit, cons: false, done: !!it.done, ext: { src: "pmo", pmoItemId: it.id } });
+}
+// ★ 2026-10-30 PMO comments (pmo_comments, copied in by the bot) → the Activity of the project here, once (id "pmoc_<PMO id>",
+//   so two devices adding the same one merge into one). Author shown as "ชื่อ · PMO". They never go back (c.ext).
+let _pmoCmBusy = false;
+async function pullPmoComments() {
+  if (_pmoCmBusy || !_cloudReady || !currentProfile || !pmoCfg().enabled) return;
+  const tasks = (state.tasks || []).filter(t => t.ext && t.ext.src === "pmo" && t.ext.pmoTaskId != null);
+  if (!tasks.length) return;
+  const sb = getSupabase(); if (!sb) return;
+  const KEY = "qc_pmo_cm_seen:" + root.activeBoard, bid = root.activeBoard;
+  let since = null; try { since = localStorage.getItem(KEY); } catch (_) {}
+  if (!since) since = new Date(Date.now() - 14 * 86400e3).toISOString();
+  _pmoCmBusy = true;
+  try {
+    const ids = [...new Set(tasks.map(t => String(t.ext.pmoTaskId)))];
+    const { data, error } = await sb.from("pmo_comments").select("*").in("pmo_task_id", ids).gte("first_seen", since).order("first_seen", { ascending: true }).limit(500);
+    if (error || !Array.isArray(data) || bid !== root.activeBoard) return;
+    let last = since; const touched = new Set();
+    data.forEach(c => {
+      if (c.first_seen > last) last = c.first_seen;
+      const t = (state.tasks || []).find(x => x.ext && x.ext.src === "pmo" && String(x.ext.pmoTaskId) === String(c.pmo_task_id));
+      if (!t) return;
+      if (!Array.isArray(t.comments)) t.comments = [];
+      const cid = "pmoc_" + c.id;
+      if (t.comments.some(x => x.id === cid)) return;
+      const files = Array.isArray(c.files) ? c.files.filter(f => f && f.name) : [];
+      t.comments.push({ id: cid, author: `${c.author || "PMO"} · PMO`, text: (c.text || "") + (files.length ? `\n[ไฟล์แนบใน PMO: ${files.map(f => f.name).join(", ")}]` : ""),
+        at: c.at ? new Date(c.at).getTime() : Date.now(), ext: { src: "pmo", pmoCommentId: c.id } });
+      t.updatedAt = Date.now(); touched.add(t.id);
+    });
+    if (touched.size) { saveState(); renderAll(); }
+    try { localStorage.setItem(KEY, last); } catch (_) {}
+  } catch (e) { console.warn("pmo comments", e); }
+  finally { _pmoCmBusy = false; }
+}
+setInterval(() => { if (document.visibilityState === "visible") pullPmoComments(); }, 180000);
+async function refreshPmoBadge() {
+  const depts = pmoMyDepts();
+  if (!depts.length) { _pmoCount = 0; paintPmoTab(); return; }
+  const sb = getSupabase(); if (!sb) return;
+  try {
+    const { data, error } = await sb.from("pmo_inbox").select("id").eq("status", "pending").in("pmo_dept_id", depts);
+    if (!error && Array.isArray(data)) { _pmoCount = data.length; paintPmoTab(); }
+    pmoCheckFailed(sb);
+  } catch (e) { console.warn("pmo badge", e); }
+}
+// a command I queued that the bot could not do → tell me once
+async function pmoCheckFailed(sb) {
+  const me = currentProfile && currentProfile.id; if (!me) return;
+  const KEY = "qc_pmo_fail_seen";
+  let since = null; try { since = localStorage.getItem(KEY); } catch (_) {}
+  if (!since) { try { localStorage.setItem(KEY, new Date().toISOString()); } catch (_) {} return; }
+  const { data, error } = await sb.from("pmo_commands").select("id,label,result,done_at").eq("created_by", me).eq("status", "failed").gt("done_at", since).order("done_at", { ascending: true });
+  if (error || !data || !data.length) return;
+  toast(`⚠️ บอททำใน PMO ไม่สำเร็จ ${data.length} รายการ — ${data[0].label || ""}${data[0].result ? " (" + data[0].result + ")" : ""}`);
+  try { localStorage.setItem(KEY, data[data.length - 1].done_at); } catch (_) {}
+}
+setInterval(() => { if (document.visibilityState === "visible") refreshPmoBadge(); }, 180000);
+// รับงาน / ไม่รับ — the task here + a command for the bot; false = cancelled / not allowed
+async function pmoDecide(row, status, extra) {
+  const sb = getSupabase(); if (!sb) return;
+  const { error } = await sb.from("pmo_inbox").update({ status, decided_by: currentUser(), decided_at: new Date().toISOString(), ...extra }).eq("id", row.id).eq("status", "pending");
+  if (error) toast("อัปเดตกล่องงานไม่สำเร็จ: " + error.message);
+}
+async function pmoAccept(row) {
+  if (!canEdit()) { permDenied("สิทธิ์ของคุณรับงานไม่ได้"); return false; }
+  const ourDept = ourDeptForPmo(row.pmo_dept_id), dn = (getDept(ourDept) || {}).name || row.pmo_dept_id;
+  if (!ourDept) { toast("ยังไม่ได้จับคู่แผนกนี้ใน ⚙ เชื่อมต่อภายนอก"); return false; }
+  if (!await confirmDialog({ icon: "check-circle", title: "ยืนยันรับงาน?", message: `${row.so || ""} ${row.title || ""} · แผนก ${dn}\nบอทจะกดรับใน PMO ให้ · หลังรับแล้วเปลี่ยนแผนกที่รับผิดชอบไม่ได้`, confirmText: "รับงาน" })) return false;
+  const sb = getSupabase();
+  const { data: full, error: e0 } = sb ? await sb.from("pmo_inbox").select("*").eq("id", row.id).maybeSingle() : { data: null, error: true };   // cabinets + checklist of THIS job
+  if (e0 || !full) { toast("โหลดรายละเอียดงานไม่สำเร็จ — ลองใหม่อีกครั้ง"); return false; }
+  if (full.status !== "pending") { toast("งานนี้มีคนรับ/ไม่รับไปแล้ว"); return false; }
+  row = full;
+  const t = pmoUpsertTask(row);
+  saveState(); renderAll();
+  pmoQueue([{ task_id: t.id, label: `รับงาน ${row.so || row.title || ""} · ${dn}`, op: { type: "stage_step", taskId: t.ext.pmoTaskId, deptId: row.pmo_dept_id, step: "accept" } }]);
+  await pmoDecide(row, "accepted", { board_id: root.activeBoard, task_id: t.id });
+  toast(`รับงาน “${row.so || row.title}” แล้ว — บอทกำลังกดรับใน PMO`);
+  return true;
+}
+async function pmoReject(row) {
+  if (!canEdit()) { permDenied("สิทธิ์ของคุณรับงานไม่ได้"); return false; }
+  const snap = row.data || {}, dn = (getDept(ourDeptForPmo(row.pmo_dept_id)) || {}).name || row.pmo_dept_id;
+  const reason = await promptDialog({ title: "ไม่รับงานนี้?", message: `${row.so || ""} · แผนก ${dn} — บอทจะกดไม่รับใน PMO พร้อมเหตุผล`, placeholder: "เหตุผล", confirmText: "ไม่รับ", danger: true });
+  if (reason === null) return false;
+  if (!String(reason).trim()) { toast("ใส่เหตุผลด้วย (PMO บังคับ)"); return false; }
+  pmoQueue([{ label: `ไม่รับ ${row.so || row.title || ""} · ${dn}`, op: { type: "stage_step", taskId: snap.taskId != null ? snap.taskId : row.pmo_task_id, deptId: row.pmo_dept_id, step: "reject", reason: String(reason).trim() } }]);
+  await pmoDecide(row, "rejected", { reason: String(reason).trim() });
+  toast(`ไม่รับ “${row.so || row.title}” — บอทกำลังกดใน PMO`);
+  return true;
+}
+// the "รอรับ" side tab → slide-out list (same drawer as ปฏิทิน / ติดดาว)
+async function openPmoDrawer() {
+  const depts = pmoMyDepts(); if (!depts.length || document.querySelector(".board-drawer-overlay")) return;
+  const ov = document.createElement("div");
+  ov.className = "board-drawer-overlay";
+  ov.innerHTML = `<aside class="board-drawer pmo-drawer" role="dialog" aria-label="งานรอรับจาก PMO"><div class="board-drawer-head">${ico("inbox")} งานรอรับจาก PMO</div><div class="board-drawer-list"><div class="cf-empty" style="padding:8px 6px">กำลังโหลด…</div></div></aside>`;
+  document.body.appendChild(ov);
+  void ov.offsetWidth;
+  ov.classList.add("open");
+  const close = () => { document.removeEventListener("keydown", onEsc, true); ov.classList.remove("open"); setTimeout(() => ov.remove(), 240); };
+  const onEsc = (e) => { if (e.key === "Escape" && !document.querySelector(".confirm-overlay")) { e.stopPropagation(); close(); } };
+  document.addEventListener("keydown", onEsc, true);
+  ov.addEventListener("mousedown", (e) => { if (e.target === ov) close(); });
+  const listEl = ov.querySelector(".board-drawer-list");
+  const sb = getSupabase();
+  // light list (egress): no cabinets / checklists — those come with รับงาน, for that one job only
+  const { data: rows, error } = sb ? await sb.from("pmo_inbox").select("id,pmo_task_id,pmo_dept_id,so,title,due,waiting,waiting_since,status,pmo_url:data->>pmoUrl,pmo_tid:data->taskId")
+    .eq("status", "pending").in("pmo_dept_id", depts).order("waiting_since", { ascending: true }) : { data: null, error: true };
+  if (error || !rows) { listEl.innerHTML = `<div class="cf-empty" style="padding:8px 6px">โหลดไม่สำเร็จ — ลองใหม่อีกครั้ง</div>`; return; }
+  rows.forEach(r => { r.data = { pmoUrl: r.pmo_url || null, taskId: r.pmo_tid != null ? r.pmo_tid : r.pmo_task_id }; });
+  _pmoCount = rows.length; paintPmoTab();
+  const empty = () => { listEl.innerHTML = `<div class="cf-empty" style="padding:8px 6px">ไม่มีงานรอรับ</div>`; };
+  if (!rows.length) { empty(); return; }
+  listEl.innerHTML = "";
+  rows.forEach(row => {
+    const snap = row.data || {}, dn = (getDept(ourDeptForPmo(row.pmo_dept_id)) || {}).name || row.pmo_dept_id;
+    const el = document.createElement("div");
+    el.className = "pmo-item";
+    el.innerHTML = `
+      <div class="star-title">${row.so ? `<b>${escapeHtml(row.so)}</b> · ` : ""}${escapeHtml(row.title || snap.title || "(ไม่มีชื่องาน)")}</div>
+      <div class="star-sub">แผนก ${escapeHtml(dn)}${row.waiting != null ? " · " + row.waiting + " งานรอรับ" : ""}${row.due ? " · ส่ง " + escapeHtml(formatDateTH(row.due)) : ""}${row.waiting_since ? " · รอตั้งแต่ " + escapeHtml(formatDateTH(row.waiting_since)) : ""}</div>
+      <div class="pmo-acts">
+        <button type="button" class="btn btn-sm btn-primary" data-acc>${ico("check-circle")} รับงาน</button>
+        <button type="button" class="btn btn-sm" data-rej>ไม่รับ</button>
+        ${snap.pmoUrl ? `<a class="btn btn-sm btn-ghost" href="${escapeHtml(snap.pmoUrl)}" target="_blank" rel="noopener">เปิดใน PMO →</a>` : ""}
+      </div>`;
+    const done = () => { el.remove(); _pmoCount = Math.max(0, _pmoCount - 1); paintPmoTab(); if (!listEl.querySelector(".pmo-item")) empty(); };
+    el.querySelector("[data-acc]").addEventListener("click", async () => { if (await pmoAccept(row)) done(); });
+    el.querySelector("[data-rej]").addEventListener("click", async () => { if (await pmoReject(row)) done(); });
+    listEl.appendChild(el);
   });
 }
 
@@ -12180,6 +12491,54 @@ function buildItSyncPanel(container) {
   }
   renderUnknown();
 
+  // ★ 2026-10-30 บอท PMO: switch · PMO department ↔ department here · bot last seen · what it did lately
+  const pc = pmoCfgEdit();
+  const botSec = document.createElement("div");
+  botSec.className = "settings-section";
+  botSec.innerHTML = `
+    <h4 class="settings-h">${ico("zap")} บอท PMO</h4>
+    <label class="default-stage-row"><input type="checkbox" data-pmo-on ${pc.enabled ? "checked" : ""} /><span class="default-stage-name">รับงาน / ติ๊ก / หมายเหตุ ผ่านบอทใน PMO (ปฏิทิน “${escapeHtml(boardNameOf(root.activeBoard))}”)</span></label>
+    <div class="muted" data-pmo-seen style="font-size:12px;margin:4px 0 10px">กำลังโหลด…</div>
+    <div class="it-code-list" data-pmo-map></div>
+    <h4 class="settings-h" style="margin-top:16px">บอททำล่าสุด</h4>
+    <div class="it-log" data-pmo-log><div class="muted" style="font-size:12px">กำลังโหลด…</div></div>`;
+  container.appendChild(botSec);
+  botSec.querySelector("[data-pmo-on]").addEventListener("change", (e) => { pc.enabled = e.target.checked; saveState(); refreshPmoBadge(); });
+  const sbp = getSupabase();
+  const paintMap = (pmoDepts) => {
+    const el = botSec.querySelector("[data-pmo-map]"); el.innerHTML = "";
+    const opts = [...pmoDepts];
+    Object.values(pc.deptMap).forEach(v => { if (v && !opts.some(o => o.id === v)) opts.push({ id: v, name: v }); });
+    (state.departments || []).forEach(d => {
+      const row = document.createElement("label");
+      row.className = "it-code-row";
+      row.innerHTML = `${deptIco(d)}<span class="it-code-name">${escapeHtml(d.name)}</span><select><option value="">— ไม่ใช้ —</option>${opts.map(o => `<option value="${escapeHtml(o.id)}"${pc.deptMap[d.id] === o.id ? " selected" : ""}>${escapeHtml(o.name)}</option>`).join("")}</select>`;
+      row.querySelector("select").addEventListener("change", (e) => { if (e.target.value) pc.deptMap[d.id] = e.target.value; else delete pc.deptMap[d.id]; saveState(); refreshPmoBadge(); });
+      el.appendChild(row);
+    });
+  };
+  paintMap([]);
+  if (sbp) {
+    sbp.from("pmo_bot_state").select("*").eq("id", "bot").maybeSingle().then(({ data }) => {
+      const seenEl = botSec.querySelector("[data-pmo-seen]");
+      if (!data) { seenEl.textContent = "บอทยังไม่เคยเชื่อมต่อ"; return; }
+      const age = Date.now() - new Date(data.at).getTime();
+      seenEl.innerHTML = `${age < 10 * 60e3 ? "🟢" : "🔴"} บอทเชื่อมต่อล่าสุด ${escapeHtml(relTimeTH(new Date(data.at).getTime()))}${data.info && data.info.user ? " · บัญชี " + escapeHtml(data.info.user) : ""}${data.info && data.info.write ? "" : " · อ่านอย่างเดียว (ยังไม่กดใน PMO)"}`;
+      paintMap(Array.isArray(data.info && data.info.depts) ? data.info.depts.filter(x => x && x.id) : []);
+    }, () => {});
+    sbp.from("pmo_commands").select("id,created_at,created_by_name,label,status,result,done_at").order("id", { ascending: false }).limit(20).then(({ data, error }) => {
+      const el = botSec.querySelector("[data-pmo-log]");
+      if (error) { el.innerHTML = `<div class="muted" style="font-size:12px">—</div>`; return; }
+      if (!data || !data.length) { el.innerHTML = `<div class="muted" style="font-size:12px">ยังไม่มีคำสั่ง</div>`; return; }
+      const ST = { queued: "รอ", taken: "กำลังทำ", done: "✓ สำเร็จ", failed: "✗ ไม่สำเร็จ" };
+      el.innerHTML = data.map(r => {
+        const d = new Date(r.created_at);
+        const when = `${d.getDate()}/${d.getMonth() + 1} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+        return `<div class="it-log-row${r.status === "failed" ? " err" : ""}"><span class="it-log-at">${when}</span><span class="it-log-so">${escapeHtml(r.created_by_name || "")}</span><span class="it-log-act">${escapeHtml(ST[r.status] || r.status)}</span><span class="it-log-detail">${escapeHtml(r.label || "")}${r.result && r.status === "failed" ? " — " + escapeHtml(r.result) : ""}</span></div>`;
+      }).join("");
+    }, () => {});
+  }
+
   const logEl = sec.querySelector("[data-it-log]");
   const sb = getSupabase();
   const ACT = { created: "สร้าง", updated: "อัปเดต", deleted: "ลบ", unchanged: "ไม่เปลี่ยน", sent: "ส่งกลับ", error: "ผิดพลาด" };
@@ -15502,6 +15861,7 @@ function renderBoardSwitcher() {
     const n = starredEntries().length;
     st.innerHTML = `${ico("star")}<span class="side-tab-label">ติดดาว</span>${n ? `<span class="side-tab-count">${n}</span>` : ""}`;
   }
+  paintPmoTab();
 }
 function openBoardDrawer() {
   if (document.querySelector(".board-drawer-overlay")) return;
@@ -15536,6 +15896,7 @@ function openBoardDrawer() {
 document.getElementById("boardChip").addEventListener("click", openBoardDrawer);
 document.getElementById("boardTab").addEventListener("click", openBoardDrawer);
 document.getElementById("starTab").addEventListener("click", openStarDrawer);
+document.getElementById("pmoTab").addEventListener("click", () => openPmoDrawer());
 // ⭐ starred projects across every calendar I can open (missing / hidden ones are skipped)
 function starredEntries() {
   const vis = new Set(visibleBoardIds());
@@ -16515,6 +16876,7 @@ async function startApp() {
   else if (shouldAutoShowReport()) { markReportSeen(); openStatusReport(); }
   refreshPushSub();
   refreshImportBadge();   // fire-and-forget: check for pending online drawing requests (Supabase)
+  refreshPmoBadge(); setTimeout(flushPmoOutbox, 4000); setTimeout(pullPmoComments, 6000);   // PMO bot: jobs waiting · queued commands · PMO comments
 }
 initAuth();
 </script>
