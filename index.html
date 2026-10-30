@@ -8783,7 +8783,7 @@ function pmoUpsertTask(row) {
     }
     if (!Array.isArray(sub.checklist)) sub.checklist = [];
     (c.checklist || []).forEach(it => {
-      if (it.from != null && it.from !== "") { pmoAddEquip(sub, it, row.so || snap.so || ""); return; }   // equipment → รายการอุปกรณ์
+      if (pmoIsEquip(it)) { pmoAddEquip(sub, it, row.so || snap.so || ""); return; }   // equipment → รายการอุปกรณ์
       if (sub.checklist.some(i => i.ext && String(i.ext.pmoItemId) === String(it.id))) return;
       const item = { id: uid("cl"), text: it.text || "", done: !!it.done, deptId: ourDept, ext: { src: "pmo", pmoItemId: it.id, pmoLast: { done: !!it.done, remark: it.remark || "", text: it.text || "" } } };
       if (it.remark) { item.note = String(it.remark).slice(0, 300); item.noteBy = "PMO"; item.noteAt = Date.now(); }
@@ -8812,6 +8812,8 @@ function pmoParseEquip(text) {
   else if ((q = t.match(/\s+([\d,]+\.\d+)\s*$/))) { qty = parseFloat(q[1].replace(/,/g, "")); t = t.slice(0, q.index); }
   return { code, name: t.trim() || code, qty: isFinite(qty) ? qty : null, unit };
 }
+// equipment = linked to another department's line (the warehouse) OR in a work group named "…อุปกรณ์…" (a line typed in by hand there)
+function pmoIsEquip(it) { return !!it && ((it.from != null && it.from !== "") || /อุปกรณ์/.test(String(it.group || ""))); }
 function pmoAddEquip(sub, it, so) {
   if (!sub.bom || !Array.isArray(sub.bom.items)) sub.bom = { mo: sub.mo || "", so, file: "PMO", at: Date.now(), by: "PMO", items: [] };
   const items = sub.bom.items;
@@ -8899,7 +8901,7 @@ async function pullPmoState(opts = {}) {
       const t = (state.tasks || []).find(x => x.ext && x.ext.src === "pmo" && String(x.ext.pmoTaskId) === String(row.pmo_task_id));
       if (!t) return;
       const snap = typeof automationSnapshot === "function" ? automationSnapshot(t) : null;
-      let ticks = 0, notes = 0, renamed = 0, added = 0; const gone = [];
+      let ticks = 0, notes = 0, renamed = 0, added = 0, moved = 0; const gone = [];
       const st0 = (state.statuses[0] || {}).id;
       ((row.data && row.data.cabinets) || []).forEach(cab => {
         let sub = (t.subtasks || []).find(x => x.ext && String(x.ext.pmoCabinetId) === String(cab.id));
@@ -8913,10 +8915,10 @@ async function pullPmoState(opts = {}) {
         (cab.items || []).forEach(it => {
           seenIds.add(String(it.id));
           const done = !!it.done, remark = String(it.remark || ""), text = String(it.text || "");
-          const ci = sub.checklist.find(x => x.ext && String(x.ext.pmoItemId) === String(it.id));
-          const bi = !ci && sub.bom && Array.isArray(sub.bom.items) ? sub.bom.items.find(x => x.ext && String(x.ext.pmoItemId) === String(it.id)) : null;
+          let ci = sub.checklist.find(x => x.ext && String(x.ext.pmoItemId) === String(it.id));
+          let bi = !ci && sub.bom && Array.isArray(sub.bom.items) ? sub.bom.items.find(x => x.ext && String(x.ext.pmoItemId) === String(it.id)) : null;
           if (!ci && !bi) {   // ★ a line added in the PMO
-            if (it.from != null && it.from !== "") pmoAddEquip(sub, it, t.so || "");
+            if (pmoIsEquip(it)) pmoAddEquip(sub, it, t.so || "");
             else {
               const dep = ourDeptForPmo(it.deptId) || ((t.deptStages || [])[0] || {}).deptId || null;
               const item = { id: uid("cl"), text, done, deptId: dep, ext: { src: "pmo", pmoItemId: it.id, pmoLast: { done, remark, text } } };
@@ -8927,6 +8929,15 @@ async function pullPmoState(opts = {}) {
             const nb = sub.bom && sub.bom.items && sub.bom.items.find(x => x.ext && String(x.ext.pmoItemId) === String(it.id));
             if (nb) nb.ext.pmoLast = { done, text };
             added++; return;
+          }
+          if (ci && pmoIsEquip(it)) {   // ★ an equipment line that landed in the checklist (older rule) → move it to รายการอุปกรณ์
+            const keepLast = ci.ext.pmoLast;
+            sub.checklist = sub.checklist.filter(x => x !== ci);
+            pmoAddEquip(sub, { ...it, done: !!ci.done }, t.so || "");
+            bi = sub.bom.items.find(x => x.ext && String(x.ext.pmoItemId) === String(it.id)) || null;
+            if (bi && keepLast) bi.ext.pmoLast = { done: !!keepLast.done, text: keepLast.text !== undefined ? keepLast.text : text };
+            ci = null; moved++;
+            if (!bi) return;
           }
           const i = ci || bi, lastSeen = i.ext.pmoLast;
           // opts.force (⚙ › ใช้ค่าตาม PMO): take the PMO value even if this app thinks it changed it last
@@ -8951,9 +8962,9 @@ async function pullPmoState(opts = {}) {
         });
       });
       if (gone.length) { logActivity(t, `ใน PMO ไม่มีรายการนี้แล้ว: ${gone.slice(0, 5).join(", ")}${gone.length > 5 ? " +" + (gone.length - 5) : ""}`); save = true; }
-      changes += ticks + notes + renamed + added;
-      if (ticks || notes || renamed || added) {
-        logActivity(t, `อัปเดตจาก PMO${ticks ? " · ติ๊ก " + ticks + " รายการ" : ""}${notes ? " · หมายเหตุ " + notes + " รายการ" : ""}${renamed ? " · แก้ชื่อ " + renamed + " รายการ" : ""}${added ? " · เพิ่ม " + added + " รายการ" : ""}`);
+      changes += ticks + notes + renamed + added + moved;
+      if (ticks || notes || renamed || added || moved) {
+        logActivity(t, `อัปเดตจาก PMO${ticks ? " · ติ๊ก " + ticks + " รายการ" : ""}${notes ? " · หมายเหตุ " + notes + " รายการ" : ""}${renamed ? " · แก้ชื่อ " + renamed + " รายการ" : ""}${added ? " · เพิ่ม " + added + " รายการ" : ""}${moved ? " · ย้ายไปรายการอุปกรณ์ " + moved + " รายการ" : ""}`);
         if (snap && typeof runAutomations === "function") { try { runAutomations(t, snap); } catch (e) { console.warn("pmo automations", e); } }
         t.updatedAt = Date.now(); save = true;
       }
