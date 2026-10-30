@@ -3541,7 +3541,7 @@ function isAdmin() { return !!(currentProfile && currentProfile.role === "admin"
 /* ----- fine-grained member permission (slice 4b): read < comment < edit < full -----
    Client-side gating only (board data is one JSON blob — RLS can't police fields). Admins = full.
    Default "full" so existing members are unchanged until an admin lowers them. */
-const PERM_RANK = { read: 0, comment: 1, checklist: 1.5, edit: 2, full: 3 };   // checklist = tick items + comment (2026-10-07)
+const PERM_RANK = { read: 0, comment: 1, checklist: 1.5, edit: 2, nostatus: 3, full: 3 };   // nostatus = full minus manual status changes (2026-10-30)   // checklist = tick items + comment (2026-10-07)
 function myPerm() {
   if (isAdmin()) return "full";
   const p = currentProfile && currentProfile.perm;
@@ -3567,8 +3567,12 @@ function clHintOn() {
   return !h.done && (!h.start || Date.now() - h.start < CL_HINT_DAYS * 86400e3);
 }
 function canFull()    { return permRank() >= 3; }   // create/delete tasks, titles, structure
+// ★ 2026-10-30 (owner): tier "nostatus" — everything except changing a status by hand (task / cabinet status, quick-done,
+//   department done tick), so status only moves through checklist ticks + ⚡ อัตโนมัติ. Automations still run for them.
+function canStatus()  { return canEdit() && myPerm() !== "nostatus"; }
+const STATUS_DENY = "สิทธิ์ของคุณไม่สามารถเปลี่ยนสถานะเองได้ กรุณาอัปเดตผ่านเช็คลิสต์";
 function permDenied(msg) { toast(msg || "สิทธิ์ของคุณทำรายการนี้ไม่ได้ — ติดต่อผู้ดูแลระบบ"); }
-const PERM_LABEL = { read: "ดูอย่างเดียว", comment: "คอมเมนต์ได้", checklist: "ติ๊กเช็คลิสต์ + คอมเมนต์", edit: "แก้วัน/สถานะ", full: "แก้ไขเต็ม" };
+const PERM_LABEL = { read: "ดูอย่างเดียว", comment: "คอมเมนต์ได้", checklist: "ติ๊กเช็คลิสต์ + คอมเมนต์", edit: "แก้วัน/สถานะ", nostatus: "แก้ไขได้ทั้งหมด ยกเว้นสถานะ", full: "แก้ไขเต็ม" };
 
 function showLoginScreen(msg) {
   document.getElementById("loginScreen").classList.remove("hidden");
@@ -4713,7 +4717,7 @@ function renderProdTable() {
   wrap.querySelectorAll("[data-st]").forEach(b => b.addEventListener("click", e => {
     e.stopPropagation();
     const [gi, ci] = b.dataset.st.split("|"), r = rowOf(gi, ci);
-    if (!canEdit()) { permDenied("สิทธิ์ของคุณเปลี่ยนสถานะไม่ได้"); return; }
+    if (!canStatus()) { permDenied(canEdit() ? STATUS_DENY : "สิทธิ์ของคุณเปลี่ยนสถานะไม่ได้"); return; }
     openStatusPopover(b, r.sb ? r.sb.statusId : r.t.statusId, id => applyStatusChange(r.t, r.sb, id));
   }));
   const saved = (t, msg) => { if (msg) logActivity(t, msg); t.updatedAt = Date.now(); saveState(); renderAll(); };
@@ -7884,7 +7888,7 @@ function addStatusEdge(chip, t, sub) {
   chip.prepend(edge);
 }
 function openStatusPopover(anchorEl, currentId, onChange) {
-  if (!canEdit()) { permDenied("สิทธิ์ของคุณเปลี่ยนสถานะไม่ได้"); return; }
+  if (!canStatus()) { permDenied(canEdit() ? STATUS_DENY : "สิทธิ์ของคุณเปลี่ยนสถานะไม่ได้"); return; }
   // close any open popover first
   document.querySelectorAll(".status-popover").forEach(n => n.remove());
 
@@ -9604,7 +9608,7 @@ function openTaskModal(taskId, defaults={}) {
     });
   });
   doneQuick.addEventListener('click', () => {
-    if (!canEdit()) { permDenied("สิทธิ์ของคุณเปลี่ยนสถานะไม่ได้"); return; }
+    if (!canStatus()) { permDenied(canEdit() ? STATUS_DENY : "สิทธิ์ของคุณเปลี่ยนสถานะไม่ได้"); return; }
     const cur = getStatus(task.statusId);
     if (isStatusDone(cur)) {
       // un-done: revert to first non-done status
@@ -9724,6 +9728,7 @@ function openTaskModal(taskId, defaults={}) {
         </div>
       `;
       const dotBtn = row.querySelector(".subtask-dot");
+      if (canEdit() && !canStatus()) dotBtn.classList.add("perm-off");
       const txt = row.querySelector('input.sub-name');
       const moInp = row.querySelector('input.sub-mo');
       // ★ 2026-10-17 (owner): hover shows the full MO / cabinet name when the box cuts it off
@@ -10187,7 +10192,7 @@ function openTaskModal(taskId, defaults={}) {
       });
       const doneCb = pop.querySelector(".stage-done-toggle input");
       if (doneCb) doneCb.addEventListener("change", () => {
-        if (!canEdit()) { permDenied("สิทธิ์ของคุณเปลี่ยนสถานะไม่ได้"); doneCb.checked = !!stg.done; return; }
+        if (!canStatus()) { permDenied(canEdit() ? STATUS_DENY : "สิทธิ์ของคุณเปลี่ยนสถานะไม่ได้"); doneCb.checked = !!stg.done; return; }
         stg.done = doneCb.checked; repaintChip(); repaintWhen(); scheduleCommit(0);
       });
       const del = pop.querySelector(".stage-pop-del");
@@ -11106,16 +11111,17 @@ function applyTaskModalPerm(modal) {
       .forEach(sel => modal.querySelectorAll(sel).forEach(off));
     modal.querySelectorAll('[data-labels] input, [data-labels] .label-chip button, [data-extra-fields] select, [data-subtasks] input[type="text"], [data-subtasks] .subtask-del, [data-stages] .stage-dept, [data-stages] .subtask-del').forEach(off);
   }
+  if (edit && !canStatus()) modal.querySelectorAll('[data-status-btn], [data-status-done], .subtask-dot').forEach(off);
   if (!comment) {
     modal.querySelectorAll('[data-comment], [data-act="attach"], [data-act="attach-file"], [data-alert-dept], [data-act="send-comment"]').forEach(off);
     const ph = modal.querySelector('.ta-compose'); if (ph) ph.classList.add("perm-off-note");
   }
-  if (!full) {
+  if (!full || !canStatus()) {
     const head = modal.querySelector('.modal-head h3');
     if (head && !head.querySelector('.perm-badge')) {
       const b = document.createElement("span");
       b.className = "perm-badge";
-      b.innerHTML = edit ? `${ico("pen")} แก้ได้เฉพาะวัน/สถานะ` : canTick() ? `${ico("check-square")} ติ๊กเช็คลิสต์ + คอมเมนต์` : (comment ? `${ico("message")} คอมเมนต์ได้อย่างเดียว` : `${ico("eye")} ดูอย่างเดียว`);
+      b.innerHTML = full ? `${ico("check-square")} แก้ไขได้ทั้งหมด ยกเว้นสถานะ` : edit ? `${ico("pen")} แก้ได้เฉพาะวัน/สถานะ` : canTick() ? `${ico("check-square")} ติ๊กเช็คลิสต์ + คอมเมนต์` : (comment ? `${ico("message")} คอมเมนต์ได้อย่างเดียว` : `${ico("eye")} ดูอย่างเดียว`);
       head.appendChild(b);
     }
   }
@@ -11914,6 +11920,7 @@ function buildUsersAdminPanel(container) {
         <option value="comment">คอมเมนต์</option>
         <option value="checklist">ติ๊กเช็คลิสต์ + คอมเมนต์</option>
         <option value="edit">แก้วัน/สถานะ</option>
+        <option value="nostatus">แก้ไขได้ทั้งหมด ยกเว้นสถานะ</option>
         <option value="full">แก้ไขเต็ม</option>
       </select>
       <div class="um-act">
