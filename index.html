@@ -8857,20 +8857,25 @@ function pmoSetDone(i, done) {
   if (done) { i.doneBy = ""; i.doneByName = "PMO"; i.doneAt = Date.now(); } else { delete i.doneBy; delete i.doneByName; delete i.doneAt; }
   return true;
 }
-async function pullPmoState() {
-  if (_pmoStBusy || !_cloudReady || !currentProfile || !pmoCfg().enabled) return;
+// opts.full = ignore "since" (read every tracked project again) · returns a short report (⚙ บอท PMO › ดึงจาก PMO ตอนนี้)
+async function pullPmoState(opts = {}) {
+  if (_pmoStBusy) return "กำลังดึงอยู่";
+  if (!_cloudReady || !currentProfile) return "ยังไม่เชื่อมต่อ cloud";
+  if (!pmoCfg().enabled) return "ยังไม่เปิดบอท PMO ในปฏิทินนี้";
   const tasks = (state.tasks || []).filter(t => t.ext && t.ext.src === "pmo" && t.ext.pmoTaskId != null);
-  if (!tasks.length) return;
-  const sb = getSupabase(); if (!sb) return;
+  if (!tasks.length) return "ปฏิทินนี้ยังไม่มีงานที่รับจาก PMO";
+  const sb = getSupabase(); if (!sb) return "ออฟไลน์";
   const KEY = "qc_pmo_st_seen:" + root.activeBoard, bid = root.activeBoard;
-  let since = null; try { since = localStorage.getItem(KEY); } catch (_) {}
+  let since = null; try { since = opts.full ? null : localStorage.getItem(KEY); } catch (_) {}
+  let report = "";
   _pmoStBusy = true;
   try {
     let qy = sb.from("pmo_state").select("pmo_task_id,data,updated_at").in("pmo_task_id", [...new Set(tasks.map(t => String(t.ext.pmoTaskId)))]);
     if (since) qy = qy.gte("updated_at", since);
     const { data, error } = await qy;
-    if (error || !Array.isArray(data) || bid !== root.activeBoard) return;
-    let last = since || "", save = false;
+    if (error) { report = "อ่านข้อมูลไม่สำเร็จ: " + error.message; return report; }
+    if (!Array.isArray(data) || bid !== root.activeBoard) return "สลับปฏิทินระหว่างดึง";
+    let last = since || "", save = false, changes = 0;
     data.forEach(row => {
       if (row.updated_at > last) last = row.updated_at;
       const t = (state.tasks || []).find(x => x.ext && x.ext.src === "pmo" && String(x.ext.pmoTaskId) === String(row.pmo_task_id));
@@ -8924,6 +8929,7 @@ async function pullPmoState() {
         });
       });
       if (gone.length) { logActivity(t, `ใน PMO ไม่มีรายการนี้แล้ว: ${gone.slice(0, 5).join(", ")}${gone.length > 5 ? " +" + (gone.length - 5) : ""}`); save = true; }
+      changes += ticks + notes + renamed + added;
       if (ticks || notes || renamed || added) {
         logActivity(t, `อัปเดตจาก PMO${ticks ? " · ติ๊ก " + ticks + " รายการ" : ""}${notes ? " · หมายเหตุ " + notes + " รายการ" : ""}${renamed ? " · แก้ชื่อ " + renamed + " รายการ" : ""}${added ? " · เพิ่ม " + added + " รายการ" : ""}`);
         if (snap && typeof runAutomations === "function") { try { runAutomations(t, snap); } catch (e) { console.warn("pmo automations", e); } }
@@ -8932,7 +8938,10 @@ async function pullPmoState() {
     });
     if (save) { saveState(); renderAll(); }
     if (last) { try { localStorage.setItem(KEY, last); } catch (_) {} }
-  } catch (e) { console.warn("pmo state", e); }
+    report = `งาน PMO ในปฏิทินนี้ ${tasks.length} · ได้สถานะ ${data.length} โครงการ · เปลี่ยน ${changes} รายการ`;
+    console.info("[pmo state]", report, { since, rows: data.map(r => [r.pmo_task_id, r.updated_at]) });
+    return report;
+  } catch (e) { console.warn("pmo state", e); return "ผิดพลาด: " + (e.message || e); }
   finally { _pmoStBusy = false; }
 }
 setInterval(() => { if (document.visibilityState === "visible") pullPmoState(); }, 180000);
@@ -12598,12 +12607,18 @@ function buildItSyncPanel(container) {
   botSec.innerHTML = `
     <h4 class="settings-h">${ico("zap")} บอท PMO</h4>
     <label class="default-stage-row"><input type="checkbox" data-pmo-on ${pc.enabled ? "checked" : ""} /><span class="default-stage-name">รับงาน / ติ๊ก / หมายเหตุ ผ่านบอทใน PMO (ปฏิทิน “${escapeHtml(boardNameOf(root.activeBoard))}”)</span></label>
-    <div class="muted" data-pmo-seen style="font-size:12px;margin:4px 0 10px">กำลังโหลด…</div>
+    <div class="muted" data-pmo-seen style="font-size:12px;margin:4px 0 6px">กำลังโหลด…</div>
+    <button type="button" class="btn btn-sm" data-pmo-pull style="margin-bottom:10px">${ico("restore")} ดึงจาก PMO ตอนนี้</button>
     <div class="it-code-list" data-pmo-map></div>
     <h4 class="settings-h" style="margin-top:16px">บอททำล่าสุด</h4>
     <div class="it-log" data-pmo-log><div class="muted" style="font-size:12px">กำลังโหลด…</div></div>`;
   container.appendChild(botSec);
   botSec.querySelector("[data-pmo-on]").addEventListener("change", (e) => { pc.enabled = e.target.checked; saveState(); refreshPmoBadge(); });
+  botSec.querySelector("[data-pmo-pull]").addEventListener("click", async (e) => {
+    const b = e.currentTarget; b.disabled = true;
+    const r = await pullPmoState({ full: true }); await pullPmoComments(); refreshPmoBadge();
+    b.disabled = false; toast(r || "เสร็จแล้ว");
+  });
   const sbp = getSupabase();
   const paintMap = (pmoDepts) => {
     const el = botSec.querySelector("[data-pmo-map]"); el.innerHTML = "";
