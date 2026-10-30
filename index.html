@@ -8039,7 +8039,9 @@ function openChecklistPopover(anchorEl, sub, onChange, opts = {}) {
     });
     nameI.addEventListener("input", () => { if (!structOk) return; it.text = nameI.value; onChange && onChange(); });
     nameI.addEventListener("keydown", (e) => { if (e.key === "Enter" && structOk) { e.preventDefault(); addItem(it.deptId); } });
-    delB.addEventListener("click", () => {
+    delB.addEventListener("click", async () => {
+      if (it.ext && it.ext.pmoItemId != null && pmoCfg().enabled
+        && !await confirmDialog({ icon: "trash", title: "ลบรายการนี้?", message: `“${it.text || ""}” มาจาก PMO — จะลบใน PMO ด้วย`, confirmText: "ลบทั้งสองที่", danger: true })) return;
       const idx = sub.checklist.indexOf(it);
       if (idx >= 0) sub.checklist.splice(idx, 1);
       render(); paintBar(); onChange && onChange();
@@ -8695,6 +8697,7 @@ function pmoTickCommands(prevJson, json) {
   }));
   const out = [];
   const oldCm = new Map(a.tasks.map(t => [t.id, new Set((t.comments || []).map(c => c.id))]));
+  const oldTasks = new Map(a.tasks.map(t => [t.id, t]));
   b.tasks.forEach(t => {
     if (!(t.ext && t.ext.src === "pmo" && t.ext.pmoTaskId != null)) return;
     // ★ 2026-10-30 (owner): talk across both apps — a comment / department alert written HERE goes to the PMO (never one that came from it)
@@ -8725,6 +8728,17 @@ function pmoTickCommands(prevJson, json) {
         if (w.remark !== r && !(last && (last.remark || "") === r)) out.push({ task_id: t.id, label: `หมายเหตุ "${i.text || ""}" · ${where}`,
           op: { type: "checklist_remark", taskId: t.ext.pmoTaskId, itemId: i.ext.pmoItemId, remark: r } });
       });
+      // ★ 2026-10-30 (owner): a PMO checklist line deleted here → deleted in the PMO too. Checklist lines only, one by one — a removed
+      //   cabinet / task / equipment list (e.g. a Beecy re-import) never deletes anything in the PMO.
+      const oldSub = (oldTasks.get(t.id) || { subtasks: [] }).subtasks.find(x => x.id === sb.id);
+      if (oldSub) {
+        const nowIds = new Set((sb.checklist || []).map(i => i.id));
+        (oldSub.checklist || []).forEach(i => {
+          if (!(i.ext && i.ext.pmoItemId != null) || nowIds.has(i.id)) return;
+          out.push({ task_id: t.id, label: `ลบ "${i.text || ""}" · ${t.so || t.title || ""} · ${sb.mo || sb.text || ""}`,
+            op: { type: "checklist_delete", taskId: t.ext.pmoTaskId, cabinetId: sb.ext.pmoCabinetId, itemId: i.ext.pmoItemId } });
+        });
+      }
       ((sb.bom && sb.bom.items) || []).forEach(i => {
         if (!(i.ext && i.ext.pmoItemId != null)) return;
         const w = was.get(t.id + "|" + sb.id + "|bom|" + i.id); if (!w || w.done === !!i.done) return;
@@ -8746,6 +8760,16 @@ function queuePmoTicks(prevJson, json, boardId) {
   //   → looked like "no change in the PMO" and the app kept ✗.
   const ws = root.boards[boardId]; let touched = false;
   if (ws) cmds.forEach(({ op }) => {
+    if (op.type === "checklist_delete") {
+      (ws.tasks || []).forEach(t => {
+        if (!(t.ext && t.ext.src === "pmo" && String(t.ext.pmoTaskId) === String(op.taskId))) return;
+        const sb = (t.subtasks || []).find(x => x.ext && String(x.ext.pmoCabinetId) === String(op.cabinetId));
+        if (!sb) return;
+        const del = Array.isArray(sb.ext.pmoDeleted) ? sb.ext.pmoDeleted : [];
+        if (!del.includes(String(op.itemId))) { sb.ext.pmoDeleted = [...del, String(op.itemId)].slice(-300); touched = true; }
+      });
+      return;
+    }
     if (op.type !== "checklist" && op.type !== "checklist_remark") return;
     (ws.tasks || []).forEach(t => {
       if (!(t.ext && t.ext.src === "pmo" && String(t.ext.pmoTaskId) === String(op.taskId))) return;
@@ -8917,6 +8941,7 @@ async function pullPmoState(opts = {}) {
           const done = !!it.done, remark = String(it.remark || ""), text = String(it.text || "");
           let ci = sub.checklist.find(x => x.ext && String(x.ext.pmoItemId) === String(it.id));
           let bi = !ci && sub.bom && Array.isArray(sub.bom.items) ? sub.bom.items.find(x => x.ext && String(x.ext.pmoItemId) === String(it.id)) : null;
+          if (!ci && !bi && sub.ext && Array.isArray(sub.ext.pmoDeleted) && sub.ext.pmoDeleted.includes(String(it.id))) return;   // deleted here, waiting for the bot
           if (!ci && !bi) {   // ★ a line added in the PMO
             if (pmoIsEquip(it)) pmoAddEquip(sub, it, t.so || "");
             else {
