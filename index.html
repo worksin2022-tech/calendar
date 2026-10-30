@@ -8847,6 +8847,8 @@ function pmoUpsertTask(row) {
     });
   });
   logActivity(t, `${isNew ? "รับงานจาก PMO" : "รับงานเพิ่มจาก PMO"} (${(getDept(ourDept) || {}).name || row.pmo_dept_id})`);
+  const fatMsg = pmoApplyFat(t, snap.fat);
+  if (fatMsg) logActivity(t, "นัด " + fatMsg + " (จาก PMO)");
   t.updatedAt = Date.now();
   return t;
 }
@@ -8867,6 +8869,25 @@ function pmoParseEquip(text) {
   if (q) { qty = parseFloat(q[1].replace(/,/g, "")); unit = (q[2] || "").trim(); t = t.slice(0, q.index); }
   else if ((q = t.match(/\s+([\d,]+\.\d+)\s*$/))) { qty = parseFloat(q[1].replace(/,/g, "")); t = t.slice(0, q.index); }
   return { code, name: t.trim() || code, qty: isFinite(qty) ? qty : null, unit };
+}
+/* ★ 2026-10-30 (owner): the PMO's FAT appointment (task.fat = { round, date, time, status scheduled|passed|failed, note }) →
+   this project's FAT rounds (task.fats, same shape as booking a FAT here). One round per PMO round (ext.pmoRound); an appointment
+   already typed in here on the same date is linked, not doubled. Applied only when it CHANGED in the PMO (ext.pmoLast), so a FAT
+   edited here stays until the PMO changes it. The PMO has no way to set FAT from its board → one way, PMO → here. */
+const PMO_FAT_RES = { scheduled: "wait", passed: "pass", failed: "fail" };
+function pmoApplyFat(t, fat) {
+  if (!t || !fat || !fat.date) return "";
+  const round = Math.max(1, parseInt(fat.round, 10) || 1);
+  const want = { date: String(fat.date).slice(0, 10), time: String(fat.time || "").slice(0, 5), result: PMO_FAT_RES[fat.status] || "wait" };
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(want.date)) return "";
+  if (!Array.isArray(t.fats)) t.fats = [];
+  let f = t.fats.find(x => x && x.ext && x.ext.src === "pmo" && x.ext.pmoRound === round);
+  if (!f) f = t.fats.find(x => x && !x.ext && x.date === want.date);
+  const sig = JSON.stringify(want);
+  if (f && f.ext && f.ext.pmoLast === sig) return "";
+  if (!f) { f = { id: uid("fat"), ...want }; t.fats.push(f); } else Object.assign(f, want);
+  f.ext = { src: "pmo", pmoRound: round, pmoLast: sig };
+  return `FAT${round > 1 ? " รอบที่ " + round : ""} ${fatWhen(f)} · ${FAT_RES[f.result] || ""}`;
 }
 // equipment = linked to another department's line (the warehouse) OR in a work group named "…อุปกรณ์…" (a line typed in by hand there)
 function pmoIsEquip(it) { return !!it && ((it.from != null && it.from !== "") || /อุปกรณ์/.test(String(it.group || ""))); }
@@ -9030,6 +9051,8 @@ async function pullPmoState(opts = {}) {
           if (x.ext && x.ext.pmoItemId != null && !seenIds.has(String(x.ext.pmoItemId)) && !x.ext.pmoGone) { x.ext.pmoGone = true; gone.push(x.text || x.code || x.name || ""); }
         });
       });
+      const fatMsg = pmoApplyFat(t, row.data && row.data.fat);
+      if (fatMsg) { logActivity(t, "อัปเดตจาก PMO · " + fatMsg); changes++; save = true; t.updatedAt = Date.now(); }
       if (gone.length) { logActivity(t, `ใน PMO ไม่มีรายการนี้แล้ว: ${gone.slice(0, 5).join(", ")}${gone.length > 5 ? " +" + (gone.length - 5) : ""}`); save = true; }
       changes += ticks + notes + renamed + added + moved;
       if (ticks || notes || renamed || added || moved) {
