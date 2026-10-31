@@ -544,6 +544,20 @@ html:has(body.m-mode), body.m-mode { overscroll-behavior-y: contain; }
 .m-sheet input[type=text], .m-sheet textarea, .m-sheet select { font-size: 16px; }   /* no iOS zoom on focus */
 .m-sheet [data-act="send-comment"] { height: 42px; min-width: 64px; border-radius: 21px; font-size: 15px; font-weight: 700; }
 .m-sheet .ta-alert-dept { flex: 1 1 auto; min-width: 0; }
+/* ★ 2026-10-31 Activity ภายใน | PMO (PMO projects only) — the switch sits in .ta-head; on phones the head is shown just for it */
+.ta-src { display: inline-flex; gap: 2px; padding: 3px; border-radius: 999px; background: var(--bg); border: 1px solid var(--border); margin-right: auto; margin-left: 10px; }
+.ta-src button { position: relative; border: 0; background: transparent; border-radius: 999px; padding: 3px 13px; font: inherit; font-size: 12.5px; font-weight: 600; color: var(--text-dim); cursor: pointer; }
+.ta-src button.on { background: var(--panel); color: var(--text); box-shadow: 0 1px 3px rgba(16,24,40,.15); }
+.ta-src button[data-src="pmo"].on { color: var(--t-0b6bcb, #0b6bcb); }
+.ta-src .ta-src-n { position: absolute; top: -7px; right: -5px; min-width: 17px; height: 17px; padding: 0 4px; border-radius: 9px; background: var(--danger); color: #fff; font-size: 10.5px; font-weight: 700; line-height: 17px; text-align: center; box-shadow: 0 0 0 2px var(--panel); }
+.task-activity.src-pmo .ta-input { border-color: var(--t-0b6bcb, #0b6bcb); }
+.task-activity.src-pmo [data-act="send-comment"] { background: var(--t-0b6bcb, #0b6bcb); border-color: var(--t-0b6bcb, #0b6bcb); }
+.task-activity.src-pmo [data-alert-dept] { display: none; }
+.ta-src-sent { font-size: 10.5px; font-weight: 700; padding: 1px 7px; border-radius: 6px; background: var(--b-ecfdf3, #ecfdf3); color: var(--t-027a48, #027a48); white-space: nowrap; }
+.ta-src-to { font-size: 12px; font-weight: 600; color: var(--t-0b6bcb, #0b6bcb); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.m-sheet .ta-head.has-src { display: flex; padding: 6px 12px; }
+.m-sheet .ta-head.has-src > :not(.ta-src) { display: none; }
+.m-sheet .ta-head.has-src .ta-src { margin-left: 0; }
 /* iPhone zooms into any text box under 16px when it gets focus → on phones every input is 16px (owner 2026-10-11) */
 @media (max-width: 640px) { input, select, textarea { font-size: 16px !important; } }
 .m-sheet .tm-title-row { flex-wrap: wrap; }
@@ -553,6 +567,7 @@ html:has(body.m-mode), body.m-mode { overscroll-behavior-y: contain; }
 .m-sheet .subtask-main { flex-wrap: wrap; row-gap: 4px; }
 .m-sheet .subtask-row input.sub-mo { flex: 0 0 auto; width: 120px; }
 .m-sheet .subtask-row input.sub-name { flex: 1 1 calc(100% - 160px); min-width: 140px; }
+.m-sheet .subtask-row input.sub-size { flex: 0 0 auto; width: 140px; }
 /* ===== ★ 2026-10-11 มุมมองมือถือ "งานของฉัน" (≤640px) ===== */
 body.m-mode #appRoot, body.m-mode #sideTabs { display: none !important; }
 #mobileRoot { min-height: 100vh; background: var(--bg); color: var(--text); padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
@@ -2083,6 +2098,36 @@ body.chip-dragging .task-chip.span-bar { pointer-events: none; }   /* let the da
 .task-chip.span-mid .task-substatus,
 .task-chip.span-end .task-substatus { flex-wrap: nowrap; }
 .cell-tasks > .span-gap { background:transparent; border:none; pointer-events: none; }
+/* ★ 2026-10-31 (owner): a bar LONGER than 5 days = ONE line (SO · name · counts), half the height; 5 days or less keep the 2-line card.
+   Decided per lane per week (.span-thin on the bar and its spacers) so the lanes stay aligned. */
+.cal-cell .task-chip.span-thin, .cal-cell .cell-tasks > .span-gap.span-thin { --span-h: 26px; }
+.cal-cell .task-chip.span-bar.span-thin { flex-direction: row; align-items: center; gap: 6px; padding-top: 0; padding-bottom: 0; }
+.cal-cell .task-chip.span-bar.span-thin > .chip-title-row { flex: 1 1 45%; min-width: 70px; overflow: hidden; }
+.cal-cell .task-chip.span-bar.span-thin > .chip-title-row .task-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cal-cell .task-chip.span-bar.span-thin > .task-substatus { flex: 0 1 auto; min-width: 0; max-width: 55%; margin: 0; flex-wrap: nowrap; overflow: hidden; }
+.cal-cell .task-chip.span-bar.span-thin > .task-substatus > * { flex: 0 0 auto; }
+.cal-cell .task-chip.span-bar.span-thin > .task-substatus > .chip-field { flex: 0 1 auto; min-width: 28px; }   /* field labels shrink with "…" before the name does */
+/* more than 3 bars in a week → one summary row (click = open / close, remembered per week on this device) */
+.span-fold, .cell-tasks > .span-fold-gap { height: 28px; box-sizing: border-box; flex: 0 0 auto; }
+.cell-tasks > .span-fold-gap { pointer-events: none; }
+.span-fold { position: relative; z-index: 3; display: flex; align-items: center; gap: 8px; padding: 0 10px 0 6px; border: 1px solid color-mix(in srgb, var(--accent) 32%, transparent); border-radius: 7px; background: color-mix(in srgb, var(--accent) 9%, var(--panel)); color: var(--text-dim); font: inherit; font-size: 12px; cursor: pointer; text-align: left; white-space: nowrap; overflow: hidden; }
+.span-fold:hover { color: var(--text); background: color-mix(in srgb, var(--accent) 16%, var(--panel)); border-color: color-mix(in srgb, var(--accent) 55%, transparent); }
+.span-fold.open { background: var(--panel); }
+.cal-cell .cell-tasks { position: relative; }
+.cell-tasks > .span-zone-pad { height: 4px; flex: 0 0 auto; pointer-events: none; }
+.cell-tasks > .span-zone { position: absolute; z-index: 2; pointer-events: none; box-sizing: border-box; border-radius: 9px; background: color-mix(in srgb, var(--accent) 6%, transparent); border: 1px solid color-mix(in srgb, var(--accent) 24%, transparent); }
+.span-fold b { color: var(--accent); }
+.span-fold-chev { width: 20px; height: 20px; border-radius: 50%; background: var(--accent); color: #fff; display: inline-flex; align-items: center; justify-content: center; flex: none; transition: transform .15s ease; }
+.span-fold-chev svg { width: 13px; height: 13px; margin-left: 1px; }
+.span-fold.open .span-fold-chev { transform: rotate(90deg); }
+.span-fold-dots { margin-left: auto; display: flex; gap: 3px; flex: none; }
+.span-fold-dots i { width: 8px; height: 8px; border-radius: 50%; display: block; }
+body.chip-dragging .span-fold { pointer-events: none; }
+/* pulled-out card: exactly a single-day card (own height, own look), only stretched over its days and above the cells it covers;
+   syncPullLanes() places it and sizes the spacers under it after layout */
+.cal-cell .task-chip.span-pull { z-index: 3; }
+body.chip-dragging .task-chip.span-pull { pointer-events: none; }
+.cal-cell .cell-tasks > .span-gap.span-pull { height: 0; box-sizing: border-box; }
 .task-priority { font-size: 10px; flex: 0 0 auto; }
 .pri-flag { font-size: 13px; line-height: 1; flex: 0 0 auto; }
 .task-title { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -2426,6 +2471,11 @@ body.chip-dragging .task-chip.span-bar { pointer-events: none; }   /* let the da
 .subtask-progress-bar { height: 100%; width: 0%; background:var(--accent); border-radius:3px; transition: width .2s; }
 .subtask-progress-pct { flex: 0 0 30px; font-size: 11px; font-weight: 600; color:var(--text-dim); text-align: right; font-variant-numeric: tabular-nums; }
 .subtask-progress-pct.full { color: #10b981; }
+.subtask-progress.pmo .subtask-progress-pct { color: var(--t-0b6bcb, #0b6bcb); }
+.subtask-progress.pmo .subtask-progress-pct.late { color: var(--danger); }
+.subtask-progress.pmo { cursor: help; }
+.prog-demo { margin-left: auto; display: inline-flex; }
+.prog-demo .subtask-progress { flex: 0 0 110px; display: flex !important; }
 @media (max-width: 640px) { .subtask-progress { display: none; } }
 .subtask-cl-btn {
   position: relative;
@@ -2728,6 +2778,12 @@ body.chip-dragging .task-chip.span-bar { pointer-events: none; }   /* let the da
 .subtask-row input[type=text]:focus { outline:none; background:var(--b-ffffff, #fff); border-bottom:1px solid var(--accent); }
 .subtask-row input.sub-mo { flex: 0 0 104px; min-width: 0; color:var(--text-dim); font-size: 12px; padding-left: 6px; padding-right: 4px; }   /* ★ 2026-10-17: fits "WH/MO/05100" */
 .subtask-row input.sub-name { flex: 1 1 0; min-width: 120px; }
+.subtask-row input.sub-size { flex: 0 0 132px; min-width: 0; color:var(--text-dim); font-size: 12px; padding-left: 6px; padding-right: 4px; }   /* ★ 2026-10-31 ขนาดตู้ */
+.tm-proj-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+@media (max-width: 640px) { .tm-proj-grid { grid-template-columns: 1fr; } }
+.tm-proj-sum { font-weight: 400; color: var(--text-dim); margin-left: 4px; }
+.tm-copy-wrap { position: relative; display: flex; }
+.tm-copy-wrap input { flex: 1 1 auto; min-width: 0; padding-right: 40px; }
 .subtask-row.done input[type=text] { text-decoration: line-through; color:var(--text-faint); }
 .subtask-row input[type=date].subtask-date {
   flex: 0 0 auto;
@@ -3561,6 +3617,8 @@ function canEdit()    { return permRank() >= 2; }   // dates, statuses, checklis
 const CL_HINT_KEY = "qc_cl_hint", CL_HINT_DAYS = 7;
 function clHintState() { try { return JSON.parse(localStorage.getItem(CL_HINT_KEY) || "{}") || {}; } catch (_) { return {}; } }
 function clHintSet(p) { try { localStorage.setItem(CL_HINT_KEY, JSON.stringify({ ...clHintState(), ...p })); } catch (_) {} }
+// ★ 2026-10-31 (owner): the ring on the checklist button stays for good (only the one-line reminder ends with "เข้าใจแล้ว" / 7 days)
+function clSpotOn() { return canTick() && automationRules().length > 0; }
 function clHintOn() {
   if (!canTick() || !automationRules().length) return false;
   const h = clHintState();
@@ -7204,6 +7262,77 @@ function renderMonth() {
     ? buildDeptItems(filteredTasks, vDepts)
     : buildCalendarItems(filteredTasks);
   const fatTasks = !fatBoardOn() ? [] : filteredTasks.filter(t => taskFats(t).length && (!vDepts.length || vDepts.some(d => taskStage(t, d))));
+  // ★ 2026-10-31 (owner): a week with more than SPAN_FOLD_MAX multi-day bars folds them into one summary row
+  const weekSpans = [];   // per week row: Map key → item
+  const weekTall = [];    // per week row: lanes holding a bar of ≤ 5 days (those lanes keep the 2-line height)
+  const weekNear = [];    // per week row: keys of bars whose last N days are pulled out in that week (left out of the folded row's count)
+  const weekPull = [];    // per week row: Map key → { it, ps, pe, lane } — the pulled-out full card, its days in this row, its own lane
+  const weekBars = [];    // per week row: Map key → { it, s, e, lane } — the bar's shown days in this row, its lane packed for this row only
+  // ★ 2026-10-31 (owner: รพ.อุบล 2 วันไม่ควรอยู่ในโซนแถบยาว) — bars of ≤ 5 days are a separate group drawn BELOW the long-bar zone
+  const weekShort = [];   // per week row: Map key → { it, s, e, lane } for the short bars
+  const pullDatesOf = new Map();   // key → the bar's last N days (null = none)
+  const pullDates = it => { const k = spanKey(it); if (!pullDatesOf.has(k)) pullDatesOf.set(k, spanPullDates(it)); return pullDatesOf.get(k); };
+  // a long bar on a day before its pulled-out last days → this day is folded away (finished ones too — owner: fold them, don't count them)
+  const runsHidden = (it, iso) => { if (!spanLong(it)) return false; const pd = pullDates(it); return !pd || iso < pd[pd.length - 1]; };
+  const weekRange = i => { const a = new Date(startDate); a.setDate(a.getDate() + Math.floor(i / 7) * 7); const b = new Date(a); b.setDate(b.getDate() + 6); return [isoDate(a), isoDate(b)]; };
+  // which weeks are folded (more than SPAN_FOLD_MAX bars and not opened by this person)
+  const openWeeks = spanFoldOpen(), weekFolded = [];
+  for (let w = 0; w < 6; w++) {
+    const keys = new Set();
+    for (let j = w * 7; j < w * 7 + 7; j++) {
+      const dj = new Date(startDate); dj.setDate(startDate.getDate() + j);
+      (tasksByDate[isoDate(dj)] || []).forEach(it => { if (it.position && it.position !== "single" && runsHidden(it, isoDate(dj))) keys.add(spanKey(it)); });
+    }
+    weekFolded[w] = keys.size > SPAN_FOLD_MAX && !openWeeks.has(root.activeBoard + "|" + weekRange(w * 7)[0]);
+  }
+  // ★ 2026-10-31 (owner): only LONG bars (> 5 days) are reduced — they fold, go one-line and get their last days pulled out.
+  //   A bar of ≤ 5 days is always the full card over all its days: never folded, never cut, not counted in the summary row.
+  const pullOn = (it, w) => !!pullDates(it) && spanLong(it);
+  const barShows = (it, iso, w) => {
+    if (weekFolded[w] && spanLong(it)) return false;   // folded away
+    if (!pullOn(it, w)) return true;
+    const pd = pullDates(it); return iso < pd[pd.length - 1];   // the bar stops where its pulled-out days begin
+  };
+  for (let i = 0; i < 42; i++) {
+    const d = new Date(startDate); d.setDate(startDate.getDate() + i);
+    const w = Math.floor(i / 7);
+    const m = weekSpans[w] || (weekSpans[w] = new Map());
+    const tall = weekTall[w] || (weekTall[w] = new Set());
+    const near = weekNear[w] || (weekNear[w] = new Set());
+    const pull = weekPull[w] || (weekPull[w] = new Map());
+    const bars = weekBars[w] || (weekBars[w] = new Map());
+    const sbars = weekShort[w] || (weekShort[w] = new Map());
+    const isoD = isoDate(d);
+    const [wkS, wkE] = weekRange(i);
+    (tasksByDate[isoDate(d)] || []).forEach(it => {
+      if (!it.position || it.position === "single") return;
+      const k = spanKey(it);
+      if (runsHidden(it, isoD)) m.set(k, it);   // the long bars the summary row hides this week (it counts only the unfinished ones)
+      if (barShows(it, isoD, w)) { const g = spanLong(it) ? bars : sbars, b = g.get(k); if (b) b.e = isoD; else g.set(k, { it, s: isoD, e: isoD }); }
+      const pd = pullOn(it, w) ? pullDates(it) : null;
+      const inWk = pd ? pd.filter(x => x >= wkS && x <= wkE) : [];
+      if (inWk.length && !pull.has(k)) { near.add(k); pull.set(k, { it, ps: inWk[inWk.length - 1], pe: inWk[0] }); }
+    });
+  }
+  // ★ bars and pulled-out cards: lanes packed per week row (lowest free lane, earliest/longest first) → no empty rows between them
+  const packLanes = list => {
+    const lanes = [];
+    list.sort((a, b) => a.s.localeCompare(b.s) || b.e.localeCompare(a.e)).forEach(p => {
+      let l = 0;
+      while ((lanes[l] || []).some(q => !(p.e < q.s || p.s > q.e))) l++;
+      (lanes[l] = lanes[l] || []).push(p); p.lane = l;
+    });
+  };
+  weekBars.forEach(bars => packLanes([...bars.values()]));
+  weekShort.forEach(sbars => packLanes([...sbars.values()]));
+  weekPull.forEach(pull => {
+    const lanes = [];
+    [...pull.values()].filter(p => p.ps !== p.pe).sort((a, b) => a.ps.localeCompare(b.ps) || b.pe.localeCompare(a.pe)).forEach(p => {   // one-day pieces join the day's chips instead
+      let l = 0;
+      while ((lanes[l] || []).some(q => !(p.pe < q.ps || p.ps > q.pe))) l++;
+      (lanes[l] = lanes[l] || []).push(p); p.lane = l;
+    });
+  });
 
   for (let i = 0; i < 42; i++) {
     const d = new Date(startDate);
@@ -7252,20 +7381,46 @@ function renderMonth() {
     // multi-day bars are placed by lane (with spacers for empty upper lanes) so each bar keeps
     // its row across every day it crosses; everything else stacks below in sorted order.
     const isSpanItem = it => !!it.position && it.position !== "single";   // project spans + department bars (stage.start)
-    const spans = dayItems.filter(isSpanItem);
-    const rest  = dayItems.filter(it => !isSpanItem(it));
-    if (spans.length) {
-      const maxLane = spans.reduce((m, it) => Math.max(m, it.lane || 0), 0);
-      const laneArr = new Array(maxLane + 1).fill(null);
-      spans.forEach(it => { laneArr[it.lane || 0] = it; });
-      // ONE continuous bar per week row: drawn in the cell where it starts (or on Monday when it wraps
-      // from the week before) and stretched over the following days of that row; the other days only
-      // keep the lane open with an invisible spacer. (Every cell = 6px padding + 1px grid gap → 13px
-      // between one cell's content box and the next.)
+    const wk = weekSpans[Math.floor(i / 7)], wkKey = root.activeBoard + "|" + isoDate(new Date(d.getFullYear(), d.getMonth(), d.getDate() - (i % 7)));
+    const foldable = wk.size > SPAN_FOLD_MAX, folded = foldable && !openWeeks.has(wkKey);
+    if (foldable) {
+      if (isFirstOfRow) taskWrap.appendChild(renderSpanFold(wk, !folded, wkKey, null));
+      else { const g = document.createElement("div"); g.className = "span-fold-gap"; taskWrap.appendChild(g); }
+    }
+    const w = Math.floor(i / 7), pull = weekPull[w] || new Map();
+    // bars (long ones: none when the week is folded); a long bar stops where its pulled-out last days begin
+    const spans = dayItems.filter(it => isSpanItem(it) && barShows(it, iso, w));
+    const spansL = spans.filter(spanLong), spansS = spans.filter(it => !spanLong(it));
+    const pulledHere = [...pull.values()].filter(p => p.ps !== p.pe && iso >= p.ps && iso <= p.pe);
+    // ★ 2026-10-31 (owner): a pulled-out piece of ONE day is an ordinary day chip — sorted with the others (under FAT, finished ones low)
+    const pulledToday = new Set([...pull.entries()].filter(([, p]) => p.ps === p.pe && p.ps === iso).map(([k]) => k));
+    const rest  = sortDayChips(dayItems.filter(it => !isSpanItem(it) || pulledToday.has(spanKey(it))), vDepts.length > 0);
+    const laneIn = grp => x => { const b = (grp[w] || new Map()).get(spanKey(x)); return b ? b.lane : 0; };
+    const laneL = laneIn(weekBars), laneS = laneIn(weekShort);
+    const rowsOf = (list, lane) => list.reduce((m, x) => Math.max(m, lane(x) + 1), 0);
+    // a day under a pulled-out card keeps as many long-bar rows as the other days that card covers → the card sits level
+    let nLong = rowsOf(spansL, laneL);
+    if (pulledHere.length) {
+      for (let j = i - (i % 7); j < i - (i % 7) + 7; j++) {
+        const dj = isoDate(new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate() + j));
+        if (!pulledHere.some(p => dj >= p.ps && dj <= p.pe)) continue;
+        nLong = Math.max(nLong, rowsOf((tasksByDate[dj] || []).filter(it => isSpanItem(it) && spanLong(it) && barShows(it, dj, w)), laneL));
+      }
+    }
+    // ONE continuous bar per week row: drawn in the cell where it starts (or on Monday when it wraps
+    // from the week before) and stretched over the following days of that row; the other days only
+    // keep the lane open with an invisible spacer. (Every cell = 6px padding + 1px grid gap → 13px
+    // between one cell's content box and the next.) Long bars = one line; short ones = the 2-line card.
+    const drawBars = (list, lane, rows, thin) => {
+      if (!rows) return;
+      const laneArr = new Array(rows).fill(null);
+      list.forEach(it => { laneArr[lane(it)] = it; });
       laneArr.forEach(it => {
         const segStart = it && (it.position === "start" || isFirstOfRow);
-        if (!segStart) { taskWrap.appendChild(makeSpanGap()); return; }
-        const daysLeft = Math.round((fromIso(it.end || it.task.date) - fromIso(iso)) / 86400000) + 1;
+        if (!segStart) { const g = makeSpanGap(); if (thin) g.classList.add("span-thin"); taskWrap.appendChild(g); return; }
+        const pd = pullOn(it, w) ? pullDates(it) : null, realEnd = it.end || it.task.date;
+        const barEnd = pd ? isoDate(new Date(fromIso(pd[pd.length - 1]).getTime() - 86400000)) : realEnd;
+        const daysLeft = Math.round((fromIso(barEnd) - fromIso(iso)) / 86400000) + 1;
         const n = Math.max(1, Math.min(daysLeft, 7 - (i % 7)));
         const pos = it.position === "start" ? "start" : "mid";
         const chip = it.kind === "deptstage" ? renderDeptChip(it.task, it.stage, pos)
@@ -7273,12 +7428,36 @@ function renderMonth() {
           : it.kind === "deptgroup" ? renderDeptChip(it.task, it.stage, pos, it.subs)
           : renderTaskChip(it.task, pos, true);
         chip.classList.add("span-bar");
+        if (thin) chip.classList.add("span-thin");
         if (it.position !== "start") chip.classList.add("bar-cont-left");   // continues from last week
         if (daysLeft > n) chip.classList.add("bar-cont-right");              // continues next week
         chip.style.width = `calc(${n} * 100% + ${(n - 1) * 13}px)`;
         taskWrap.appendChild(chip);
       });
+    };
+    drawBars(spansL, laneL, nLong, true);
+    // ★ 2026-10-31 (owner): the last N days of a long bar = the full card (SO on its own row), folded week or not, never on Sat/Sun
+    if (pulledHere.length) {
+      const pArr = new Array(pulledHere.reduce((m, p) => Math.max(m, p.lane + 1), 0)).fill(null);
+      pulledHere.forEach(p => { pArr[p.lane] = p; });
+      pArr.forEach((p, lane) => {
+        if (!p || iso !== p.ps) { const g = makeSpanGap(); g.classList.add("span-pull"); g.dataset.plane = w + "|" + lane; taskWrap.appendChild(g); return; }   // spacer (sized later)
+        const it = p.it, n = Math.round((fromIso(p.pe) - fromIso(p.ps)) / 86400000) + 1;
+        const chip = it.kind === "deptstage" ? renderDeptChip(it.task, it.stage, "single")
+          : it.kind === "deptcab" ? renderDeptCabChip(it.task, it.stage, it.sub, "single")
+          : it.kind === "deptgroup" ? renderDeptChip(it.task, it.stage, "single", it.subs)
+          : renderTaskChip(it.task, "single", true);
+        chip.classList.add("span-pull");
+        chip.dataset.plane = w + "|" + p.lane;
+        chip.dataset.pdays = n;
+        chip.style.width = `calc(${n} * 100% + ${(n - 1) * 13}px)`;
+        taskWrap.appendChild(chip);
+      });
     }
+    // end of the long-bar part: an opened week draws its zone down to here; with short bars below, every day's pad is
+    // stretched to the same line (syncSpanZones) so the short bars start level
+    if ((foldable && !folded) || (weekShort[w] && weekShort[w].size)) { const pad = document.createElement("div"); pad.className = "span-zone-pad"; taskWrap.appendChild(pad); }
+    drawBars(spansS, laneS, rowsOf(spansS, laneS), false);
     fatChips.forEach(c => taskWrap.appendChild(c));
     rest.forEach(item => {
       if (item.kind === "deptstage") {
@@ -7290,7 +7469,7 @@ function renderMonth() {
       } else if (item.kind === "cabinet") {
         taskWrap.appendChild(renderCabinetChip(item.task, item.sub));
       } else {
-        taskWrap.appendChild(renderTaskChip(item.task, item.position, true)); // single-day
+        taskWrap.appendChild(renderTaskChip(item.task, isSpanItem(item) ? "single" : item.position, true)); // single-day (or a one-day pulled-out piece)
       }
     });
 
@@ -7412,6 +7591,53 @@ function renderMonth() {
     });
 
     grid.appendChild(cell);
+  }
+  syncPullLanes(grid);
+  syncSpanZones(grid);
+}
+// ★ 2026-10-31 (owner): an OPENED week's long bars sit in one tinted zone (from the summary row down to the last bar) → set apart from the day chips,
+//   which all start below it
+function syncSpanZones(grid) {
+  const cells = [...grid.querySelectorAll(".cal-cell")];
+  for (let w = 0; w * 7 < cells.length; w++) {
+    const row = cells.slice(w * 7, w * 7 + 7);
+    const pads = row.map(x => x.querySelector(".cell-tasks > .span-zone-pad")).filter(Boolean);
+    const fold = row[0] && row[0].querySelector(".span-fold");
+    if (!pads.length || !pads[0].offsetParent) continue;   // nothing / not laid out
+    const bottom = Math.max(...pads.map(p => p.getBoundingClientRect().bottom));
+    pads.forEach(p => { p.style.height = (p.offsetHeight + bottom - p.getBoundingClientRect().bottom) + "px"; });   // short bars / day chips start level
+    if (!fold || !fold.classList.contains("open")) continue;
+    const wrap = fold.parentElement, fr = fold.getBoundingClientRect(), wr = wrap.getBoundingClientRect();
+    const z = document.createElement("div");
+    z.className = "span-zone";
+    z.style.top = (fr.top - wr.top - 3) + "px";
+    z.style.left = (fr.left - wr.left - 3) + "px";
+    z.style.width = (fr.width + 6) + "px";
+    z.style.height = (bottom - fr.top + 3) + "px";
+    wrap.appendChild(z);
+  }
+}
+// pulled-out cards keep their natural height. Lane by lane (top → down), each card is put at the lowest point of the days it covers
+// and the spacers under it in the next days are sized to match → the card sits level and nothing below it is covered.
+function syncPullLanes(grid) {
+  const cells = [...grid.querySelectorAll(".cal-cell")];
+  for (let w = 0; w * 7 < cells.length; w++) {
+    const row = cells.slice(w * 7, w * 7 + 7);
+    const lanes = new Set(); row.forEach(c => c.querySelectorAll("[data-plane]").forEach(el => lanes.add(+el.dataset.plane.split("|")[1])));
+    [...lanes].sort((a, b) => a - b).forEach(lane => {
+      const key = w + "|" + lane;
+      const at = row.map(c => c.querySelector(`[data-plane="${key}"]`));   // this lane's element in each day (or none)
+      at.forEach((el, ci) => {
+        if (!el || !el.classList.contains("task-chip")) return;
+        const n = +el.dataset.pdays || 1;
+        if (!el.offsetHeight) return;   // not laid out (view hidden)
+        const span = at.slice(ci, ci + n);
+        const top = Math.max(...span.map(x => x ? x.getBoundingClientRect().top : -Infinity));
+        el.style.marginTop = Math.round(top - el.getBoundingClientRect().top) + "px";
+        const h = el.offsetHeight;
+        span.forEach(x => { if (x && x !== el) { x.style.marginTop = Math.round(top - x.getBoundingClientRect().top) + "px"; x.style.height = h + "px"; } });
+      });
+    });
   }
 }
 
@@ -7539,6 +7765,80 @@ function assignSpanLanes(tasks) {
 document.addEventListener("dragstart", () => document.body.classList.add("chip-dragging"));
 document.addEventListener("dragend", () => document.body.classList.remove("chip-dragging"));
 document.addEventListener("drop", () => document.body.classList.remove("chip-dragging"));
+// ★ 2026-10-31 (owner): fold a week as soon as it has ONE long bar still in progress (0) — a one-line bar that widens at its end looked odd
+const SPAN_FOLD_MAX = 0, SPAN_FOLD_KEY = "qc_span_open", SPAN_THIN_AFTER = 5;
+// ⚙ การแสดงผล "แถบใกล้กำหนดจบ": the last N days of a bar (see spanPullDates) — no frame / tag (owner 2026-10-31). 0 = off. Default 2.
+function dueSoonDays() { const v = state.settings && state.settings.dueSoonDays; return typeof v === "number" && v >= 0 ? v : 2; }
+// ★ 2026-10-31 (owner: "ดูล่วงหน้า"): by the CALENDAR, not today — in the week(s) holding the last N days of a bar
+//   (its end and the N days before it) the bar leaves the folded row and shows full size. Done work stays folded.
+// the bar's last N days, newest first: its end day + the N-1 days before it, Sat/Sun skipped (owner: never shown on a day off)
+// and not before the bar starts. null = nothing to pull out (setting off).
+function spanPullDates(it) {
+  const n = dueSoonDays(); if (!n) return null;
+  const t = it.task, en = it.end || t.date; if (!en) return null;   // finished work too (owner): its end day stays visible, struck through like any done card
+  const st = (it.stage && it.end ? it.stage.start : t.startDate) || en;
+  const out = [en];
+  for (let d = fromIso(en), guard = 0; out.length < n && guard < 14; guard++) {
+    d = new Date(d.getFullYear(), d.getMonth(), d.getDate() - 1);
+    const iso = isoDate(d);
+    if (iso < st) break;
+    if (d.getDay() === 0 || d.getDay() === 6) continue;
+    out.push(iso);
+  }
+  return out;
+}
+// whole length of a multi-day bar in days (project: startDate..date · department bar: stage.start..its due)
+function spanLong(it) { return spanDays(it) > SPAN_THIN_AFTER; }
+// the day's own chips (a pulled-out one-day piece is placed as if it were a single-day chip): unfinished first — finished ones sink
+// to the bottom in every view (owner 2026-10-31; was department view only) → project view: projects before cabinets → priority → name
+function sortDayChips(arr, deptView) {
+  const prRank = { urgent:4, high:3, medium:2, low:1, none:0 };
+  const fin = it => it.kind === "cabinet" ? isStatusDone(getStatus(it.sub.statusId)) : spanDone(it);
+  return arr.slice().sort((a, b) => {
+    const d = (fin(a) ? 1 : 0) - (fin(b) ? 1 : 0); if (d) return d;
+    if (!deptView && a.kind !== b.kind && (a.kind === "cabinet" || b.kind === "cabinet")) return a.kind === "cabinet" ? 1 : -1;
+    return (prRank[b.task.priority] || 0) - (prRank[a.task.priority] || 0)
+      || a.task.title.localeCompare(b.task.title, "th")
+      || (a.sub?.text || "").localeCompare(b.sub?.text || "", "th")
+      || a.task.id.localeCompare(b.task.id);
+  });
+}
+// finished: the project's status is done, or (department bar) that department's checklist is complete
+function spanDone(it) {
+  const t = it.task;
+  if (isStatusDone(getStatus(t.statusId))) return true;
+  if (!it.stage) return false;
+  const dep = it.stage.deptId;
+  return it.sub ? cabDeptDone(t, it.sub, dep) : it.subs ? it.subs.every(sb => cabDeptDone(t, sb, dep)) : isDeptComplete(t, dep);
+}
+function spanDays(it) {
+  const st = it.stage && it.end ? it.stage.start : it.task.startDate, en = it.end || it.task.date;
+  if (!st || !en) return 1;
+  return Math.round((fromIso(en) - fromIso(st)) / 86400000) + 1;
+}
+function spanKey(it) { return [it.kind || "task", it.task.id, it.stage ? it.stage.deptId : "", it.sub ? it.sub.id : ""].join("|"); }
+function spanFoldOpen() { try { return new Set(JSON.parse(localStorage.getItem(SPAN_FOLD_KEY) || "[]")); } catch (_) { return new Set(); } }
+function spanFoldToggle(key) {
+  const s = spanFoldOpen();
+  if (s.has(key)) s.delete(key); else s.add(key);
+  try { localStorage.setItem(SPAN_FOLD_KEY, JSON.stringify([...s].slice(-80))); } catch (_) {}
+}
+// the summary row of a week's multi-day bars, stretched over the 7 days (drawn in the Monday cell)
+function renderSpanFold(wk, open, key, pulled) {
+  const items = [...wk.entries()].filter(([k, it]) => !(pulled && pulled.has(k)) && !spanDone(it)).map(([, it]) => it);   // finished work is folded but not counted
+  const projects = new Set(items.map(it => it.task.id)).size;
+  const cabs = items.reduce((n, it) => n + (Array.isArray(it.subs) ? it.subs.length : it.sub ? 1 : (it.task.subtasks || []).length), 0);
+  const colors = [...new Set(items.map(it => (getStatus(it.task.statusId) || {}).color).filter(Boolean))].slice(0, 6);
+  const b = document.createElement("button");
+  b.type = "button";
+  b.className = "span-fold" + (open ? " open" : "");
+  b.style.width = "calc(7 * 100% + 78px)";
+  b.title = open ? "พับเก็บ" : items.map(it => taskLabel(it.task)).filter((v, i, a) => a.indexOf(v) === i).slice(0, 12).join("\n");
+  b.innerHTML = `<span class="span-fold-chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></span><span>${projects ? `กำลังดำเนินการ <b>${projects} โครงการ</b>${cabs ? ` · ${cabs} ตู้` : ""}` : "เสร็จแล้ว"}</span>`
+    + (open ? "" : `<span class="span-fold-dots">${colors.map(c => `<i style="background:${c}"></i>`).join("")}</span>`);
+  b.addEventListener("click", (e) => { e.stopPropagation(); spanFoldToggle(key); renderMonth(); });
+  return b;
+}
 function makeSpanGap() {
   const g = document.createElement("div");
   g.className = "span-gap";
@@ -8662,6 +8962,48 @@ function pmoMyDepts() {
   if (isAdmin()) return [...new Set(Object.values(map).filter(Boolean))];
   const my = myDeptId(); return my && map[my] ? [map[my]] : [];
 }
+// ★ 2026-10-31 (owner): the Activity of a PMO project has two tabs — ภายใน (the team talks here, never sent anywhere) and PMO
+//   (comments copied from the PMO, "PMO อัปเดต" lines, and what someone typed in that tab = c.toPmo → sent by the bot).
+//   Older comments stay where their source puts them. Unread = PMO comments this person hasn't seen in the PMO tab (this device).
+// ★ 2026-10-31 (owner): รายละเอียด + ลูกค้า + พนักงานขาย (task) and ขนาดตู้ (cabinet) come from the PMO. Same rule as ticks:
+//   the PMO value is applied when it CHANGED there since last seen (ext.pmoProj / ext.pmoSize); first time = only into an empty box.
+const PMO_PROJ_LBL = { description: "รายละเอียด", customer: "ลูกค้า", salesPerson: "พนักงานขาย" };
+function pmoApplyProject(t, p) {
+  if (!t || !t.ext || !p || typeof p !== "object") return { dirty: false, msg: "" };
+  const last = t.ext.pmoProj || {}, now = {}, changed = [];
+  Object.keys(PMO_PROJ_LBL).forEach(k => {
+    const v = String(p[k] || "").replace(/\r\n?/g, "\n").trim(); now[k] = v;
+    const take = (k in last) ? v !== last[k] : (v && !String(t[k] || "").trim());
+    if (take && String(t[k] || "") !== v) { t[k] = v; changed.push(PMO_PROJ_LBL[k]); }
+  });
+  const dirty = changed.length > 0 || JSON.stringify(now) !== JSON.stringify(last);
+  if (dirty) t.ext.pmoProj = now;
+  return { dirty, msg: changed.join(", ") };
+}
+function pmoApplySize(sub, cab) {   // 0 nothing · 1 only remembered · 2 the box changed
+  if (!sub || !sub.ext || !cab || !("size" in cab)) return 0;
+  const v = String(cab.size || "").trim(), had = "pmoSize" in sub.ext;
+  const take = had ? v !== sub.ext.pmoSize : (v && !String(sub.size || "").trim());
+  let r = 0;
+  if (take && String(sub.size || "") !== v) { sub.size = v; r = 2; }
+  if (!had || sub.ext.pmoSize !== v) { sub.ext.pmoSize = v; r = r || 1; }
+  return r;
+}
+function isPmoTask(t) { return !!(t && t.ext && t.ext.src === "pmo" && t.ext.pmoTaskId != null && pmoCfg().enabled); }
+function isPmoEntry(c) { return !!(c && ((c.ext && c.ext.src === "pmo") || c.toPmo || (c.type === "system" && c.author === "PMO"))); }
+const PMO_SEEN_KEY = "qc_pmo_seen";
+function pmoSeenMap() { try { return JSON.parse(localStorage.getItem(PMO_SEEN_KEY) || "{}") || {}; } catch (_) { return {}; } }
+function pmoUnread(t) {
+  if (!isPmoTask(t)) return 0;
+  const seen = new Set(pmoSeenMap()[t.id] || []);
+  return (t.comments || []).filter(c => c.ext && c.ext.src === "pmo" && c.type !== "system" && !seen.has(c.id)).length;
+}
+function pmoMarkSeen(t) {
+  const ids = (t.comments || []).filter(c => c.ext && c.ext.src === "pmo" && c.type !== "system").map(c => c.id);
+  const m = pmoSeenMap(); m[t.id] = ids.slice(-300);
+  try { localStorage.setItem(PMO_SEEN_KEY, JSON.stringify(m)); } catch (_) {}
+}
+function canPostPmo() { return canComment() && (isAdmin() || pmoMyDepts().length > 0); }
 function ourDeptForPmo(pmoDeptId) { const map = pmoCfg().deptMap || {}; return Object.keys(map).find(k => map[k] === pmoDeptId && getDept(k)) || null; }
 function pmoRemark(i) { return !i.note ? "" : i.noteDone ? "✓ " + i.note : i.note; }   // the PMO has a remark per item, no "cleared" flag
 // queue what a person pressed → pmo_commands (a small local outbox keeps it when offline; retried every minute)
@@ -8707,13 +9049,13 @@ function pmoTickCommands(prevJson, json) {
     // ★ 2026-10-30 (owner): talk across both apps — a comment / department alert written HERE goes to the PMO (never one that came from it)
     const seen = oldCm.get(t.id);
     if (seen) (t.comments || []).forEach(c => {
-      if (seen.has(c.id) || c.ext || c.type === "system" || (c.type === "alert" && c.toUser)) return;
+      if (seen.has(c.id) || c.ext || c.type === "system" || !c.toPmo) return;   // ★ 2026-10-31: only what was typed in the PMO tab
       const nFiles = (Array.isArray(c.files) ? c.files.length : 0) + (c.photo ? 1 : 0);
       const head = c.type === "alert" ? `[แจ้งเตือน ${alertDepts(c).map(id => ((b.departments || []).find(d => d.id === id) || { name: id }).name).join(", ")}] ` : "";
       // ★ (owner) only people of a department matched to the PMO (the team) — PMO staff who also use this app write in the PMO themselves
       const prof = [...teamProfiles.values()].find(p => p.display_name === c.author);
       const pdep = prof && prof.dept_id ? (deptIdIn(b, prof.dept_id) || prof.dept_id) : "";
-      if (!pdep || !(cfg.deptMap && cfg.deptMap[pdep])) return;
+      if (!prof) return;
       // the PMO shows the bot's account as the poster → say who really wrote it: "QC · สมชาย: …" (department here · name)
       const dn = ((b.departments || []).find(d => d.id === pdep) || {}).name;
       const text = `${dn ? dn + " · " : ""}${c.author || "—"}: ${head}${c.text || ""}${nFiles ? ` (แนบไฟล์ ${nFiles} ไฟล์ในแอป QC)` : ""}`.trim();
@@ -8841,6 +9183,7 @@ function pmoUpsertTask(row) {
       t.subtasks.push(sub);
     }
     if (Array.isArray(c.works) && sub.ext) sub.ext.pmoWorks = c.works;
+    pmoApplySize(sub, c);
     if (!Array.isArray(sub.checklist)) sub.checklist = [];
     (c.checklist || []).forEach(it => {
       if (pmoIsEquip(it)) { pmoAddEquip(sub, it, row.so || snap.so || ""); return; }   // equipment → รายการอุปกรณ์
@@ -8851,6 +9194,7 @@ function pmoUpsertTask(row) {
     });
   });
   logActivity(t, `${isNew ? "รับงานจาก PMO" : "รับงานเพิ่มจาก PMO"} (${(getDept(ourDept) || {}).name || row.pmo_dept_id})`);
+  pmoApplyProject(t, snap.project);
   const fatMsg = pmoApplyFat(t, snap.fat);
   if (fatMsg) logActivity(t, "นัด " + fatMsg + " (จาก PMO)");
   t.updatedAt = Date.now();
@@ -8983,7 +9327,7 @@ async function pullPmoState(opts = {}) {
       const t = (state.tasks || []).find(x => x.ext && x.ext.src === "pmo" && String(x.ext.pmoTaskId) === String(row.pmo_task_id));
       if (!t) return;
       const snap = typeof automationSnapshot === "function" ? automationSnapshot(t) : null;
-      let ticks = 0, notes = 0, renamed = 0, added = 0, moved = 0; const gone = [];
+      let ticks = 0, notes = 0, renamed = 0, added = 0, moved = 0, sized = 0; const gone = [];
       const st0 = (state.statuses[0] || {}).id;
       ((row.data && row.data.cabinets) || []).forEach(cab => {
         let sub = (t.subtasks || []).find(x => x.ext && String(x.ext.pmoCabinetId) === String(cab.id));
@@ -8994,6 +9338,12 @@ async function pullPmoState(opts = {}) {
         }
         if (!Array.isArray(sub.checklist)) sub.checklist = [];
         if (Array.isArray(cab.works) && sub.ext && JSON.stringify(sub.ext.pmoWorks || null) !== JSON.stringify(cab.works)) { sub.ext.pmoWorks = cab.works; save = true; }
+        { const zr = pmoApplySize(sub, cab); if (zr) save = true; if (zr === 2) sized++; }
+        // ★ 2026-10-31 progress of the cabinet in the PMO (all departments; bot v1.4 reads it from the project page) — display only, no activity line
+        if (sub.ext && ("progress" in cab || sub.ext.pmoProg)) {
+          const pg = cab.progress && typeof cab.progress === "object" ? cab.progress : null;
+          if (JSON.stringify(sub.ext.pmoProg || null) !== JSON.stringify(pg)) { if (pg) sub.ext.pmoProg = pg; else delete sub.ext.pmoProg; save = true; }
+        }
         const seenIds = new Set();
         (cab.items || []).forEach(it => {
           seenIds.add(String(it.id));
@@ -9056,6 +9406,10 @@ async function pullPmoState(opts = {}) {
           if (x.ext && x.ext.pmoItemId != null && !seenIds.has(String(x.ext.pmoItemId)) && !x.ext.pmoGone) { x.ext.pmoGone = true; gone.push(x.text || x.code || x.name || ""); }
         });
       });
+      const pj = pmoApplyProject(t, row.data && row.data.project);
+      if (pj.dirty) save = true;
+      const pjMsg = [pj.msg, sized ? `ขนาดตู้ ${sized} ตู้` : ""].filter(Boolean).join(" · ");
+      if (pjMsg) { logActivity(t, "อัปเดต · " + pjMsg, "PMO"); changes++; t.updatedAt = Date.now(); }
       const fatMsg = pmoApplyFat(t, row.data && row.data.fat);
       if (fatMsg) { logActivity(t, "อัปเดต · " + fatMsg, "PMO"); changes++; save = true; t.updatedAt = Date.now(); }
       if (gone.length) { logActivity(t, `ไม่มีรายการนี้แล้ว: ${gone.slice(0, 5).join(", ")}${gone.length > 5 ? " +" + (gone.length - 5) : ""}`, "PMO"); save = true; }
@@ -9446,6 +9800,13 @@ function openTaskModal(taskId, defaults={}) {
           <div class="subtask-list" data-subtasks></div>
           <button class="add-sub-btn" data-act="add-sub">+ เพิ่มตู้</button>
         </div>
+        <details class="tm-more" data-proj>
+          <summary>${ico("building")} <span>ข้อมูลโครงการ</span><span class="tm-proj-sum" data-proj-sum></span></summary>
+          <div class="tm-proj-grid">
+            <div class="field"><label>ลูกค้า</label><span class="tm-copy-wrap"><input type="text" data-f="customer" placeholder="ชื่อลูกค้า" /><button type="button" class="tm-copy" data-copy-customer title="คัดลอกชื่อลูกค้า">${ico("copy")}</button></span></div>
+            <div class="field"><label>พนักงานขาย</label><input type="text" data-f="salesPerson" placeholder="ชื่อพนักงานขาย" /></div>
+          </div>
+        </details>
         <details class="tm-more" data-more>
           <summary>${ico("file-text")} <span data-more-label>รายละเอียด · แท็ก</span></summary>
           <div class="field" data-extra-field-block style="display:none">
@@ -9464,7 +9825,7 @@ function openTaskModal(taskId, defaults={}) {
         </details>
       </div>
       <aside class="task-activity">
-        <div class="ta-head"><span>Activity</span><button type="button" class="att-open-btn empty" data-act="attachments" title="ดูรูปและไฟล์แนบทั้งหมดของงานนี้"><svg class="att-open-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>ไฟล์แนบ<span class="att-count" data-att-count></span></button></div>
+        <div class="ta-head"><span>Activity</span><span class="ta-src" data-src-tabs hidden><button type="button" data-src="in" class="on">ภายใน</button><button type="button" data-src="pmo">PMO<span class="ta-src-n" data-src-n hidden></span></button></span><button type="button" class="att-open-btn empty" data-act="attachments" title="ดูรูปและไฟล์แนบทั้งหมดของงานนี้"><svg class="att-open-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>ไฟล์แนบ<span class="att-count" data-att-count></span></button></div>
         <div class="ta-feed" data-feed></div>
         <div class="ta-compose">
           <textarea class="ta-input" data-comment placeholder="เขียนอัพเดต / ความคิดเห็น...  (Enter ส่ง, Shift+Enter ขึ้นบรรทัด)"></textarea>
@@ -9473,6 +9834,7 @@ function openTaskModal(taskId, defaults={}) {
             <button type="button" class="ta-attach" data-act="attach" title="ถ่ายรูป / แนบรูป" aria-label="ถ่ายรูป / แนบรูป"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 4h-5L7.5 6.5H5A2 2 0 0 0 3 8.5v9a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2h-2.5z"/><circle cx="12" cy="12.5" r="3.5"/></svg></button>
             <button type="button" class="ta-attach" data-act="attach-file" title="แนบไฟล์ (PDF, DWG, Excel ฯลฯ) — เก็บใน Google Drive" aria-label="แนบไฟล์"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg></button>
             <button type="button" class="ta-alert-dept" data-alert-dept title="ส่งเป็นการแจ้งเตือนไปแผนก (เด้ง popup)">ไม่แจ้งเตือน</button>
+            <span class="ta-src-to" data-src-to hidden></span>
             <div style="flex:1"></div>
             <button type="button" class="btn btn-primary btn-sm" data-act="send-comment">ส่ง</button>
           </div>
@@ -9539,6 +9901,18 @@ function openTaskModal(taskId, defaults={}) {
     renderAll(); toast(on ? "ติดดาวแล้ว" : "เอาดาวออกแล้ว");
   });
   modal.querySelector('[data-f="description"]').value = task.description || "";
+  // ★ 2026-10-31 ข้อมูลโครงการ: ลูกค้า / พนักงานขาย (PMO projects fill them from the PMO)
+  const projSum = () => { const v = [task.customer, task.salesPerson].map(x => String(x || "").trim()).filter(Boolean); const el = modal.querySelector("[data-proj-sum]"); if (el) el.textContent = v.length ? "· " + v.join(" · ") : ""; };
+  ["customer", "salesPerson"].forEach(k => { const el = modal.querySelector(`[data-f="${k}"]`); if (!el) return; el.value = task[k] || ""; el.addEventListener("input", () => { task[k] = el.value; projSum(); scheduleCommit(900); }); });
+  projSum();
+  modal.querySelector("[data-copy-customer]")?.addEventListener("click", async (e) => {
+    e.preventDefault();
+    const txt = String(task.customer || "").trim();
+    if (!txt) return;
+    try { await navigator.clipboard.writeText(txt); }
+    catch (_) { const ta = document.createElement("textarea"); ta.value = txt; document.body.appendChild(ta); ta.select(); try { document.execCommand("copy"); } catch (__) {} ta.remove(); }
+    toast(`คัดลอกแล้ว: ${txt}`);
+  });
   // description grows to fit its text (up to 60% of the screen, then scrolls)
   const descEl = modal.querySelector('[data-f="description"]');
   const fitDesc = () => { descEl.style.height = "auto"; descEl.style.height = Math.min(descEl.scrollHeight + 2, window.innerHeight * 0.6) + "px"; };
@@ -9677,7 +10051,7 @@ function openTaskModal(taskId, defaults={}) {
     const p = checklistProgress(sub, clDept);
     btn.querySelector(".cl-count").textContent = `${p.done}/${p.total}`;
     btn.classList.toggle("full", p.total > 0 && p.done === p.total);
-    btn.classList.toggle("cl-spot", clHintOn() && p.total > 0 && p.done < p.total);
+    btn.classList.toggle("cl-spot", clSpotOn() && p.total > 0 && p.done < p.total);
     const notes = noteItems(sub, clDept), badge = btn.querySelector(".cl-note-badge");
     if (badge) { badge.hidden = !notes.length; badge.textContent = notes.length; }
     btn.title = notes.length ? `Checklist ของตู้นี้ · หมายเหตุ ${notes.length} รายการ` : "Checklist ของตู้นี้ (ชี้เมาส์หรือคลิก)";
@@ -9720,8 +10094,9 @@ function openTaskModal(taskId, defaults={}) {
           <button type="button" class="subtask-dot" aria-label="เปลี่ยนสถานะ"></button>
           <input type="text" class="sub-mo" value="${escapeHtml(s.mo || "")}" placeholder="MO" />
           <input type="text" class="sub-name" value="${escapeHtml(s.text)}" placeholder="ชื่อตู้" />
+          <input type="text" class="sub-size" value="${escapeHtml(s.size || "")}" placeholder="ขนาดตู้" />
           <div class="subtask-progress" title="ความคืบหน้า checklist"><div class="subtask-progress-track"><div class="subtask-progress-bar"></div></div><span class="subtask-progress-pct"></span></div>
-          <button type="button" class="subtask-cl-btn${clHintOn() && (() => { const q = checklistProgress(s, clDept); return q.total > 0 && q.done < q.total; })() ? " cl-spot" : ""}" title="Checklist ของตู้นี้ (ชี้เมาส์หรือคลิก)">${ico("check-square")} <span class="cl-count">${prog.done}/${prog.total}</span><span class="cl-note-badge" hidden></span></button>
+          <button type="button" class="subtask-cl-btn${clSpotOn() && (() => { const q = checklistProgress(s, clDept); return q.total > 0 && q.done < q.total; })() ? " cl-spot" : ""}" title="Checklist ของตู้นี้ (ชี้เมาส์หรือคลิก)">${ico("check-square")} <span class="cl-count">${prog.done}/${prog.total}</span><span class="cl-note-badge" hidden></span></button>
           ${(() => { const bp = bomProgress(s); return bp.total ? `<button type="button" class="subtask-bom-btn${bp.done === bp.total ? " full" : ""}" title="รายการอุปกรณ์">${ico("archive")} <span>${bp.done}/${bp.total}</span></button>`
             : (canEdit() ? `<button type="button" class="subtask-bom-btn empty" title="นำเข้ารายการอุปกรณ์ (PDF ใบสั่งผลิต)">${ico("archive")}</button>` : ""); })()}
           <span class="subtask-date-mount" title="วันที่ของตู้นี้ (ไม่ใส่ = ตามวันโปรเจค)"></span>
@@ -9736,6 +10111,9 @@ function openTaskModal(taskId, defaults={}) {
       txt.title = s.text || ""; moInp.title = s.mo || "";
       txt.addEventListener("input", () => { txt.title = txt.value; });
       moInp.addEventListener("input", () => { s.mo = moInp.value; moInp.title = moInp.value; scheduleCommit(800); });
+      const sizeInp = row.querySelector("input.sub-size");
+      sizeInp.title = s.size || "";
+      sizeInp.addEventListener("input", () => { s.size = sizeInp.value; sizeInp.title = sizeInp.value; scheduleCommit(800); });
       const clBtn = row.querySelector(".subtask-cl-btn");
       const del = row.querySelector(".subtask-del");
       const progBar = row.querySelector(".subtask-progress-bar");
@@ -9803,10 +10181,25 @@ function openTaskModal(taskId, defaults={}) {
 
       const paintProg = () => {
         const p = checklistProgress(s, clDept);
-        progBar.style.width = p.pct + "%";
-        progBar.style.background = p.pct === 100 ? "#10b981" : "var(--accent)";
-        const pctEl = row.querySelector(".subtask-progress-pct");
-        if (pctEl) { pctEl.textContent = p.total ? p.pct + "%" : "—"; pctEl.classList.toggle("full", p.pct === 100); }
+        const pctEl = row.querySelector(".subtask-progress-pct"), progWrap = row.querySelector(".subtask-progress");
+        // ★ 2026-10-31 (owner): a PMO cabinet shows the PMO's progress (all departments) — our own count stays on the checklist button
+        const pg = isPmoTask(task) && pmoCfg().progress !== "app" && s.ext && s.ext.pmoProg && typeof s.ext.pmoProg.pct === "number" ? s.ext.pmoProg : null;
+        if (pg) {
+          const pct = Math.max(0, Math.min(100, Math.round(pg.pct)));
+          progBar.style.width = pct + "%";
+          progBar.style.background = pg.late ? "var(--danger)" : pct === 100 ? "#10b981" : "var(--t-0b6bcb, #0b6bcb)";
+          if (pctEl) { pctEl.textContent = pct + "%"; pctEl.classList.toggle("full", pct === 100); pctEl.classList.toggle("late", !!pg.late); }
+          if (progWrap) {
+            const days = pg.due ? Math.round((fromIso(pg.due) - fromIso(todayIso())) / 86400000) : null;
+            progWrap.classList.add("pmo");
+            progWrap.title = [`ความคืบหน้าใน PMO ${pct}%${pg.late ? " · ล่าช้า" : ""}`, pg.step ? `ขั้นตอนตอนนี้: ${pg.step}` : "", pg.dept ? `แผนกที่กำลังทำ: ${pg.dept}` : "",
+              pg.pending != null ? `งานค้าง: ${pg.pending} งาน` : "", pg.due ? `กำหนดเสร็จ: ${formatDateTH(pg.due)}${days != null ? (days >= 0 ? ` (อีก ${days} วัน)` : ` (เลยมา ${-days} วัน)`) : ""}` : ""].filter(Boolean).join("\n");
+          }
+        } else {
+          progBar.style.width = p.pct + "%";
+          progBar.style.background = p.pct === 100 ? "#10b981" : "var(--accent)";
+          if (pctEl) { pctEl.textContent = p.total ? p.pct + "%" : "—"; pctEl.classList.toggle("full", p.pct === 100); }
+        }
         paintClBtn(clBtn, s);
       };
       paintProg();
@@ -9858,7 +10251,7 @@ function openTaskModal(taskId, defaults={}) {
     const bar = document.createElement("div");
     bar.className = "cl-hint";
     bar.innerHTML = `${ico("check-square")}<span>ติ๊กเช็คลิสต์ สถานะจะเปลี่ยนให้เอง</span><button type="button">เข้าใจแล้ว</button>`;
-    bar.querySelector("button").addEventListener("click", () => { clHintSet({ done: true }); bar.remove(); subWrap.querySelectorAll(".cl-spot").forEach(b => b.classList.remove("cl-spot")); });
+    bar.querySelector("button").addEventListener("click", () => { clHintSet({ done: true }); bar.remove(); });
     subWrap.before(bar);
   }
   function addSub(text) {
@@ -10510,6 +10903,32 @@ function openTaskModal(taskId, defaults={}) {
   if (!Array.isArray(task.comments)) task.comments = [];
   const feedEl = modal.querySelector('[data-feed]');
   const commentInput = modal.querySelector('[data-comment]');
+  const srcTabs = modal.querySelector("[data-src-tabs]"), srcTo = modal.querySelector("[data-src-to]");
+  const srcOn = !!srcTabs && isPmoTask(task);
+  let actSrc = "in";
+  const inPlaceholder = commentInput.placeholder;
+  function paintSrcTabs() {
+    if (!srcOn) return;
+    if (actSrc === "pmo") pmoMarkSeen(task);
+    const n = pmoUnread(task), b = modal.querySelector("[data-src-n]");
+    if (b) { b.hidden = !n; b.textContent = n > 99 ? "99+" : String(n); }
+  }
+  function setSrc(v) {
+    actSrc = v;
+    srcTabs.querySelectorAll("[data-src]").forEach(b => b.classList.toggle("on", b.dataset.src === v));
+    const act = modal.querySelector(".task-activity"); if (act) act.classList.toggle("src-pmo", v === "pmo");
+    const pmo = v === "pmo", may = canPostPmo();
+    commentInput.placeholder = pmo ? (may ? "พิมพ์ถึง PMO…" : "ส่งถึง PMO ได้เฉพาะแผนกที่เชื่อมกับ PMO") : inPlaceholder;
+    const send = modal.querySelector('[data-act="send-comment"]'); if (send) send.textContent = pmo ? "ส่งถึง PMO" : "ส่ง";
+    if (pmo && may) { const d = getDept(myDeptId()); srcTo.textContent = `ส่งในชื่อ “${d ? d.name + " · " : ""}${currentUser()}”`; }
+    srcTo.hidden = !(pmo && may);
+    if (canComment()) [commentInput, send].forEach(el => { if (el) { el.disabled = pmo && !may; el.classList.toggle("perm-off", pmo && !may); } });
+    renderFeed();
+  }
+  if (srcOn) {
+    srcTabs.hidden = false; srcTabs.parentElement.classList.add("has-src");
+    srcTabs.querySelectorAll("[data-src]").forEach(b => b.addEventListener("click", () => { if (actSrc !== b.dataset.src) setSrc(b.dataset.src); }));
+  }
   // comments/acks/replies go through the same merge-commit (a comment posted elsewhere meanwhile is kept)
   function persistComments() { commitNow(); }
   function renderFeed(opts) {
@@ -10523,7 +10942,9 @@ function openTaskModal(taskId, defaults={}) {
     }
     const keepTop = opts && opts.keepScroll ? feedEl.scrollTop : null;
     feedEl.innerHTML = "";
-    const sorted = [...task.comments].sort((a, b) => (a.at || 0) - (b.at || 0));
+    paintSrcTabs();
+    const sorted = [...task.comments].filter(c => !srcOn || (actSrc === "pmo") === isPmoEntry(c)).sort((a, b) => (a.at || 0) - (b.at || 0));
+    if (srcOn && !sorted.length) { feedEl.innerHTML = `<div class="ta-empty">${actSrc === "pmo" ? "ยังไม่มีข้อความกับ PMO" : "ยังไม่มีความเคลื่อนไหว"}</div>`; return; }
     renderPinned(sorted);
     // ★ runs of automatic entries (status / date / assignee changes…) fold into ONE line so people's own messages
     //   aren't pushed out of sight; click the line to open the run (2026-10-08)
@@ -10621,7 +11042,7 @@ function openTaskModal(taskId, defaults={}) {
         ${authorAvatar(author)}
         <div class="ta-item-body">
           <div class="ta-item-head">
-            <span class="ta-author">${escapeHtml(author)}</span>
+            <span class="ta-author">${escapeHtml(author)}</span>${c.toPmo ? `<span class="ta-src-sent">ส่งถึง PMO</span>` : ""}
             <span class="ta-time">${formatDateTimeTH(c.at)}</span>
             <button class="ta-pin${c.pinned ? " on" : ""}" data-pin title="${c.pinned ? "เลิกปักหมุด" : "ปักหมุด"}">${ico("pin")}</button>
             <button class="ta-del" title="ลบ">✕</button>
@@ -10735,8 +11156,9 @@ function openTaskModal(taskId, defaults={}) {
   }));
   function postComment() {
     if (!canComment()) { permDenied("สิทธิ์ของคุณคอมเมนต์ไม่ได้"); return; }
+    if (srcOn && actSrc === "pmo" && !canPostPmo()) { permDenied("ส่งถึง PMO ได้เฉพาะแผนกที่เชื่อมกับ PMO"); return; }
     const text = commentInput.value.trim();
-    const toDepts = alertTo.slice();
+    const toDepts = srcOn && actSrc === "pmo" ? [] : alertTo.slice();
     const items = attachList.items;
     if (!text && !items.length) return;   // need a message or an attachment
     if (!driveConfigured()) { finishPost(text, toDepts, { photo: legacyPhoto(items), files: [] }); return; }
@@ -10758,7 +11180,7 @@ function openTaskModal(taskId, defaults={}) {
       toast(waitKeys.length ? `จะแจ้งเตือนแผนก “${dept.name}” เมื่ออัปโหลดเสร็จ` : `ส่งแจ้งเตือนไปแผนก “${dept.name}” แล้ว`);
       pushNotify("alert", `🔔 แจ้งเตือนถึงแผนก ${dept.name}`, `${task.title}: ${text || lbl}`, "al-" + task.id);
     } else {
-      const c = { id: uid("cm"), author: currentUser(), text, photo: photo || null, ...att, at: Date.now() };
+      const c = { id: uid("cm"), author: currentUser(), text, photo: photo || null, ...att, at: Date.now(), ...(srcOn && actSrc === "pmo" ? { toPmo: true } : {}) };
       task.comments.push(c);
       if (waitKeys.length) holdPushUntilUploaded(c, waitKeys, task); else pushForComment(task, c);
       if (taskRelevantToMe(task)) pushNotify("comment", "💬 คอมเมนต์ใหม่", `${task.title} · ${currentUser()}: ${text || lbl}`, "cm-" + task.id);
@@ -11108,7 +11530,7 @@ function applyTaskModalPerm(modal) {
     if (canTick()) modal.querySelectorAll('.subtask-cl-btn').forEach(b => { b.disabled = false; b.classList.remove("perm-off"); });
   } else if (!full) {
     // edit tier → keep dates/status/checklist; disable structural fields only
-    ['[data-f="title"]', '[data-f="so"]', '[data-f="avt"]', 'select[data-priority]', '[data-f="description"]', '[data-act="add-stage"]', '[data-act="add-sub"]']
+    ['[data-f="title"]', '[data-f="so"]', '[data-f="avt"]', 'select[data-priority]', '[data-f="description"]', '[data-f="customer"]', '[data-f="salesPerson"]', '[data-act="add-stage"]', '[data-act="add-sub"]']
       .forEach(sel => modal.querySelectorAll(sel).forEach(off));
     modal.querySelectorAll('[data-labels] input, [data-labels] .label-chip button, [data-extra-fields] select, [data-subtasks] input[type="text"], [data-subtasks] .subtask-del, [data-stages] .stage-dept, [data-stages] .subtask-del').forEach(off);
   }
@@ -13006,6 +13428,15 @@ function buildDisplayPanel(container) {
         <span class="settings-toggle-title">@ กล่าวถึงคนแผนกอื่นได้</span>
       </span>
     </label>
+    <label class="settings-toggle-row" style="align-items:center">
+      <span class="settings-toggle-text"><span class="settings-toggle-title">แถบใกล้กำหนดจบ แสดงขนาดเต็ม</span></span>
+      <select data-f="duesoon" style="margin-left:auto;font-size:13px;padding:4px 6px;border:1px solid var(--border-strong);border-radius:6px;background:var(--b-ffffff, #fff);color:var(--text)"><option value="0">ปิด</option><option value="1">ก่อนจบ 1 วัน</option><option value="2">ก่อนจบ 2 วัน</option><option value="3">ก่อนจบ 3 วัน</option></select>
+    </label>
+    ${pmoCfg().enabled ? `<label class="settings-toggle-row" style="align-items:center">
+      <span class="settings-toggle-text"><span class="settings-toggle-title">แถบความคืบหน้า</span></span>
+      <span class="prog-demo" data-prog-demo><div class="subtask-progress"><div class="subtask-progress-track"><div class="subtask-progress-bar"></div></div><span class="subtask-progress-pct"></span></div></span>
+      <select data-f="pmoprog" style="font-size:13px;padding:4px 6px;border:1px solid var(--border-strong);border-radius:6px;background:var(--b-ffffff, #fff);color:var(--text)"><option value="pmo">จากภายนอก</option><option value="app">จากเช็คลิสต์</option></select>
+    </label>` : ""}
     ${fatBoardOn() ? `<label class="settings-toggle-row">
       <input type="color" class="fat-color-in" data-f="fatcolor" value="${fatColor()}" />
       <span class="settings-toggle-text"><span class="settings-toggle-title">สีชิป FAT</span></span>
@@ -13022,6 +13453,27 @@ function buildDisplayPanel(container) {
     saveState(); renderMainView();
   });
   sec.querySelector('[data-f="xmention"]').addEventListener("change", (e) => { state.settings.crossMention = e.target.checked; saveState(); });
+  const dueSel = sec.querySelector('[data-f="duesoon"]');
+  dueSel.value = String(dueSoonDays());
+  dueSel.addEventListener("change", () => { state.settings.dueSoonDays = Number(dueSel.value); saveState(); renderMainView(); });
+  // ★ 2026-10-31 (owner): which progress the cabinet bar shows on PMO projects — the PMO's (all departments, default) or our own checklist
+  const progSel = sec.querySelector('[data-f="pmoprog"]');
+  if (progSel) {
+    progSel.value = pmoCfg().progress === "app" ? "app" : "pmo";
+    // live sample row: the same bar as a cabinet in the task window (PMO 18% blue · our checklist 3/5 = 60% purple)
+    const demo = sec.querySelector("[data-prog-demo]");
+    const paintDemo = () => {
+      const ext = progSel.value !== "app", pct = ext ? 18 : 60;
+      const w = demo.querySelector(".subtask-progress");
+      w.classList.toggle("pmo", ext);
+      w.title = ext ? "ความคืบหน้าใน PMO 18%\nขั้นตอนตอนนี้: 1. EQUIPMENT\nแผนกที่กำลังทำ: จัดซื้อ" : "ความคืบหน้า checklist";
+      demo.querySelector(".subtask-progress-bar").style.width = pct + "%";
+      demo.querySelector(".subtask-progress-bar").style.background = ext ? "var(--t-0b6bcb, #0b6bcb)" : "var(--accent)";
+      demo.querySelector(".subtask-progress-pct").textContent = pct + "%";
+    };
+    paintDemo();
+    progSel.addEventListener("change", () => { const pc = pmoCfgEdit(); if (progSel.value === "app") pc.progress = "app"; else delete pc.progress; saveState(); paintDemo(); });
+  }
   const fatIn = sec.querySelector('[data-f="fatcolor"]'), fatReset = sec.querySelector('[data-f="fatcolor-reset"]');
   if (fatIn) {
     const setFat = (c) => { state.settings.fatColor = c; applyFatColor(); fatIn.value = c; fatReset.hidden = c === FAT_COLOR_DEFAULT; };
