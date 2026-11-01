@@ -11124,6 +11124,7 @@ function openTaskModal(taskId, defaults={}) {
         feedEl.appendChild(al);
         return;
       }
+      // PMO comments are stored as "ชื่อ · PMO" (so a PMO person never gets taken for a same-named person here); the PMO tab shows just the name
       const author = c.author || "คุณ";
       const item = document.createElement("div");
       item.className = "ta-item" + (c.author && c.author === currentUser() ? " mine" : "");
@@ -11132,7 +11133,7 @@ function openTaskModal(taskId, defaults={}) {
         ${authorAvatar(author)}
         <div class="ta-item-body">
           <div class="ta-item-head">
-            <span class="ta-author">${escapeHtml(author)}</span>${c.toPmo ? `<span class="ta-src-sent">ส่งถึง PMO</span>` : ""}
+            <span class="ta-author">${escapeHtml(srcOn && actSrc === "pmo" && c.ext && c.ext.src === "pmo" ? author.replace(/ · PMO$/, "") : author)}</span>${c.toPmo ? `<span class="ta-src-sent">ส่งถึง PMO</span>` : ""}
             <span class="ta-time">${formatDateTimeTH(c.at)}</span>
             <button class="ta-pin${c.pinned ? " on" : ""}" data-pin title="${c.pinned ? "เลิกปักหมุด" : "ปักหมุด"}">${ico("pin")}</button>
             <button class="ta-del" title="ลบ">✕</button>
