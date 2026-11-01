@@ -14395,6 +14395,12 @@ function importJson(file) {
 function overallChecklist(t) {
   return (t.subtasks || []).reduce((a, s) => { const p = checklistProgress(s); a.done += p.done; a.total += p.total; return a; }, { done: 0, total: 0 });
 }
+// ★ 2026-11-01 (owner): a PMO project's dashboard follows ⚙ การแสดงผล › แถบความคืบหน้า — "จากภายนอก" = the PMO's % per cabinet, "จากเช็คลิสต์" = ours
+function pmoProgOf(t, s) {
+  if (!isPmoTask(t) || pmoCfg().progress === "app") return null;
+  const g = s && s.ext && s.ext.pmoProg;
+  return g && typeof g.pct === "number" ? g : null;
+}
 function projectProgress(t) {
   const cl = overallChecklist(t);
   if (cl.total > 0) return { done: cl.done, total: cl.total, pct: Math.round(cl.done / cl.total * 100) };
@@ -14921,6 +14927,8 @@ function openProjectDashboard(t) {
   const today = todayIso();
   const st = getStatus(t.statusId), pr = getPriority(t.priority);
   const pp = projectProgress(t), comp = projectComplete(t);
+  const pgs = (t.subtasks || []).map(s => pmoProgOf(t, s)).filter(Boolean);   // PMO % of each cabinet (empty = use our checklist)
+  const bigPct = pgs.length ? Math.round(pgs.reduce((a, g) => a + g.pct, 0) / pgs.length) : pp.pct;
   const start = (t.startDate && t.startDate < t.date) ? t.startDate : null;
   const od = t.date && t.date < today && !comp;
   const daysLeft = t.date ? Math.round((fromIso(t.date) - fromIso(today)) / 86400000) : null;
@@ -14942,23 +14950,23 @@ function openProjectDashboard(t) {
   }).join("") : `<div class="muted" style="font-size:12px;padding:6px 2px">ยังไม่มีด่านแผนก</div>`;
 
   const cabHtml = (t.subtasks || []).length ? t.subtasks.map(s => {
-    const p = checklistProgress(s), cst = getStatus(s.statusId);
-    const cdone = p.total > 0 ? p.done === p.total : isStatusDone(cst);
-    const pc = p.total ? Math.round(p.done / p.total * 100) : (cdone ? 100 : 0);
+    const p = checklistProgress(s), cst = getStatus(s.statusId), g = pmoProgOf(t, s);
+    const cdone = g ? g.pct >= 100 : (p.total > 0 ? p.done === p.total : isStatusDone(cst));
+    const pc = g ? Math.max(0, Math.min(100, Math.round(g.pct))) : (p.total ? Math.round(p.done / p.total * 100) : (cdone ? 100 : 0));
     return `
-      <div class="dash-pd-cab${cdone ? ' done' : ''}">
+      <div class="dash-pd-cab${cdone ? ' done' : ''}"${g ? ` title="${escapeHtml([g.step, g.dept].filter(Boolean).join(" · "))}"` : ""}>
         <span class="dash-pd-dot" style="background:${cst.color}"></span>
         <span class="dash-pd-name">${escapeHtml(subLabel(s))}</span>
-        ${dashBar(pc, cdone ? '#10b981' : cst.color)}
-        <span class="dash-pd-val">${p.total ? `${p.done}/${p.total}` : (cdone ? '✓' : '—')}</span>
+        ${dashBar(pc, cdone ? '#10b981' : g ? (g.late ? 'var(--danger)' : '#0b6bcb') : cst.color)}
+        <span class="dash-pd-val">${g ? pc + "%" : p.total ? `${p.done}/${p.total}` : (cdone ? '✓' : '—')}</span>
       </div>`;
   }).join("") : `<div class="muted" style="font-size:12px;padding:6px 2px">ยังไม่มีตู้</div>`;
   const DASH_BIG = 12;   // more cabinets than this → compact grid (a row per cabinet would run for pages with 50-100 cabinets)
   const cabSection = (t.subtasks || []).length > DASH_BIG
     ? `<div class="dash-cab-grid">${t.subtasks.map(s => {
-        const p = checklistProgress(s), cst = getStatus(s.statusId);
-        const cdone = p.total > 0 ? p.done === p.total : isStatusDone(cst);
-        const pc = p.total ? Math.round(p.done / p.total * 100) : (cdone ? 100 : 0);
+        const p = checklistProgress(s), cst = getStatus(s.statusId), g = pmoProgOf(t, s);
+        const cdone = g ? g.pct >= 100 : (p.total > 0 ? p.done === p.total : isStatusDone(cst));
+        const pc = g ? Math.max(0, Math.min(100, Math.round(g.pct))) : (p.total ? Math.round(p.done / p.total * 100) : (cdone ? 100 : 0));
         return `<div class="dash-cab-cell${cdone ? " done" : ""}" title="${escapeHtml((s.text || "") + " · " + (p.total ? p.done + "/" + p.total : cst.name))}"><span class="dash-pd-dot" style="background:${cst.color}"></span><span class="dash-cab-name">${escapeHtml(subLabel(s))}</span><span class="dash-cab-pc">${cdone ? "✓" : pc + "%"}</span></div>`;
       }).join("")}</div>`
     : cabHtml;
@@ -15005,7 +15013,7 @@ function openProjectDashboard(t) {
       </div>
       <div class="dash-mbody">
         <div class="dash-pd-top">
-          <div class="dash-pd-pct" style="color:${pp.pct === 100 ? '#10b981' : 'var(--accent)'}">${pp.pct}%</div>
+          <div class="dash-pd-pct" style="color:${bigPct === 100 ? '#10b981' : 'var(--accent)'}"${pgs.length ? ' title="ความคืบหน้าจาก PMO (เฉลี่ยทุกตู้)"' : ''}>${bigPct}%</div>
           <div class="dash-pd-meta">
             <div><b>สถานะ:</b> <span style="color:${st.color};font-weight:700">${escapeHtml(st.name)}</span>${comp ? ' · <b style="color:#10b981">เสร็จทุกแผนก ✓</b>' : ''}</div>
             <div><b>กำหนด:</b> ${start ? `${formatDateTH(start)} → ` : ''}${t.date ? formatDateTH(t.date) : '—'} · <span style="${od ? 'color:var(--danger);font-weight:700' : ''}">${dueText}</span></div>
