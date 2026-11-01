@@ -476,6 +476,7 @@ html:has(body.m-mode), body.m-mode { overscroll-behavior-y: contain; }
 .m-ring.full .m-ring-t { color: #10b981; }
 .m-ring-t .ico { width: 20px; height: 20px; stroke-width: 3; }
 .m-ring-sub { font-size: 10.5px; color: var(--text-dim); margin-top: 2px; white-space: nowrap; }
+.m-ring-dep { display: inline-block; max-width: 64px; overflow: hidden; text-overflow: ellipsis; vertical-align: bottom; color: var(--text); font-weight: 700; }
 .m-e1-main { flex: 1 1 auto; min-width: 0; }
 .m-e1-main .m-title { font-size: 15.5px; }
 .m-e1-main .m-refs { margin: 2px 0 0; }
@@ -17061,7 +17062,7 @@ function mCardHtml(t, due, dep, bid) {
   const items = dep ? deptProgress(t, dep) : (t.subtasks || []).reduce((a, x) => { const p = checklistProgress(x, null); return { done: a.done + p.done, total: a.total + p.total }; }, { done: 0, total: 0 });
   const iPct = items.total ? Math.round(items.done / items.total * 100) : (done ? 100 : 0);
   const ringTxt = done && (!items.total || iPct === 100) ? ico("check") : items.total ? `${iPct}%` : "—";
-  const ring = `<div class="m-ring${done ? " full" : ""}"><svg viewBox="0 0 46 46" aria-hidden="true"><circle cx="23" cy="23" r="${R}" class="m-ring-bg"/>${iPct > 0 ? `<circle cx="23" cy="23" r="${R}" class="m-ring-fg" style="stroke:${ringCol}" stroke-dasharray="${(C * iPct / 100).toFixed(1)} ${C.toFixed(1)}"/>` : ""}</svg><span class="m-ring-t">${ringTxt}</span><span class="m-ring-sub">${items.total ? `${items.done}/${items.total}` : "ไม่มีเช็คลิสต์"}</span></div>`;
+  const ring = `<div class="m-ring${done ? " full" : ""}"${dep ? ` title="ความคืบหน้าของแผนก ${escapeHtml((getDept(dep) || {}).name || "")} (เช็คลิสต์ที่ติ๊กแล้ว)"` : ""}><svg viewBox="0 0 46 46" aria-hidden="true"><circle cx="23" cy="23" r="${R}" class="m-ring-bg"/>${iPct > 0 ? `<circle cx="23" cy="23" r="${R}" class="m-ring-fg" style="stroke:${ringCol}" stroke-dasharray="${(C * iPct / 100).toFixed(1)} ${C.toFixed(1)}"/>` : ""}</svg><span class="m-ring-t">${ringTxt}</span><span class="m-ring-sub">${items.total ? `${dep ? `<b class="m-ring-dep">${escapeHtml((getDept(dep) || {}).name || "")}</b> ` : ""}${items.done}/${items.total}` : "ไม่มีเช็คลิสต์"}</span></div>`;
   const stages = isServiceBoard() ? [] : (t.deptStages || []).filter(x => getDept(x.deptId));
   const sFlow = stageFlow(t, stages), sDone = sFlow.done, cur = sFlow.first;
   const curOver = !hold && cur >= 0 && [...sFlow.cur].some(k => { const d = stages[k].due || t.date; return d && d < todayIso(); });
