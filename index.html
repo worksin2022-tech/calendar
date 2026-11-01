@@ -1899,7 +1899,7 @@ button.ta-alert-dept.armed { color: var(--danger); }
 .dup-warn[hidden] { display: none; }
 .dup-warn > .ico { width: 15px; height: 15px; flex: 0 0 auto; }
 .dup-link { border: 0; background: transparent; padding: 0 2px; color: var(--accent); font: inherit; font-weight: 700; text-decoration: underline; cursor: pointer; }
-.subtask-bom-btn { display: inline-flex; align-items: center; gap: 4px; flex: 0 0 auto; height: 30px; padding: 0 8px; border: 1px solid var(--border-strong); border-radius: 7px; background: var(--panel); color: var(--text-dim); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+.subtask-bom-btn { position: relative; display: inline-flex; align-items: center; gap: 4px; flex: 0 0 auto; height: 30px; padding: 0 8px; border: 1px solid var(--border-strong); border-radius: 7px; background: var(--panel); color: var(--text-dim); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
 .subtask-bom-btn .ico { width: 14px; height: 14px; }
 .subtask-bom-btn:hover { border-color: var(--accent); color: var(--accent); }
 .subtask-bom-btn.full { color: var(--t-10b981, #10b981); border-color: var(--l-10b981, #10b981); }
@@ -1919,7 +1919,18 @@ button.ta-alert-dept.armed { color: var(--danger); }
 .bom-q { flex: 1 1 200px; min-width: 0; height: 34px; padding: 0 10px; border: 1px solid var(--border-strong); border-radius: 8px; font: inherit; font-size: 13px; background: var(--panel); color: var(--text); }
 .bom-hide { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; cursor: pointer; white-space: nowrap; }
 .bom-list { overflow-y: auto; min-height: 0; flex: 1 1 auto; border: 1px solid var(--border); border-radius: 10px; }
+a.tm-pmo-link { text-decoration: none; color: inherit; line-height: normal; }
 .bom-row, .bom-prow { display: flex; align-items: center; gap: 10px; padding: 7px 10px; border-bottom: 1px solid var(--border); font-size: 13px; }
+.bom-item { border-bottom: 1px solid var(--border); }
+.bom-item > .bom-row { border-bottom: 0; }
+.bom-item.has-note { background: var(--b-fef2f2, #fef2f2); }
+.bom-note-line { display: flex; align-items: flex-start; gap: 8px; padding: 0 10px 8px 37px; }
+.bom-note-line .cl-note-clear { margin-top: 1px; }
+.bom-note-line .cl-note-txt { cursor: pointer; }
+.bom-note-btn { flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; padding: 0; border: 0; border-radius: 6px; background: transparent; color: var(--text-faint); cursor: pointer; }
+.bom-note-btn .ico { width: 15px; height: 15px; }
+.bom-note-btn:hover { color: var(--accent); }
+.bom-note-btn.has { color: var(--red-text, #d92d20); }
 .bom-row { cursor: pointer; }
 .bom-row:hover { background: var(--b-fafbfc, #fafbfc); }
 .bom-row input { width: 17px; height: 17px; flex: 0 0 auto; accent-color: #10b981; cursor: pointer; }
@@ -1965,6 +1976,11 @@ button.ta-alert-dept.armed { color: var(--danger); }
   .bom-code { display: none; }
   .bom-row { padding: 11px 10px; font-size: 14.5px; }
   .bom-row input { width: 22px; height: 22px; }
+  .bom-note-btn { width: 36px; height: 36px; }
+  .bom-note-btn .ico { width: 18px; height: 18px; }
+  .bom-note-line { padding: 0 10px 10px 42px; font-size: 14px; }
+  .bom-note-line .cl-note-clear { width: 22px; height: 22px; }
+  .bom-note-line .cl-note-clear .ico { width: 14px; height: 14px; }
 }
 .wn-overlay .wn-modal { width: min(480px, 94vw); padding: 0; overflow: hidden; }
 .wn-head { display: flex; align-items: center; gap: 8px; padding: 18px 20px 6px; }
@@ -3006,7 +3022,11 @@ body.chip-dragging .task-chip.span-pull { pointer-events: none; }
 .cl-note-badge { position: absolute; top: -7px; right: -7px; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px; background: var(--red-text, #d92d20); color: #fff; font-size: 10px; font-weight: 700; line-height: 16px; text-align: center; box-shadow: 0 0 0 2px var(--surface, #fff); }
 .m-item-wrap { display: flex; align-items: center; gap: 4px; }
 .m-item-wrap .m-item { flex: 1 1 auto; min-width: 0; }
-.m-note { display: inline-block; width: 100%; color: var(--red-text, #d92d20); font-size: 13px; font-weight: 600; }
+.m-note { flex: 1; min-width: 0; color: var(--red-text, #d92d20); font-size: 13px; font-weight: 600; overflow-wrap: anywhere; }
+.m-note-line { display: flex; align-items: flex-start; gap: 10px; padding: 0 48px 8px 46px; }
+.m-note-line .m-note-clear { width: 24px; height: 24px; flex: 0 0 auto; border-radius: 6px; margin-top: -2px; }
+.m-note-line .m-note-clear .ico { width: 15px; height: 15px; }
+.m-note-line .m-note.done::before { content: none; }
 .m-note-btn { flex: 0 0 auto; width: 40px; height: 40px; display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: 10px; background: transparent; color: var(--text-faint); }
 .m-note-btn .ico { width: 18px; height: 18px; }
 .m-note-btn.has { color: var(--red-text, #d92d20); }
@@ -4175,12 +4195,15 @@ function openBomPanel(ctx) {
       <div class="bom-tools"><input type="search" class="bom-q" placeholder="ค้นหารหัส / ชื่อ" value="${escapeHtml(q)}" />
         <label class="bom-hide"><input type="checkbox" ${hideDone ? "checked" : ""} /> ซ่อนที่ติ๊กแล้ว</label>
         ${canEdit() ? `<button type="button" class="btn btn-ghost btn-sm" data-bimp>${ico("upload")} นำเข้าใหม่</button><button type="button" class="btn btn-ghost btn-sm bom-delall" data-bdelall>${ico("trash")} ลบทั้งหมด</button>` : ""}</div>
-      <div class="bom-list">${shown.map(i => `<label class="bom-row${i.done ? " done" : ""}" data-bid="${escapeHtml(i.id)}">
+      <div class="bom-list">${shown.map(i => `<div class="bom-item${i.note && !i.noteDone ? " has-note" : ""}" data-bid="${escapeHtml(i.id)}"><label class="bom-row${i.done ? " done" : ""}" data-bid="${escapeHtml(i.id)}">
           <input type="checkbox" ${i.done ? "checked" : ""} />
           <span class="bom-code">${escapeHtml(i.code || "—")}</span>
           <span class="bom-name">${escapeHtml(i.name)}${i.cons ? ` <span class="bom-cons">สิ้นเปลือง</span>` : ""}</span>
           <span class="bom-qty">${escapeHtml(bomQtyTxt(i))}</span>
-          <span class="bom-who">${tickWhoHtml(i)}</span>${canEdit() ? `<button type="button" class="bom-del" data-bdel title="ลบรายการนี้">✕</button>` : ""}</label>`).join("") || `<div class="bom-empty-sm">ไม่พบรายการ</div>`}</div>`;
+          <span class="bom-who">${tickWhoHtml(i)}</span><button type="button" class="bom-note-btn${i.note && !i.noteDone ? " has" : ""}" data-bnote title="หมายเหตุ" aria-label="หมายเหตุ">${ico("message")}</button>${canEdit() ? `<button type="button" class="bom-del" data-bdel title="ลบรายการนี้">✕</button>` : ""}</label>${i.note ? (() => {
+            const who = (by, at) => (by ? by + " · " : "") + (at ? new Date(at).toLocaleString("th-TH") : "");
+            const tip = "เขียน: " + who(i.noteBy, i.noteAt) + (i.noteDone ? "\nเคลียร์: " + who(i.noteDoneBy, i.noteDoneAt) : ""), lbl = i.noteDone ? "เปิดหมายเหตุอีกครั้ง" : "เคลียร์หมายเหตุ";
+            return `<div class="bom-note-line"><button type="button" class="cl-note-clear${i.noteDone ? " on" : ""}" data-bnclr title="${lbl}" aria-label="${lbl}">${ico("check")}</button><span class="cl-note-txt${i.noteDone ? " done" : ""}" data-bnote title="${escapeHtml(tip)}">${escapeHtml(i.note)}</span></div>`; })() : ""}</div>`).join("") || `<div class="bom-empty-sm">ไม่พบรายการ</div>`}</div>`;
     const qi = body.querySelector(".bom-q");
     qi.addEventListener("input", () => { q = qi.value; const pos = qi.selectionStart; renderList(); const n = body.querySelector(".bom-q"); n.focus(); try { n.setSelectionRange(pos, pos); } catch (_) {} });
     body.querySelector(".bom-hide input").addEventListener("change", (e) => { hideDone = e.target.checked; renderList(); });
@@ -4201,9 +4224,31 @@ function openBomPanel(ctx) {
       logActivity(task, `ลบรายการอุปกรณ์ ตู้ “${sub.text || "(ไม่มีชื่อ)"}”`);
       ctx.commit(true); renderList();
     });
+    // notes (same as the checklist's): 💬 / tap the text = write · ✓ = clear / reopen · an open note blocks the tick
+    const keepScroll = () => { const st = body.querySelector(".bom-list").scrollTop; renderList(); const l2 = body.querySelector(".bom-list"); if (l2) l2.scrollTop = st; };
+    body.querySelectorAll("[data-bnote]").forEach(b => b.addEventListener("click", (e) => {
+      e.preventDefault(); e.stopPropagation();
+      if (!canTick()) { permDenied("สิทธิ์ของคุณเขียนหมายเหตุไม่ได้"); return; }
+      const it = items.find(x => x.id === b.closest(".bom-item").dataset.bid); if (!it) return;
+      promptDialog({ title: (it.code ? it.code + " · " : "") + (it.name || "หมายเหตุ"), placeholder: "หมายเหตุ…", value: it.note || "", confirmText: "บันทึก", altText: !it.note ? "" : it.noteDone ? "เปิดอีกครั้ง" : "✓ เคลียร์" }).then(v => {
+        if (v === null || !ov.isConnected) return;
+        if (v && v.alt ? setNoteDone(task, it, !it.noteDone) : setItemNote(task, it, v)) { ctx.commit(); keepScroll(); }
+      });
+    }));
+    body.querySelectorAll("[data-bnclr]").forEach(b => b.addEventListener("click", (e) => {
+      e.preventDefault(); e.stopPropagation();
+      if (!canTick()) { permDenied("สิทธิ์ของคุณเขียนหมายเหตุไม่ได้"); return; }
+      const it = items.find(x => x.id === b.closest(".bom-item").dataset.bid);
+      if (it && setNoteDone(task, it, !it.noteDone)) { ctx.commit(); keepScroll(); }
+    }));
     body.querySelectorAll(".bom-row").forEach(row => row.querySelector("input").addEventListener("change", (e) => {
       const it = items.find(x => x.id === row.dataset.bid); if (!it) return;
       if (!canTick()) { permDenied("สิทธิ์ของคุณติ๊กรายการไม่ได้"); e.target.checked = !!it.done; return; }
+      if (e.target.checked && noteBlocksTick(it)) {
+        e.target.checked = false; toast(NOTE_BLOCK_MSG);
+        const nl = row.parentElement.querySelector(".bom-note-line"); if (nl) { nl.classList.remove("cl-note-shake"); void nl.offsetWidth; nl.classList.add("cl-note-shake"); }
+        return;
+      }
       it.done = e.target.checked; stampTick(it);
       ctx.commit();
       const st = body.querySelector(".bom-list").scrollTop; renderList(); body.querySelector(".bom-list").scrollTop = st;
@@ -5567,10 +5612,13 @@ function noteItems(sub, deptId) { return ((sub && sub.checklist) || []).filter(i
 const NOTE_BLOCK_MSG = "เคลียร์หมายเหตุของข้อนี้ก่อน จึงจะติ๊กได้";
 function noteBlocksTick(it) { return !!(it && !it.done && it.note && !it.noteDone); }
 function clearNoteDone(it) { delete it.noteDone; delete it.noteDoneBy; delete it.noteDoneAt; }
+const noteLabel = it => it.text || (it.name ? "อุปกรณ์ " + (it.code ? it.code + " " : "") + it.name : "") || "รายการ";
+// ★ 2026-11-01 (owner): equipment items (sub.bom.items) carry the same note as checklist items — same fields / rules / log
+function bomNoteItems(sub) { return ((sub && sub.bom && sub.bom.items) || []).filter(i => i && i.note && !i.noteDone); }
 function setItemNote(task, it, text) {
   const v = String(text || "").trim().slice(0, 300);
   if ((it.note || "") === v) return false;
-  const label = it.text || "รายการ";
+  const label = noteLabel(it);
   clearNoteDone(it);
   if (v) { it.note = v; it.noteBy = currentUser(); it.noteAt = Date.now(); logActivity(task, `หมายเหตุ "${label}": ${v}`); }
   else { delete it.note; delete it.noteBy; delete it.noteAt; logActivity(task, `ลบหมายเหตุ "${label}"`); }
@@ -5578,7 +5626,7 @@ function setItemNote(task, it, text) {
 }
 function setNoteDone(task, it, done) {
   if (!it.note || !!it.noteDone === !!done) return false;
-  const label = it.text || "รายการ";
+  const label = noteLabel(it);
   if (done) { it.noteDone = true; it.noteDoneBy = currentUser(); it.noteDoneAt = Date.now(); logActivity(task, `✓ เคลียร์หมายเหตุ "${label}": ${it.note}`); }
   else { clearNoteDone(it); logActivity(task, `เปิดหมายเหตุอีกครั้ง "${label}": ${it.note}`); }
   return true;
@@ -8962,6 +9010,13 @@ async function openImportRequestsModal() {
    PMO and reads it back (done / failed). Ticks and notes on those items are queued the same way after each cloud save, so people
    press in ONE place. ⚙ › เชื่อมต่อภายนอก › บอท PMO: switch + which PMO department is which department here + what the bot did.
    The bot only ever does what a person pressed; it never decides by itself. */
+// ★ 2026-11-01 (owner): open this project on the PMO planning board (to re-check) — PMO task id "p14" → board?project=14
+const PMO_BASE = "https://app-avatarcloud.com/PmoLastVersion/public";
+function pmoBoardUrl(t) {
+  if (!(t && t.ext && t.ext.src === "pmo" && t.ext.pmoTaskId != null)) return "";
+  const n = String(t.ext.pmoTaskId).replace(/\D/g, "");
+  return n ? `${PMO_BASE}/planning/board?project=${n}` : "";
+}
 function pmoCfg(ws) { const c = ((ws || state).settings || {}).pmoBot; return c && typeof c === "object" ? c : { enabled: false, deptMap: {} }; }
 function pmoCfgEdit() {
   if (!state.settings.pmoBot || typeof state.settings.pmoBot !== "object") state.settings.pmoBot = { enabled: false, deptMap: {} };
@@ -9052,7 +9107,7 @@ function pmoTickCommands(prevJson, json) {
   const was = new Map();
   a.tasks.forEach(t => (t.subtasks || []).forEach(sb => {
     (sb.checklist || []).forEach(i => was.set(t.id + "|" + sb.id + "|" + i.id, { done: !!i.done, remark: pmoRemark(i), text: i.text || "" }));
-    ((sb.bom && sb.bom.items) || []).forEach(i => was.set(t.id + "|" + sb.id + "|bom|" + i.id, { done: !!i.done }));
+    ((sb.bom && sb.bom.items) || []).forEach(i => was.set(t.id + "|" + sb.id + "|bom|" + i.id, { done: !!i.done, remark: pmoRemark(i) }));
   }));
   const out = [];
   const oldCm = new Map(a.tasks.map(t => [t.id, new Set((t.comments || []).map(c => c.id))]));
@@ -9117,10 +9172,14 @@ function pmoTickCommands(prevJson, json) {
       }
       ((sb.bom && sb.bom.items) || []).forEach(i => {
         if (!(i.ext && i.ext.pmoItemId != null)) return;
-        const w = was.get(t.id + "|" + sb.id + "|bom|" + i.id); if (!w || w.done === !!i.done) return;
-        if (i.ext.pmoLast && i.ext.pmoLast.done === !!i.done) return;   // came from the PMO
-        out.push({ task_id: t.id, label: `${i.done ? "ติ๊ก" : "เอาติ๊กออก"} อุปกรณ์ ${i.code || i.name || ""} · ${t.so || t.title || ""} · ${sb.mo || sb.text || ""}`,
+        const w = was.get(t.id + "|" + sb.id + "|bom|" + i.id); if (!w) return;
+        const last = i.ext.pmoLast, where = `${t.so || t.title || ""} · ${sb.mo || sb.text || ""}`;
+        if (w.done !== !!i.done && !(last && last.done === !!i.done)) out.push({ task_id: t.id, label: `${i.done ? "ติ๊ก" : "เอาติ๊กออก"} อุปกรณ์ ${i.code || i.name || ""} · ${where}`,
           op: { type: "checklist", taskId: t.ext.pmoTaskId, cabinetId: sb.ext.pmoCabinetId, itemId: i.ext.pmoItemId, done: !!i.done } });
+        // ★ 2026-11-01 (owner): equipment notes go to the PMO like checklist notes (cleared = "✓ ข้อความ")
+        const r = pmoRemark(i);
+        if (w.remark !== undefined && w.remark !== r && !(last && (last.remark || "") === r)) out.push({ task_id: t.id, label: `หมายเหตุ อุปกรณ์ ${i.code || i.name || ""} · ${where}`,
+          op: { type: "checklist_remark", taskId: t.ext.pmoTaskId, itemId: i.ext.pmoItemId, remark: r } });
       });
     });
   });
@@ -9259,8 +9318,11 @@ function pmoAddEquip(sub, it, so) {
   if (items.some(b => b.ext && String(b.ext.pmoItemId) === String(it.id))) return;
   const p = pmoParseEquip(it.text);
   const same = p.code && items.find(b => !b.ext && bomKey(b) === bomKey(p));
-  if (same) { same.ext = { src: "pmo", pmoItemId: it.id, pmoLast: { done: !!it.done, text: it.text || "" } }; if (it.done && !same.done) same.done = true; return; }
-  items.push({ id: uid("bm"), code: p.code, name: p.name, qty: p.qty, unit: p.unit, cons: false, done: !!it.done, ext: { src: "pmo", pmoItemId: it.id, pmoLast: { done: !!it.done, text: it.text || "" } } });
+  const last = { done: !!it.done, remark: String(it.remark || ""), text: it.text || "" };
+  if (same) { same.ext = { src: "pmo", pmoItemId: it.id, pmoLast: last }; if (it.done && !same.done) same.done = true; if (String(it.remark || "").trim()) pmoNoteFromRemark(same, it.remark); return; }
+  const nb = { id: uid("bm"), code: p.code, name: p.name, qty: p.qty, unit: p.unit, cons: false, done: !!it.done, ext: { src: "pmo", pmoItemId: it.id, pmoLast: last } };
+  pmoNoteFromRemark(nb, it.remark);
+  items.push(nb);
 }
 // ★ 2026-10-30 PMO comments (pmo_comments, copied in by the bot) → the Activity of the project here, once (id "pmoc_<PMO id>",
 //   so two devices adding the same one merge into one). Author shown as "ชื่อ · PMO". They never go back (c.ext).
@@ -9446,7 +9508,7 @@ async function pullPmoState(opts = {}) {
               sub.checklist.push(item);
             }
             const nb = sub.bom && sub.bom.items && sub.bom.items.find(x => x.ext && String(x.ext.pmoItemId) === String(it.id));
-            if (nb) nb.ext.pmoLast = { done, text };
+            if (nb) nb.ext.pmoLast = { done, remark, text };
             added++; return;
           }
           if (ci && pmoIsEquip(it)) {   // ★ an equipment line that landed in the checklist (older rule) → move it to รายการอุปกรณ์
@@ -9454,16 +9516,16 @@ async function pullPmoState(opts = {}) {
             sub.checklist = sub.checklist.filter(x => x !== ci);
             pmoAddEquip(sub, { ...it, done: !!ci.done }, t.so || "");
             bi = sub.bom.items.find(x => x.ext && String(x.ext.pmoItemId) === String(it.id)) || null;
-            if (bi && keepLast) bi.ext.pmoLast = { done: !!keepLast.done, text: keepLast.text !== undefined ? keepLast.text : text };
+            if (bi && keepLast) bi.ext.pmoLast = { done: !!keepLast.done, remark: keepLast.remark || "", text: keepLast.text !== undefined ? keepLast.text : text };
             ci = null; moved++;
             if (!bi) return;
           }
           const i = ci || bi, lastSeen = i.ext.pmoLast;
           // opts.force (⚙ › ใช้ค่าตาม PMO): take the PMO value even if this app thinks it changed it last
           if ((opts.force || !lastSeen || lastSeen.done !== done) && pmoSetDone(i, done)) ticks++;
-          if (ci && (opts.force || !lastSeen || (lastSeen.remark || "") !== remark) && pmoNoteFromRemark(ci, remark)) notes++;
-          if (!!i.done !== done || (ci && pmoRemark(ci) !== remark.trim())) {
-            mismatch.push({ name: i.text || i.code || i.name || "", here: { done: !!i.done, remark: ci ? pmoRemark(ci) : undefined }, pmo: { done, remark }, lastSeen: lastSeen || null, so: t.so || "" });
+          if ((opts.force || !lastSeen || (lastSeen.remark || "") !== remark) && pmoNoteFromRemark(i, remark)) notes++;   // checklist + equipment (2026-11-01)
+          if (!!i.done !== done || pmoRemark(i) !== remark.trim()) {
+            mismatch.push({ name: i.text || i.code || i.name || "", here: { done: !!i.done, remark: pmoRemark(i) }, pmo: { done, remark }, lastSeen: lastSeen || null, so: t.so || "" });
           }
           // ★ renamed in the PMO (compared with what the PMO last had — a rename made here stays until the PMO changes it)
           const prevText = lastSeen && lastSeen.text !== undefined ? lastSeen.text : null;
@@ -9472,7 +9534,7 @@ async function pullPmoState(opts = {}) {
             if (bi) { const p = pmoParseEquip(text); if (bi.code !== p.code || bi.name !== p.name || bi.qty !== p.qty || bi.unit !== p.unit) { Object.assign(bi, { code: p.code, name: p.name, qty: p.qty, unit: p.unit }); renamed++; } }
           }
           if (i.ext.pmoGone) { delete i.ext.pmoGone; save = true; }
-          const now = ci ? { done, remark, text } : { done, text };
+          const now = { done, remark, text };
           if (JSON.stringify(lastSeen || null) !== JSON.stringify(now)) { i.ext.pmoLast = now; save = true; }
         });
         // a line that is no longer in the PMO: never deleted here (it may carry ticks / notes) — noted once in Activity
@@ -9846,6 +9908,7 @@ function openTaskModal(taskId, defaults={}) {
         <div class="row" style="gap:6px">
           ${isNew ? "" : `<button class="btn btn-ghost btn-sm tm-star${isStarred(task) ? " on" : ""}" data-act="star" title="ติดดาว">${ico("star")}</button>`}
           ${isNew ? "" : '<button class="btn btn-ghost btn-sm" data-act="dashboard" title="ดูแดชบอร์ดของโปรเจคนี้">' + ico("chart") + ' แดชบอร์ด</button>'}
+          ${!isNew && pmoBoardUrl(task) ? `<a class="btn btn-ghost btn-sm tm-pmo-link" href="${escapeHtml(pmoBoardUrl(task))}" target="_blank" rel="noopener" title="เปิดโครงการนี้ใน PMO (แท็บใหม่)">${ico("external")} PMO</a>` : ""}
           <button class="btn btn-ghost" data-act="close" title="ปิด">✕</button>
         </div>
       </div>
@@ -10199,7 +10262,7 @@ function openTaskModal(taskId, defaults={}) {
           <input type="text" class="sub-size" value="${escapeHtml(s.size || "")}" placeholder="ขนาดตู้" />
           <div class="subtask-progress" title="ความคืบหน้า checklist"><div class="subtask-progress-track"><div class="subtask-progress-bar"></div></div><span class="subtask-progress-pct"></span></div>
           <button type="button" class="subtask-cl-btn${clSpotOn() && (() => { const q = checklistProgress(s, clDept); return q.total > 0 && q.done < q.total; })() ? " cl-spot" : ""}" title="Checklist ของตู้นี้ (ชี้เมาส์หรือคลิก)">${ico("check-square")} <span class="cl-count">${prog.done}/${prog.total}</span><span class="cl-note-badge" hidden></span></button>
-          ${(() => { const bp = bomProgress(s); return bp.total ? `<button type="button" class="subtask-bom-btn${bp.done === bp.total ? " full" : ""}" title="รายการอุปกรณ์">${ico("archive")} <span>${bp.done}/${bp.total}</span></button>`
+          ${(() => { const bp = bomProgress(s), bn = bomNoteItems(s).length; return bp.total ? `<button type="button" class="subtask-bom-btn${bp.done === bp.total ? " full" : ""}" title="รายการอุปกรณ์${bn ? ` · หมายเหตุ ${bn} รายการ` : ""}">${ico("archive")} <span>${bp.done}/${bp.total}</span>${bn ? `<span class="cl-note-badge">${bn}</span>` : ""}</button>`
             : (canEdit() ? `<button type="button" class="subtask-bom-btn empty" title="นำเข้ารายการอุปกรณ์ (PDF ใบสั่งผลิต)">${ico("archive")}</button>` : ""); })()}
           <span class="subtask-date-mount" title="วันที่ของตู้นี้ (ไม่ใส่ = ตามวันโปรเจค)"></span>
           <button class="subtask-del" title="ลบตู้">${ico("trash")}</button>
@@ -15359,7 +15422,7 @@ function renderMainView() {
 /* ----- Browser notifications (Notification API) — configurable per event type in ⚙ การแจ้งเตือน ----- */
 const NOTIF_SUPPORTED = typeof window !== "undefined" && "Notification" in window;
 // line icon set — one style everywhere (stroke = currentColor). ico("bell"), ico("trash", "ico ico-lg")
-const ICONS = {"check": "<path d=\"M20 6 9 17l-5-5\"/>", "pin": "<path d=\"M12 17v5M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z\"/>", "moon": "<path d=\"M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z\"/>", "sun": "<circle cx=\"12\" cy=\"12\" r=\"4\"/><path d=\"M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41\"/>", "link": "<path d=\"M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71\"/><path d=\"M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71\"/>", "star": "<polygon points=\"12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2\"/>", "zap": "<polygon points=\"13 2 3 14 12 14 11 22 21 10 12 10 13 2\"/>", "bell": "<path d=\"M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9\"/><path d=\"M10.3 21a1.94 1.94 0 0 0 3.4 0\"/>", "settings": "<circle cx=\"12\" cy=\"12\" r=\"3\"/><path d=\"M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z\"/>", "search": "<circle cx=\"11\" cy=\"11\" r=\"7\"/><path d=\"m21 21-4.3-4.3\"/>", "ruler": "<path d=\"M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.41 2.41 0 0 1 0-3.4l2.6-2.6a2.41 2.41 0 0 1 3.4 0Z\"/><path d=\"m14.5 12.5 2-2M11.5 9.5l2-2M8.5 6.5l2-2M17.5 15.5l2-2\"/>", "inbox": "<path d=\"M22 12h-6l-2 3h-4l-2-3H2\"/><path d=\"M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z\"/>", "trash": "<path d=\"M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6\"/>", "clipboard": "<rect x=\"8\" y=\"2\" width=\"8\" height=\"4\" rx=\"1\"/><path d=\"M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2M9 12h6M9 16h4\"/>", "printer": "<path d=\"M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2\"/><rect x=\"6\" y=\"14\" width=\"12\" height=\"8\" rx=\"1\"/>", "user": "<circle cx=\"12\" cy=\"8\" r=\"4\"/><path d=\"M4 21a8 8 0 0 1 16 0\"/>", "users": "<path d=\"M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2\"/><circle cx=\"9\" cy=\"7\" r=\"4\"/><path d=\"M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75\"/>", "tag": "<path d=\"M12.6 2.6A2 2 0 0 0 11.2 2H4a2 2 0 0 0-2 2v7.2a2 2 0 0 0 .6 1.4l8.7 8.7a2.4 2.4 0 0 0 3.4 0l6.6-6.6a2.4 2.4 0 0 0 0-3.4z\"/><circle cx=\"7.5\" cy=\"7.5\" r=\"1.5\"/>", "building": "<rect x=\"4\" y=\"2\" width=\"16\" height=\"20\" rx=\"2\"/><path d=\"M9 22v-4h6v4M8 6h.01M12 6h.01M16 6h.01M8 10h.01M12 10h.01M16 10h.01M8 14h.01M12 14h.01M16 14h.01\"/>", "sliders": "<path d=\"M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6\"/>", "list-check": "<path d=\"m3 17 2 2 4-4M3 7l2 2 4-4M13 6h8M13 12h8M13 18h8\"/>", "monitor": "<rect x=\"2\" y=\"3\" width=\"20\" height=\"14\" rx=\"2\"/><path d=\"M8 21h8M12 17v4\"/>", "history": "<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\"/><path d=\"M3 3v5h5M12 7v5l4 2\"/>", "restore": "<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\"/><path d=\"M3 3v5h5\"/>", "database": "<ellipse cx=\"12\" cy=\"5\" rx=\"9\" ry=\"3\"/><path d=\"M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5M3 12c0 1.66 4 3 9 3s9-1.34 9-3\"/>", "calendar": "<rect x=\"3\" y=\"4\" width=\"18\" height=\"18\" rx=\"2\"/><path d=\"M16 2v4M8 2v4M3 10h18\"/>", "download": "<path d=\"M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3\"/>", "upload": "<path d=\"M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12\"/>", "camera": "<path d=\"M14.5 4h-5L7.5 6.5H5A2 2 0 0 0 3 8.5v9a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2h-2.5z\"/><circle cx=\"12\" cy=\"12.5\" r=\"3.5\"/>", "clip": "<path d=\"M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48\"/>", "chart": "<path d=\"M3 3v18h18M18 17V9M13 17V5M8 17v-3\"/>", "edit": "<path d=\"M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z\"/><path d=\"m15 5 4 4\"/>", "flag": "<path d=\"M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1zM4 22v-7\"/>", "ban": "<circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"m4.9 4.9 14.2 14.2\"/>", "clock": "<circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"M12 6v6l4 2\"/>", "mail": "<rect x=\"2\" y=\"4\" width=\"20\" height=\"16\" rx=\"2\"/><path d=\"m22 7-10 5L2 7\"/>", "cloud": "<path d=\"M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z\"/>", "logout": "<path d=\"M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9\"/>", "check-circle": "<circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"m9 12 2 2 4-4\"/>", "check-square": "<rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"2\"/><path d=\"m9 12 2 2 4-4\"/>", "eye": "<path d=\"M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z\"/><circle cx=\"12\" cy=\"12\" r=\"3\"/>", "pen": "<path d=\"M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z\"/>", "crown": "<path d=\"m2 6 4 11h12l4-11-6 5-4-7-4 7-6-5zM6 21h12\"/>", "message": "<path d=\"M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z\"/>", "alert": "<path d=\"m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z\"/><path d=\"M12 9v4M12 17h.01\"/>", "x-circle": "<circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"m15 9-6 6M9 9l6 6\"/>", "send": "<path d=\"m22 2-7 20-4-9-9-4Z\"/><path d=\"M22 2 11 13\"/>", "copy": "<rect x=\"8\" y=\"8\" width=\"14\" height=\"14\" rx=\"2\"/><path d=\"M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2\"/>", "file": "<path d=\"M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z\"/><path d=\"M14 2v6h6\"/>", "file-text": "<path d=\"M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z\"/><path d=\"M14 2v6h6M16 13H8M16 17H8M10 9H8\"/>", "file-sheet": "<path d=\"M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z\"/><path d=\"M14 2v6h6M8 13h8M8 17h8M12 11v8\"/>", "image": "<rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"2\"/><circle cx=\"9\" cy=\"9\" r=\"2\"/><path d=\"m21 15-3.09-3.09a2 2 0 0 0-2.82 0L6 21\"/>", "archive": "<rect x=\"2\" y=\"3\" width=\"20\" height=\"5\" rx=\"1\"/><path d=\"M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8M10 12h4\"/>"};
+const ICONS = {"check": "<path d=\"M20 6 9 17l-5-5\"/>", "pin": "<path d=\"M12 17v5M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z\"/>", "moon": "<path d=\"M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z\"/>", "sun": "<circle cx=\"12\" cy=\"12\" r=\"4\"/><path d=\"M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41\"/>", "external": "<path d=\"M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6\"/>", "link": "<path d=\"M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71\"/><path d=\"M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71\"/>", "star": "<polygon points=\"12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2\"/>", "zap": "<polygon points=\"13 2 3 14 12 14 11 22 21 10 12 10 13 2\"/>", "bell": "<path d=\"M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9\"/><path d=\"M10.3 21a1.94 1.94 0 0 0 3.4 0\"/>", "settings": "<circle cx=\"12\" cy=\"12\" r=\"3\"/><path d=\"M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z\"/>", "search": "<circle cx=\"11\" cy=\"11\" r=\"7\"/><path d=\"m21 21-4.3-4.3\"/>", "ruler": "<path d=\"M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.41 2.41 0 0 1 0-3.4l2.6-2.6a2.41 2.41 0 0 1 3.4 0Z\"/><path d=\"m14.5 12.5 2-2M11.5 9.5l2-2M8.5 6.5l2-2M17.5 15.5l2-2\"/>", "inbox": "<path d=\"M22 12h-6l-2 3h-4l-2-3H2\"/><path d=\"M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z\"/>", "trash": "<path d=\"M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6\"/>", "clipboard": "<rect x=\"8\" y=\"2\" width=\"8\" height=\"4\" rx=\"1\"/><path d=\"M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2M9 12h6M9 16h4\"/>", "printer": "<path d=\"M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2\"/><rect x=\"6\" y=\"14\" width=\"12\" height=\"8\" rx=\"1\"/>", "user": "<circle cx=\"12\" cy=\"8\" r=\"4\"/><path d=\"M4 21a8 8 0 0 1 16 0\"/>", "users": "<path d=\"M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2\"/><circle cx=\"9\" cy=\"7\" r=\"4\"/><path d=\"M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75\"/>", "tag": "<path d=\"M12.6 2.6A2 2 0 0 0 11.2 2H4a2 2 0 0 0-2 2v7.2a2 2 0 0 0 .6 1.4l8.7 8.7a2.4 2.4 0 0 0 3.4 0l6.6-6.6a2.4 2.4 0 0 0 0-3.4z\"/><circle cx=\"7.5\" cy=\"7.5\" r=\"1.5\"/>", "building": "<rect x=\"4\" y=\"2\" width=\"16\" height=\"20\" rx=\"2\"/><path d=\"M9 22v-4h6v4M8 6h.01M12 6h.01M16 6h.01M8 10h.01M12 10h.01M16 10h.01M8 14h.01M12 14h.01M16 14h.01\"/>", "sliders": "<path d=\"M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6\"/>", "list-check": "<path d=\"m3 17 2 2 4-4M3 7l2 2 4-4M13 6h8M13 12h8M13 18h8\"/>", "monitor": "<rect x=\"2\" y=\"3\" width=\"20\" height=\"14\" rx=\"2\"/><path d=\"M8 21h8M12 17v4\"/>", "history": "<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\"/><path d=\"M3 3v5h5M12 7v5l4 2\"/>", "restore": "<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\"/><path d=\"M3 3v5h5\"/>", "database": "<ellipse cx=\"12\" cy=\"5\" rx=\"9\" ry=\"3\"/><path d=\"M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5M3 12c0 1.66 4 3 9 3s9-1.34 9-3\"/>", "calendar": "<rect x=\"3\" y=\"4\" width=\"18\" height=\"18\" rx=\"2\"/><path d=\"M16 2v4M8 2v4M3 10h18\"/>", "download": "<path d=\"M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3\"/>", "upload": "<path d=\"M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12\"/>", "camera": "<path d=\"M14.5 4h-5L7.5 6.5H5A2 2 0 0 0 3 8.5v9a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2h-2.5z\"/><circle cx=\"12\" cy=\"12.5\" r=\"3.5\"/>", "clip": "<path d=\"M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48\"/>", "chart": "<path d=\"M3 3v18h18M18 17V9M13 17V5M8 17v-3\"/>", "edit": "<path d=\"M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z\"/><path d=\"m15 5 4 4\"/>", "flag": "<path d=\"M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1zM4 22v-7\"/>", "ban": "<circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"m4.9 4.9 14.2 14.2\"/>", "clock": "<circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"M12 6v6l4 2\"/>", "mail": "<rect x=\"2\" y=\"4\" width=\"20\" height=\"16\" rx=\"2\"/><path d=\"m22 7-10 5L2 7\"/>", "cloud": "<path d=\"M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z\"/>", "logout": "<path d=\"M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9\"/>", "check-circle": "<circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"m9 12 2 2 4-4\"/>", "check-square": "<rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"2\"/><path d=\"m9 12 2 2 4-4\"/>", "eye": "<path d=\"M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z\"/><circle cx=\"12\" cy=\"12\" r=\"3\"/>", "pen": "<path d=\"M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z\"/>", "crown": "<path d=\"m2 6 4 11h12l4-11-6 5-4-7-4 7-6-5zM6 21h12\"/>", "message": "<path d=\"M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z\"/>", "alert": "<path d=\"m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z\"/><path d=\"M12 9v4M12 17h.01\"/>", "x-circle": "<circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"m15 9-6 6M9 9l6 6\"/>", "send": "<path d=\"m22 2-7 20-4-9-9-4Z\"/><path d=\"M22 2 11 13\"/>", "copy": "<rect x=\"8\" y=\"8\" width=\"14\" height=\"14\" rx=\"2\"/><path d=\"M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2\"/>", "file": "<path d=\"M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z\"/><path d=\"M14 2v6h6\"/>", "file-text": "<path d=\"M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z\"/><path d=\"M14 2v6h6M16 13H8M16 17H8M10 9H8\"/>", "file-sheet": "<path d=\"M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z\"/><path d=\"M14 2v6h6M8 13h8M8 17h8M12 11v8\"/>", "image": "<rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"2\"/><circle cx=\"9\" cy=\"9\" r=\"2\"/><path d=\"m21 15-3.09-3.09a2 2 0 0 0-2.82 0L6 21\"/>", "archive": "<rect x=\"2\" y=\"3\" width=\"20\" height=\"5\" rx=\"1\"/><path d=\"M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8M10 12h4\"/>"};
 const ICON_ATTR = 'viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"';
 function ico(name, cls = "ico") { return ICONS[name] ? `<svg class="${cls}" ${ICON_ATTR}>${ICONS[name]}</svg>` : ""; }
 // confirm dialogs used to take an emoji — map the old ones, or pass an icon name
@@ -17061,11 +17124,11 @@ function mCardHtml(t, due, dep, bid) {
         <div class="m-cab-head" data-sub="${escapeHtml(x.id)}">
           <button type="button" class="m-dot" data-substatus="${escapeHtml(x.id)}" style="--dot:${getStatus(x.statusId).color}" aria-label="สถานะตู้"></button>
           <span class="m-cab-name">${x.mo ? `<span class="m-mo">${escapeHtml(x.mo)}</span>` : ""}${escapeHtml(x.text || "(ไม่มีชื่อตู้)")}</span>
-          ${(() => { const bp = bomProgress(x); return bp.total ? `<button type="button" class="m-bom${bp.done === bp.total ? " full" : ""}" data-bom="${escapeHtml(x.id)}">${ico("archive")}${bp.done}/${bp.total}</button>` : ""; })()}
+          ${(() => { const bp = bomProgress(x), bn = bomNoteItems(x).length; return bp.total ? `<button type="button" class="m-bom${bp.done === bp.total ? " full" : ""}" data-bom="${escapeHtml(x.id)}">${ico("archive")}${bp.done}/${bp.total}${bn ? `<span class="m-cab-note">${bn}</span>` : ""}</button>` : ""; })()}
           ${(() => { const n = items.filter(i => i.note && !i.noteDone).length; return n ? `<span class="m-cab-note">${n}</span>` : ""; })()}<span class="m-cab-n">${p.done}/${p.total}</span><span class="m-chev">${so ? "▴" : "▾"}</span>
         </div>
         ${so ? `<div class="m-items">${groups.map(([gid, list]) => (gid ? `<div class="m-items-dept">${escapeHtml((getDept(gid) || {}).name || "")}</div>` : "") + list.map(i =>
-          `<div class="m-item-wrap"><button type="button" class="m-item${i.done ? " on" : ""}" data-item="${escapeHtml(x.id)}|${escapeHtml(i.id)}"><span class="m-box">${i.done ? ico("check") : ""}</span><span class="m-item-t">${escapeHtml(i.text || "")}${i.note ? `<span class="m-note${i.noteDone ? " done" : ""}">${escapeHtml(i.note)}</span>` : ""}</span>${tickWhoHtml(i)}</button><button type="button" class="m-note-btn${i.note && !i.noteDone ? " has" : ""}" data-note="${escapeHtml(x.id)}|${escapeHtml(i.id)}" aria-label="หมายเหตุ">${ico("message")}</button></div>`).join("")).join("")}</div>` : ""}
+          `<div class="m-item-wrap"><button type="button" class="m-item${i.done ? " on" : ""}" data-item="${escapeHtml(x.id)}|${escapeHtml(i.id)}"><span class="m-box">${i.done ? ico("check") : ""}</span><span class="m-item-t">${escapeHtml(i.text || "")}</span>${tickWhoHtml(i)}</button><button type="button" class="m-note-btn${i.note && !i.noteDone ? " has" : ""}" data-note="${escapeHtml(x.id)}|${escapeHtml(i.id)}" aria-label="หมายเหตุ">${ico("message")}</button></div>${i.note ? mNoteLine(i, `${escapeHtml(x.id)}|${escapeHtml(i.id)}`) : ""}`).join("")).join("")}</div>` : ""}
       </div>`;
     }).join("");
     const manual = dep && stg && !deptUsesChecklist(t, dep)
@@ -17186,6 +17249,11 @@ function mEnsureRoot() {
   });
   return el;
 }
+// ★ 2026-11-01 (owner): the phone shows a ✓ box to clear a note (was only inside the note dialog) — tap ✓ = clear / reopen, tap text = edit
+function mNoteLine(i, key) {
+  const lbl = i.noteDone ? "เปิดหมายเหตุอีกครั้ง" : "เคลียร์หมายเหตุ";
+  return `<div class="m-note-line"><button type="button" class="cl-note-clear m-note-clear${i.noteDone ? " on" : ""}" data-noteclr="${key}" aria-label="${lbl}" title="${lbl}">${ico("check")}</button><span class="m-note${i.noteDone ? " done" : ""}" data-note="${key}">${escapeHtml(i.note)}</span></div>`;
+}
 function mListClick(e) {
   if (e.target.closest("[data-mnotif-x]")) { try { localStorage.setItem("qc_m_notif_hide", "1"); } catch (_) {} renderMobile(); return; }
   if (e.target.closest("[data-mnotif-go]")) { mTab = "me"; window.scrollTo(0, 0); renderMobile(); setTimeout(() => document.querySelector("[data-mnotif]")?.scrollIntoView({ block: "start" }), 50); return; }
@@ -17197,6 +17265,14 @@ function mListClick(e) {
   if (!t) return;
   const who = e.target.closest("[data-who]");
   if (who && e.target.closest(".m-item")) { toast(who.dataset.who); return; }   // tap the face = who ticked + when (no untick)
+  const clr = e.target.closest("[data-noteclr]");
+  if (clr) {
+    if (!canTick()) { permDenied("สิทธิ์ของคุณแก้เช็คลิสต์ไม่ได้"); return; }
+    const [sid, iid] = clr.dataset.noteclr.split("|");
+    const sb = (t.subtasks || []).find(x => x.id === sid), it = sb && (sb.checklist || []).find(i => i.id === iid);
+    if (it && setNoteDone(t, it, !it.noteDone)) { t.updatedAt = Date.now(); saveState(); renderAll(); }
+    return;
+  }
   const noteBtn = e.target.closest("[data-note]");
   if (noteBtn) {
     if (!canTick()) { permDenied("สิทธิ์ของคุณแก้เช็คลิสต์ไม่ได้"); return; }
