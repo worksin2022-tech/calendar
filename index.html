@@ -14950,7 +14950,7 @@ function openProjectDashboard(t) {
   const today = todayIso();
   const st = getStatus(t.statusId), pr = getPriority(t.priority);
   const pp = projectProgress(t), comp = projectComplete(t);
-  const bigPct = projectPctAll(t).pct;   // PMO % of each cabinet averaged (⚙ "จากภายนอก") or our checklist
+  const pall = projectPctAll(t), bigPct = pall.pct;   // PMO % of each cabinet averaged (⚙ "จากภายนอก") or our checklist
   const start = (t.startDate && t.startDate < t.date) ? t.startDate : null;
   const od = t.date && t.date < today && !comp;
   const daysLeft = t.date ? Math.round((fromIso(t.date) - fromIso(today)) / 86400000) : null;
@@ -15035,7 +15035,7 @@ function openProjectDashboard(t) {
       </div>
       <div class="dash-mbody">
         <div class="dash-pd-top">
-          <div class="dash-pd-pct" style="color:${bigPct === 100 ? '#10b981' : 'var(--accent)'}"${pgs.length ? ' title="ความคืบหน้าจาก PMO (เฉลี่ยทุกตู้)"' : ''}>${bigPct}%</div>
+          <div class="dash-pd-pct" style="color:${bigPct === 100 ? '#10b981' : 'var(--accent)'}"${pall.pmo ? ' title="ความคืบหน้าจาก PMO (เฉลี่ยทุกตู้)"' : ''}>${bigPct}%</div>
           <div class="dash-pd-meta">
             <div><b>สถานะ:</b> <span style="color:${st.color};font-weight:700">${escapeHtml(st.name)}</span>${comp ? ' · <b style="color:#10b981">เสร็จทุกแผนก ✓</b>' : ''}</div>
             <div><b>กำหนด:</b> ${start ? `${formatDateTH(start)} → ` : ''}${t.date ? formatDateTH(t.date) : '—'} · <span style="${od ? 'color:var(--danger);font-weight:700' : ''}">${dueText}</span></div>
