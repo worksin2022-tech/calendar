@@ -308,6 +308,7 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
 #starTab { color:var(--t-d97706, #d97706); }
 #starTab .ico { fill: #fbbf24; }
 #pmoTab { color: var(--accent); }
+#pmoTab .side-tab-warn { position: absolute; top: 6px; left: 6px; width: 10px; height: 10px; border-radius: 50%; background: var(--danger, #d92d20); box-shadow: 0 0 0 2px var(--panel, #fff); }
 #pmoTab .side-tab-count { background: var(--danger, #d92d20); }
 .board-drawer.pmo-drawer { width: min(380px, 92vw); }
 .pmo-item { padding: 10px; border: 1px solid var(--border); border-radius: 10px; background: var(--b-ffffff, #fff); }
@@ -9201,11 +9202,12 @@ function pmoUpsertTask(row) {
   return t;
 }
 // ★ 2026-10-30 (owner): jobs waiting live in a side tab "รอรับ" (next to ปฏิทิน / ติดดาว), red count
-var _pmoCount = 0;   // var: renderBoardSwitcher() may paint the tab before this line has run
+var _pmoCount = 0, _pmoWarn = [], _pmoBotSeenAt = 0, _pmoBotRow = null;   // _pmoWarn: what the bot reports as stuck (see pmoHealthProblems) — shown as a red dot on the tab   // var: renderBoardSwitcher() may paint the tab before this line has run
 function paintPmoTab() {
   const tab = document.getElementById("pmoTab"); if (!tab) return;
   tab.hidden = !pmoMyDepts().length;
-  tab.innerHTML = `${ico("inbox")}<span class="side-tab-label">รอรับ</span>${_pmoCount ? `<span class="side-tab-count">${_pmoCount > 99 ? "99+" : _pmoCount}</span>` : ""}`;
+  tab.innerHTML = `${ico("inbox")}<span class="side-tab-label">รอรับ</span>${_pmoCount ? `<span class="side-tab-count">${_pmoCount > 99 ? "99+" : _pmoCount}</span>` : ""}${_pmoWarn.length ? `<span class="side-tab-warn"></span>` : ""}`;
+  tab.title = _pmoWarn.length ? "งานรอรับจาก PMO\n⚠ " + _pmoWarn.join("\n⚠ ") : "งานรอรับจาก PMO";
 }
 /* ★ 2026-10-30 (owner): PMO checklist lines that are EQUIPMENT (linked to the warehouse list: item.from, group "…(ตรวจเช็คอุปกรณ์)",
    text "[code] name qty" / "… = 2 Box") go to the cabinet's equipment list (sub.bom), not the checklist. A line already there
@@ -9316,7 +9318,8 @@ async function pullPmoState(opts = {}) {
   let report = "";
   _pmoStBusy = true;
   try {
-    let qy = sb.from("pmo_state").select("pmo_task_id,data,updated_at").in("pmo_task_id", [...new Set(tasks.map(t => String(t.ext.pmoTaskId)))]);
+    const pids = [...new Set(tasks.map(t => String(t.ext.pmoTaskId)))];
+    let qy = sb.from("pmo_state").select("pmo_task_id,data,updated_at").in("pmo_task_id", [...pids, ...pids.map(p => p + ":prog")]);   // "<id>:prog" = progress only (bot v1.6)
     if (since) qy = qy.gte("updated_at", since);
     const { data, error } = await qy;
     if (error) { report = "อ่านข้อมูลไม่สำเร็จ: " + error.message; return report; }
@@ -9324,6 +9327,16 @@ async function pullPmoState(opts = {}) {
     let last = since || "", save = false, changes = 0; const mismatch = [];
     data.forEach(row => {
       if (row.updated_at > last) last = row.updated_at;
+      if (String(row.pmo_task_id).endsWith(":prog")) {   // ★ 2026-11-01 egress: cabinet progress in its own small row → display only
+        const tp = (state.tasks || []).find(x => x.ext && x.ext.src === "pmo" && String(x.ext.pmoTaskId) + ":prog" === String(row.pmo_task_id));
+        const pm = (row.data && row.data.p) || {};
+        if (tp) (tp.subtasks || []).forEach(sb2 => {
+          if (!sb2.ext || sb2.ext.pmoCabinetId == null) return;
+          const pg = pm[String(sb2.ext.pmoCabinetId)] || null;
+          if (JSON.stringify(sb2.ext.pmoProg || null) !== JSON.stringify(pg)) { if (pg) sb2.ext.pmoProg = pg; else delete sb2.ext.pmoProg; save = true; }
+        });
+        return;
+      }
       const t = (state.tasks || []).find(x => x.ext && x.ext.src === "pmo" && String(x.ext.pmoTaskId) === String(row.pmo_task_id));
       if (!t) return;
       const snap = typeof automationSnapshot === "function" ? automationSnapshot(t) : null;
@@ -9340,7 +9353,7 @@ async function pullPmoState(opts = {}) {
         if (Array.isArray(cab.works) && sub.ext && JSON.stringify(sub.ext.pmoWorks || null) !== JSON.stringify(cab.works)) { sub.ext.pmoWorks = cab.works; save = true; }
         { const zr = pmoApplySize(sub, cab); if (zr) save = true; if (zr === 2) sized++; }
         // ★ 2026-10-31 progress of the cabinet in the PMO (all departments; bot v1.4 reads it from the project page) — display only, no activity line
-        if (sub.ext && ("progress" in cab || sub.ext.pmoProg)) {
+        if (sub.ext && "progress" in cab) {   // bot ≤ 1.5 kept it in the big row
           const pg = cab.progress && typeof cab.progress === "object" ? cab.progress : null;
           if (JSON.stringify(sub.ext.pmoProg || null) !== JSON.stringify(pg)) { if (pg) sub.ext.pmoProg = pg; else delete sub.ext.pmoProg; save = true; }
         }
@@ -9422,7 +9435,7 @@ async function pullPmoState(opts = {}) {
     });
     if (save) { saveState(); renderAll(); }
     if (last) { try { localStorage.setItem(KEY, last); } catch (_) {} }
-    report = `งาน PMO ในปฏิทินนี้ ${tasks.length} · ได้สถานะ ${data.length} โครงการ · เปลี่ยน ${changes} รายการ`;
+    report = `งาน PMO ในปฏิทินนี้ ${tasks.length} · ได้สถานะ ${data.filter(r => !String(r.pmo_task_id).endsWith(":prog")).length} โครงการ · เปลี่ยน ${changes} รายการ`;
     if (mismatch.length) console.warn("[pmo state] ไม่ตรงกับ PMO (แอปถือว่าแก้ในแอปล่าสุด)", mismatch);
     console.info("[pmo state]", report, { since, rows: data.map(r => [r.pmo_task_id, r.updated_at]) });
     if (opts.withMismatch) return { report, mismatch };
@@ -9433,13 +9446,41 @@ async function pullPmoState(opts = {}) {
 setInterval(() => { if (document.visibilityState === "visible") pullPmoState(); }, 180000);
 async function refreshPmoBadge() {
   const depts = pmoMyDepts();
-  if (!depts.length) { _pmoCount = 0; paintPmoTab(); return; }
+  if (!depts.length) { _pmoCount = 0; _pmoWarn = []; paintPmoTab(); return; }
   const sb = getSupabase(); if (!sb) return;
   try {
     const { data, error } = await sb.from("pmo_inbox").select("id").eq("status", "pending").in("pmo_dept_id", depts);
     if (!error && Array.isArray(data)) { _pmoCount = data.length; paintPmoTab(); }
     pmoCheckFailed(sb);
+    // ★ 2026-11-01 (owner): quiet by default — a red dot appears only when the bot has gone silent / a read stays broken (one small row)
+    if (Date.now() - _pmoBotSeenAt > 9.5 * 60e3) {   // egress: the bot's status is re-read every 10 min, not every 3
+      _pmoBotSeenAt = Date.now();
+      const { data: bs, error: be } = await sb.from("pmo_bot_state").select("at,info").eq("id", "bot").maybeSingle();
+      if (!be) { _pmoBotRow = bs; }
+    }
+    _pmoWarn = pmoHealthProblems(_pmoBotRow); paintPmoTab();   // re-judged every refresh (time passes even without a new read)
   } catch (e) { console.warn("pmo badge", e); }
+}
+// What is wrong with the bot right now ([] = nothing). Only during the bot's working hours on Mon–Fri (nights / weekends never count).
+//  · bot silent > 30 min (counted from the start of today's window if its last sign of life is older)
+//  · a read that failed 3 rounds in a row (state / project progress / cabinet size) — one-off errors are ignored
+function pmoHealthProblems(bs, now = new Date()) {
+  if (!bs) return [];
+  const info = bs.info || {}, day = now.getDay();
+  if (day === 0 || day === 6) return [];
+  let start = new Date(now); start.setHours(0, 0, 0, 0);
+  const m = String(info.hours || "").match(/^\s*(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})\s*$/);
+  if (m) {
+    const s0 = new Date(now); s0.setHours(+m[1], +m[2], 0, 0);
+    const e0 = new Date(now); e0.setHours(+m[3], +m[4], 0, 0);
+    if (now < s0 || now > e0) return [];
+    start = s0;
+  }
+  const out = [], seen = new Date(bs.at).getTime(), ref = Math.max(seen || 0, start.getTime());
+  if (now.getTime() - ref > 30 * 60e3) { out.push("บอท PMO เงียบเกิน 30 นาที — เช็คเครื่องที่รันบอท"); return out; }
+  const h = info.health || {}, LBL = { state: "สถานะ/เช็คลิสต์จาก PMO", progress: "ความคืบหน้าตู้จาก PMO", cabinet: "ข้อมูลตู้ (ขนาด) จาก PMO" };
+  Object.keys(LBL).forEach(k => { if (h[k] && h[k].bad >= 3) out.push(`${LBL[k]} อ่านไม่ได้ ${h[k].bad} รอบติด${h[k].err ? " (" + h[k].err + ")" : ""}`); });
+  return out;
 }
 // a command I queued that the bot could not do → tell me once
 async function pmoCheckFailed(sb) {
@@ -13208,7 +13249,8 @@ function buildItSyncPanel(container) {
       const seenEl = botSec.querySelector("[data-pmo-seen]");
       if (!data) { seenEl.textContent = "บอทยังไม่เคยเชื่อมต่อ"; return; }
       const age = Date.now() - new Date(data.at).getTime();
-      seenEl.innerHTML = `${age < 10 * 60e3 ? "🟢" : "🔴"} บอทเชื่อมต่อล่าสุด ${escapeHtml(relTimeTH(new Date(data.at).getTime()))}${data.info && data.info.user ? " · บัญชี " + escapeHtml(data.info.user) : ""}${data.info && data.info.write ? "" : " · อ่านอย่างเดียว (ยังไม่กดใน PMO)"}`;
+      const probs = pmoHealthProblems(data);
+      seenEl.innerHTML = (probs.length ? `<div style="color:var(--danger);margin-bottom:3px">⚠ ${probs.map(escapeHtml).join("<br>⚠ ")}</div>` : "") + `${age < 10 * 60e3 ? "🟢" : "🔴"} บอทเชื่อมต่อล่าสุด ${escapeHtml(relTimeTH(new Date(data.at).getTime()))}${data.info && data.info.user ? " · บัญชี " + escapeHtml(data.info.user) : ""}${data.info && data.info.write ? "" : " · อ่านอย่างเดียว (ยังไม่กดใน PMO)"}`;
       paintMap(Array.isArray(data.info && data.info.depts) ? data.info.depts.filter(x => x && x.id) : []);
     }, () => {});
     sbp.from("pmo_commands").select("id,created_at,created_by_name,label,status,result,done_at").order("id", { ascending: false }).limit(20).then(({ data, error }) => {
