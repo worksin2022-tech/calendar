@@ -466,17 +466,22 @@ html:has(body.m-mode), body.m-mode { overscroll-behavior-y: contain; }
 .m-band-due { flex: 0 0 auto; white-space: nowrap; }
 .m-band-due.over { background: #ef4444; color: #fff; padding: 1px 8px; border-radius: 6px; }
 .m-e1 { display: flex; gap: 12px; padding: 10px 12px 12px; }
-.m-ring { position: relative; flex: 0 0 50px; display: flex; flex-direction: column; align-items: center; }
+.m-ring { position: relative; flex: 0 0 64px; width: 64px; display: flex; flex-direction: column; align-items: center; }
 .m-ring svg { width: 50px; height: 50px; }
 .m-ring circle { fill: none; stroke-width: 4.5; }
 .m-ring-bg { stroke: var(--b-eef0f3, #eef0f3); }
 .m-ring.full .m-ring-bg { stroke: #10b981; }
 .m-ring-fg { stroke-linecap: round; transform: rotate(-90deg); transform-origin: 23px 23px; transition: stroke-dasharray .3s; }
-.m-ring-t { position: absolute; top: 0; left: 0; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; font-size: 12.5px; font-weight: 700; color: var(--text); }
+.m-ring-t { position: absolute; top: 0; left: 7px; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; font-size: 12.5px; font-weight: 700; color: var(--text); }
 .m-ring.full .m-ring-t { color: #10b981; }
 .m-ring-t .ico { width: 20px; height: 20px; stroke-width: 3; }
-.m-ring-sub { font-size: 10.5px; color: var(--text-dim); margin-top: 2px; white-space: nowrap; }
-.m-ring-dep { display: inline-block; max-width: 64px; overflow: hidden; text-overflow: ellipsis; vertical-align: bottom; color: var(--text); font-weight: 700; }
+.m-ring-sub { display: flex; flex-wrap: wrap; justify-content: center; column-gap: 3px; max-width: 64px; font-size: 10.5px; line-height: 1.3; color: var(--text-dim); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center; }
+.m-ring-sub + .m-ring-sub { margin-top: 0; }
+.m-ring-all { color: var(--text); font-weight: 600; }
+.m-ring-dep { min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; color: var(--text); font-weight: 700; }   /* a long department name is cut, the numbers never */
+.m-ring-sub > span { flex: none; }
+.m-ring-sub:has(.m-ring-dep) { white-space: normal; }
+.m-ring-sub .m-ring-dep { white-space: nowrap; }
 .m-e1-main { flex: 1 1 auto; min-width: 0; }
 .m-e1-main .m-title { font-size: 15.5px; }
 .m-e1-main .m-refs { margin: 2px 0 0; }
@@ -1121,6 +1126,12 @@ html, body { touch-action: manipulation; }
 .ov-projs { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; }
 .ov-proj { display: flex; align-items: center; gap: 12px; font: inherit; color: var(--text); text-align: left; cursor: pointer; }
 .ov-proj:hover, .ov-ev:hover { border-color: var(--accent); }
+.ov-rwrap { flex: 0 0 68px; width: 68px; display: flex; flex-direction: column; align-items: center; gap: 1px; }
+.ov-rsub { display: flex; flex-wrap: wrap; justify-content: center; column-gap: 3px; max-width: 68px; font-size: 11px; line-height: 1.3; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ov-ring + .ov-rsub { margin-top: 2px; }
+.ov-rsub b, .ov-rall { color: var(--text); font-weight: 700; }
+.ov-rsub b { min-width: 0; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ov-rsub > span { flex: none; }
 .ov-pm { min-width: 0; flex: 1; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
 .ov-pt { font-weight: 700; font-size: 13.5px; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ov-seg { display: flex; gap: 3px; width: 100%; margin: 4px 0 3px; }
@@ -14408,6 +14419,13 @@ function projectProgress(t) {
   const c = taskCabProgress(t);
   return { done: c.done, total: c.total, pct: c.total ? Math.round(c.done / c.total * 100) : 0 };
 }
+// ★ 2026-11-01 (owner): the project rings (phone card + dashboard card) show the WHOLE project — same number as the project dashboard
+function projectPctAll(t) {
+  const pgs = (t.subtasks || []).map(s => pmoProgOf(t, s)).filter(Boolean);
+  if (pgs.length) return { pct: Math.round(pgs.reduce((a, g) => a + g.pct, 0) / pgs.length), pmo: true };
+  const pp = projectProgress(t);
+  return { pct: pp.pct, pmo: false, total: pp.total };
+}
 function projectComplete(t) {
   if ((t.deptStages || []).length) return t.deptStages.every(s => isDeptComplete(t, s.deptId));
   return isStatusDone(getStatus(t.statusId));
@@ -14737,7 +14755,11 @@ function renderDashboard() {
         : f ? `<span class="ov-tag fat">FAT ${escapeHtml(fatWhen(f))}</span>`
         : d ? `<span class="ov-tag">${dep ? "กำหนด" : "ส่ง"} ${escapeHtml(shortTH(d))}</span>` : "";
       const nCab = (t.subtasks || []).length;
-      return `<button type="button" class="ov-card ov-proj" data-ovp="${escapeHtml(t.id)}">${ring(p, 54, comp ? OK : (over || ls) ? BAD : ACC)}<div class="ov-pm">
+      // ★ 2026-11-01 (owner): big = the whole project (all departments / PMO %); the filtered department's own count below
+      const all = projectPctAll(t), dn = dep ? (getDept(dep) || {}).name || "" : "", pd = dep ? prog(t) : null;
+      const sub = dep ? `<span class="ov-rsub"><b>${escapeHtml(dn)}</b><span>${pd.total ? `${pd.done}/${pd.total}` : comp ? "✓" : "—"}</span></span>${comp && all.pct < 100 ? `<span class="ov-rsub ov-rall">รวม ${all.pct}%</span>` : ""}` : "";
+      const rc = comp ? OK : (over || ls) ? BAD : all.pmo ? "#0b6bcb" : ACC;
+      return `<button type="button" class="ov-card ov-proj" data-ovp="${escapeHtml(t.id)}" title="ทั้งโครงการ ${all.pct}%${all.pmo ? " (จาก PMO)" : ""}"><span class="ov-rwrap">${ring(comp ? 100 : all.pct, 54, rc)}${sub}</span><div class="ov-pm">
         <div class="ov-pt">${escapeHtml(t.title || "(ไม่มีชื่อ)")}</div><div class="ov-lbl">${escapeHtml([(t.so || "").trim(), nCab ? nCab + " ตู้" : ""].filter(Boolean).join(" · "))}</div>${segs}${tag}</div></button>`;
     };
     const fBtn = (k, lbl) => `<button type="button" class="ov-chip${dashCardFilter === k ? " on" : ""}" data-ovf="${k}">${lbl}</button>`;
@@ -14928,8 +14950,7 @@ function openProjectDashboard(t) {
   const today = todayIso();
   const st = getStatus(t.statusId), pr = getPriority(t.priority);
   const pp = projectProgress(t), comp = projectComplete(t);
-  const pgs = (t.subtasks || []).map(s => pmoProgOf(t, s)).filter(Boolean);   // PMO % of each cabinet (empty = use our checklist)
-  const bigPct = pgs.length ? Math.round(pgs.reduce((a, g) => a + g.pct, 0) / pgs.length) : pp.pct;
+  const bigPct = projectPctAll(t).pct;   // PMO % of each cabinet averaged (⚙ "จากภายนอก") or our checklist
   const start = (t.startDate && t.startDate < t.date) ? t.startDate : null;
   const od = t.date && t.date < today && !comp;
   const daysLeft = t.date ? Math.round((fromIso(t.date) - fromIso(today)) / 86400000) : null;
@@ -17060,9 +17081,15 @@ function mCardHtml(t, due, dep, bid) {
   // ★ 2026-10-12 (owner): the ring counts CHECKLIST ITEMS ticked (this department's; all departments when none chosen) —
   //   shows work has started even before a whole cabinet is finished. Cabinets done moved to the step line.
   const items = dep ? deptProgress(t, dep) : (t.subtasks || []).reduce((a, x) => { const p = checklistProgress(x, null); return { done: a.done + p.done, total: a.total + p.total }; }, { done: 0, total: 0 });
-  const iPct = items.total ? Math.round(items.done / items.total * 100) : (done ? 100 : 0);
-  const ringTxt = done && (!items.total || iPct === 100) ? ico("check") : items.total ? `${iPct}%` : "—";
-  const ring = `<div class="m-ring${done ? " full" : ""}"${dep ? ` title="ความคืบหน้าของแผนก ${escapeHtml((getDept(dep) || {}).name || "")} (เช็คลิสต์ที่ติ๊กแล้ว)"` : ""}><svg viewBox="0 0 46 46" aria-hidden="true"><circle cx="23" cy="23" r="${R}" class="m-ring-bg"/>${iPct > 0 ? `<circle cx="23" cy="23" r="${R}" class="m-ring-fg" style="stroke:${ringCol}" stroke-dasharray="${(C * iPct / 100).toFixed(1)} ${C.toFixed(1)}"/>` : ""}</svg><span class="m-ring-t">${ringTxt}</span><span class="m-ring-sub">${items.total ? `${dep ? `<b class="m-ring-dep">${escapeHtml((getDept(dep) || {}).name || "")}</b> ` : ""}${items.done}/${items.total}` : "ไม่มีเช็คลิสต์"}</span></div>`;
+  // ★ 2026-11-01 (owner): the big number = the WHOLE project (all departments / PMO %), my department's own count below it.
+  //   My department finished → full green ✓ (the card goes to "เสร็จแล้ว" as before) + "รวม N%" while the project isn't done.
+  const all = projectPctAll(t), depName = dep ? (getDept(dep) || {}).name || "" : "";
+  const iPct = done ? 100 : all.pct;
+  const ringTxt = done ? ico("check") : (all.pmo || all.total || items.total) ? `${iPct}%` : "—";
+  const ringCol2 = !done && !over && all.pmo ? "#0b6bcb" : ringCol;
+  const subA = items.total ? `${dep ? `<b class="m-ring-dep">${escapeHtml(depName)}</b>` : ""}<span>${items.done}/${items.total}</span>` : (dep && done ? `<b class="m-ring-dep">${escapeHtml(depName)}</b><span>✓</span>` : "ไม่มีเช็คลิสต์");
+  const subB = dep && done && all.pct < 100 ? `รวม ${all.pct}%` : "";
+  const ring = `<div class="m-ring${done ? " full" : ""}" title="${done ? `แผนก ${escapeHtml(depName)} เสร็จแล้ว · ` : ""}ทั้งโครงการ ${all.pct}%${all.pmo ? " (จาก PMO)" : ""}${dep && items.total ? ` · ${escapeHtml(depName)} ${items.done}/${items.total}` : ""}"><svg viewBox="0 0 46 46" aria-hidden="true"><circle cx="23" cy="23" r="${R}" class="m-ring-bg"/>${iPct > 0 ? `<circle cx="23" cy="23" r="${R}" class="m-ring-fg" style="stroke:${ringCol2}" stroke-dasharray="${(C * iPct / 100).toFixed(1)} ${C.toFixed(1)}"/>` : ""}</svg><span class="m-ring-t">${ringTxt}</span><span class="m-ring-sub">${subA}</span>${subB ? `<span class="m-ring-sub m-ring-all">${subB}</span>` : ""}</div>`;
   const stages = isServiceBoard() ? [] : (t.deptStages || []).filter(x => getDept(x.deptId));
   const sFlow = stageFlow(t, stages), sDone = sFlow.done, cur = sFlow.first;
   const curOver = !hold && cur >= 0 && [...sFlow.cur].some(k => { const d = stages[k].due || t.date; return d && d < todayIso(); });
