@@ -9252,6 +9252,49 @@ function pmoAddEquip(sub, it, so) {
 }
 // ★ 2026-10-30 PMO comments (pmo_comments, copied in by the bot) → the Activity of the project here, once (id "pmoc_<PMO id>",
 //   so two devices adding the same one merge into one). Author shown as "ชื่อ · PMO". They never go back (c.ext).
+// ★ 2026-11-01 (owner): "@" across the two apps. The bot copies the PMO's people list (id, name, department) into pmo_state "_people"
+//   (one small row, read at most every 12 h per device). Used (1) by the "@" picker of the PMO tab (the bot then tags them in the PMO —
+//   it adds `mentions` itself from the "@name" text) and (2) to notice a PMO comment that tags somebody of OUR departments.
+let _pmoPeople = null, _pmoPeopleAt = 0, _pmoPeopleBusy = null;
+const PMO_PEOPLE_KEY = "qc_pmo_people";
+function pmoPeopleCached() {
+  if (!_pmoPeople) { try { const j = JSON.parse(localStorage.getItem(PMO_PEOPLE_KEY) || "null"); if (j && Array.isArray(j.list)) { _pmoPeople = j.list; _pmoPeopleAt = j.at || 0; } } catch (_) {} }
+  return _pmoPeople;
+}
+function pmoPeopleLoad(force) {
+  const cached = pmoPeopleCached();
+  if (cached && !force && Date.now() - _pmoPeopleAt < 12 * 3600e3) return Promise.resolve(cached);
+  if (_pmoPeopleBusy) return _pmoPeopleBusy;
+  const sb = getSupabase(); if (!sb) return Promise.resolve(cached || []);
+  _pmoPeopleBusy = (async () => {
+    try {
+      const { data, error } = await sb.from("pmo_state").select("data").eq("pmo_task_id", "_people").maybeSingle();
+      if (!error && data && data.data && Array.isArray(data.data.people)) {
+        _pmoPeople = data.data.people; _pmoPeopleAt = Date.now();
+        try { localStorage.setItem(PMO_PEOPLE_KEY, JSON.stringify({ at: _pmoPeopleAt, list: _pmoPeople })); } catch (_) {}
+      }
+    } catch (e) { console.warn("pmo people", e); }
+    _pmoPeopleBusy = null;
+    return _pmoPeople || [];
+  })();
+  return _pmoPeopleBusy;
+}
+// our departments (ids on THIS calendar) of the people tagged "@name" in a PMO comment — longest name first, no overlaps
+function pmoTaggedOurDepts(text, people) {
+  if (!text || text.indexOf("@") < 0 || !people || !people.length) return [];
+  const taken = [], out = [];
+  [...people].sort((a, b) => String(b.name).length - String(a.name).length).forEach(p => {
+    const tok = "@" + p.name;
+    for (let i = text.indexOf(tok); i >= 0; i = text.indexOf(tok, i + tok.length)) {
+      const end = i + tok.length;
+      if (taken.some(([a, b]) => i < b && end > a)) continue;
+      taken.push([i, end]);
+      const our = p.deptId ? ourDeptForPmo(String(p.deptId)) : null;
+      if (our && !out.includes(our)) out.push(our);
+    }
+  });
+  return out;
+}
 let _pmoCmBusy = false;
 async function pullPmoComments() {
   if (_pmoCmBusy || !_cloudReady || !currentProfile || !pmoCfg().enabled) return;
@@ -9267,6 +9310,8 @@ async function pullPmoComments() {
     const { data, error } = await sb.from("pmo_comments").select("*").in("pmo_task_id", ids).gte("first_seen", since).order("first_seen", { ascending: true }).limit(500);
     if (error || !Array.isArray(data) || bid !== root.activeBoard) return;
     let last = since; const touched = new Set();
+    const people = data.some(c => String(c.text || "").indexOf("@") >= 0) ? await pmoPeopleLoad() : [];
+    if (bid !== root.activeBoard) return;
     data.forEach(c => {
       if (c.first_seen > last) last = c.first_seen;
       const t = (state.tasks || []).find(x => x.ext && x.ext.src === "pmo" && String(x.ext.pmoTaskId) === String(c.pmo_task_id));
@@ -9275,8 +9320,12 @@ async function pullPmoComments() {
       const cid = "pmoc_" + c.id;
       if (t.comments.some(x => x.id === cid)) return;
       const files = Array.isArray(c.files) ? c.files.filter(f => f && f.name) : [];
-      t.comments.push({ id: cid, author: `${c.author || "PMO"} · PMO`, text: (c.text || "") + (files.length ? `\n[ไฟล์แนบใน PMO: ${files.map(f => f.name).join(", ")}]` : ""),
-        at: c.at ? new Date(c.at).getTime() : Date.now(), ext: { src: "pmo", pmoCommentId: c.id } });
+      const cm = { id: cid, author: `${c.author || "PMO"} · PMO`, text: (c.text || "") + (files.length ? `\n[ไฟล์แนบใน PMO: ${files.map(f => f.name).join(", ")}]` : ""),
+        at: c.at ? new Date(c.at).getTime() : Date.now(), ext: { src: "pmo", pmoCommentId: c.id } };
+      // ★ somebody of OUR department(s) is tagged in the PMO → a department alert here (popup + bell, each person acknowledges), recent comments only
+      const tagDepts = Date.now() - cm.at < 3 * 86400e3 ? pmoTaggedOurDepts(c.text, people) : [];
+      if (tagDepts.length) Object.assign(cm, { type: "alert", toDept: tagDepts[0], toDepts: tagDepts, ack: false, acks: [] });
+      t.comments.push(cm);
       t.updatedAt = Date.now(); touched.add(t.id);
     });
     if (touched.size) { saveState(); renderAll(); }
@@ -11231,7 +11280,13 @@ function openTaskModal(taskId, defaults={}) {
     autoGrow();
     persistComments(); renderFeed(); renderBell();
   }
-  attachMentionPicker(commentInput);   // "@" → list of people (registered first: its Enter beats send)
+  attachMentionPicker(commentInput, { alt: () => {   // the PMO tab tags the PMO's people (the bot adds the PMO `mentions` from the text)
+    if (!(srcOn && actSrc === "pmo")) return null;
+    const l = pmoPeopleCached();
+    if (l) return l;
+    pmoPeopleLoad().then(() => commentInput.dispatchEvent(new Event("click")));
+    return [];
+  } });   // "@" → list of people (registered first: its Enter beats send)
   commentInput.addEventListener("input", autoGrow);
   commentInput.addEventListener("keydown", (e) => {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); postComment(); }
@@ -16128,7 +16183,7 @@ function mentionDeptRank(p) {
 }
 function mentionDeptName(p) { return ((getDept(p.dept_id) || (typeof deptAnywhere === "function" && deptAnywhere(p.dept_id)) || {}).name) || ""; }
 // "@" picker for a textarea: type @ + part of a name → list of people who can see this board
-function attachMentionPicker(input) {
+function attachMentionPicker(input, opts = {}) {   // opts.alt() → null = the app's people · array [{name, dept}] = that list instead (PMO tab)
   const host = input.parentElement;
   let pop = null, items = [], idx = 0, range = null, suppress = false;
   function close() { if (pop) { pop.remove(); pop = null; } }
@@ -16141,6 +16196,21 @@ function attachMentionPicker(input) {
   function render() {
     range = currentQuery();
     if (!range) return close();
+    const alt = opts.alt ? opts.alt() : null;
+    if (alt) {
+      items = alt.filter(p => String(p.name).toLowerCase().includes(range.q)).map(p => ({ _alt: true, name: p.name, dept: p.dept || "" }))
+        .sort((a, b) => a.dept.localeCompare(b.dept, "th") || a.name.localeCompare(b.name, "th"));
+      if (!items.length) return close();
+      idx = Math.min(idx, items.length - 1);
+      if (!pop) { pop = document.createElement("div"); pop.className = "mention-pop"; host.appendChild(pop); }
+      pop.innerHTML = `<div class="mention-head">แท็กใน PMO — ↑↓ เลือก · Enter ใส่ชื่อ · Esc ปิด</div>` + items.map((p, i) =>
+        (i === 0 || items[i - 1].dept !== p.dept ? `<div class="mention-group">${escapeHtml(p.dept || "ไม่ระบุแผนก")}</div>` : "") +
+        `<div class="mention-item${i === idx ? " active" : ""}" data-i="${i}"><span class="mention-name">${escapeHtml(p.name)}</span></div>`).join("");
+      pop.querySelectorAll(".mention-item").forEach(el => el.addEventListener("mousedown", (e) => { e.preventDefault(); pick(+el.dataset.i); }));
+      const a2 = pop.querySelector(".mention-item.active");
+      if (a2) a2.scrollIntoView({ block: "nearest" });
+      return;
+    }
     const me = currentProfile && currentProfile.id;
     items = mentionCandidates().filter(p => p.id !== me &&
         (personName(p).toLowerCase().includes(range.q) || (p.email || "").toLowerCase().startsWith(range.q)))
@@ -16162,7 +16232,7 @@ function attachMentionPicker(input) {
   function pick(i) {
     const p = items[i];
     if (!p || !range) return;
-    const ins = "@" + personName(p) + " ";
+    const ins = "@" + (p._alt ? p.name : personName(p)) + " ";
     input.value = input.value.slice(0, range.start) + ins + input.value.slice(range.end);
     const caret = range.start + ins.length;
     input.setSelectionRange(caret, caret);
