@@ -9326,6 +9326,40 @@ function pmoApplyFat(t, fat) {
   f.ext = { src: "pmo", pmoRound: round, pmoLast: sig };
   return `FAT${round > 1 ? " รอบที่ " + round : ""} ${fatWhen(f)} · ${FAT_RES[f.result] || ""}`;
 }
+// ★ 2026-11-02 (owner: ตู้ที่ PMO ลบ/เปลี่ยนชื่อ ต้องตามด้วย) — bot v1.10 sends every cabinet of the project ({id, mo, text}).
+//   · renamed / MO changed in the PMO (compared with what the PMO had last time, sub.ext.pmoName; first sight = take the PMO's) → here too
+//   · a cabinet linked to the PMO that is no longer there → removed here; a copy is kept in t.ext.pmoRemovedCabs (last 20) so its
+//     ticks / notes / photos can be looked up or put back. Cabinets added here by hand (no PMO link) are never touched.
+//   Nothing happens when the list is missing (bot ≤ 1.9) or empty (a bad read must never wipe cabinets).
+function pmoApplyCabinets(t, all) {
+  if (!Array.isArray(all) || !all.length || !Array.isArray(t.subtasks)) return { msg: "", dirty: false };
+  const byId = new Map(all.filter(c => c && c.id != null).map(c => [String(c.id), c]));
+  if (!byId.size) return { msg: "", dirty: false };
+  const msgs = [], removed = []; let dirty = false;
+  t.subtasks = t.subtasks.filter(sub => {
+    if (!sub.ext || sub.ext.pmoCabinetId == null) return true;
+    const c = byId.get(String(sub.ext.pmoCabinetId));
+    if (!c) { removed.push(sub); return false; }
+    const now = { text: String(c.text || ""), mo: String(c.mo || "") }, last = sub.ext.pmoName;
+    if (!last || last.text !== now.text || last.mo !== now.mo) {
+      const old = [sub.mo, sub.text].filter(Boolean).join(" · ");
+      if (now.text && sub.text !== now.text) sub.text = now.text;
+      const sameMo = !!moDigits(sub.mo) && moDigits(sub.mo) === moDigits(now.mo);   // "05388" = "WH/MO/05388" → leave as written here
+      if (sub.mo !== now.mo && !sameMo && (now.mo || last)) { sub.mo = now.mo; sub.ext.mo = now.mo; }
+      const neu = [sub.mo, sub.text].filter(Boolean).join(" · ");
+      if (old !== neu) msgs.push(`ตู้ ${old || "(ไม่มีชื่อ)"} → ${neu}`);
+      sub.ext.pmoName = now; dirty = true;
+    }
+    return true;
+  });
+  if (removed.length) {
+    const keep = Array.isArray(t.ext.pmoRemovedCabs) ? t.ext.pmoRemovedCabs : [];
+    t.ext.pmoRemovedCabs = [...removed.map(sub => ({ at: Date.now(), sub })), ...keep].slice(0, 20);
+    msgs.push(`ลบตู้ที่ PMO ลบแล้ว: ${removed.map(x => [x.mo, x.text].filter(Boolean).join(" · ") || "(ไม่มีชื่อ)").join(", ")}`);
+    dirty = true;
+  }
+  return { msg: msgs.join(" · "), dirty };
+}
 // ★ 2026-11-02 (owner: PMO เลื่อนวันกำหนด QC แล้วแอปไม่เปลี่ยน) — bot v1.8 sends each watched department's due date ({pmoDeptId: "YYYY-MM-DD"}).
 //   The department date here follows the PMO whenever the PMO's value CHANGES (t.ext.pmoDues = what the PMO had last time); the first
 //   time it is seen it is taken too (the date came from the PMO when the job was accepted). Logged in Activity as "PMO".
@@ -9598,6 +9632,9 @@ async function pullPmoState(opts = {}) {
       if (pj.dirty) save = true;
       const pjMsg = [pj.msg, sized ? `ขนาดตู้ ${sized} ตู้` : ""].filter(Boolean).join(" · ");
       if (pjMsg) { logActivity(t, "อัปเดต · " + pjMsg, "PMO"); changes++; t.updatedAt = Date.now(); }
+      const cs = pmoApplyCabinets(t, row.data && row.data.allCabs);
+      if (cs.dirty) save = true;
+      if (cs.msg) { logActivity(t, "อัปเดต · " + cs.msg, "PMO"); changes++; t.updatedAt = Date.now(); }
       const du = pmoApplyDues(t, row.data && row.data.dues), dueMsg = du.msg;
       if (du.dirty) save = true;
       if (dueMsg) { logActivity(t, "อัปเดต · " + dueMsg, "PMO"); changes++; save = true; t.updatedAt = Date.now(); }
