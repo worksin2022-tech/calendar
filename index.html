@@ -9120,8 +9120,16 @@ function pmoTickCommands(prevJson, json) {
     if (!(t.ext && t.ext.src === "pmo" && t.ext.pmoTaskId != null)) return;
     // ★ 2026-10-30 (owner): talk across both apps — a comment / department alert written HERE goes to the PMO (never one that came from it)
     const seen = oldCm.get(t.id);
+    const before = new Map(((oldTasks.get(t.id) || {}).comments || []).map(c => [c.id, c]));
+    // ★ 2026-11-02 (owner: แนบไฟล์กลับไป PMO) — the files go along as real PMO attachments (bot v1.9 downloads them from Drive). A comment
+    //   whose files are still uploading waits: it is sent on the save where the last upload finishes (failed uploads are left out).
+    const upPending = c => (Array.isArray(c.files) ? c.files : []).some(f => f.up === "pending" || (!f.id && !f.up));
     if (seen) (t.comments || []).forEach(c => {
-      if (seen.has(c.id) || c.ext || c.type === "system" || !c.toPmo) return;   // ★ 2026-10-31: only what was typed in the PMO tab
+      if (c.ext || c.type === "system" || !c.toPmo) return;   // ★ 2026-10-31: only what was typed in the PMO tab
+      const prev = before.get(c.id);
+      if (seen.has(c.id) && !(prev && upPending(prev))) return;   // sent already (or not new and nothing was uploading)
+      if (upPending(c)) return;                                  // wait for the uploads
+      const driveFiles = (Array.isArray(c.files) ? c.files : []).filter(f => f.id && !f.up).map(f => ({ id: f.id, name: f.name || "ไฟล์", mime: f.mime || "" }));
       const nFiles = (Array.isArray(c.files) ? c.files.length : 0) + (c.photo ? 1 : 0);
       const head = c.type === "alert" ? `[แจ้งเตือน ${alertDepts(c).map(id => ((b.departments || []).find(d => d.id === id) || { name: id }).name).join(", ")}] ` : "";
       // ★ (owner) only people of a department matched to the PMO (the team) — PMO staff who also use this app write in the PMO themselves
@@ -9131,7 +9139,10 @@ function pmoTickCommands(prevJson, json) {
       // the PMO shows the bot's account as the poster → say who really wrote it: "QC · สมชาย: …" (department here · name)
       const dn = ((b.departments || []).find(d => d.id === pdep) || {}).name;
       const text = `${dn ? dn + " · " : ""}${c.author || "—"}: ${head}${c.text || ""}${nFiles ? ` (แนบไฟล์ ${nFiles} ไฟล์ในแอป QC)` : ""}`.trim();
-      out.push({ task_id: t.id, label: `คอมเมนต์ ${t.so || t.title || ""}`, op: { type: "comment", taskId: t.ext.pmoTaskId, text, alertDept: "", mentions: [], replyTo: null } });
+      // text keeps "(แนบไฟล์ N ไฟล์ในแอป QC)" for a bot ≤ 1.8; v1.9 attaches `files` and sends `textBare` (+ a note for any file it couldn't attach)
+      const bare = `${dn ? dn + " · " : ""}${c.author || "—"}: ${head}${c.text || ""}`.trim();
+      out.push({ task_id: t.id, label: `คอมเมนต์ ${t.so || t.title || ""}${driveFiles.length ? ` + ไฟล์ ${driveFiles.length}` : ""}`,
+        op: { type: "comment", taskId: t.ext.pmoTaskId, text, alertDept: "", mentions: [], replyTo: null, ...(driveFiles.length ? { files: driveFiles, textBare: bare } : {}) } });
     });
     (t.subtasks || []).forEach(sb => {
       if (!(sb.ext && sb.ext.pmoCabinetId != null)) return;
@@ -9389,6 +9400,14 @@ function pmoTaggedOurDepts(text, people) {
   });
   return out;
 }
+// ★ 2026-11-02 (owner: ไฟล์ที่แนบใน PMO เห็นแค่ตัวหนังสือ) — PMO comment files are public links (…/public/uploads/comment-attachments/…,
+//   no PMO login needed, checked) → kept as c.pmoFiles [{name, url}] and shown like our own attachments: pictures as thumbnails
+//   (tap = full size), other files open in a new tab (the PMO server has no CORS → not in our PDF viewer). Nothing is copied to Drive.
+const PMO_FILE_LINE = /\n?\[ไฟล์แนบใน PMO: [^\]]*\]\s*$/;
+function pmoFilesOf(files) {
+  return (Array.isArray(files) ? files : []).filter(f => f && /^https?:\/\//i.test(String(f.url || ""))).map(f => ({ name: String(f.name || "ไฟล์"), url: String(f.url) }));
+}
+function pmoFileIsImg(f) { return /\.(jpe?g|png|gif|webp|bmp)$/i.test(String(f.name || "")) || /\.(jpe?g|png|gif|webp|bmp)(\?|$)/i.test(String(f.url || "")); }
 let _pmoCmBusy = false;
 async function pullPmoComments() {
   if (_pmoCmBusy || !_cloudReady || !currentProfile || !pmoCfg().enabled) return;
@@ -9401,6 +9420,18 @@ async function pullPmoComments() {
   _pmoCmBusy = true;
   try {
     const ids = [...new Set(tasks.map(t => String(t.ext.pmoTaskId)))];
+    // ★ 2026-11-02 one-time: comments pulled before files were kept carry "[ไฟล์แนบใน PMO: …]" in the text → fetch their files, drop that line
+    const old = [];
+    tasks.forEach(t => (t.comments || []).forEach(cm => { if (cm.ext && cm.ext.src === "pmo" && !cm.pmoFiles && PMO_FILE_LINE.test(cm.text || "")) old.push([t, cm]); }));
+    if (old.length) {
+      const { data: of } = await sb.from("pmo_comments").select("id,files").in("id", old.map(([, cm]) => String(cm.ext.pmoCommentId)));
+      if (bid !== root.activeBoard) return;
+      const byId = new Map((of || []).map(r => [String(r.id), pmoFilesOf(r.files)]));
+      let fixed = false;
+      old.forEach(([t, cm]) => { const f = byId.get(String(cm.ext.pmoCommentId)); if (!f) return;
+        cm.text = (cm.text || "").replace(PMO_FILE_LINE, ""); if (f.length) cm.pmoFiles = f; t.updatedAt = Date.now(); fixed = true; });
+      if (fixed) { saveState(); renderAll(); }
+    }
     const { data, error } = await sb.from("pmo_comments").select("*").in("pmo_task_id", ids).gte("first_seen", since).order("first_seen", { ascending: true }).limit(500);
     if (error || !Array.isArray(data) || bid !== root.activeBoard) return;
     let last = since; const touched = new Set();
@@ -9413,8 +9444,8 @@ async function pullPmoComments() {
       if (!Array.isArray(t.comments)) t.comments = [];
       const cid = "pmoc_" + c.id;
       if (t.comments.some(x => x.id === cid)) return;
-      const files = Array.isArray(c.files) ? c.files.filter(f => f && f.name) : [];
-      const cm = { id: cid, author: `${c.author || "PMO"} · PMO`, text: (c.text || "") + (files.length ? `\n[ไฟล์แนบใน PMO: ${files.map(f => f.name).join(", ")}]` : ""),
+      const files = pmoFilesOf(c.files);
+      const cm = { id: cid, author: `${c.author || "PMO"} · PMO`, text: c.text || "", ...(files.length ? { pmoFiles: files } : {}),
         at: c.at ? new Date(c.at).getTime() : Date.now(), ext: { src: "pmo", pmoCommentId: c.id } };
       // ★ somebody of OUR department(s) is tagged in the PMO → a department alert here (popup + bell, each person acknowledges), recent comments only
       const tagDepts = Date.now() - cm.at < 3 * 86400e3 ? pmoTaggedOurDepts(c.text, people) : [];
@@ -9597,7 +9628,7 @@ async function refreshPmoBadge() {
   try {
     const { data, error } = await sb.from("pmo_inbox").select("id").eq("status", "pending").in("pmo_dept_id", depts);
     if (!error && Array.isArray(data)) { _pmoCount = data.length; paintPmoTab(); }
-    pmoCheckFailed(sb);
+    if (Date.now() - _pmoFailAt > 170e3) { _pmoFailAt = Date.now(); pmoCheckFailed(sb); }   // failed-command toasts: every 3 min as before
     // ★ 2026-11-01 (owner): quiet by default — a red dot appears only when the bot has gone silent / a read stays broken (one small row)
     if (Date.now() - _pmoBotSeenAt > 9.5 * 60e3) {   // egress: the bot's status is re-read every 10 min, not every 3
       _pmoBotSeenAt = Date.now();
@@ -9639,7 +9670,13 @@ async function pmoCheckFailed(sb) {
   toast(`⚠️ บอททำใน PMO ไม่สำเร็จ ${data.length} รายการ — ${data[0].label || ""}${data[0].result ? " (" + data[0].result + ")" : ""}`);
   try { localStorage.setItem(KEY, data[data.length - 1].done_at); } catch (_) {}
 }
-setInterval(() => { if (document.visibilityState === "visible") refreshPmoBadge(); }, 180000);
+// ★ 2026-11-02 (owner: ตัวเลขรอรับเด้งช้า ต้องกดเข้าไปก่อน) — every minute (was 3; the query is ids only) and at once when the app comes
+//   back on screen (a hidden tab skipped the timer, so the number stayed old until the drawer was opened)
+let _pmoFailAt = 0, _pmoBadgeAt = 0;
+setInterval(() => { if (document.visibilityState === "visible") { _pmoBadgeAt = Date.now(); refreshPmoBadge(); } }, 60000);
+const pmoBadgeOnReturn = () => { if (document.visibilityState === "visible" && Date.now() - _pmoBadgeAt > 15e3) { _pmoBadgeAt = Date.now(); refreshPmoBadge(); } };
+document.addEventListener("visibilitychange", pmoBadgeOnReturn);
+window.addEventListener("focus", pmoBadgeOnReturn);
 // รับงาน / ไม่รับ — the task here + a command for the bot; false = cancelled / not allowed
 async function pmoDecide(row, status, extra) {
   const sb = getSupabase(); if (!sb) return;
@@ -15795,7 +15832,12 @@ function attachmentsHtml(c, imgClass) {
       + `<span class="att-fsize">${failed ? (stale ? ico("alert") + " อัปโหลดไม่เสร็จ" : ico("alert") + " อัปโหลดไม่สำเร็จ") : ico("clock") + " กำลังอัปโหลด…"}</span>`
       + `${failed && mine ? `<button type="button" class="btn btn-sm att-retry" data-retry="${escapeHtml(f.key)}">ลองใหม่</button>` : ""}</div>`;
   }).join("");
-  if (docHtml || busyHtml) h += `<div class="att-files">${docHtml}${busyHtml}</div>`;
+  // PMO files (public links): pictures → thumbnails, other files → open in a new tab
+  const pf = Array.isArray(c.pmoFiles) ? c.pmoFiles : [];
+  const pImgs = pf.filter(pmoFileIsImg), pDocs = pf.filter(f => !pmoFileIsImg(f));
+  if (pImgs.length) h += `<div class="att-imgs">${pImgs.map(f => `<img class="${imgClass}" src="${escapeHtml(f.url)}" data-full="${escapeHtml(f.url)}" data-name="${escapeHtml(f.name)}" alt="${escapeHtml(f.name)}" loading="lazy">`).join("")}</div>`;
+  const pDocHtml = pDocs.map(f => `<a class="att-file" href="${escapeHtml(f.url)}" target="_blank" rel="noopener" title="เปิดไฟล์จาก PMO (แท็บใหม่)">${fileIcon(f.name)}<span class="att-fname">${escapeHtml(f.name)}</span><span class="att-fsize">PMO</span></a>`).join("");
+  if (docHtml || busyHtml || pDocHtml) h += `<div class="att-files">${docHtml}${busyHtml}${pDocHtml}</div>`;
   return h;
 }
 // every attachment on a task (newest first): legacy base64 photos, Drive images/files, and ones still uploading
@@ -15812,6 +15854,9 @@ function collectAttachments(task) {
         out.push({ ...meta, kind: "image", id: f.id, name: f.name, src: local || driveThumb(f.id, 400), full: local || driveThumb(f.id, 2000) });
       } else if (f.id) out.push({ ...meta, kind: "file", id: f.id, name: f.name, size: f.size });
     });
+    (Array.isArray(c.pmoFiles) ? c.pmoFiles : []).forEach(f => out.push(pmoFileIsImg(f)
+      ? { ...meta, kind: "image", name: f.name, src: f.url, full: f.url }
+      : { ...meta, kind: "file", url: f.url, name: f.name }));
   });
   return out.sort((a, b) => b.at - a.at);
 }
@@ -15853,6 +15898,7 @@ function openAttachmentsGallery(task) {
       : `<figure class="attg-img"><img src="${x.src}" data-full="${x.full}" ${x.id ? `data-drive="${escapeHtml(x.id)}" onerror="attImgErr(this)"` : ""} data-name="${escapeHtml(x.name || "")}" alt="${escapeHtml(x.name || "รูปแนบ")}" loading="lazy"><div class="attg-meta" title="${escapeHtml(x.name || "")}">${metaTxt(x)}</div></figure>`).join("") + `</div>`;
     if (showFile) h += `<div class="attg-sec-h">ไฟล์ (${files.length})</div><div class="attg-files">` + files.map(x => x.kind === "busy"
       ? `<div class="attg-row">${attachmentsHtml({ files: [x.f] }, "").replace(/^<div class="att-files">|<\/div>$/g, "")}<span class="attg-meta">${metaTxt(x)}</span></div>`
+      : x.url ? `<div class="attg-row"><a class="att-file" href="${escapeHtml(x.url)}" target="_blank" rel="noopener" title="เปิดไฟล์จาก PMO (แท็บใหม่)">${fileIcon(x.name)}<span class="att-fname">${escapeHtml(x.name || "ไฟล์")}</span><span class="att-fsize">PMO</span></a><span class="attg-meta">${metaTxt(x)}</span></div>`
       : `<div class="attg-row"><a class="att-file" href="${driveViewUrl(x.id)}" target="_blank" rel="noopener" data-view="${escapeHtml(x.id)}" data-name="${escapeHtml(x.name || "")}" title="เปิดดูในแอป">${fileIcon(x.name)}<span class="att-fname">${escapeHtml(x.name || "ไฟล์")}</span>${x.size ? `<span class="att-fsize">${fmtBytes(x.size)}</span>` : ""}</a><a class="btn btn-sm" href="${driveDownloadUrl(x.id)}" target="_blank" rel="noopener" title="ดาวน์โหลด">${ico("download")}</a><span class="attg-meta">${metaTxt(x)}</span></div>`).join("") + `</div>`;
     body.innerHTML = h;
     wireAttachments(body);   // images → lightbox, files → in-app viewer, ลองใหม่ → retry
