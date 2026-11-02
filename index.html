@@ -1723,6 +1723,10 @@ a.am2-btn { text-decoration: none; display: inline-flex; align-items: center; }
 .att-open-ico { width: 15px; height: 15px; flex: 0 0 auto; }
 .ta-head .att-open-btn { padding: 4px 6px 4px 10px; font-size: 12.5px; gap: 5px; }
 .ta-head .att-open-btn.empty { padding-right: 10px; }
+/* ★ 2026-11-02 (owner: ปุ่มไฟล์แนบล้นจอ) — with the ภายใน | PMO switch the 320px head is full → the button = 📎 + count only (name in the tooltip) */
+.ta-head.has-src .att-open-t { display: none; }
+.ta-head.has-src .att-open-btn { padding: 4px 6px 4px 8px; flex: 0 0 auto; }
+.ta-head.has-src .att-open-btn.empty { padding: 4px 8px; }
 .attg-modal { max-width: 880px; }
 .attg-filter { display: flex; gap: 4px; flex-wrap: wrap; }
 .attg-filter button { padding: 5px 11px; border:1px solid var(--border-strong); border-radius:999px; background:var(--b-ffffff, #fff); color:var(--text-dim); font: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer; }
@@ -9310,6 +9314,22 @@ function pmoApplyFat(t, fat) {
   f.ext = { src: "pmo", pmoRound: round, pmoLast: sig };
   return `FAT${round > 1 ? " รอบที่ " + round : ""} ${fatWhen(f)} · ${FAT_RES[f.result] || ""}`;
 }
+// ★ 2026-11-02 (owner: PMO เลื่อนวันกำหนด QC แล้วแอปไม่เปลี่ยน) — bot v1.8 sends each watched department's due date ({pmoDeptId: "YYYY-MM-DD"}).
+//   The department date here follows the PMO whenever the PMO's value CHANGES (t.ext.pmoDues = what the PMO had last time); the first
+//   time it is seen it is taken too (the date came from the PMO when the job was accepted). Logged in Activity as "PMO".
+function pmoApplyDues(t, dues) {
+  if (!dues || typeof dues !== "object" || !Array.isArray(t.deptStages)) return { msg: "", dirty: false };
+  const last = (t.ext.pmoDues && typeof t.ext.pmoDues === "object") ? t.ext.pmoDues : null, msgs = [];
+  Object.entries(dues).forEach(([pd, due]) => {
+    const our = ourDeptForPmo(String(pd)), st = our && t.deptStages.find(x => x.deptId === our);
+    if (!st || !/^\d{4}-\d{2}-\d{2}$/.test(String(due || ""))) return;
+    if (last && last[pd] === due) return;   // unchanged in the PMO → a date moved here stays
+    if (st.due !== due) { msgs.push(`กำหนด ${(getDept(our) || {}).name || ""} ${st.due ? formatDateTH(st.due) + " → " : ""}${formatDateTH(due)}`); st.due = due; }
+  });
+  const sig = JSON.stringify(dues), dirty = JSON.stringify(last) !== sig;
+  if (dirty) t.ext.pmoDues = JSON.parse(sig);   // remembered (saved) even when nothing moved → a date changed here later is kept
+  return { msg: msgs.join(" · "), dirty };
+}
 // equipment = linked to another department's line (the warehouse) OR in a work group named "…อุปกรณ์…" (a line typed in by hand there)
 function pmoIsEquip(it) { return !!it && ((it.from != null && it.from !== "") || /อุปกรณ์/.test(String(it.group || ""))); }
 function pmoAddEquip(sub, it, so) {
@@ -9546,6 +9566,9 @@ async function pullPmoState(opts = {}) {
       if (pj.dirty) save = true;
       const pjMsg = [pj.msg, sized ? `ขนาดตู้ ${sized} ตู้` : ""].filter(Boolean).join(" · ");
       if (pjMsg) { logActivity(t, "อัปเดต · " + pjMsg, "PMO"); changes++; t.updatedAt = Date.now(); }
+      const du = pmoApplyDues(t, row.data && row.data.dues), dueMsg = du.msg;
+      if (du.dirty) save = true;
+      if (dueMsg) { logActivity(t, "อัปเดต · " + dueMsg, "PMO"); changes++; save = true; t.updatedAt = Date.now(); }
       const fatMsg = pmoApplyFat(t, row.data && row.data.fat);
       if (fatMsg) { logActivity(t, "อัปเดต · " + fatMsg, "PMO"); changes++; save = true; t.updatedAt = Date.now(); }
       if (gone.length) { logActivity(t, `ไม่มีรายการนี้แล้ว: ${gone.slice(0, 5).join(", ")}${gone.length > 5 ? " +" + (gone.length - 5) : ""}`, "PMO"); save = true; }
@@ -9990,7 +10013,7 @@ function openTaskModal(taskId, defaults={}) {
         </details>
       </div>
       <aside class="task-activity">
-        <div class="ta-head"><span>Activity</span><span class="ta-src" data-src-tabs hidden><button type="button" data-src="in" class="on">ภายใน</button><button type="button" data-src="pmo">PMO<span class="ta-src-n" data-src-n hidden></span></button></span><button type="button" class="att-open-btn empty" data-act="attachments" title="ดูรูปและไฟล์แนบทั้งหมดของงานนี้"><svg class="att-open-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>ไฟล์แนบ<span class="att-count" data-att-count></span></button></div>
+        <div class="ta-head"><span>Activity</span><span class="ta-src" data-src-tabs hidden><button type="button" data-src="in" class="on">ภายใน</button><button type="button" data-src="pmo">PMO<span class="ta-src-n" data-src-n hidden></span></button></span><button type="button" class="att-open-btn empty" data-act="attachments" title="ดูรูปและไฟล์แนบทั้งหมดของงานนี้"><svg class="att-open-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg><span class="att-open-t">ไฟล์แนบ</span><span class="att-count" data-att-count></span></button></div>
         <div class="ta-feed" data-feed></div>
         <div class="ta-compose">
           <textarea class="ta-input" data-comment placeholder="เขียนอัพเดต / ความคิดเห็น...  (Enter ส่ง, Shift+Enter ขึ้นบรรทัด)"></textarea>
