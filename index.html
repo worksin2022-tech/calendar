@@ -553,6 +553,7 @@ html:has(body.m-mode), body.m-mode { overscroll-behavior-y: contain; }
 .m-sheet .ta-alert-dept { flex: 1 1 auto; min-width: 0; }
 /* ★ 2026-10-31 Activity ภายใน | PMO (PMO projects only) — the switch sits in .ta-head; on phones the head is shown just for it */
 .ta-src { display: inline-flex; gap: 2px; padding: 3px; border-radius: 999px; background: var(--bg); border: 1px solid var(--border); margin-right: auto; margin-left: 10px; }
+.ta-src[hidden] { display: none; }   /* ★ 2026-11-02: the rule above beat [hidden] → the switch showed on every job (ClickUp / own ones too) and pushed ไฟล์แนบ off the edge */
 .ta-src button { position: relative; border: 0; background: transparent; border-radius: 999px; padding: 3px 13px; font: inherit; font-size: 12.5px; font-weight: 600; color: var(--text-dim); cursor: pointer; }
 .ta-src button.on { background: var(--panel); color: var(--text); box-shadow: 0 1px 3px rgba(16,24,40,.15); }
 .ta-src button[data-src="pmo"].on { color: var(--t-0b6bcb, #0b6bcb); }
