@@ -1571,6 +1571,7 @@ html, body { touch-action: manipulation; }
 .am2-res { display: flex; align-items: center; gap: 5px; margin-top: 7px; font-size: 12px; font-weight: 600; color: #059669; }
 .am2-res .ico { width: 14px; height: 14px; flex: 0 0 auto; }
 .am2-res.rej { color: var(--danger); }
+.am2-card.am2-new { box-shadow: inset 3px 0 0 var(--accent); background: color-mix(in srgb, var(--accent) 6%, var(--panel)); }
 .alert-modal.am2 .alert-card.am2-card { display: flex; gap: 11px; padding: 12px 13px; border: 1px solid var(--border); border-left: 1px solid var(--border); border-radius: 14px; background: var(--panel); box-shadow: var(--shadow-sm); transition: box-shadow .15s; }
 .alert-modal.am2 .alert-card.am2-card:hover { box-shadow: var(--shadow-md); }
 .am2-av { flex: 0 0 auto; }
@@ -2377,6 +2378,33 @@ body.chip-dragging .task-chip.span-pull { pointer-events: none; }
 .ta-alert-head .ta-pin { margin-left: auto; }
 .ta-alert-head .ta-pin + .ta-del { margin-left: 0; }
 .ta-item-head .ta-pin { margin-left: auto; }
+.ta-reply { border:none; background:transparent; color:var(--text-faint); cursor: pointer; padding: 0 2px; display: inline-flex; opacity: 0; }
+.ta-reply .ico { width: 14px; height: 14px; }
+.ta-reply:hover { color: var(--accent); }
+.ta-item:hover .ta-reply, .ta-alert:hover .ta-reply { opacity: 1; }
+.ta-item-head .ta-reply, .ta-alert-head .ta-reply { margin-left: auto; }
+.ta-item-head .ta-reply + .ta-pin, .ta-alert-head .ta-reply + .ta-pin { margin-left: 0; }
+@media (hover: none) { .ta-reply { opacity: 1; } }
+/* LINE-style: one bubble holds the answered message (top), a divider, then the reply */
+.modal:not(.m-sheet) .ta-item.has-reply .ta-item-body { background: color-mix(in srgb, var(--accent) 10%, var(--panel)); border-radius: 12px; padding: 7px 11px 8px; }
+.ta-quote { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; border: 0; border-bottom: 1px solid color-mix(in srgb, var(--accent) 25%, var(--border)); border-radius: 0; background: transparent; color: var(--text-dim); font: inherit; font-size: 12px; padding: 3px 0 8px; margin: 2px 0 6px; cursor: pointer; }
+.ta-quote:hover .ta-quote-body span { color: var(--text); }
+.ta-quote .ta-quote-av { width: 26px; height: 26px; font-size: 11px; flex: 0 0 auto; }
+.ta-quote-body { display: flex; flex-direction: column; min-width: 0; gap: 1px; }
+.ta-quote-body b { color: var(--text); font-weight: 700; font-size: 12.5px; }
+.ta-quote-body span { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; word-break: break-word; }
+.m-sheet .ta-item.mine .ta-quote { border-bottom-color: rgba(255,255,255,.35); color: rgba(255,255,255,.85); }
+.m-sheet .ta-item.mine .ta-quote b { color: #fff; }
+.m-sheet .ta-item.mine .ta-quote .ta-quote-av { display: inline-flex; }
+.m-sheet .ta-item.mine .ta-reply { color: rgba(255,255,255,.8); }
+.ta-reply-bar { display: flex; align-items: center; gap: 8px; border-left: 3px solid var(--accent); border-radius: 6px; background: var(--bg); padding: 5px 8px; margin-bottom: 6px; font-size: 12px; }
+.ta-reply-bar[hidden] { display: none; }
+.ta-reply-bar > .ico { width: 14px; height: 14px; color: var(--accent); flex: 0 0 auto; }
+.ta-reply-main { flex: 1 1 auto; min-width: 0; display: flex; gap: 6px; }
+.ta-reply-main b { flex: 0 0 auto; }
+.ta-reply-main span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-dim); }
+.ta-reply-x { border: 0; background: transparent; color: var(--text-faint); cursor: pointer; font-size: 13px; flex: 0 0 auto; }
+.ta-reply-x:hover { color: var(--danger); }
 .ta-item-head .ta-pin + .ta-del { margin-left: 0; }
 @media (hover: none) { .ta-pin, .ta-del { opacity: 1; } }
 /* pinned strip — sticks to the top of the feed */
@@ -6888,9 +6916,9 @@ function notifyRemoteBoardChange(ws, newTasks, oldTasksById, savedBy, boardId) {
       if (commentFresh(c, before) && Array.isArray(c.mentions) && c.mentions.includes(meId) && (seen || crossMentionOn(ws))) {
         try { sysNotify("💬 มีคนกล่าวถึงคุณ", { body: `${t.title} · ${c.author || ""}: ${c.text || ""}`.slice(0, 180), tag: "rt-men-" + c.id, renotify: true }, L(t)); } catch (e) {}
       }
-      // ★ 2026-11-03 a job I follow (🔔) got a new comment — same tag as its web push → one notification per device
-      if (commentFresh(c, before) && watchHas(c, meId) && !(Array.isArray(c.mentions) && c.mentions.includes(meId))) {
-        try { sysNotify("🔔 คอมเมนต์ใหม่ในงานที่คุณติดตาม", { body: `${t.title} · ${c.author || ""}: ${c.text || ""}`.slice(0, 180), tag: "rt-watch-" + c.id, renotify: true }, L(t)); } catch (e) {}
+      // ★ 2026-11-03 someone answered my message (↩) — same tag as its web push → one notification per device
+      if (commentFresh(c, before) && replyHas(c, meId) && !(Array.isArray(c.mentions) && c.mentions.includes(meId))) {
+        try { sysNotify("↩ มีคนตอบกลับข้อความของคุณ", { body: `${t.title} · ${c.author || ""}: ${c.text || ""}`.slice(0, 180), tag: "rt-rep-" + c.id, renotify: true }, L(t)); } catch (e) {}
       }
       if ((seen || c.kind === "drawdone") && c.type === "alert" && !c.ack && c.toUser === meId && commentFresh(c, before)) {
         try { sysNotify(c.kind === "drawdone" ? "📐 เขียนแบบเสร็จแล้ว" : "📌 มีงานมอบหมายให้คุณ", { body: `${t.title}${c.author ? (c.kind === "drawdone" ? " · โดย " : " · จาก ") + c.author : ""}`, tag: "rt-asg-" + c.id, renotify: true }, L(t)); } catch (e) {}
@@ -9168,7 +9196,7 @@ function pmoTickCommands(prevJson, json) {
       // text keeps "(แนบไฟล์ N ไฟล์ในแอป QC)" for a bot ≤ 1.8; v1.9 attaches `files` and sends `textBare` (+ a note for any file it couldn't attach)
       const bare = `${dn ? dn + " · " : ""}${c.author || "—"}: ${head}${c.text || ""}`.trim();
       out.push({ task_id: t.id, label: `คอมเมนต์ ${t.so || t.title || ""}${driveFiles.length ? ` + ไฟล์ ${driveFiles.length}` : ""}`,
-        op: { type: "comment", taskId: t.ext.pmoTaskId, text, alertDept: "", mentions: [], replyTo: null, ...(driveFiles.length ? { files: driveFiles, textBare: bare } : {}) } });
+        op: { type: "comment", taskId: t.ext.pmoTaskId, text, alertDept: "", mentions: [], replyTo: (c.replyTo && c.replyTo.pmoId) || null, ...(driveFiles.length ? { files: driveFiles, textBare: bare } : {}) } });
     });
     (t.subtasks || []).forEach(sb => {
       if (!(sb.ext && sb.ext.pmoCabinetId != null)) return;
@@ -9510,6 +9538,10 @@ async function pullPmoComments() {
       // ★ somebody of OUR department(s) is tagged in the PMO → a department alert here (popup + bell, each person acknowledges), recent comments only
       const tagDepts = Date.now() - cm.at < 3 * 86400e3 ? pmoTaggedOurDepts(c.text, people) : [];
       if (tagDepts.length) Object.assign(cm, { type: "alert", toDept: tagDepts[0], toDepts: tagDepts, ack: false, acks: [] });
+      if (c.reply_to != null) {   // answered in the PMO → quote the comment it answers, if we have it
+        const q = t.comments.find(x => x.ext && x.ext.src === "pmo" && String(x.ext.pmoCommentId) === String(c.reply_to));
+        if (q) cm.replyTo = { id: q.id, author: q.author || "", text: (q.text || "").replace(/\s+/g, " ").trim().slice(0, 100) };
+      }
       if (Date.now() - cm.at < 3 * 86400e3) stampWatch(t, cm, true);   // a PMO comment: everyone following (bell only — every device pulls it)
       t.comments.push(cm);
       t.updatedAt = Date.now(); touched.add(t.id);
@@ -10118,6 +10150,7 @@ function openTaskModal(taskId, defaults={}) {
         <div class="ta-head"><span>Activity</span><span class="ta-src" data-src-tabs hidden><button type="button" data-src="in" class="on">ภายใน</button><button type="button" data-src="pmo">PMO<span class="ta-src-n" data-src-n hidden></span></button></span><button type="button" class="att-open-btn empty" data-act="attachments" title="ดูรูปและไฟล์แนบทั้งหมดของงานนี้"><svg class="att-open-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg><span class="att-open-t">ไฟล์แนบ</span><span class="att-count" data-att-count></span></button></div>
         <div class="ta-feed" data-feed></div>
         <div class="ta-compose">
+          <div class="ta-reply-bar" data-reply-bar hidden></div>
           <textarea class="ta-input" data-comment placeholder="เขียนอัพเดต / ความคิดเห็น...  (Enter ส่ง, Shift+Enter ขึ้นบรรทัด)"></textarea>
           <div class="ta-photo-preview" data-photo-preview hidden></div>
           <div class="ta-compose-actions">
@@ -11227,6 +11260,7 @@ function openTaskModal(taskId, defaults={}) {
     if (b) { b.hidden = !n; b.textContent = n > 99 ? "99+" : String(n); }
   }
   function setSrc(v) {
+    if (v !== actSrc) try { setReply(null); } catch (_) {}   // (may run before the reply bar is set up)
     actSrc = v;
     srcTabs.querySelectorAll("[data-src]").forEach(b => b.classList.toggle("on", b.dataset.src === v));
     const act = modal.querySelector(".task-activity"); if (act) act.classList.toggle("src-pmo", v === "pmo");
@@ -11308,10 +11342,10 @@ function openTaskModal(taskId, defaults={}) {
             <span class="ta-alert-badge">${ico("bell")} แจ้งเตือน → ${escapeHtml(dept.name)}</span>
             ${authorAvatar(c.author || currentUser(), "ta-av sm")}<span class="ta-author">${escapeHtml(c.author || "คุณ")}</span>
             <span class="ta-alert-time">${formatDateTimeTH(c.at)}</span>
-            <button class="ta-pin${c.pinned ? " on" : ""}" data-pin title="${c.pinned ? "เลิกปักหมุด" : "ปักหมุด"}">${ico("pin")}</button>
+            ${replyBtn()}<button class="ta-pin${c.pinned ? " on" : ""}" data-pin title="${c.pinned ? "เลิกปักหมุด" : "ปักหมุด"}">${ico("pin")}</button>
             <button class="ta-del" title="ลบ">✕</button>
           </div>
-          ${c.text ? `<div class="ta-alert-text">${mentionTextHtml(c)}</div>` : ""}
+          ${quoteHtml(c)}${c.text ? `<div class="ta-alert-text">${mentionTextHtml(c)}</div>` : ""}
           ${attachmentsHtml(c, "ta-photo")}
           ${c.rejected
             ? `<div class="ta-alert-ack" style="color:var(--danger)">${ico("x-circle")} ปฏิเสธโดย ${escapeHtml(c.rejectedBy || "—")}${c.rejectReason ? " — " + escapeHtml(c.rejectReason) : ""} · ${formatDateTimeTH(c.rejectedAt)}</div>`
@@ -11324,7 +11358,7 @@ function openTaskModal(taskId, defaults={}) {
           task.comments = task.comments.filter(x => x.id !== c.id);
           persistComments(); renderFeed(); renderBell();
         });
-        wireAttachments(al);
+        wireAttachments(al); wireReply(al, c);
         // ack / reject buttons — only the targeted department sees them
         const ackBtn = al.querySelector("[data-ackbtn]");
         if (ackBtn) ackBtn.addEventListener("click", () => {
@@ -11350,7 +11384,7 @@ function openTaskModal(taskId, defaults={}) {
       // PMO comments are stored as "ชื่อ · PMO" (so a PMO person never gets taken for a same-named person here); the PMO tab shows just the name
       const author = c.author || "คุณ";
       const item = document.createElement("div");
-      item.className = "ta-item" + (c.author && c.author === currentUser() ? " mine" : "");
+      item.className = "ta-item" + (c.author && c.author === currentUser() ? " mine" : "") + (c.replyTo && c.replyTo.id ? " has-reply" : "");
       item.dataset.cid = c.id;
       item.innerHTML = `
         ${authorAvatar(author)}
@@ -11358,12 +11392,12 @@ function openTaskModal(taskId, defaults={}) {
           <div class="ta-item-head">
             <span class="ta-author">${escapeHtml(srcOn && actSrc === "pmo" && c.ext && c.ext.src === "pmo" ? author.replace(/ · PMO$/, "") : author)}</span>${c.toPmo ? `<span class="ta-src-sent">ส่งถึง PMO</span>` : ""}
             <span class="ta-time">${formatDateTimeTH(c.at)}</span>
-            <button class="ta-pin${c.pinned ? " on" : ""}" data-pin title="${c.pinned ? "เลิกปักหมุด" : "ปักหมุด"}">${ico("pin")}</button>
+            ${replyBtn()}<button class="ta-pin${c.pinned ? " on" : ""}" data-pin title="${c.pinned ? "เลิกปักหมุด" : "ปักหมุด"}">${ico("pin")}</button>
             <button class="ta-del" title="ลบ">✕</button>
           </div>
-          ${c.text ? `<div class="ta-text">${mentionTextHtml(c)}</div>` : ""}
+          ${quoteHtml(c)}${c.text ? `<div class="ta-text">${mentionTextHtml(c)}</div>` : ""}
           ${attachmentsHtml(c, "ta-photo")}
-          ${mentionPendingForMe(c) ? `<div class="ta-mention-ack">${watchOnlyForMe(c) ? `${ico("bell")} งานที่คุณติดตาม` : `${ico("message")} มีการกล่าวถึงคุณ`} <button type="button" class="btn btn-sm btn-ack" data-mack>✓ รับทราบ</button></div>` : ""}
+          ${mentionPendingForMe(c) ? `<div class="ta-mention-ack">${(k => `${ico(PERSONAL_LABEL[k][0])} ${k === "mention" ? "มีการกล่าวถึงคุณ" : k === "reply" ? "ตอบกลับข้อความของคุณ" : "งานที่คุณติดตาม"}`)(personalKindForMe(c) || "mention")} <button type="button" class="btn btn-sm btn-ack" data-mack>✓ รับทราบ</button></div>` : ""}
         </div>`;
       item.querySelector("[data-pin]").addEventListener("click", () => togglePin(c));
       item.querySelector(".ta-del").addEventListener("click", () => {
@@ -11371,7 +11405,7 @@ function openTaskModal(taskId, defaults={}) {
         task.comments = task.comments.filter(x => x.id !== c.id);
         persistComments(); renderFeed();
       });
-      wireAttachments(item);
+      wireAttachments(item); wireReply(item, c);
       const mack = item.querySelector("[data-mack]");
       if (mack) mack.addEventListener("click", () => { ackMention(c); persistComments(); renderFeed(); renderBell(); });
       feedEl.appendChild(item);
@@ -11382,6 +11416,42 @@ function openTaskModal(taskId, defaults={}) {
   // ----- 📌 pinned messages / files: stick to the top of the Activity panel -----
   const _sysOpen = new Set();
   let _pinOpen = true;
+  // ↩ ตอบกลับ — the comment being answered (null = none); shown as a bar above the input until sent / ✕
+  let replyTo = null;
+  const replyBar = modal.querySelector("[data-reply-bar]");
+  function replySnippet(c) {
+    const t = (c.text || "").replace(/\s+/g, " ").trim();
+    if (t) return t.length > 100 ? t.slice(0, 100) + "…" : t;
+    const n = (Array.isArray(c.files) ? c.files.length : 0) + (Array.isArray(c.pmoFiles) ? c.pmoFiles.length : 0) + (c.photo ? 1 : 0);
+    return n ? `ไฟล์แนบ ${n} ไฟล์` : "";
+  }
+  function setReply(c) {
+    if (!c) { replyTo = null; if (replyBar) { replyBar.hidden = true; replyBar.innerHTML = ""; } return; }
+    const prof = c.authorId ? teamProfiles.get(c.authorId) : [...teamProfiles.values()].find(p => p.display_name === c.author);
+    replyTo = { id: c.id, author: c.author || "", text: replySnippet(c), ...(prof ? { uid: prof.id } : {}),
+      ...(c.ext && c.ext.src === "pmo" && c.ext.pmoCommentId != null ? { pmoId: c.ext.pmoCommentId } : {}) };
+    replyBar.innerHTML = `${ico("reply")}<div class="ta-reply-main"><b>${escapeHtml(replyTo.author.replace(/ · PMO$/, "") || "—")}</b><span>${escapeHtml(replyTo.text)}</span></div><button type="button" class="ta-reply-x" title="ยกเลิกตอบกลับ">✕</button>`;
+    replyBar.hidden = false;
+    replyBar.querySelector(".ta-reply-x").addEventListener("click", () => setReply(null));
+    commentInput.focus();
+  }
+  function jumpTo(id) {
+    const el = feedEl.querySelector(`[data-cid="${CSS.escape(id)}"]`);
+    if (!el) { toast("ข้อความเดิมถูกลบแล้ว"); return; }
+    el.scrollIntoView({ block: "center", behavior: "smooth" });
+    el.classList.remove("ta-flash"); void el.offsetWidth; el.classList.add("ta-flash");
+  }
+  // quote block on a reply + the ↩ button on a comment
+  function quoteHtml(c) {
+    const q = c.replyTo; if (!q || !q.id) return "";
+    // LINE-style: the answered message on top (avatar · name · text), a divider, then the reply
+    return `<button type="button" class="ta-quote" data-jump="${escapeHtml(q.id)}">${authorAvatar(q.author || "—", "ta-av ta-quote-av")}<span class="ta-quote-body"><b>${escapeHtml(String(q.author || "—").replace(/ · PMO$/, ""))}</b><span>${escapeHtml(q.text || "")}</span></span></button>`;
+  }
+  function wireReply(el, c) {
+    el.querySelector("[data-jump]")?.addEventListener("click", (e) => jumpTo(e.currentTarget.dataset.jump));
+    el.querySelector("[data-reply]")?.addEventListener("click", () => setReply(c));
+  }
+  const replyBtn = () => canComment() ? `<button class="ta-reply" data-reply title="ตอบกลับ">${ico("reply")}</button>` : "";
   function pinSnippet(c) {
     const files = [...(Array.isArray(c.files) ? c.files : []), ...(c.photo ? [{ name: "รูปภาพ" }] : [])];
     return { text: (c.text || "").trim(), files: files.map(f => f.name || "ไฟล์") };
@@ -11483,7 +11553,8 @@ function openTaskModal(taskId, defaults={}) {
   }
   function finishPost(text, toDepts, { photo, files }) {
     const mentions = extractMentions(text);
-    const att = Object.assign(files.length ? { files } : {}, mentions.length ? { mentions } : {});
+    const rt = replyTo && replyTo.uid === (currentProfile && currentProfile.id) ? (({ uid, ...r }) => r)(replyTo) : replyTo;   // answering myself → nobody to notify
+    const att = Object.assign(files.length ? { files } : {}, mentions.length ? { mentions } : {}, rt ? { replyTo: rt } : {}, currentProfile ? { authorId: currentProfile.id } : {});
     const lbl = attachLabel(photo, files);
     const waitKeys = (files || []).filter(f => f.up === "pending" && f.key).map(f => f.key);
     if (toDepts.length) {
@@ -11502,6 +11573,7 @@ function openTaskModal(taskId, defaults={}) {
       if (taskRelevantToMe(task)) pushNotify("comment", "💬 คอมเมนต์ใหม่", `${task.title} · ${currentUser()}: ${text || lbl}`, "cm-" + task.id);
     }
     commentInput.value = "";
+    setReply(null);
     attachList.clear(); alertTo = []; paintAlertSel();
     autoGrow();
     persistComments(); renderFeed(); renderBell();
@@ -14565,7 +14637,8 @@ function pushForComment(task, c, boardId) {
   });
   const menIds = Array.isArray(c.mentions) ? c.mentions.filter(id => crossMentionOn(root.boards[bid]) || !teamProfiles.has(id) || personSeesTask(teamProfiles.get(id), task, root.boards[bid])) : [];
   if (menIds.length) sendPush({ userIds: menIds, boardId: bid, taskId: task.id, title: "💬 มีคนกล่าวถึงคุณ", body: `${task.title} · ${who}: ${snippet}`, tag: "rt-men-" + c.id });
-  if (Array.isArray(c.watch) && c.watch.length) sendPush({ userIds: c.watch, boardId: bid, taskId: task.id, title: "🔔 คอมเมนต์ใหม่ในงานที่คุณติดตาม", body: `${task.title} · ${who}: ${snippet}`, tag: "rt-watch-" + c.id });
+  if (c.replyTo && c.replyTo.uid && !menIds.includes(c.replyTo.uid)) sendPush({ userIds: [c.replyTo.uid], boardId: bid, taskId: task.id, title: "↩ มีคนตอบกลับข้อความของคุณ", body: `${task.title} · ${who}: ${snippet}`, tag: "rt-rep-" + c.id });
+  // (followers: bell only — no push, owner 2026-11-03)
 }
 
 /* ---------- Import / Export ---------- */
@@ -15574,7 +15647,7 @@ function renderMainView() {
 /* ----- Browser notifications (Notification API) — configurable per event type in ⚙ การแจ้งเตือน ----- */
 const NOTIF_SUPPORTED = typeof window !== "undefined" && "Notification" in window;
 // line icon set — one style everywhere (stroke = currentColor). ico("bell"), ico("trash", "ico ico-lg")
-const ICONS = {"check": "<path d=\"M20 6 9 17l-5-5\"/>", "pin": "<path d=\"M12 17v5M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z\"/>", "moon": "<path d=\"M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z\"/>", "sun": "<circle cx=\"12\" cy=\"12\" r=\"4\"/><path d=\"M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41\"/>", "external": "<path d=\"M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6\"/>", "link": "<path d=\"M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71\"/><path d=\"M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71\"/>", "star": "<polygon points=\"12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2\"/>", "zap": "<polygon points=\"13 2 3 14 12 14 11 22 21 10 12 10 13 2\"/>", "bell": "<path d=\"M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9\"/><path d=\"M10.3 21a1.94 1.94 0 0 0 3.4 0\"/>", "settings": "<circle cx=\"12\" cy=\"12\" r=\"3\"/><path d=\"M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z\"/>", "search": "<circle cx=\"11\" cy=\"11\" r=\"7\"/><path d=\"m21 21-4.3-4.3\"/>", "ruler": "<path d=\"M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.41 2.41 0 0 1 0-3.4l2.6-2.6a2.41 2.41 0 0 1 3.4 0Z\"/><path d=\"m14.5 12.5 2-2M11.5 9.5l2-2M8.5 6.5l2-2M17.5 15.5l2-2\"/>", "inbox": "<path d=\"M22 12h-6l-2 3h-4l-2-3H2\"/><path d=\"M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z\"/>", "trash": "<path d=\"M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6\"/>", "clipboard": "<rect x=\"8\" y=\"2\" width=\"8\" height=\"4\" rx=\"1\"/><path d=\"M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2M9 12h6M9 16h4\"/>", "printer": "<path d=\"M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2\"/><rect x=\"6\" y=\"14\" width=\"12\" height=\"8\" rx=\"1\"/>", "user": "<circle cx=\"12\" cy=\"8\" r=\"4\"/><path d=\"M4 21a8 8 0 0 1 16 0\"/>", "users": "<path d=\"M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2\"/><circle cx=\"9\" cy=\"7\" r=\"4\"/><path d=\"M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75\"/>", "tag": "<path d=\"M12.6 2.6A2 2 0 0 0 11.2 2H4a2 2 0 0 0-2 2v7.2a2 2 0 0 0 .6 1.4l8.7 8.7a2.4 2.4 0 0 0 3.4 0l6.6-6.6a2.4 2.4 0 0 0 0-3.4z\"/><circle cx=\"7.5\" cy=\"7.5\" r=\"1.5\"/>", "building": "<rect x=\"4\" y=\"2\" width=\"16\" height=\"20\" rx=\"2\"/><path d=\"M9 22v-4h6v4M8 6h.01M12 6h.01M16 6h.01M8 10h.01M12 10h.01M16 10h.01M8 14h.01M12 14h.01M16 14h.01\"/>", "sliders": "<path d=\"M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6\"/>", "list-check": "<path d=\"m3 17 2 2 4-4M3 7l2 2 4-4M13 6h8M13 12h8M13 18h8\"/>", "monitor": "<rect x=\"2\" y=\"3\" width=\"20\" height=\"14\" rx=\"2\"/><path d=\"M8 21h8M12 17v4\"/>", "history": "<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\"/><path d=\"M3 3v5h5M12 7v5l4 2\"/>", "restore": "<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\"/><path d=\"M3 3v5h5\"/>", "database": "<ellipse cx=\"12\" cy=\"5\" rx=\"9\" ry=\"3\"/><path d=\"M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5M3 12c0 1.66 4 3 9 3s9-1.34 9-3\"/>", "calendar": "<rect x=\"3\" y=\"4\" width=\"18\" height=\"18\" rx=\"2\"/><path d=\"M16 2v4M8 2v4M3 10h18\"/>", "download": "<path d=\"M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3\"/>", "upload": "<path d=\"M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12\"/>", "camera": "<path d=\"M14.5 4h-5L7.5 6.5H5A2 2 0 0 0 3 8.5v9a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2h-2.5z\"/><circle cx=\"12\" cy=\"12.5\" r=\"3.5\"/>", "clip": "<path d=\"M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48\"/>", "chart": "<path d=\"M3 3v18h18M18 17V9M13 17V5M8 17v-3\"/>", "edit": "<path d=\"M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z\"/><path d=\"m15 5 4 4\"/>", "flag": "<path d=\"M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1zM4 22v-7\"/>", "ban": "<circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"m4.9 4.9 14.2 14.2\"/>", "clock": "<circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"M12 6v6l4 2\"/>", "mail": "<rect x=\"2\" y=\"4\" width=\"20\" height=\"16\" rx=\"2\"/><path d=\"m22 7-10 5L2 7\"/>", "cloud": "<path d=\"M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z\"/>", "logout": "<path d=\"M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9\"/>", "check-circle": "<circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"m9 12 2 2 4-4\"/>", "check-square": "<rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"2\"/><path d=\"m9 12 2 2 4-4\"/>", "eye": "<path d=\"M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z\"/><circle cx=\"12\" cy=\"12\" r=\"3\"/>", "pen": "<path d=\"M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z\"/>", "crown": "<path d=\"m2 6 4 11h12l4-11-6 5-4-7-4 7-6-5zM6 21h12\"/>", "message": "<path d=\"M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z\"/>", "alert": "<path d=\"m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z\"/><path d=\"M12 9v4M12 17h.01\"/>", "x-circle": "<circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"m15 9-6 6M9 9l6 6\"/>", "send": "<path d=\"m22 2-7 20-4-9-9-4Z\"/><path d=\"M22 2 11 13\"/>", "copy": "<rect x=\"8\" y=\"8\" width=\"14\" height=\"14\" rx=\"2\"/><path d=\"M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2\"/>", "file": "<path d=\"M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z\"/><path d=\"M14 2v6h6\"/>", "file-text": "<path d=\"M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z\"/><path d=\"M14 2v6h6M16 13H8M16 17H8M10 9H8\"/>", "file-sheet": "<path d=\"M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z\"/><path d=\"M14 2v6h6M8 13h8M8 17h8M12 11v8\"/>", "image": "<rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"2\"/><circle cx=\"9\" cy=\"9\" r=\"2\"/><path d=\"m21 15-3.09-3.09a2 2 0 0 0-2.82 0L6 21\"/>", "archive": "<rect x=\"2\" y=\"3\" width=\"20\" height=\"5\" rx=\"1\"/><path d=\"M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8M10 12h4\"/>"};
+const ICONS = {"check": "<path d=\"M20 6 9 17l-5-5\"/>", "pin": "<path d=\"M12 17v5M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z\"/>", "moon": "<path d=\"M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z\"/>", "sun": "<circle cx=\"12\" cy=\"12\" r=\"4\"/><path d=\"M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41\"/>", "external": "<path d=\"M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6\"/>", "link": "<path d=\"M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71\"/><path d=\"M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71\"/>", "star": "<polygon points=\"12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2\"/>", "zap": "<polygon points=\"13 2 3 14 12 14 11 22 21 10 12 10 13 2\"/>", "reply": "<path d=\"M9 14 4 9l5-5\"/><path d=\"M4 9h10.5a5.5 5.5 0 0 1 0 11H11\"/>", "bell": "<path d=\"M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9\"/><path d=\"M10.3 21a1.94 1.94 0 0 0 3.4 0\"/>", "settings": "<circle cx=\"12\" cy=\"12\" r=\"3\"/><path d=\"M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z\"/>", "search": "<circle cx=\"11\" cy=\"11\" r=\"7\"/><path d=\"m21 21-4.3-4.3\"/>", "ruler": "<path d=\"M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.41 2.41 0 0 1 0-3.4l2.6-2.6a2.41 2.41 0 0 1 3.4 0Z\"/><path d=\"m14.5 12.5 2-2M11.5 9.5l2-2M8.5 6.5l2-2M17.5 15.5l2-2\"/>", "inbox": "<path d=\"M22 12h-6l-2 3h-4l-2-3H2\"/><path d=\"M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z\"/>", "trash": "<path d=\"M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6\"/>", "clipboard": "<rect x=\"8\" y=\"2\" width=\"8\" height=\"4\" rx=\"1\"/><path d=\"M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2M9 12h6M9 16h4\"/>", "printer": "<path d=\"M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2\"/><rect x=\"6\" y=\"14\" width=\"12\" height=\"8\" rx=\"1\"/>", "user": "<circle cx=\"12\" cy=\"8\" r=\"4\"/><path d=\"M4 21a8 8 0 0 1 16 0\"/>", "users": "<path d=\"M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2\"/><circle cx=\"9\" cy=\"7\" r=\"4\"/><path d=\"M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75\"/>", "tag": "<path d=\"M12.6 2.6A2 2 0 0 0 11.2 2H4a2 2 0 0 0-2 2v7.2a2 2 0 0 0 .6 1.4l8.7 8.7a2.4 2.4 0 0 0 3.4 0l6.6-6.6a2.4 2.4 0 0 0 0-3.4z\"/><circle cx=\"7.5\" cy=\"7.5\" r=\"1.5\"/>", "building": "<rect x=\"4\" y=\"2\" width=\"16\" height=\"20\" rx=\"2\"/><path d=\"M9 22v-4h6v4M8 6h.01M12 6h.01M16 6h.01M8 10h.01M12 10h.01M16 10h.01M8 14h.01M12 14h.01M16 14h.01\"/>", "sliders": "<path d=\"M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6\"/>", "list-check": "<path d=\"m3 17 2 2 4-4M3 7l2 2 4-4M13 6h8M13 12h8M13 18h8\"/>", "monitor": "<rect x=\"2\" y=\"3\" width=\"20\" height=\"14\" rx=\"2\"/><path d=\"M8 21h8M12 17v4\"/>", "history": "<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\"/><path d=\"M3 3v5h5M12 7v5l4 2\"/>", "restore": "<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\"/><path d=\"M3 3v5h5\"/>", "database": "<ellipse cx=\"12\" cy=\"5\" rx=\"9\" ry=\"3\"/><path d=\"M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5M3 12c0 1.66 4 3 9 3s9-1.34 9-3\"/>", "calendar": "<rect x=\"3\" y=\"4\" width=\"18\" height=\"18\" rx=\"2\"/><path d=\"M16 2v4M8 2v4M3 10h18\"/>", "download": "<path d=\"M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3\"/>", "upload": "<path d=\"M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12\"/>", "camera": "<path d=\"M14.5 4h-5L7.5 6.5H5A2 2 0 0 0 3 8.5v9a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2h-2.5z\"/><circle cx=\"12\" cy=\"12.5\" r=\"3.5\"/>", "clip": "<path d=\"M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48\"/>", "chart": "<path d=\"M3 3v18h18M18 17V9M13 17V5M8 17v-3\"/>", "edit": "<path d=\"M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z\"/><path d=\"m15 5 4 4\"/>", "flag": "<path d=\"M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1zM4 22v-7\"/>", "ban": "<circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"m4.9 4.9 14.2 14.2\"/>", "clock": "<circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"M12 6v6l4 2\"/>", "mail": "<rect x=\"2\" y=\"4\" width=\"20\" height=\"16\" rx=\"2\"/><path d=\"m22 7-10 5L2 7\"/>", "cloud": "<path d=\"M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z\"/>", "logout": "<path d=\"M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9\"/>", "check-circle": "<circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"m9 12 2 2 4-4\"/>", "check-square": "<rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"2\"/><path d=\"m9 12 2 2 4-4\"/>", "eye": "<path d=\"M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z\"/><circle cx=\"12\" cy=\"12\" r=\"3\"/>", "pen": "<path d=\"M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z\"/>", "crown": "<path d=\"m2 6 4 11h12l4-11-6 5-4-7-4 7-6-5zM6 21h12\"/>", "message": "<path d=\"M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z\"/>", "alert": "<path d=\"m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z\"/><path d=\"M12 9v4M12 17h.01\"/>", "x-circle": "<circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"m15 9-6 6M9 9l6 6\"/>", "send": "<path d=\"m22 2-7 20-4-9-9-4Z\"/><path d=\"M22 2 11 13\"/>", "copy": "<rect x=\"8\" y=\"8\" width=\"14\" height=\"14\" rx=\"2\"/><path d=\"M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2\"/>", "file": "<path d=\"M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z\"/><path d=\"M14 2v6h6\"/>", "file-text": "<path d=\"M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z\"/><path d=\"M14 2v6h6M16 13H8M16 17H8M10 9H8\"/>", "file-sheet": "<path d=\"M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z\"/><path d=\"M14 2v6h6M8 13h8M8 17h8M12 11v8\"/>", "image": "<rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"2\"/><circle cx=\"9\" cy=\"9\" r=\"2\"/><path d=\"m21 15-3.09-3.09a2 2 0 0 0-2.82 0L6 21\"/>", "archive": "<rect x=\"2\" y=\"3\" width=\"20\" height=\"5\" rx=\"1\"/><path d=\"M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8M10 12h4\"/>"};
 const ICON_ATTR = 'viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"';
 function ico(name, cls = "ico") { return ICONS[name] ? `<svg class="${cls}" ${ICON_ATTR}>${ICONS[name]}</svg>` : ""; }
 // confirm dialogs used to take an emoji — map the old ones, or pass an icon name
@@ -16388,15 +16461,25 @@ function alertIsForMe(c) {
 // @mentions: comment.mentions = [profileId]; each mentioned person acknowledges separately (mentionAck)
 function mentionPendingForMe(c) {
   const me = currentProfile && currentProfile.id;
-  return !!me && !!c && ((Array.isArray(c.mentions) && c.mentions.includes(me)) || watchHas(c, me)) && !(c.mentionAck || []).includes(me);
+  return !!me && !!c && Array.isArray(c.mentions) && c.mentions.includes(me) && !(c.mentionAck || []).includes(me);   // ★ follows / replies = notify only (no รับทราบ)
 }
+// ★ 2026-11-03 (owner: ตอบกลับข้อความ) — c.replyTo = { id, author, text, uid? } (a snippet of the comment answered; uid = its writer's
+//   account) → the writer gets a push + browser notification only — NOT a bell item to acknowledge (owner: กดรับทราบเยอะเกินไป)
+function replyHas(c, id) { return !!id && !!c && !!c.replyTo && c.replyTo.uid === id; }
+function personalKindForMe(c) {
+  const me = currentProfile && currentProfile.id;
+  if (!me || !c) return "";
+  if (Array.isArray(c.mentions) && c.mentions.includes(me)) return "mention";
+  return replyHas(c, me) ? "reply" : watchHas(c, me) ? "watch" : "";
+}
+const PERSONAL_LABEL = { mention: ["message", "กล่าวถึงคุณ"], reply: ["reply", "ตอบกลับคุณ"], watch: ["bell", "งานที่ติดตาม"] };
 // ★ 2026-11-03 (owner: ปุ่มกระดิ่งติดตามโปรเจค) — task.followers = [profileId]. A new Activity comment stores who followed
-//   the job at that moment (c.watch) → bell + push for them, acknowledged like an @mention. Mentioned / the author are left out.
+//   the job at that moment (c.watch) → push + browser popup, and kept in the bell's history (nothing to acknowledge). Mentioned / the author are left out.
 function watchHas(c, id) { return !!id && !!c && Array.isArray(c.watch) && c.watch.includes(id); }
-function watchOnlyForMe(c) { const me = currentProfile && currentProfile.id; return watchHas(c, me) && !(Array.isArray(c.mentions) && c.mentions.includes(me)); }
+function watchOnlyForMe(c) { const k = personalKindForMe(c); return k === "watch" || k === "reply"; }   // not held to "can I see this task"
 function stampWatch(task, c, keepMe) {
   const me = currentProfile && currentProfile.id;
-  const ids = (Array.isArray(task.followers) ? task.followers : []).filter(id => id && (keepMe || id !== me) && id !== c.toUser && !(c.mentions || []).includes(id));
+  const ids = (Array.isArray(task.followers) ? task.followers : []).filter(id => id && (keepMe || id !== me) && id !== c.toUser && !(c.mentions || []).includes(id) && !replyHas(c, id));
   if (ids.length) c.watch = ids;
 }
 function ackMention(c) {
@@ -16571,12 +16654,26 @@ function alertPin(t) {
     + `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a1.6 1.6 0 0 1 1.6 1.6v.5a6 6 0 0 1 4.4 5.8v3.2l1.3 2.2a1 1 0 0 1-.85 1.5H5.5a1 1 0 0 1-.85-1.5L6 13.1V9.9a6 6 0 0 1 4.4-5.8v-.5A1.6 1.6 0 0 1 12 2Z"/><path d="M9.5 19.2a2.5 2.5 0 0 0 5 0Z"/></svg>`
     + `</span>`;
 }
+// ★ 2026-11-03 (owner: งานที่ติดตาม ไม่ต้องป๊อปอัป แต่มีในกระดิ่ง + นับจนกว่าจะเปิดดู) — follow comments live in the bell's
+//   history; the ones newer than the last time I opened the bell (this device) add to the bell's number
+function bellSeenKey() { return "qc_bell_seen_" + ((currentProfile && currentProfile.id) || ""); }
+function bellSeenAt() { try { return +localStorage.getItem(bellSeenKey()) || 0; } catch (_) { return 0; } }
+function markBellSeen() { try { localStorage.setItem(bellSeenKey(), String(Date.now())); } catch (_) {} }
+function unseenWatchCount() {
+  const me = currentProfile && currentProfile.id; if (!me) return 0;
+  const since = Math.max(bellSeenAt(), Date.now() - 30 * 86400000);
+  let n = 0;
+  visibleBoardIds().forEach(bid => { const ws = root.boards[bid]; if (ws) (ws.tasks || []).forEach(t => (t.comments || []).forEach(c => {
+    if ((c.at || 0) > since && watchHas(c, me) && !notifyHeld(c) && personalKindForMe(c) === "watch") n++; })); });
+  return n;
+}
+function bellCount() { return pendingAlerts().length + unseenWatchCount(); }
 // toolbar bell badge
 function renderBell() {
   const btn = document.getElementById("btnBell");
   const badge = document.getElementById("bellBadge");
   if (!btn || !badge) return;
-  const n = pendingAlerts().length;
+  const n = bellCount();
   if (n > 0) { badge.textContent = n > 99 ? "99+" : n; badge.hidden = false; btn.classList.add("has-alert"); }
   else { badge.hidden = true; btn.classList.remove("has-alert"); }
 }
@@ -16641,16 +16738,19 @@ function alertHistory() {
     (ws.tasks || []).forEach(t => (t.comments || []).forEach(c => {
       if ((c.at || 0) < since) return;
       const alertMine = c.type === "alert" && alertDoneForMe(c) && !sentByMe(c) && (c.toUser ? c.toUser === me : (!!my && alertDepts(c).includes(my)));
-      const mentionMine = ((Array.isArray(c.mentions) && c.mentions.includes(me)) || watchHas(c, me)) && (c.mentionAck || []).includes(me);
+      // ★ 2026-11-03 (owner): a comment on a job I follow = popup + kept in the bell's history, nothing to acknowledge
+      const mentionMine = (Array.isArray(c.mentions) && c.mentions.includes(me) && (c.mentionAck || []).includes(me)) || (watchHas(c, me) && !notifyHeld(c));
       if (!alertMine && !mentionMine) return;
       if (c.toUser && !iSeeTask(t, ws)) return;
-      out.push({ task: t, c, boardId: bid, kind: alertMine ? (c.toUser ? "personal" : "dept") : (watchOnlyForMe(c) ? "watch" : "mention") });
+      out.push({ task: t, c, boardId: bid, kind: alertMine ? (c.toUser ? "personal" : "dept") : (personalKindForMe(c) || "mention") });
     }));
   });
   return out.sort((a, b) => (b.c.at || 0) - (a.c.at || 0)).slice(0, 80);
 }
 function openAlertPopup(list, opts = {}) {
   list = (list || pendingAlerts()).slice();
+  const seenBefore = bellSeenAt();
+  if (opts.fromBell) { markBellSeen(); setTimeout(() => { try { renderBell(); if (isMobileMode()) renderMobile(); } catch (_) {} }, 0); }
   if (!list.length && !opts.fromBell) return;
   document.querySelectorAll(".alert-overlay").forEach(n => n.remove());   // never two stacked popups
   const overlay = document.createElement("div");
@@ -16686,14 +16786,14 @@ function openAlertPopup(list, opts = {}) {
     items.forEach(({ task, c, boardId, kind }) => {
       const bid = boardId || root.activeBoard, ws = root.boards[bid] || state;
       const deptName = kind === "dept" ? alertDeptNames(c, ws) : "";
-      const kindLabel = kind === "watch" ? `${ico("bell")} งานที่ติดตาม` : kind === "mention" ? `${ico("message")} กล่าวถึงคุณ` : kind === "personal" ? `${ico("user")} ถึงคุณ` : `${ico("bell")} แผนก ${escapeHtml(deptName)}`;
+      const kindLabel = PERSONAL_LABEL[kind] ? `${ico(PERSONAL_LABEL[kind][0])} ${PERSONAL_LABEL[kind][1]}` : kind === "personal" ? `${ico("user")} ถึงคุณ` : `${ico("bell")} แผนก ${escapeHtml(deptName)}`;
       const who = c.author || "—";
       const prof = [...teamProfiles.values()].find(p => p.display_name === who);
-      const res = kind === "mention" || kind === "watch" ? `${ico("check-circle")} รับทราบแล้ว`
+      const res = kind === "watch" ? "" : PERSONAL_LABEL[kind] ? `${ico("check-circle")} รับทราบแล้ว`
         : c.rejected ? `${ico("x-circle")} ปฏิเสธโดย ${escapeHtml(c.rejectedBy || "—")}${c.rejectReason ? " — " + escapeHtml(c.rejectReason) : ""} · ${escapeHtml(relTimeTH(c.rejectedAt))}`
         : `${ico("check-circle")} ${escapeHtml(alertAckText(c))}`;
       const card = document.createElement("div");
-      card.className = "alert-card am2-card am2-done am2-" + kind;
+      card.className = "alert-card am2-card am2-done am2-" + kind + (kind === "watch" && (c.at || 0) > seenBefore ? " am2-new" : "");
       card.innerHTML = `
         <div class="am2-av">${prof ? avatarHtml(prof) : `<span class="am2-ini">${escapeHtml(who.slice(0, 1))}</span>`}</div>
         <div class="am2-body">
@@ -16701,7 +16801,7 @@ function openAlertPopup(list, opts = {}) {
           <div class="am2-tags"><span class="am2-kind">${kindLabel}</span>${bid !== root.activeBoard ? `<span class="am2-board">${ico("calendar")} ${escapeHtml(boardNameOf(bid))}</span>` : ""}</div>
           <button type="button" class="am2-task" data-open>${(task.so || "").trim() ? `<span class="am2-so">${escapeHtml(task.so.trim())}</span>` : ""}${escapeHtml(task.title || "(ไม่มีชื่องาน)")}</button>
           ${c.text ? `<div class="am2-msg am2-msg-clamp">${mentionTextHtml(c)}</div>` : ""}
-          <div class="am2-res${c.rejected ? " rej" : ""}">${res}</div>
+          ${res ? `<div class="am2-res${c.rejected ? " rej" : ""}">${res}</div>` : ""}
         </div>`;
       card.querySelector("[data-open]").addEventListener("click", () => { close(); if (bid !== root.activeBoard) setBoard(bid); openTaskModal(task.id); });
       histEl.appendChild(card);
@@ -16721,8 +16821,8 @@ function openAlertPopup(list, opts = {}) {
       : { name: alertDeptNames(c, ws) || "?" };
     const card = document.createElement("div");
     // ★ 2026-10-08 redesign: avatar · who + when · type pill · project · message bubble · actions
-    const kind = !isAlert ? (watchOnlyForMe(c) ? "watch" : "mention") : c.toUser ? "personal" : "dept";
-    const kindLabel = kind === "watch" ? `${ico("bell")} งานที่ติดตาม` : kind === "mention" ? `${ico("message")} กล่าวถึงคุณ` : kind === "personal" ? `${ico("user")} ถึงคุณ` : `${ico("bell")} แผนก ${escapeHtml(dept.name)}`;
+    const kind = !isAlert ? (personalKindForMe(c) || "mention") : c.toUser ? "personal" : "dept";
+    const kindLabel = PERSONAL_LABEL[kind] ? `${ico(PERSONAL_LABEL[kind][0])} ${PERSONAL_LABEL[kind][1]}` : kind === "personal" ? `${ico("user")} ถึงคุณ` : `${ico("bell")} แผนก ${escapeHtml(dept.name)}`;
     const who = c.author || "—";
     const prof = [...teamProfiles.values()].find(p => p.display_name === who);
     card.className = "alert-card am2-card am2-" + kind;
@@ -17567,7 +17667,7 @@ function renderMobile() {
   el.hidden = !on;
   if (el.hidden) return;
   el.querySelectorAll("[data-mtab]").forEach(b => b.classList.toggle("on", b.dataset.mtab === mTab));
-  const n = pendingAlerts().length, badge = el.querySelector("[data-mbadge]");
+  const n = bellCount(), badge = el.querySelector("[data-mbadge]");
   badge.hidden = !n; badge.textContent = n > 99 ? "99+" : String(n);
   // ★ 2026-10-13 (owner: แถบวันนี้มีตัวเลข) — today's NOT-done tasks, same list as the tab (ทั้งแผนก / มอบหมายให้ฉัน)
   try {
