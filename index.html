@@ -314,6 +314,7 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
 .pmo-item { padding: 10px; border: 1px solid var(--border); border-radius: 10px; background: var(--b-ffffff, #fff); }
 .pmo-item .star-title, .pmo-item .star-sub { white-space: normal; overflow: visible; text-overflow: clip; }
 .pmo-acts { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+.pmo-more { display: inline-block; padding: 0 6px; border-radius: 6px; font-size: 11px; font-weight: 600; color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
 .pmo-acts a.btn { text-decoration: none; margin-left: auto; }
 @media (hover: none) { .side-tab { width: 36px; } }
 .star-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border:1px solid var(--border); border-radius:10px; background:var(--b-ffffff, #fff); cursor: pointer; }
@@ -9722,7 +9723,7 @@ async function refreshPmoBadge() {
   if (!depts.length) { _pmoCount = 0; _pmoWarn = []; paintPmoTab(); return; }
   const sb = getSupabase(); if (!sb) return;
   try {
-    const { data, error } = await sb.from("pmo_inbox").select("id").eq("status", "pending").in("pmo_dept_id", depts);
+    const { data, error } = await sb.from("pmo_inbox").select("id").in("status", ["pending", "more"]).in("pmo_dept_id", depts);
     if (!error && Array.isArray(data)) { _pmoCount = data.length; paintPmoTab(); }
     if (Date.now() - _pmoFailAt > 170e3) { _pmoFailAt = Date.now(); pmoCheckFailed(sb); }   // failed-command toasts: every 3 min as before
     // ★ 2026-11-01 (owner): quiet by default — a red dot appears only when the bot has gone silent / a read stays broken (one small row)
@@ -9774,26 +9775,31 @@ const pmoBadgeOnReturn = () => { if (document.visibilityState === "visible" && D
 document.addEventListener("visibilitychange", pmoBadgeOnReturn);
 window.addEventListener("focus", pmoBadgeOnReturn);
 // รับงาน / ไม่รับ — the task here + a command for the bot; false = cancelled / not allowed
-async function pmoDecide(row, status, extra) {
+async function pmoDecide(row, status, extra, from = "pending") {
   const sb = getSupabase(); if (!sb) return;
-  const { error } = await sb.from("pmo_inbox").update({ status, decided_by: currentUser(), decided_at: new Date().toISOString(), ...extra }).eq("id", row.id).eq("status", "pending");
+  const { error } = await sb.from("pmo_inbox").update({ status, decided_by: currentUser(), decided_at: new Date().toISOString(), ...extra }).eq("id", row.id).eq("status", from);
   if (error) toast("อัปเดตกล่องงานไม่สำเร็จ: " + error.message);
 }
 async function pmoAccept(row) {
   if (!canEdit()) { permDenied("สิทธิ์ของคุณรับงานไม่ได้"); return false; }
   const ourDept = ourDeptForPmo(row.pmo_dept_id), dn = (getDept(ourDept) || {}).name || row.pmo_dept_id;
   if (!ourDept) { toast("ยังไม่ได้จับคู่แผนกนี้ใน ⚙ เชื่อมต่อภายนอก"); return false; }
-  if (!await confirmDialog({ icon: "check-circle", title: "ยืนยันรับงาน?", message: `${row.so || ""} ${row.title || ""} · แผนก ${dn}\nบอทจะกดรับใน PMO ให้ · หลังรับแล้วเปลี่ยนแผนกที่รับผิดชอบไม่ได้`, confirmText: "รับงาน" })) return false;
+  // ★ 2026-11-03 (owner: งาน 27 รับแล้วแต่ PMO ยังรอรับ — ตู้ที่เพิ่มทีหลัง) status "more" = accepted before, the PMO added work since
+  const more = row.status === "more";
+  if (!await confirmDialog({ icon: "check-circle", title: more ? "ยืนยันรับงานเพิ่ม?" : "ยืนยันรับงาน?", message: more ? `${row.so || ""} ${row.title || ""} · แผนก ${dn}\nงานที่เพิ่มใน PMO ${row.waiting || ""} งาน · บอทจะกดรับใน PMO ให้` : `${row.so || ""} ${row.title || ""} · แผนก ${dn}\nบอทจะกดรับใน PMO ให้ · หลังรับแล้วเปลี่ยนแผนกที่รับผิดชอบไม่ได้`, confirmText: more ? "รับเพิ่ม" : "รับงาน" })) return false;
   const sb = getSupabase();
   const { data: full, error: e0 } = sb ? await sb.from("pmo_inbox").select("*").eq("id", row.id).maybeSingle() : { data: null, error: true };   // cabinets + checklist of THIS job
   if (e0 || !full) { toast("โหลดรายละเอียดงานไม่สำเร็จ — ลองใหม่อีกครั้ง"); return false; }
-  if (full.status !== "pending") { toast("งานนี้มีคนรับ/ไม่รับไปแล้ว"); return false; }
+  if (full.status !== (more ? "more" : "pending")) { toast("งานนี้มีคนรับ/ไม่รับไปแล้ว"); return false; }
   row = full;
-  const t = pmoUpsertTask(row);
-  saveState(); renderAll();
-  pmoQueue([{ task_id: t.id, label: `รับงาน ${row.so || row.title || ""} · ${dn}`, op: { type: "stage_step", taskId: t.ext.pmoTaskId, deptId: row.pmo_dept_id, step: "accept" } }]);
-  await pmoDecide(row, "accepted", { board_id: root.activeBoard, task_id: t.id });
-  toast(`รับงาน “${row.so || row.title}” แล้ว — บอทกำลังกดรับใน PMO`);
+  // more: the job already lives in its calendar (new cabinets arrive with the PMO sync) — no second copy on this board
+  const ob = more && row.board_id && root.boards[row.board_id];
+  let t = ob ? (ob.tasks || []).find(x => x.id === row.task_id && x.ext && x.ext.pmoTaskId != null) : null;
+  const bid = t ? row.board_id : root.activeBoard;
+  if (!t) { t = pmoUpsertTask(row); saveState(); renderAll(); }
+  pmoQueue([{ task_id: t.id, label: `${more ? "รับงานเพิ่ม" : "รับงาน"} ${row.so || row.title || ""} · ${dn}`, op: { type: "stage_step", taskId: t.ext.pmoTaskId, deptId: row.pmo_dept_id, step: "accept" } }], bid);
+  await pmoDecide(row, "accepted", { board_id: bid, task_id: t.id }, more ? "more" : "pending");
+  toast(`${more ? "รับงานเพิ่ม" : "รับงาน"} “${row.so || row.title}” แล้ว — บอทกำลังกดรับใน PMO`);
   return true;
 }
 async function pmoReject(row) {
@@ -9824,7 +9830,7 @@ async function openPmoDrawer() {
   const sb = getSupabase();
   // light list (egress): no cabinets / checklists — those come with รับงาน, for that one job only
   const { data: rows, error } = sb ? await sb.from("pmo_inbox").select("id,pmo_task_id,pmo_dept_id,so,title,due,waiting,waiting_since,status,pmo_url:data->>pmoUrl,pmo_tid:data->taskId")
-    .eq("status", "pending").in("pmo_dept_id", depts).order("waiting_since", { ascending: true }) : { data: null, error: true };
+    .in("status", ["pending", "more"]).in("pmo_dept_id", depts).order("waiting_since", { ascending: true }) : { data: null, error: true };
   if (error || !rows) { listEl.innerHTML = `<div class="cf-empty" style="padding:8px 6px">โหลดไม่สำเร็จ — ลองใหม่อีกครั้ง</div>`; return; }
   rows.forEach(r => { r.data = { pmoUrl: r.pmo_url || null, taskId: r.pmo_tid != null ? r.pmo_tid : r.pmo_task_id }; });
   _pmoCount = rows.length; paintPmoTab();
@@ -9832,20 +9838,20 @@ async function openPmoDrawer() {
   if (!rows.length) { empty(); return; }
   listEl.innerHTML = "";
   rows.forEach(row => {
-    const snap = row.data || {}, dn = (getDept(ourDeptForPmo(row.pmo_dept_id)) || {}).name || row.pmo_dept_id;
+    const snap = row.data || {}, dn = (getDept(ourDeptForPmo(row.pmo_dept_id)) || {}).name || row.pmo_dept_id, more = row.status === "more";
     const el = document.createElement("div");
     el.className = "pmo-item";
     el.innerHTML = `
       <div class="star-title">${row.so ? `<b>${escapeHtml(row.so)}</b> · ` : ""}${escapeHtml(row.title || snap.title || "(ไม่มีชื่องาน)")}</div>
-      <div class="star-sub">แผนก ${escapeHtml(dn)}${row.waiting != null ? " · " + row.waiting + " งานรอรับ" : ""}${row.due ? " · ส่ง " + escapeHtml(formatDateTH(row.due)) : ""}${row.waiting_since ? " · รอตั้งแต่ " + escapeHtml(formatDateTH(row.waiting_since)) : ""}</div>
+      <div class="star-sub">${more ? `<span class="pmo-more">งานเพิ่ม</span> ` : ""}แผนก ${escapeHtml(dn)}${row.waiting != null ? " · " + row.waiting + " งานรอรับ" : ""}${row.due ? " · ส่ง " + escapeHtml(formatDateTH(row.due)) : ""}${row.waiting_since ? " · รอตั้งแต่ " + escapeHtml(formatDateTH(row.waiting_since)) : ""}</div>
       <div class="pmo-acts">
-        <button type="button" class="btn btn-sm btn-primary" data-acc>${ico("check-circle")} รับงาน</button>
-        <button type="button" class="btn btn-sm" data-rej>ไม่รับ</button>
+        <button type="button" class="btn btn-sm btn-primary" data-acc>${ico("check-circle")} ${more ? "รับเพิ่ม" : "รับงาน"}</button>
+        ${more ? "" : `<button type="button" class="btn btn-sm" data-rej>ไม่รับ</button>`}
         ${snap.pmoUrl ? `<a class="btn btn-sm btn-ghost" href="${escapeHtml(snap.pmoUrl)}" target="_blank" rel="noopener">เปิดใน PMO →</a>` : ""}
       </div>`;
     const done = () => { el.remove(); _pmoCount = Math.max(0, _pmoCount - 1); paintPmoTab(); if (!listEl.querySelector(".pmo-item")) empty(); };
     el.querySelector("[data-acc]").addEventListener("click", async () => { if (await pmoAccept(row)) done(); });
-    el.querySelector("[data-rej]").addEventListener("click", async () => { if (await pmoReject(row)) done(); });
+    el.querySelector("[data-rej]")?.addEventListener("click", async () => { if (await pmoReject(row)) done(); });
     listEl.appendChild(el);
   });
 }
