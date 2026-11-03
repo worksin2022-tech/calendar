@@ -16664,7 +16664,8 @@ function unseenWatchCount() {
   const since = Math.max(bellSeenAt(), Date.now() - 30 * 86400000);
   let n = 0;
   visibleBoardIds().forEach(bid => { const ws = root.boards[bid]; if (ws) (ws.tasks || []).forEach(t => (t.comments || []).forEach(c => {
-    if ((c.at || 0) > since && watchHas(c, me) && !notifyHeld(c) && personalKindForMe(c) === "watch") n++; })); });
+    const k = personalKindForMe(c);
+    if ((c.at || 0) > since && !notifyHeld(c) && ((k === "watch" && watchHas(c, me)) || (k === "reply" && replyHas(c, me)))) n++; })); });
   return n;
 }
 function bellCount() { return pendingAlerts().length + unseenWatchCount(); }
@@ -16739,7 +16740,7 @@ function alertHistory() {
       if ((c.at || 0) < since) return;
       const alertMine = c.type === "alert" && alertDoneForMe(c) && !sentByMe(c) && (c.toUser ? c.toUser === me : (!!my && alertDepts(c).includes(my)));
       // ★ 2026-11-03 (owner): a comment on a job I follow = popup + kept in the bell's history, nothing to acknowledge
-      const mentionMine = (Array.isArray(c.mentions) && c.mentions.includes(me) && (c.mentionAck || []).includes(me)) || (watchHas(c, me) && !notifyHeld(c));
+      const mentionMine = (Array.isArray(c.mentions) && c.mentions.includes(me) && (c.mentionAck || []).includes(me)) || (watchOnlyForMe(c) && !notifyHeld(c));
       if (!alertMine && !mentionMine) return;
       if (c.toUser && !iSeeTask(t, ws)) return;
       out.push({ task: t, c, boardId: bid, kind: alertMine ? (c.toUser ? "personal" : "dept") : (personalKindForMe(c) || "mention") });
@@ -16789,11 +16790,11 @@ function openAlertPopup(list, opts = {}) {
       const kindLabel = PERSONAL_LABEL[kind] ? `${ico(PERSONAL_LABEL[kind][0])} ${PERSONAL_LABEL[kind][1]}` : kind === "personal" ? `${ico("user")} ถึงคุณ` : `${ico("bell")} แผนก ${escapeHtml(deptName)}`;
       const who = c.author || "—";
       const prof = [...teamProfiles.values()].find(p => p.display_name === who);
-      const res = kind === "watch" ? "" : PERSONAL_LABEL[kind] ? `${ico("check-circle")} รับทราบแล้ว`
+      const res = (kind === "watch" || kind === "reply") ? "" : PERSONAL_LABEL[kind] ? `${ico("check-circle")} รับทราบแล้ว`
         : c.rejected ? `${ico("x-circle")} ปฏิเสธโดย ${escapeHtml(c.rejectedBy || "—")}${c.rejectReason ? " — " + escapeHtml(c.rejectReason) : ""} · ${escapeHtml(relTimeTH(c.rejectedAt))}`
         : `${ico("check-circle")} ${escapeHtml(alertAckText(c))}`;
       const card = document.createElement("div");
-      card.className = "alert-card am2-card am2-done am2-" + kind + (kind === "watch" && (c.at || 0) > seenBefore ? " am2-new" : "");
+      card.className = "alert-card am2-card am2-done am2-" + kind + ((kind === "watch" || kind === "reply") && (c.at || 0) > seenBefore ? " am2-new" : "");
       card.innerHTML = `
         <div class="am2-av">${prof ? avatarHtml(prof) : `<span class="am2-ini">${escapeHtml(who.slice(0, 1))}</span>`}</div>
         <div class="am2-body">
