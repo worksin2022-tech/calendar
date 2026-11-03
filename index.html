@@ -328,6 +328,12 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
 .star-off:hover { background:var(--b-fef3c7, #fef3c7); }
 .tm-star .ico { color:var(--text-faint); }
 .tm-star.on .ico { color:var(--t-d97706, #d97706); fill: #fbbf24; }
+.tm-follow { gap: 3px; }
+.tm-follow .ico { color:var(--text-faint); }
+.tm-follow.on .ico { color: var(--accent); fill: color-mix(in srgb, var(--accent) 35%, transparent); }
+.tm-follow [data-fcount] { font-size: 11px; font-weight: 600; color: var(--text-dim); }
+.tm-follow [data-fcount]:empty { display: none; }
+.dr-modal input.dr-ro { background: var(--surface-2, rgba(16,24,40,.04)); color: var(--text-dim); pointer-events: none; }
 .chip-star { width: 11px; height: 11px; flex: 0 0 auto; color:var(--t-d97706, #d97706); fill: #fbbf24; }
 .chip-so-row { display: flex; align-items: center; gap: 6px; min-width: 0; margin-bottom: -1px; }
 .chip-so-row .as-stack { margin-left: auto; flex: 0 0 auto; }
@@ -523,6 +529,7 @@ html:has(body.m-mode), body.m-mode { overscroll-behavior-y: contain; }
 .m-sheet-name { font-size: 16px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .m-sheet-att { border: 0; background: transparent; width: 40px; height: 40px; color: var(--text-dim); cursor: pointer; }
 .m-sheet-att .ico { width: 20px; height: 20px; }
+.m-sheet-att.tm-follow { width: auto; min-width: 40px; display: inline-flex; align-items: center; justify-content: center; }
 .m-sheet-tabs { display: flex; gap: 4px; margin: 8px 12px; padding: 4px; border-radius: 11px; background: var(--bg); flex: 0 0 auto; }
 .m-sheet-tabs button { flex: 1; border: 0; background: transparent; border-radius: 8px; padding: 8px; font: inherit; font-size: 14px; font-weight: 600; color: var(--text-dim); cursor: pointer; }
 .m-sheet-tabs button.on { background: var(--panel); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
@@ -5713,6 +5720,9 @@ function automationCond(task, r) {
   if (r.when === "status") return !!r.stat && task.statusId === r.stat;   // project is currently in this status
   if (r.when === "nstatus") return !!r.stat && task.statusId !== r.stat;  // …is NOT in this status
   if (r.when === "subs") { const subs = task.subtasks || []; return subs.length > 0 && subs.every(subtaskDone); }
+  // ★ 2026-11-03 (owner: ติ๊กผิดจนสถานะไปพร้อมห่อ/เสร็จสิ้น → เอาติ๊กออกแล้วให้ถอยกลับ) — "not complete" conditions. Like every rule they fire
+  //   when they BECOME true (a tick taken off) — paired with "สถานะเป็น …" they send the job back, e.g. QC ไม่ครบ + พร้อมห่อ → เทสแล้ว
+  if (r.when === "nall") { const cl = overallChecklist(task); return cl.total > 0 && !automationCond(task, { ...r, when: "all" }); }
   if (r.when === "all") {
     const cl = overallChecklist(task);
     const stages = task.deptStages || [];
@@ -5726,6 +5736,7 @@ function automationCond(task, r) {
     return its.length > 0 && its.every(i => i.done);
   }
   if (r.when === "done") return deptUsesChecklist(task, r.deptId) && isDeptCompleteRaw(task, r.deptId);
+  if (r.when === "ndone") return deptUsesChecklist(task, r.deptId) && !isDeptCompleteRaw(task, r.deptId);
   if (r.when === "start") return deptProgress(task, r.deptId).done > 0;
   return false;
 }
@@ -5736,10 +5747,12 @@ function automationSubCond(sub, r) {
   if (r.when === "nstatus") return !!r.stat && sub.statusId !== r.stat;   // …is NOT in this status
   if (r.when === "subs") return subtaskDone(sub);
   if (r.when === "all") { const p = checklistProgress(sub); return p.total > 0 && p.done === p.total; }
+  if (r.when === "nall") { const p = checklistProgress(sub); return p.total > 0 && p.done < p.total; }
   if (!r.deptId || !getDept(r.deptId)) return false;
   if (r.when === "item") { const it = (sub.checklist || []).find(i => i.deptId === r.deptId && i.text === r.item); return !!(it && it.done); }
   const p = checklistProgress(sub, r.deptId);
   if (r.when === "done") return p.total > 0 && p.done === p.total;
+  if (r.when === "ndone") return p.total > 0 && p.done < p.total;
   if (r.when === "start") return p.done > 0;
   return false;
 }
@@ -5759,8 +5772,10 @@ function automationWhenLabel(r) {
   if (r.when === "status") return `สถานะเป็น “${((state.statuses || []).find(x => x.id === r.stat) || {}).name || "(ถูกลบแล้ว)"}”`;
   if (r.when === "subs") return "ตู้เสร็จครบทุกตู้";
   if (r.when === "all") return automationTarget(r) === "sub" ? "เช็คลิสต์ครบทุกแผนก" : "ทุกแผนกเสร็จ";
+  if (r.when === "nall") return automationTarget(r) === "sub" ? "เช็คลิสต์ไม่ครบ (เอาติ๊กออก)" : "ทุกแผนกยังไม่เสร็จ (เอาติ๊กออก)";
   const dn = (getDept(r.deptId) || {}).name || "?";
   if (r.when === "item") return `ติ๊ก “${r.item || "?"}” (${dn})`;
+  if (r.when === "ndone") return `เช็คลิสต์ ${dn} ไม่ครบ (เอาติ๊กออก)`;
   return r.when === "start" ? `เริ่มติ๊กเช็คลิสต์ ${dn}` : `เช็คลิสต์ ${dn} ครบ`;
 }
 // apply rules whose condition just became true; returns true when any status changed.
@@ -6476,6 +6491,7 @@ function drawDoneIds() {
   return mWithBoard("drawing", () => new Set((ws.tasks || []).filter(t => t.request && (projectComplete(t) || isStatusDone(getStatus(t.statusId)))).map(t => t.id)));
 }
 function drawRequesterId(r) {
+  if (r.filedById && teamProfiles.has(r.filedById)) return r.filedById;
   const nm = String(r.submitter || "").trim().toLowerCase();
   const byName = nm && [...teamProfiles.values()].find(p => p.approved && !p.blocked && [p.display_name, personName(p)].some(x => String(x || "").trim().toLowerCase() === nm));
   return (byName && byName.id) || r.filedById || "";
@@ -6871,6 +6887,10 @@ function notifyRemoteBoardChange(ws, newTasks, oldTasksById, savedBy, boardId) {
       const seen = iSeeTask(t, ws);   // no cross-department personal notifications (mentions: unless ⚙ allows them)
       if (commentFresh(c, before) && Array.isArray(c.mentions) && c.mentions.includes(meId) && (seen || crossMentionOn(ws))) {
         try { sysNotify("💬 มีคนกล่าวถึงคุณ", { body: `${t.title} · ${c.author || ""}: ${c.text || ""}`.slice(0, 180), tag: "rt-men-" + c.id, renotify: true }, L(t)); } catch (e) {}
+      }
+      // ★ 2026-11-03 a job I follow (🔔) got a new comment — same tag as its web push → one notification per device
+      if (commentFresh(c, before) && watchHas(c, meId) && !(Array.isArray(c.mentions) && c.mentions.includes(meId))) {
+        try { sysNotify("🔔 คอมเมนต์ใหม่ในงานที่คุณติดตาม", { body: `${t.title} · ${c.author || ""}: ${c.text || ""}`.slice(0, 180), tag: "rt-watch-" + c.id, renotify: true }, L(t)); } catch (e) {}
       }
       if ((seen || c.kind === "drawdone") && c.type === "alert" && !c.ack && c.toUser === meId && commentFresh(c, before)) {
         try { sysNotify(c.kind === "drawdone" ? "📐 เขียนแบบเสร็จแล้ว" : "📌 มีงานมอบหมายให้คุณ", { body: `${t.title}${c.author ? (c.kind === "drawdone" ? " · โดย " : " · จาก ") + c.author : ""}`, tag: "rt-asg-" + c.id, renotify: true }, L(t)); } catch (e) {}
@@ -8841,8 +8861,11 @@ function salesOptionsHtml(cur) {
   return `<option value="">— เลือกทีม —</option>` + list.map(x => `<option value="${escapeHtml(x)}"${x === sel ? " selected" : ""}>${escapeHtml(x)}</option>`).join("");
 }
 // routes one drawing request into a task. returns { boardName, attached, title } for the caller's toast/summary.
-function routeDrawingRequest({ kind, project, so, dwg, due, detail, submitter, sales, photo, files, driveFolderId, imported, sentAt }) {
-  const reqMeta = { kind, dwgNo: dwg, submitter, salesTeam: sales, at: sentAt || Date.now(), ...(so ? { so } : {}), ...(!imported && currentProfile ? { filedById: currentProfile.id } : {}) };
+function routeDrawingRequest({ kind, project, so, dwg, due, detail, submitter, filedBy, sales, photo, files, driveFolderId, imported, sentAt }) {
+  const fb = filedBy || (!imported && currentProfile ? currentProfile.id : "");
+  const reqMeta = { kind, dwgNo: dwg, submitter, salesTeam: sales, at: sentAt || Date.now(), ...(so ? { so } : {}), ...(fb ? { filedById: fb } : {}) };
+  // ★ 2026-11-03 the requester follows the job automatically (🔔 in the job header) → new Activity comments reach them
+  const follow = (t) => { const id = drawRequesterId(reqMeta); if (id && !(t.followers || []).includes(id)) t.followers = [...(t.followers || []), id]; };
   const summary = [`📐 คำขอเขียนแบบวงจรไฟฟ้า${kind === "structure" ? "" : " (ปฏิทินผลิต)"}`, ...(so ? [`SO: ${so}`] : []), `เลข DWG: ${dwg}`, `ผู้ยื่น: ${submitter}${sales ? ` · Sales: ${sales}` : ""}`].concat(detail ? [detail] : []).join("\n");
 
   if (kind === "structure") {
@@ -8852,6 +8875,7 @@ function routeDrawingRequest({ kind, project, so, dwg, due, detail, submitter, s
     // ★ 2026-10-09: taken in through "ดึงคำขอจากฟอร์ม" = the drawing team already saw it → the request note is
     //   acknowledged by whoever imported it (no "รับทราบ" to press, no push to their own department)
     if (imported) Object.assign(nt.comments[0], { ack: true, ackBy: currentUser(), ackAt: Date.now() });
+    follow(nt);
     ws.tasks.push(nt);
     saveState(); renderAll();
     if (!imported) pushForComment(nt, nt.comments[0], "drawing");
@@ -8873,13 +8897,14 @@ function routeDrawingRequest({ kind, project, so, dwg, due, detail, submitter, s
     existing.comments.push(ac);
     if (!imported) pushForComment(existing, ac);
     if (driveFolderId && !existing.driveFolderId) existing.driveFolderId = driveFolderId;
-    existing.request = reqMeta; existing.updatedAt = Date.now();
+    existing.request = reqMeta; existing.updatedAt = Date.now(); follow(existing);
     if (dwg && !existing.avt) existing.avt = String(dwg).trim();
     saveState(); renderAll();
     pushNotify("alert", "📐 ขอเขียนแบบวงจร", `${existing.title} · DWG ${dwg}`, "dr-" + existing.id);
     return { boardName: (root.boardMeta.find(b => b.id === root.activeBoard) || {}).name, attached: true, title: existing.title };
   }
   const nt = buildReqTask(state, project, due, detail, reqMeta, summary, photo, files, driveFolderId);
+  follow(nt);
   if (imported) Object.assign(nt.comments[0], { ack: true, ackBy: currentUser(), ackAt: Date.now() });
   state.tasks.push(nt);
   saveState(); renderAll();
@@ -8984,7 +9009,7 @@ async function openImportRequestsModal() {
         photo = (rf.find(f => /^image\//.test(f.mime || "")) || {}).url || null;
         extra = "\nไฟล์แนบ: " + rf.map(f => `${f.name} ${f.url}`).join(" · ");
       }
-      const result = routeDrawingRequest({ kind: row.kind, project: row.project, so: row.so || "", dwg: row.dwg_no, due: row.due_date, detail: (row.detail || "") + extra, submitter: row.submitter, sales: row.sales_team || "", photo, files, imported: true, sentAt: row.created_at ? new Date(row.created_at).getTime() : null });
+      const result = routeDrawingRequest({ kind: row.kind, project: row.project, so: row.so || "", dwg: row.dwg_no, due: row.due_date, detail: (row.detail || "") + extra, submitter: row.submitter, filedBy: row.filed_by || "", sales: row.sales_team || "", photo, files, imported: true, sentAt: row.created_at ? new Date(row.created_at).getTime() : null });
       if (!result.denied && files.length) queueUpload(files, null);
       if (result.denied) return;   // no access to the structure calendar → leave the request pending
       const sb = getSupabase();
@@ -9485,6 +9510,7 @@ async function pullPmoComments() {
       // ★ somebody of OUR department(s) is tagged in the PMO → a department alert here (popup + bell, each person acknowledges), recent comments only
       const tagDepts = Date.now() - cm.at < 3 * 86400e3 ? pmoTaggedOurDepts(c.text, people) : [];
       if (tagDepts.length) Object.assign(cm, { type: "alert", toDept: tagDepts[0], toDepts: tagDepts, ack: false, acks: [] });
+      if (Date.now() - cm.at < 3 * 86400e3) stampWatch(t, cm, true);   // a PMO comment: everyone following (bell only — every device pulls it)
       t.comments.push(cm);
       t.updatedAt = Date.now(); touched.add(t.id);
     });
@@ -9827,7 +9853,7 @@ function openDrawRequestModal() {
         </div>
         <div class="field"><label>รายละเอียดเกี่ยวกับงาน เช่น จำนวนตู้</label><textarea data-f="detail" placeholder="เช่น 3 ตู้ MDB, ..."></textarea></div>
         <div class="field-row">
-          <div class="field"><label>ชื่อผู้ยื่น <span class="dr-req">*</span></label><input type="text" data-f="submitter" autocomplete="off" /></div>
+          <div class="field"><label>ผู้ยื่น</label><input type="text" data-f="submitter" value="${escapeHtml(currentUser())}" readonly tabindex="-1" class="dr-ro" /></div>
           <div class="field"><label>ทีม Sales</label><select data-f="sales">${salesOptionsHtml("")}</select></div>
         </div>
         <div class="field">
@@ -9878,7 +9904,6 @@ function openDrawRequestModal() {
 
   // styled app dropdowns (replace native datalist)
   attachAutocomplete(pf("project"), () => kind === "circuit" ? undrawnJobs().map(t => t.title).filter(Boolean) : [], { onPick: checkAttach });
-  attachAutocomplete(pf("submitter"), () => pastRequestValues("submitter"));
 
   // attachments (photos + files → Google Drive; same pipeline as the task composer)
   const photoInput = modal.querySelector("[data-photo-input]");
@@ -9904,11 +9929,11 @@ function openDrawRequestModal() {
     const dwg = pf("dwg").value.trim();
     const due = dueField.getValue();
     const detail = pf("detail").value.trim();
-    const submitter = pf("submitter").value.trim();
+    // ★ 2026-11-03 (owner: ชื่อผู้ยื่นต้องเป็นแอคเคาท์จริง) — the signed-in account, not a typed name
+    const submitter = currentUser();
     const sales = pf("sales").value.trim();
     if (!project) return toast("กรุณาใส่ชื่อโครงการ");
     if (!dwg) return toast("กรุณาใส่เลข DWG");
-    if (!submitter) return toast("กรุณาใส่ชื่อผู้ยื่น");
     if (!due) return toast("กรุณาเลือกวันที่ต้องการให้จบ");
     if (due < addDaysIso(todayIso(), 2)) return toast("วันที่ต้องการให้จบต้องไม่ต่ำกว่า 2 วันจากวันนี้");
 
@@ -9949,13 +9974,14 @@ function openDrawRequestModal() {
       const row = { kind: "structure", project, dwg_no: dwg, due_date: due, detail: detail || null,
         submitter, sales_team: sales || null, photo_url: photoUrl, status: "pending" };
       // ★ 2026-10-11 so column (supabase-slice11.sql). Not run yet → SO goes in front of the project name instead, nothing is lost
-      const payload = { ...row, files, ...(so ? { so } : {}) };
+      const payload = { ...row, files, ...(so ? { so } : {}), ...(currentProfile ? { filed_by: currentProfile.id } : {}) };
       let error = null, firstTry = true;
       for (let n = 0; n < 3; n++) {
         ({ error } = await sb.from("drawing_requests").insert(payload));
         if (!error) break;
         const msg = error.message || "";
         if (payload.so !== undefined && /\bso\b/i.test(msg)) { payload.project = `${so} ${project}`; delete payload.so; }
+        else if (payload.filed_by !== undefined && /filed_by/i.test(msg)) delete payload.filed_by;   // supabase-slice16.sql not run yet → the name still matches the account
         else if ("files" in payload && /files/i.test(msg)) { delete payload.files; if (files.length > 1) toast("ส่งแล้ว แต่เก็บได้แค่รูปแรก — ให้ admin รัน supabase-slice10.sql"); }
         else break;
       }
@@ -10005,6 +10031,7 @@ function openTaskModal(taskId, defaults={}) {
         <div class="tm-flow" data-flow hidden></div>
         <div class="row" style="gap:6px">
           ${isNew ? "" : `<button class="btn btn-ghost btn-sm tm-star${isStarred(task) ? " on" : ""}" data-act="star" title="ติดดาว">${ico("star")}</button>`}
+          ${isNew || !currentProfile ? "" : `<button class="btn btn-ghost btn-sm tm-follow" data-act="follow">${ico("bell")}<span data-fcount></span></button>`}
           ${isNew ? "" : '<button class="btn btn-ghost btn-sm" data-act="dashboard" title="ดูแดชบอร์ดของโปรเจคนี้">' + ico("chart") + ' แดชบอร์ด</button>'}
           ${!isNew && pmoBoardUrl(task) ? `<a class="btn btn-ghost btn-sm tm-pmo-link" href="${escapeHtml(pmoBoardUrl(task))}" target="_blank" rel="noopener" title="เปิดโครงการนี้ใน PMO (แท็บใหม่)">${ico("external")} PMO</a>` : ""}
           <button class="btn btn-ghost" data-act="close" title="ปิด">✕</button>
@@ -10131,6 +10158,8 @@ function openTaskModal(taskId, defaults={}) {
       <div class="m-sheet-ttl">${refs ? `<div class="m-sheet-refs">${escapeHtml(refs)}</div>` : ""}<div class="m-sheet-name">${escapeHtml(task.title || (isNew ? "งานใหม่" : "(ไม่มีชื่องาน)"))}</div></div>
       ${isNew ? "" : `<button type="button" class="m-sheet-att" data-act="attachments" aria-label="ไฟล์แนบ">${ico("clip")}</button>`}`;
     head.after(bar);
+    const fol = head.querySelector('[data-act="follow"]');   // 🔔 ติดตาม moves into the phone bar (same node → its click handler comes along)
+    if (fol) { fol.className = "m-sheet-att tm-follow"; bar.insertBefore(fol, bar.querySelector('[data-act="attachments"]')); }
     const tabs = document.createElement("div");
     tabs.className = "m-sheet-tabs";
     tabs.innerHTML = `<button type="button" data-mst="chat">คอมเมนต์</button><button type="button" data-mst="info">รายละเอียดงาน</button>`;
@@ -10158,6 +10187,27 @@ function openTaskModal(taskId, defaults={}) {
   modal.querySelector('[data-f="so"]').addEventListener("input", (e) => { task.so = e.target.value; scheduleCommit(created ? 800 : 600); });
   modal.querySelector('[data-f="avt"]').value = taskAvt(task);
   modal.querySelector('[data-f="avt"]').addEventListener("input", (e) => { setTaskAvt(task, e.target.value); scheduleCommit(created ? 800 : 600); });
+  // 🔔 ติดตาม — anyone who can open the job (any tier): written straight onto the stored task, not through the edit draft
+  const followBtn = modal.querySelector('[data-act="follow"]');
+  const paintFollow = () => {
+    if (!followBtn) return;
+    const f = (task.followers || []).filter(Boolean), on = f.includes(currentProfile.id);
+    followBtn.classList.toggle("on", on);
+    followBtn.querySelector("[data-fcount]").textContent = f.length ? String(f.length) : "";
+    followBtn.title = (on ? "กำลังติดตาม — กดเพื่อเลิกติดตาม" : "ติดตาม — แจ้งเตือนเมื่อมีคอมเมนต์ใหม่")
+      + (f.length ? "\nผู้ติดตาม: " + f.map(id => personName(teamProfiles.get(id))).join(", ") : "");
+  };
+  paintFollow();
+  followBtn?.addEventListener("click", () => {
+    const real = state.tasks.find(t => t.id === task.id);
+    if (!real) return;
+    const me = currentProfile.id, cur = (real.followers || []).filter(Boolean), on = !cur.includes(me);
+    const nf = on ? [...cur, me] : cur.filter(x => x !== me);
+    [real, task, base].forEach(o => { if (!o) return; if (nf.length) o.followers = nf.slice(); else delete o.followers; });
+    real.updatedAt = Date.now();
+    saveState(); renderAll(); paintFollow();
+    toast(on ? "ติดตามงานนี้แล้ว — จะแจ้งเตือนเมื่อมีคอมเมนต์ใหม่" : "เลิกติดตามแล้ว");
+  });
   modal.querySelector('[data-act="star"]')?.addEventListener("click", (e) => {
     const on = toggleStar(task);
     e.currentTarget.classList.toggle("on", on);
@@ -11313,7 +11363,7 @@ function openTaskModal(taskId, defaults={}) {
           </div>
           ${c.text ? `<div class="ta-text">${mentionTextHtml(c)}</div>` : ""}
           ${attachmentsHtml(c, "ta-photo")}
-          ${mentionPendingForMe(c) ? `<div class="ta-mention-ack">${ico("message")} มีการกล่าวถึงคุณ <button type="button" class="btn btn-sm btn-ack" data-mack>✓ รับทราบ</button></div>` : ""}
+          ${mentionPendingForMe(c) ? `<div class="ta-mention-ack">${watchOnlyForMe(c) ? `${ico("bell")} งานที่คุณติดตาม` : `${ico("message")} มีการกล่าวถึงคุณ`} <button type="button" class="btn btn-sm btn-ack" data-mack>✓ รับทราบ</button></div>` : ""}
         </div>`;
       item.querySelector("[data-pin]").addEventListener("click", () => togglePin(c));
       item.querySelector(".ta-del").addEventListener("click", () => {
@@ -11439,12 +11489,14 @@ function openTaskModal(taskId, defaults={}) {
     if (toDepts.length) {
       const dept = { name: toDepts.map(id => (getDept(id) || { name: id }).name).join(", ") };
       const c = { id: uid("al"), type: "alert", author: currentUser(), toDept: toDepts[0], toDepts, text, photo: photo || null, ...att, at: Date.now(), ack: false, acks: [] };
+      stampWatch(task, c);
       task.comments.push(c);
       if (waitKeys.length) holdPushUntilUploaded(c, waitKeys, task); else pushForComment(task, c);
       toast(waitKeys.length ? `จะแจ้งเตือนแผนก “${dept.name}” เมื่ออัปโหลดเสร็จ` : `ส่งแจ้งเตือนไปแผนก “${dept.name}” แล้ว`);
       pushNotify("alert", `🔔 แจ้งเตือนถึงแผนก ${dept.name}`, `${task.title}: ${text || lbl}`, "al-" + task.id);
     } else {
       const c = { id: uid("cm"), author: currentUser(), text, photo: photo || null, ...att, at: Date.now(), ...(srcOn && actSrc === "pmo" ? { toPmo: true } : {}) };
+      stampWatch(task, c);
       task.comments.push(c);
       if (waitKeys.length) holdPushUntilUploaded(c, waitKeys, task); else pushForComment(task, c);
       if (taskRelevantToMe(task)) pushNotify("comment", "💬 คอมเมนต์ใหม่", `${task.title} · ${currentUser()}: ${text || lbl}`, "cm-" + task.id);
@@ -13545,7 +13597,7 @@ function buildAutomationPanel(container) {
   const listEl = sec.querySelector("[data-list]");
   const depts = state.departments || [];
   const opt = (v, label) => `<option value="${escapeHtml(v)}">${escapeHtml(label)}</option>`;
-  const condValue = c => (c.when === "all" || c.when === "subs") ? c.when
+  const condValue = c => (c.when === "all" || c.when === "subs" || c.when === "nall") ? c.when
     : c.when === "status" ? "st:" + (c.stat || "")
     : c.when === "nstatus" ? "nst:" + (c.stat || "")
     : c.when === "cabany" ? "cany:" + (c.stat || "")
@@ -13564,6 +13616,7 @@ function buildAutomationPanel(container) {
     h += opt("subs", target === "sub" ? "ตู้นี้เสร็จ" : "ตู้เสร็จครบทุกตู้");
     h += `<optgroup label="เช็คลิสต์ครบ">` + depts.map(d => opt("done:" + d.id, `เช็คลิสต์ ${d.name} ครบ`)).join("") + `</optgroup>`;
     h += `<optgroup label="เริ่มติ๊ก">` + depts.map(d => opt("start:" + d.id, `เริ่มติ๊กเช็คลิสต์ ${d.name}`)).join("") + `</optgroup>`;
+    h += `<optgroup label="เอาติ๊กออก (ถอยสถานะ)">` + opt("nall", automationWhenLabel({ when: "nall", target })) + depts.map(d => opt("ndone:" + d.id, `เช็คลิสต์ ${d.name} ไม่ครบ (เอาติ๊กออก)`)).join("") + `</optgroup>`;
     depts.forEach(d => {
       const items = [...new Set((d.checklist || []).map(x => String(x || "").trim()).filter(Boolean))];
       if (items.length) h += `<optgroup label="ติ๊กรายการ · ${escapeHtml(d.name)}">` + items.map(it => opt("item:" + d.id + ":" + encodeURIComponent(it), `ติ๊ก “${it}” (${d.name})`)).join("") + `</optgroup>`;
@@ -13577,7 +13630,7 @@ function buildAutomationPanel(container) {
     }
     if (c.when === "cabany" || c.when === "caball") { if (target !== "task" || !sts.some(st => st.id === c.stat)) h += opt(condValue(c), target !== "task" ? automationWhenLabel(c) + " (ใช้กับงานเท่านั้น)" : "(สถานะถูกลบแล้ว)"); }
     else if (c.when === "status" || c.when === "nstatus") { if (!sts.some(st => st.id === c.stat)) h += opt(condValue(c), "(สถานะถูกลบแล้ว)"); }
-    else if (c.when !== "all" && c.when !== "subs" && !depts.some(d => d.id === c.deptId)) h += opt(condValue(c), "(แผนกถูกลบแล้ว)");
+    else if (c.when !== "all" && c.when !== "subs" && c.when !== "nall" && !depts.some(d => d.id === c.deptId)) h += opt(condValue(c), "(แผนกถูกลบแล้ว)");
     else if (c.when === "item" && !((getDept(c.deptId) || {}).checklist || []).map(x => String(x || "").trim()).includes(c.item)) h += opt(condValue(c), `ติ๊ก “${c.item}” (รายการไม่อยู่ในเช็คลิสต์แล้ว)`);
     return h;
   };
@@ -14512,6 +14565,7 @@ function pushForComment(task, c, boardId) {
   });
   const menIds = Array.isArray(c.mentions) ? c.mentions.filter(id => crossMentionOn(root.boards[bid]) || !teamProfiles.has(id) || personSeesTask(teamProfiles.get(id), task, root.boards[bid])) : [];
   if (menIds.length) sendPush({ userIds: menIds, boardId: bid, taskId: task.id, title: "💬 มีคนกล่าวถึงคุณ", body: `${task.title} · ${who}: ${snippet}`, tag: "rt-men-" + c.id });
+  if (Array.isArray(c.watch) && c.watch.length) sendPush({ userIds: c.watch, boardId: bid, taskId: task.id, title: "🔔 คอมเมนต์ใหม่ในงานที่คุณติดตาม", body: `${task.title} · ${who}: ${snippet}`, tag: "rt-watch-" + c.id });
 }
 
 /* ---------- Import / Export ---------- */
@@ -16334,7 +16388,16 @@ function alertIsForMe(c) {
 // @mentions: comment.mentions = [profileId]; each mentioned person acknowledges separately (mentionAck)
 function mentionPendingForMe(c) {
   const me = currentProfile && currentProfile.id;
-  return !!me && !!c && Array.isArray(c.mentions) && c.mentions.includes(me) && !(c.mentionAck || []).includes(me);
+  return !!me && !!c && ((Array.isArray(c.mentions) && c.mentions.includes(me)) || watchHas(c, me)) && !(c.mentionAck || []).includes(me);
+}
+// ★ 2026-11-03 (owner: ปุ่มกระดิ่งติดตามโปรเจค) — task.followers = [profileId]. A new Activity comment stores who followed
+//   the job at that moment (c.watch) → bell + push for them, acknowledged like an @mention. Mentioned / the author are left out.
+function watchHas(c, id) { return !!id && !!c && Array.isArray(c.watch) && c.watch.includes(id); }
+function watchOnlyForMe(c) { const me = currentProfile && currentProfile.id; return watchHas(c, me) && !(Array.isArray(c.mentions) && c.mentions.includes(me)); }
+function stampWatch(task, c, keepMe) {
+  const me = currentProfile && currentProfile.id;
+  const ids = (Array.isArray(task.followers) ? task.followers : []).filter(id => id && (keepMe || id !== me) && id !== c.toUser && !(c.mentions || []).includes(id));
+  if (ids.length) c.watch = ids;
 }
 function ackMention(c) {
   const me = currentProfile && currentProfile.id;
@@ -16486,7 +16549,7 @@ function pendingAlerts() {
     (ws.tasks || []).forEach(t => (t.comments || []).forEach(c => {
       if (notifyHeld(c)) return;   // files still uploading → not shown until they're there
       // personal items only for tasks I can see — except @mentions while cross-department mentions are on
-      const personal = !!c.toUser || (mentionPendingForMe(c) && !crossMentionOn(ws));
+      const personal = !!c.toUser || (mentionPendingForMe(c) && !crossMentionOn(ws) && !watchOnlyForMe(c));
       if ((alertIsForMeIn(c, ws) || mentionPendingForMe(c)) && (!personal || iSeeTask(t, ws))) out.push({ task: t, c, boardId: bid });
     }));
   });
@@ -16578,10 +16641,10 @@ function alertHistory() {
     (ws.tasks || []).forEach(t => (t.comments || []).forEach(c => {
       if ((c.at || 0) < since) return;
       const alertMine = c.type === "alert" && alertDoneForMe(c) && !sentByMe(c) && (c.toUser ? c.toUser === me : (!!my && alertDepts(c).includes(my)));
-      const mentionMine = Array.isArray(c.mentions) && c.mentions.includes(me) && (c.mentionAck || []).includes(me);
+      const mentionMine = ((Array.isArray(c.mentions) && c.mentions.includes(me)) || watchHas(c, me)) && (c.mentionAck || []).includes(me);
       if (!alertMine && !mentionMine) return;
       if (c.toUser && !iSeeTask(t, ws)) return;
-      out.push({ task: t, c, boardId: bid, kind: alertMine ? (c.toUser ? "personal" : "dept") : "mention" });
+      out.push({ task: t, c, boardId: bid, kind: alertMine ? (c.toUser ? "personal" : "dept") : (watchOnlyForMe(c) ? "watch" : "mention") });
     }));
   });
   return out.sort((a, b) => (b.c.at || 0) - (a.c.at || 0)).slice(0, 80);
@@ -16623,10 +16686,10 @@ function openAlertPopup(list, opts = {}) {
     items.forEach(({ task, c, boardId, kind }) => {
       const bid = boardId || root.activeBoard, ws = root.boards[bid] || state;
       const deptName = kind === "dept" ? alertDeptNames(c, ws) : "";
-      const kindLabel = kind === "mention" ? `${ico("message")} กล่าวถึงคุณ` : kind === "personal" ? `${ico("user")} ถึงคุณ` : `${ico("bell")} แผนก ${escapeHtml(deptName)}`;
+      const kindLabel = kind === "watch" ? `${ico("bell")} งานที่ติดตาม` : kind === "mention" ? `${ico("message")} กล่าวถึงคุณ` : kind === "personal" ? `${ico("user")} ถึงคุณ` : `${ico("bell")} แผนก ${escapeHtml(deptName)}`;
       const who = c.author || "—";
       const prof = [...teamProfiles.values()].find(p => p.display_name === who);
-      const res = kind === "mention" ? `${ico("check-circle")} รับทราบแล้ว`
+      const res = kind === "mention" || kind === "watch" ? `${ico("check-circle")} รับทราบแล้ว`
         : c.rejected ? `${ico("x-circle")} ปฏิเสธโดย ${escapeHtml(c.rejectedBy || "—")}${c.rejectReason ? " — " + escapeHtml(c.rejectReason) : ""} · ${escapeHtml(relTimeTH(c.rejectedAt))}`
         : `${ico("check-circle")} ${escapeHtml(alertAckText(c))}`;
       const card = document.createElement("div");
@@ -16658,8 +16721,8 @@ function openAlertPopup(list, opts = {}) {
       : { name: alertDeptNames(c, ws) || "?" };
     const card = document.createElement("div");
     // ★ 2026-10-08 redesign: avatar · who + when · type pill · project · message bubble · actions
-    const kind = !isAlert ? "mention" : c.toUser ? "personal" : "dept";
-    const kindLabel = kind === "mention" ? `${ico("message")} กล่าวถึงคุณ` : kind === "personal" ? `${ico("user")} ถึงคุณ` : `${ico("bell")} แผนก ${escapeHtml(dept.name)}`;
+    const kind = !isAlert ? (watchOnlyForMe(c) ? "watch" : "mention") : c.toUser ? "personal" : "dept";
+    const kindLabel = kind === "watch" ? `${ico("bell")} งานที่ติดตาม` : kind === "mention" ? `${ico("message")} กล่าวถึงคุณ` : kind === "personal" ? `${ico("user")} ถึงคุณ` : `${ico("bell")} แผนก ${escapeHtml(dept.name)}`;
     const who = c.author || "—";
     const prof = [...teamProfiles.values()].find(p => p.display_name === who);
     card.className = "alert-card am2-card am2-" + kind;
