@@ -5675,7 +5675,13 @@ function setNoteDone(task, it, done) {
 function checklistProgress(sub, deptId) {
   let items = (sub && sub.checklist) || [];
   if (deptId) items = items.filter(i => i.deptId === deptId);
-  if (!items.length) return { done: 0, total: 0, pct: 0 };
+  if (!items.length) {
+    // ★ 2026-11-04 (owner: ฝ่ายผลิตติ๊กใน PMO) — a department with no lines here, matched to a PMO department (⚙ จับคู่แผนก):
+    //   its ticks counted in the PMO for this cabinet (bot v1.11, sub.ext.pmoDeptProg = { pmoDept: [ticked, total] }) — read only
+    const pp = deptId && sub && sub.ext && sub.ext.pmoDeptProg, pd = pp && (pmoCfg().deptMap || {})[deptId], a = pd && pp[pd];
+    if (Array.isArray(a) && a[1] > 0) { const done = Math.min(+a[0] || 0, +a[1]); return { done, total: +a[1], pct: Math.round(done / a[1] * 100) }; }
+    return { done: 0, total: 0, pct: 0 };
+  }
   const done = items.filter(i => i.done).length;
   return { done, total: items.length, pct: Math.round(done / items.length * 100) };
 }
@@ -9086,8 +9092,11 @@ function pmoCfgEdit() {
 function pmoMyDepts() {
   const c = pmoCfg(); if (!c.enabled || !currentProfile) return [];
   const map = c.deptMap || {};
-  if (isAdmin()) return [...new Set(Object.values(map).filter(Boolean))];
-  const my = myDeptId(); return my && map[my] ? [map[my]] : [];
+  // departments the bot accepts jobs for (its heartbeat) — a production department matched only for its tick counts has no inbox
+  const watch = _pmoBotRow && _pmoBotRow.info && Array.isArray(_pmoBotRow.info.watch) ? _pmoBotRow.info.watch.map(String) : null;
+  const ok = d => !!d && (!watch || watch.includes(String(d)));
+  if (isAdmin()) return [...new Set(Object.values(map).filter(ok))];
+  const my = myDeptId(); return my && ok(map[my]) ? [map[my]] : [];
 }
 // ★ 2026-10-31 (owner): the Activity of a PMO project has two tabs — ภายใน (the team talks here, never sent anywhere) and PMO
 //   (comments copied from the PMO, "PMO อัปเดต" lines, and what someone typed in that tab = c.toPmo → sent by the bot).
@@ -9611,12 +9620,25 @@ async function pullPmoState(opts = {}) {
       if (row.updated_at > last) last = row.updated_at;
       if (String(row.pmo_task_id).endsWith(":prog")) {   // ★ 2026-11-01 egress: cabinet progress in its own small row → display only
         const tp = (state.tasks || []).find(x => x.ext && x.ext.src === "pmo" && String(x.ext.pmoTaskId) + ":prog" === String(row.pmo_task_id));
-        const pm = (row.data && row.data.p) || {};
-        if (tp) (tp.subtasks || []).forEach(sb2 => {
-          if (!sb2.ext || sb2.ext.pmoCabinetId == null) return;
-          const pg = pm[String(sb2.ext.pmoCabinetId)] || null;
-          if (JSON.stringify(sb2.ext.pmoProg || null) !== JSON.stringify(pg)) { if (pg) sb2.ext.pmoProg = pg; else delete sb2.ext.pmoProg; save = true; }
+        const pm = row.data && row.data.p, dp = (row.data && row.data.d) || {};   // bot v1.11 sends "p" only when it read it
+        if (!tp) return;
+        const subs = (tp.subtasks || []).filter(x => x.ext && x.ext.pmoCabinetId != null);
+        subs.forEach(sb2 => {
+          if (pm) {
+            const pg = pm[String(sb2.ext.pmoCabinetId)] || null;
+            if (JSON.stringify(sb2.ext.pmoProg || null) !== JSON.stringify(pg)) { if (pg) sb2.ext.pmoProg = pg; else delete sb2.ext.pmoProg; save = true; }
+          }
+          // ★ 2026-11-04 other departments' ticks (ฝ่ายผลิต): the first numbers a cabinet gets are only its baseline — a cabinet
+          //   already in production never has its status moved back when this starts; later changes run the status rules
+          if (!("pmoDeptProg" in sb2.ext)) { sb2.ext.pmoDeptProg = dp[String(sb2.ext.pmoCabinetId)] || null; save = true; }
         });
+        const snap = automationSnapshot(tp);
+        let moved = false;
+        subs.forEach(sb2 => {
+          const d = dp[String(sb2.ext.pmoCabinetId)] || null;
+          if (JSON.stringify(sb2.ext.pmoDeptProg || null) !== JSON.stringify(d)) { sb2.ext.pmoDeptProg = d; moved = true; save = true; }
+        });
+        if (moved) { try { if (runAutomations(tp, snap)) { tp.updatedAt = Date.now(); changes++; } } catch (e) { console.warn("pmo prod automations", e); } }
         return;
       }
       const t = (state.tasks || []).find(x => x.ext && x.ext.src === "pmo" && String(x.ext.pmoTaskId) === String(row.pmo_task_id));
