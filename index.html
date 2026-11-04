@@ -9754,6 +9754,20 @@ async function pullPmoState(opts = {}) {
           const now = { done, remark, text };
           if (JSON.stringify(lastSeen || null) !== JSON.stringify(now)) { i.ext.pmoLast = now; save = true; }
         });
+        // ★ 2026-11-04 a line of another department that an older app copy put back (it fell back to the job's first department) and the
+        //   bot no longer sends → out HERE only (no delete sent): one already taken out once, or one in a department not matched to the PMO
+        {
+          const ns = new Set(sub.ext.pmoNoSend || []), map = pmoCfg().deptMap || {};
+          const stray = x => x.ext && x.ext.pmoItemId != null && !seenIds.has(String(x.ext.pmoItemId))
+            && (ns.has(String(x.ext.pmoItemId)) || (!!x.deptId && !lineDepts.has(String(map[x.deptId] || ""))));
+          const out = [...sub.checklist, ...((sub.bom && sub.bom.items) || [])].filter(stray);
+          if (out.length) {
+            sub.checklist = sub.checklist.filter(x => !stray(x));
+            if (sub.bom && Array.isArray(sub.bom.items)) sub.bom.items = sub.bom.items.filter(x => !stray(x));
+            sub.ext.pmoNoSend = [...new Set([...ns, ...out.map(x => String(x.ext.pmoItemId))])];
+            dropped += out.length; save = true;
+          }
+        }
         // a line that is no longer in the PMO: never deleted here (it may carry ticks / notes) — noted once in Activity
         [...sub.checklist, ...((sub.bom && sub.bom.items) || [])].forEach(x => {
           if (x.ext && x.ext.pmoItemId != null && !seenIds.has(String(x.ext.pmoItemId)) && !x.ext.pmoGone) { x.ext.pmoGone = true; gone.push(x.text || x.code || x.name || ""); }
