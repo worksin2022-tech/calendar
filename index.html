@@ -9721,7 +9721,7 @@ async function pullPmoState(opts = {}) {
       if (!t) return;
       const rowAt = Date.parse(row.updated_at) || 0;
       const snap = typeof automationSnapshot === "function" ? automationSnapshot(t) : null;
-      let ticks = 0, notes = 0, renamed = 0, added = 0, moved = 0, sized = 0, dropped = 0; const gone = [];
+      let ticks = 0, notes = 0, renamed = 0, added = 0, moved = 0, sized = 0, dropped = 0; const gone = [], removed = [];
       const lineDepts = pmoLineDepts();
       const st0 = (state.statuses[0] || {}).id;
       ((row.data && row.data.cabinets) || []).forEach(cab => {
@@ -9828,8 +9828,25 @@ async function pullPmoState(opts = {}) {
             dropped += out.length; save = true;
           }
         }
-        // a line that is no longer in the PMO: never deleted here (it may carry ticks / notes) — noted once in Activity
+        // ★ 2026-11-04 (owner: ลบหัวข้อใน PMO แล้วแอปควรลบด้วย) — a checklist line deleted in the PMO is deleted here too (+ Activity).
+        //   Only a line the PMO sent before (pmoLast), of a department this app takes from the PMO, that disappeared NOW (not one already
+        //   marked pmoGone by older code), with no command of ours newer than this snapshot, and only when the PMO still sent lines for
+        //   this cabinet (an empty cabinet = a bad read, never a reason to wipe it). Equipment lines keep the old rule (kept + noted).
+        if ((cab.items || []).length) {
+          const map = pmoCfg().deptMap || {};
+          const del = x => x.ext && x.ext.pmoItemId != null && x.ext.pmoLast && !x.ext.pmoGone && !seenIds.has(String(x.ext.pmoItemId))
+            && !!x.deptId && lineDepts.has(String(map[x.deptId] || "")) && !((busy.get(String(row.pmo_task_id) + "|" + x.ext.pmoItemId) || 0) >= rowAt);
+          const out = sub.checklist.filter(del);
+          if (out.length) {
+            sub.checklist = sub.checklist.filter(x => !del(x));
+            sub.ext.pmoNoSend = [...new Set([...(sub.ext.pmoNoSend || []), ...out.map(x => String(x.ext.pmoItemId))])];   // already gone there → no delete sent
+            removed.push(...out.map(x => x.text || ""));
+            save = true;
+          }
+        }
+        // a line that is no longer in the PMO (equipment / not covered above): never deleted here — noted once in Activity
         [...sub.checklist, ...((sub.bom && sub.bom.items) || [])].forEach(x => {
+          if (x.ext && x.ext.pmoItemId != null && (busy.get(String(row.pmo_task_id) + "|" + x.ext.pmoItemId) || 0) >= rowAt) return;   // decided on the snapshot after our command
           if (x.ext && x.ext.pmoItemId != null && !seenIds.has(String(x.ext.pmoItemId)) && !x.ext.pmoGone) { x.ext.pmoGone = true; gone.push(x.text || x.code || x.name || ""); }
         });
       });
@@ -9846,7 +9863,12 @@ async function pullPmoState(opts = {}) {
       const fatMsg = pmoApplyFat(t, row.data && row.data.fat);
       if (fatMsg) { logActivity(t, "อัปเดต · " + fatMsg, "PMO"); changes++; save = true; t.updatedAt = Date.now(); }
       if (dropped) { logActivity(t, `เอารายการของแผนกอื่นออก ${dropped} รายการ (ใน PMO ไม่เปลี่ยน)`, "PMO"); changes++; }
-      if (gone.length) { logActivity(t, `ไม่มีรายการนี้แล้ว: ${gone.slice(0, 5).join(", ")}${gone.length > 5 ? " +" + (gone.length - 5) : ""}`, "PMO"); save = true; }
+      if (removed.length) {
+        logActivity(t, `ลบตาม PMO ${removed.length} รายการ: ${removed.slice(0, 5).join(", ")}${removed.length > 5 ? " +" + (removed.length - 5) : ""}`, "PMO");
+        changes += removed.length; t.updatedAt = Date.now(); save = true;
+        if (snap && typeof runAutomations === "function" && !(ticks || notes || renamed || added || moved)) { try { runAutomations(t, snap); } catch (e) { console.warn("pmo automations", e); } }
+      }
+      if (gone.length) { logActivity(t, `ไม่มีรายการนี้แล้ว:${gone.slice(0, 5).join(", ")}${gone.length > 5 ? " +" + (gone.length - 5) : ""}`, "PMO"); save = true; }
       changes += ticks + notes + renamed + added + moved;
       if (ticks || notes || renamed || added || moved) {
         logActivity(t, `อัปเดต${ticks ? " · ติ๊ก " + ticks + " รายการ" : ""}${notes ? " · หมายเหตุ " + notes + " รายการ" : ""}${renamed ? " · แก้ชื่อ " + renamed + " รายการ" : ""}${added ? " · เพิ่ม " + added + " รายการ" : ""}${moved ? " · ย้ายไปรายการอุปกรณ์ " + moved + " รายการ" : ""}`, "PMO");
