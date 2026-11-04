@@ -9944,6 +9944,16 @@ setInterval(() => { if (document.visibilityState === "visible") { _pmoBadgeAt = 
 const pmoBadgeOnReturn = () => { if (document.visibilityState === "visible" && Date.now() - _pmoBadgeAt > 15e3) { _pmoBadgeAt = Date.now(); refreshPmoBadge(); } };
 document.addEventListener("visibilitychange", pmoBadgeOnReturn);
 window.addEventListener("focus", pmoBadgeOnReturn);
+// ★ 2026-11-04 (owner: ทดสอบต้องกดดึงจาก PMO ตลอด) — ticks / lines / comments from the PMO at once when the app comes back on screen
+//   (the 3-minute timers skip a hidden tab). A few seconds later so the board refresh on resume lands first; at most every 30 s.
+let _pmoPullAt = 0;
+const pmoPullOnReturn = () => {
+  if (document.visibilityState !== "visible" || Date.now() - _pmoPullAt < 30e3) return;
+  _pmoPullAt = Date.now();
+  setTimeout(() => { if (document.visibilityState === "visible") { pullPmoComments(); pullPmoState(); } }, 3000);
+};
+document.addEventListener("visibilitychange", pmoPullOnReturn);
+window.addEventListener("focus", pmoPullOnReturn);
 // รับงาน / ไม่รับ — the task here + a command for the bot; false = cancelled / not allowed
 async function pmoDecide(row, status, extra, from = "pending") {
   const sb = getSupabase(); if (!sb) return;
