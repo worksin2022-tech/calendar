@@ -9791,8 +9791,13 @@ async function pullPmoState(opts = {}) {
             if (!bi) return;
           }
           const i = ci || bi, lastSeen = i.ext.pmoLast;
-          const hold = (busy.get(String(row.pmo_task_id) + "|" + it.id) || 0) >= rowAt;   // our command is newer than this snapshot
-          if (hold) return;   // next snapshot (after the command) applies
+          // our command is newer than this snapshot · ⚙ "ใช้ค่าตาม PMO" (force) only waits for commands not done yet
+          const bz = busy.get(String(row.pmo_task_id) + "|" + it.id) || 0, hold = opts.force ? bz === Infinity : bz >= rowAt;
+          if (hold) {   // next snapshot (after the command) applies — a finished command still shows up as "not like the PMO" (⚙ ดึงจาก PMO)
+            if (bz !== Infinity && (!!i.done !== done || pmoRemark(i) !== remark.trim()))
+              mismatch.push({ name: i.text || i.code || i.name || "", here: { done: !!i.done, remark: pmoRemark(i) }, pmo: { done, remark }, lastSeen: lastSeen || null, so: t.so || "" });
+            return;
+          }
           // opts.force (⚙ › ใช้ค่าตาม PMO): take the PMO value even if this app thinks it changed it last
           if ((opts.force || !lastSeen || lastSeen.done !== done) && pmoSetDone(i, done)) ticks++;
           if ((opts.force || !lastSeen || (lastSeen.remark || "") !== remark) && pmoNoteFromRemark(i, remark)) notes++;   // checklist + equipment (2026-11-01)
