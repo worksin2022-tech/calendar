@@ -9566,6 +9566,19 @@ function pmoNoteFromRemark(i, remark) {
   if (done) { i.noteDone = true; i.noteDoneBy = "PMO"; i.noteDoneAt = Date.now(); } else { delete i.noteDone; delete i.noteDoneBy; delete i.noteDoneAt; }
   return true;
 }
+// ★ 2026-11-04 (owner: ติ๊กแล้วเอาติ๊กออก แอปกลับมาติ๊กเอง) — a PMO snapshot read BEFORE our command ran must not undo it.
+//   "pmoTaskId|itemId" → Infinity while a command for that line is still waiting (this device's outbox / queued / taken),
+//   else when its last command finished; a pmo_state row older than that is skipped for that line (done + remark).
+async function pmoBusyItems(sb, pids) {
+  const m = new Map();
+  const put = (op, at) => { if (!op || op.itemId == null || op.taskId == null) return; const k = op.taskId + "|" + op.itemId; m.set(k, Math.max(m.get(k) || 0, at)); };
+  pmoOutbox().forEach(r => put(r.op, Infinity));
+  try {
+    const { data } = await sb.from("pmo_commands").select("op,status,done_at").in("op->>taskId", pids.map(String)).gte("created_at", new Date(Date.now() - 3 * 3600e3).toISOString());
+    (data || []).forEach(r => put(r.op, r.status === "queued" || r.status === "taken" ? Infinity : (r.done_at ? Date.parse(r.done_at) : 0)));
+  } catch (_) {}
+  return m;
+}
 function pmoSetDone(i, done) {
   if (!!i.done === done) return false;
   i.done = done;
@@ -9592,6 +9605,7 @@ async function pullPmoState(opts = {}) {
     const { data, error } = await qy;
     if (error) { report = "อ่านข้อมูลไม่สำเร็จ: " + error.message; return report; }
     if (!Array.isArray(data) || bid !== root.activeBoard) return "สลับปฏิทินระหว่างดึง";
+    const busy = data.length ? await pmoBusyItems(sb, pids) : new Map();
     let last = since || "", save = false, changes = 0; const mismatch = [];
     data.forEach(row => {
       if (row.updated_at > last) last = row.updated_at;
@@ -9607,6 +9621,7 @@ async function pullPmoState(opts = {}) {
       }
       const t = (state.tasks || []).find(x => x.ext && x.ext.src === "pmo" && String(x.ext.pmoTaskId) === String(row.pmo_task_id));
       if (!t) return;
+      const rowAt = Date.parse(row.updated_at) || 0;
       const snap = typeof automationSnapshot === "function" ? automationSnapshot(t) : null;
       let ticks = 0, notes = 0, renamed = 0, added = 0, moved = 0, sized = 0; const gone = [];
       const st0 = (state.statuses[0] || {}).id;
@@ -9666,6 +9681,8 @@ async function pullPmoState(opts = {}) {
             if (!bi) return;
           }
           const i = ci || bi, lastSeen = i.ext.pmoLast;
+          const hold = (busy.get(String(row.pmo_task_id) + "|" + it.id) || 0) >= rowAt;   // our command is newer than this snapshot
+          if (hold) return;   // next snapshot (after the command) applies
           // opts.force (⚙ › ใช้ค่าตาม PMO): take the PMO value even if this app thinks it changed it last
           if ((opts.force || !lastSeen || lastSeen.done !== done) && pmoSetDone(i, done)) ticks++;
           if ((opts.force || !lastSeen || (lastSeen.remark || "") !== remark) && pmoNoteFromRemark(i, remark)) notes++;   // checklist + equipment (2026-11-01)
