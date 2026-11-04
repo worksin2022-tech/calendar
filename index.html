@@ -314,6 +314,9 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
 .pmo-item { padding: 10px; border: 1px solid var(--border); border-radius: 10px; background: var(--b-ffffff, #fff); }
 .pmo-item .star-title, .pmo-item .star-sub { white-space: normal; overflow: visible; text-overflow: clip; }
 .pmo-acts { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+.cl-pmo-ro .cl-item-name { flex: 1; min-width: 0; padding: 4px 6px; color: var(--text); }
+.cl-pmo-ro input[type=checkbox] { cursor: default; }
+.cl-pmo-tag { flex: 0 0 auto; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 6px; color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
 .pmo-more { display: inline-block; padding: 0 6px; border-radius: 6px; font-size: 11px; font-weight: 600; color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
 .pmo-acts a.btn { text-decoration: none; margin-left: auto; }
 @media (hover: none) { .side-tab { width: 36px; } }
@@ -5672,28 +5675,48 @@ function setNoteDone(task, it, done) {
   else { clearNoteDone(it); logActivity(task, `เปิดหมายเหตุอีกครั้ง "${label}": ${it.note}`); }
   return true;
 }
+// ★ 2026-11-04 (owner: ฝ่ายผลิตติ๊กใน PMO) — a department here matched to a PMO department or one of its work groups (⚙ จับคู่แผนก,
+//   "d_2|BUSBAR"); a combined group counts for each part ("WIRING/POWER" → WIRING and POWER)
+function pmoKeyMatch(key, pd) {
+  pd = String(pd || ""); key = String(key || "");
+  if (!pd) return false;
+  if (!pd.includes("|")) return key === pd;
+  const i = pd.indexOf("|"), dd = pd.slice(0, i), want = pd.slice(i + 1).trim().toUpperCase();
+  if (!key.startsWith(dd + "|")) return false;
+  const g = key.slice(dd.length + 1).trim().toUpperCase();
+  return g === want || g.split("/").map(x => x.trim()).includes(want);
+}
+// [ticked, total] of that department on this cabinet as counted in the PMO (bot v1.11+, sub.ext.pmoDeptProg), or null
+function pmoDeptCount(sub, deptId) {
+  const pp = deptId && sub && sub.ext && sub.ext.pmoDeptProg, pd = pp && (pmoCfg().deptMap || {})[deptId];
+  if (!pd) return null;
+  let a = null;
+  Object.keys(pp).forEach(k => {
+    if (!pmoKeyMatch(k, pd)) return;
+    const v = pp[k]; if (!Array.isArray(v)) return;
+    a = a || [0, 0]; a[0] += +v[0] || 0; a[1] += +v[1] || 0;
+  });
+  return a && a[1] > 0 ? a : null;
+}
+// the PMO's own lines of that department on this cabinet (bot v1.13, cached per device) → [[text, ticked, key, remark]] — read only
+const PMO_LINES_KEY = "qc_pmo_lines";
+let _pmoLines = null;
+function pmoLineCache() {
+  if (!_pmoLines) { try { _pmoLines = JSON.parse(localStorage.getItem(PMO_LINES_KEY) || "null"); } catch (_) {} }
+  return _pmoLines || {};
+}
+function pmoLinesFor(sub, deptId) {
+  const pd = deptId && (pmoCfg().deptMap || {})[deptId];
+  if (!pd || !sub || !sub.ext || sub.ext.pmoCabinetId == null) return [];
+  return (pmoLineCache()[String(sub.ext.pmoCabinetId)] || []).filter(l => Array.isArray(l) && pmoKeyMatch(l[2], pd));
+}
 function checklistProgress(sub, deptId) {
+  // the PMO's count wins for a matched department (production works in the PMO; lines left here are old templates)
+  const a = deptId ? pmoDeptCount(sub, deptId) : null;
+  if (a) { const done = Math.min(+a[0] || 0, +a[1]); return { done, total: +a[1], pct: Math.round(done / a[1] * 100) }; }
   let items = (sub && sub.checklist) || [];
   if (deptId) items = items.filter(i => i.deptId === deptId);
-  if (!items.length) {
-    // ★ 2026-11-04 (owner: ฝ่ายผลิตติ๊กใน PMO) — a department with no lines here, matched to a PMO department (⚙ จับคู่แผนก):
-    //   its ticks counted in the PMO for this cabinet (bot v1.11, sub.ext.pmoDeptProg = { pmoDept: [ticked, total] }) — read only
-    const pp = deptId && sub && sub.ext && sub.ext.pmoDeptProg, pd = pp && (pmoCfg().deptMap || {})[deptId];
-    // matched to "dept|group" (bot v1.12) → that work group; a combined group counts for each part ("WIRING/POWER" → WIRING and POWER)
-    let a = null;
-    if (pd && String(pd).includes("|")) {
-      const [dd, gg] = String(pd).split(/\|(.*)/s), want = gg.trim().toUpperCase();
-      Object.keys(pp).forEach(k => {
-        if (!k.startsWith(dd + "|")) return;
-        const g = k.slice(dd.length + 1).trim().toUpperCase();
-        if (g !== want && !g.split("/").map(x => x.trim()).includes(want)) return;
-        const v = pp[k]; if (!Array.isArray(v)) return;
-        a = a || [0, 0]; a[0] += +v[0] || 0; a[1] += +v[1] || 0;
-      });
-    } else if (pd) a = pp[pd];
-    if (Array.isArray(a) && a[1] > 0) { const done = Math.min(+a[0] || 0, +a[1]); return { done, total: +a[1], pct: Math.round(done / a[1] * 100) }; }
-    return { done: 0, total: 0, pct: 0 };
-  }
+  if (!items.length) return { done: 0, total: 0, pct: 0 };
   const done = items.filter(i => i.done).length;
   return { done, total: items.length, pct: Math.round(done / items.length * 100) };
 }
@@ -8501,13 +8524,14 @@ function openChecklistPopover(anchorEl, sub, onChange, opts = {}) {
     if (!structOk) pop.querySelectorAll('[data-act="add"]').forEach(b => b.remove());
     if (deptId) {
       sub.checklist.filter(i => i.deptId === deptId).forEach(it => itemsEl.appendChild(buildItemRow(it)));
+      pmoRows(deptId).forEach(r => itemsEl.appendChild(r));
       pop.querySelector('[data-act="add"]')?.addEventListener("click", () => addItem(deptId));
     } else {
       // grouped by department (project's department order)
       deptOrderIds(task || (state.tasks || []).find(t => (t.subtasks || []).includes(sub))).map(getDept).filter(Boolean)
         .filter(d => !(opts.noService && sameDept(d.id, SERVICE_DEPT))).forEach(d => {
-        const items = sub.checklist.filter(i => i.deptId === d.id);
-        if (!items.length) return;
+        const items = sub.checklist.filter(i => i.deptId === d.id), pmoR = pmoRows(d.id);
+        if (!items.length && !pmoR.length) return;
         const grp = document.createElement("div");
         grp.className = "cl-pop-group";
         grp.innerHTML = `${deptIco(d)}${escapeHtml(d.name)} <span class="cl-pop-group-add" title="เพิ่มรายการ">+</span>`;
@@ -8515,11 +8539,22 @@ function openChecklistPopover(anchorEl, sub, onChange, opts = {}) {
         else grp.querySelector(".cl-pop-group-add").remove();
         itemsEl.appendChild(grp);
         items.forEach(it => itemsEl.appendChild(buildItemRow(it)));
+        pmoR.forEach(r => itemsEl.appendChild(r));
       });
-      if (sub.checklist.length === 0) {
+      if (!itemsEl.children.length) {
         itemsEl.innerHTML = `<div class="cl-pop-empty">ยังไม่มีรายการ — เพิ่มเช็คลิสต์ของแผนกได้ที่ ⚙ ตั้งค่า › แผนก</div>`;
       }
     }
+  }
+  // ★ 2026-11-04 the PMO's own lines of a matched department (ฝ่ายผลิต) — shown, never ticked / edited here
+  function pmoRows(forDept) {
+    return pmoLinesFor(sub, forDept).map(([text, done, , remark]) => {
+      const r = document.createElement("div");
+      r.className = "cl-pop-item cl-pmo-ro" + (done ? " done" : "");
+      r.title = "ติ๊กใน PMO";
+      r.innerHTML = `<input type="checkbox" disabled ${done ? "checked" : ""} /><span class="cl-item-name">${escapeHtml(text || "")}</span><span class="cl-pmo-tag">PMO</span>${remark ? `<div class="cl-note-line"><span class="cl-note-txt">${escapeHtml(remark)}</span></div>` : ""}`;
+      return r;
+    });
   }
   function addItem(forDeptId) {
     const dept = forDeptId || deptId || (state.departments[0] && state.departments[0].id);
@@ -9626,6 +9661,8 @@ async function pullPmoState(opts = {}) {
   const sb = getSupabase(); if (!sb) return "ออฟไลน์";
   const KEY = "qc_pmo_st_seen:" + root.activeBoard, bid = root.activeBoard;
   let since = null; try { since = opts.full ? null : localStorage.getItem(KEY); } catch (_) {}
+  let noLines = false; try { noLines = !localStorage.getItem(PMO_LINES_KEY); } catch (_) {}
+  if (noLines) since = null;   // this device has no copy of the PMO's production lines yet → read every row once
   let report = "";
   _pmoStBusy = true;
   try {
@@ -9636,7 +9673,7 @@ async function pullPmoState(opts = {}) {
     if (error) { report = "อ่านข้อมูลไม่สำเร็จ: " + error.message; return report; }
     if (!Array.isArray(data) || bid !== root.activeBoard) return "สลับปฏิทินระหว่างดึง";
     const busy = data.length ? await pmoBusyItems(sb, pids) : new Map();
-    let last = since || "", save = false, changes = 0; const mismatch = [];
+    let last = since || "", save = false, changes = 0, linesDirty = noLines; const mismatch = [];
     data.forEach(row => {
       if (row.updated_at > last) last = row.updated_at;
       if (String(row.pmo_task_id).endsWith(":prog")) {   // ★ 2026-11-01 egress: cabinet progress in its own small row → display only
@@ -9659,6 +9696,24 @@ async function pullPmoState(opts = {}) {
           const d = dp[String(sb2.ext.pmoCabinetId)] || null;
           if (JSON.stringify(sb2.ext.pmoDeptProg || null) !== JSON.stringify(d)) { sb2.ext.pmoDeptProg = d; moved = true; save = true; }
         });
+        if (row.data && row.data.l) {   // bot v1.13: the lines themselves (this device's cache — not in the board)
+          const cache = { ...pmoLineCache() };
+          subs.forEach(sb2 => { const k = String(sb2.ext.pmoCabinetId), v = row.data.l[k]; if (v) cache[k] = v; else delete cache[k]; });
+          _pmoLines = cache; linesDirty = true;
+        }
+        // ★ 2026-11-04 (owner: เพิ่มแผนกที่ได้รับมอบหมายอัตโนมัติตามเช็คลิสต์ที่ดึงมา) — a matched department with lines in the PMO on any
+        //   cabinet but not on this job yet → added (in the department order); never removed
+        if (Array.isArray(tp.deptStages)) {
+          const order = (state.departments || []).map(d => d.id), addedD = [];
+          Object.keys(pmoCfg().deptMap || {}).forEach(d => {
+            if (!getDept(d) || tp.deptStages.some(x => x.deptId === d) || !subs.some(sb2 => pmoDeptCount(sb2, d))) return;
+            const at = tp.deptStages.findIndex(x => order.indexOf(x.deptId) > order.indexOf(d));
+            const stg = { deptId: d, due: null, done: false, fields: {} };
+            if (at < 0) tp.deptStages.push(stg); else tp.deptStages.splice(at, 0, stg);
+            addedD.push(getDept(d).name);
+          });
+          if (addedD.length) { logActivity(tp, `เพิ่มแผนก ${addedD.join(", ")} (มีเช็คลิสต์ใน PMO)`, "PMO"); tp.updatedAt = Date.now(); changes++; save = true; }
+        }
         if (moved) { try { if (runAutomations(tp, snap)) { tp.updatedAt = Date.now(); changes++; } } catch (e) { console.warn("pmo prod automations", e); } }
         return;
       }
@@ -9794,6 +9849,7 @@ async function pullPmoState(opts = {}) {
         t.updatedAt = Date.now(); save = true;
       }
     });
+    if (linesDirty) { try { localStorage.setItem(PMO_LINES_KEY, JSON.stringify(_pmoLines || {})); } catch (_) {} }
     if (save) { saveState(); renderAll(); }
     if (last) { try { localStorage.setItem(KEY, last); } catch (_) {} }
     report = `งาน PMO ในปฏิทินนี้ ${tasks.length} · ได้สถานะ ${data.filter(r => !String(r.pmo_task_id).endsWith(":prog")).length} โครงการ · เปลี่ยน ${changes} รายการ`;
