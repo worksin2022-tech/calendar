@@ -5678,7 +5678,19 @@ function checklistProgress(sub, deptId) {
   if (!items.length) {
     // ★ 2026-11-04 (owner: ฝ่ายผลิตติ๊กใน PMO) — a department with no lines here, matched to a PMO department (⚙ จับคู่แผนก):
     //   its ticks counted in the PMO for this cabinet (bot v1.11, sub.ext.pmoDeptProg = { pmoDept: [ticked, total] }) — read only
-    const pp = deptId && sub && sub.ext && sub.ext.pmoDeptProg, pd = pp && (pmoCfg().deptMap || {})[deptId], a = pd && pp[pd];
+    const pp = deptId && sub && sub.ext && sub.ext.pmoDeptProg, pd = pp && (pmoCfg().deptMap || {})[deptId];
+    // matched to "dept|group" (bot v1.12) → that work group; a combined group counts for each part ("WIRING/POWER" → WIRING and POWER)
+    let a = null;
+    if (pd && String(pd).includes("|")) {
+      const [dd, gg] = String(pd).split(/\|(.*)/s), want = gg.trim().toUpperCase();
+      Object.keys(pp).forEach(k => {
+        if (!k.startsWith(dd + "|")) return;
+        const g = k.slice(dd.length + 1).trim().toUpperCase();
+        if (g !== want && !g.split("/").map(x => x.trim()).includes(want)) return;
+        const v = pp[k]; if (!Array.isArray(v)) return;
+        a = a || [0, 0]; a[0] += +v[0] || 0; a[1] += +v[1] || 0;
+      });
+    } else if (pd) a = pp[pd];
     if (Array.isArray(a) && a[1] > 0) { const done = Math.min(+a[0] || 0, +a[1]); return { done, total: +a[1], pct: Math.round(done / a[1] * 100) }; }
     return { done: 0, total: 0, pct: 0 };
   }
@@ -9094,7 +9106,7 @@ function pmoMyDepts() {
   const map = c.deptMap || {};
   // departments the bot accepts jobs for (its heartbeat) — a production department matched only for its tick counts has no inbox
   const watch = _pmoBotRow && _pmoBotRow.info && Array.isArray(_pmoBotRow.info.watch) ? _pmoBotRow.info.watch.map(String) : null;
-  const ok = d => !!d && (!watch || watch.includes(String(d)));
+  const ok = d => !!d && !String(d).includes("|") && (!watch || watch.includes(String(d)));
   if (isAdmin()) return [...new Set(Object.values(map).filter(ok))];
   const my = myDeptId(); return my && ok(map[my]) ? [map[my]] : [];
 }
@@ -9140,6 +9152,14 @@ function pmoMarkSeen(t) {
   try { localStorage.setItem(PMO_SEEN_KEY, JSON.stringify(m)); } catch (_) {}
 }
 function canPostPmo() { return canComment() && (isAdmin() || pmoMyDepts().length > 0); }
+// ★ 2026-11-04 (incident: the bot account was given ฝ่ายผลิต too → 620 production lines came in, 8 were deleted in the PMO from here)
+//   PMO lines are taken only from departments matched to one here (⚙ จับคู่แผนก, a whole department — not "dept|group") that the bot
+//   handles (heartbeat watch). Anything else is never added, and one that came in is taken out HERE only (no delete sent).
+function pmoLineDepts() {
+  const map = pmoCfg().deptMap || {};
+  const watch = _pmoBotRow && _pmoBotRow.info && Array.isArray(_pmoBotRow.info.watch) ? _pmoBotRow.info.watch.map(String) : null;
+  return new Set(Object.values(map).map(String).filter(v => v && !v.includes("|") && (!watch || watch.includes(v))));
+}
 function ourDeptForPmo(pmoDeptId) { const map = pmoCfg().deptMap || {}; return Object.keys(map).find(k => map[k] === pmoDeptId && getDept(k)) || null; }
 function pmoRemark(i) { return !i.note ? "" : i.noteDone ? "✓ " + i.note : i.note; }   // the PMO has a remark per item, no "cleared" flag
 // queue what a person pressed → pmo_commands (a small local outbox keeps it when offline; retried every minute)
@@ -9245,6 +9265,7 @@ function pmoTickCommands(prevJson, json) {
         const nowIds = new Set((sb.checklist || []).map(i => i.id));
         (oldSub.checklist || []).forEach(i => {
           if (!(i.ext && i.ext.pmoItemId != null) || nowIds.has(i.id)) return;
+          if (((sb.ext && sb.ext.pmoNoSend) || []).includes(String(i.ext.pmoItemId))) return;   // taken out here only (pmoLineDepts)
           out.push({ task_id: t.id, label: `ลบ "${i.text || ""}" · ${t.so || t.title || ""} · ${sb.mo || sb.text || ""}`,
             op: { type: "checklist_delete", taskId: t.ext.pmoTaskId, cabinetId: sb.ext.pmoCabinetId, itemId: i.ext.pmoItemId } });
         });
@@ -9645,7 +9666,8 @@ async function pullPmoState(opts = {}) {
       if (!t) return;
       const rowAt = Date.parse(row.updated_at) || 0;
       const snap = typeof automationSnapshot === "function" ? automationSnapshot(t) : null;
-      let ticks = 0, notes = 0, renamed = 0, added = 0, moved = 0, sized = 0; const gone = [];
+      let ticks = 0, notes = 0, renamed = 0, added = 0, moved = 0, sized = 0, dropped = 0; const gone = [];
+      const lineDepts = pmoLineDepts();
       const st0 = (state.statuses[0] || {}).id;
       ((row.data && row.data.cabinets) || []).forEach(cab => {
         let sub = (t.subtasks || []).find(x => x.ext && String(x.ext.pmoCabinetId) === String(cab.id));
@@ -9665,6 +9687,17 @@ async function pullPmoState(opts = {}) {
         const seenIds = new Set();
         (cab.items || []).forEach(it => {
           seenIds.add(String(it.id));
+          if (it.deptId && !lineDepts.has(String(it.deptId))) {   // a line of a department this app doesn't take
+            const k = String(it.id), hit = x => x.ext && String(x.ext.pmoItemId) === k;
+            const had = sub.checklist.some(hit) || !!(sub.bom && Array.isArray(sub.bom.items) && sub.bom.items.some(hit));
+            if (had) {
+              sub.checklist = sub.checklist.filter(x => !hit(x));
+              if (sub.bom && Array.isArray(sub.bom.items)) sub.bom.items = sub.bom.items.filter(x => !hit(x));
+              sub.ext.pmoNoSend = [...new Set([...(sub.ext.pmoNoSend || []), k])];   // its removal is never sent to the PMO
+              dropped++; save = true;
+            }
+            return;
+          }
           const done = !!it.done, remark = String(it.remark || ""), text = String(it.text || "");
           let ci = sub.checklist.find(x => x.ext && String(x.ext.pmoItemId) === String(it.id));
           let bi = !ci && sub.bom && Array.isArray(sub.bom.items) ? sub.bom.items.find(x => x.ext && String(x.ext.pmoItemId) === String(it.id)) : null;
@@ -9738,6 +9771,7 @@ async function pullPmoState(opts = {}) {
       if (dueMsg) { logActivity(t, "อัปเดต · " + dueMsg, "PMO"); changes++; save = true; t.updatedAt = Date.now(); }
       const fatMsg = pmoApplyFat(t, row.data && row.data.fat);
       if (fatMsg) { logActivity(t, "อัปเดต · " + fatMsg, "PMO"); changes++; save = true; t.updatedAt = Date.now(); }
+      if (dropped) { logActivity(t, `เอารายการของแผนกอื่นออก ${dropped} รายการ (ใน PMO ไม่เปลี่ยน)`, "PMO"); changes++; }
       if (gone.length) { logActivity(t, `ไม่มีรายการนี้แล้ว: ${gone.slice(0, 5).join(", ")}${gone.length > 5 ? " +" + (gone.length - 5) : ""}`, "PMO"); save = true; }
       changes += ticks + notes + renamed + added + moved;
       if (ticks || notes || renamed || added || moved) {
@@ -13649,7 +13683,11 @@ function buildItSyncPanel(container) {
       const age = Date.now() - new Date(data.at).getTime();
       const probs = pmoHealthProblems(data);
       seenEl.innerHTML = (probs.length ? `<div style="color:var(--danger);margin-bottom:3px">⚠ ${probs.map(escapeHtml).join("<br>⚠ ")}</div>` : "") + `${age < 10 * 60e3 ? "🟢" : "🔴"} บอทเชื่อมต่อล่าสุด ${escapeHtml(relTimeTH(new Date(data.at).getTime()))}${data.info && data.info.user ? " · บัญชี " + escapeHtml(data.info.user) : ""}${data.info && data.info.write ? "" : " · อ่านอย่างเดียว (ยังไม่กดใน PMO)"}`;
-      paintMap(Array.isArray(data.info && data.info.depts) ? data.info.depts.filter(x => x && x.id) : []);
+      const pdeps = Array.isArray(data.info && data.info.depts) ? data.info.depts.filter(x => x && x.id) : [];
+      // ★ 2026-11-04 work groups of the departments the bot only counts (bot v1.12 "seen": "d_2|BUSBAR") — e.g. Busbar → Production › BUSBAR
+      const grp = Object.keys((data.info && data.info.seen) || {}).filter(k => k.includes("|")).sort()
+        .map(k => { const i = k.indexOf("|"), dn = (pdeps.find(x => String(x.id) === k.slice(0, i)) || {}).name || k.slice(0, i); return { id: k, name: `${dn} › ${k.slice(i + 1)}` }; });
+      paintMap(pdeps.concat(grp));
     }, () => {});
     sbp.from("pmo_commands").select("id,created_at,created_by_name,label,status,result,done_at").order("id", { ascending: false }).limit(20).then(({ data, error }) => {
       const el = botSec.querySelector("[data-pmo-log]");
