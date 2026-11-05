@@ -661,6 +661,10 @@ html, body { touch-action: manipulation; }
 .m-item .cl-who { margin-left: auto; padding: 4px; }
 .m-item .cl-who .avatar { width: 22px; height: 22px; font-size: 11px; }
 .m-item.on .m-item-t { color: var(--text-dim); text-decoration: line-through; }
+.m-item-pmo { cursor: default; }
+.m-item-pmo:active { background: transparent; }
+.m-item-pmo .m-box { opacity: .75; }
+.m-item-pmo .cl-pmo-tag { margin-left: auto; }
 .m-deptdone { margin-top: 6px; font-weight: 600; }
 .m-open-full { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; margin-top: 8px; padding: 10px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg); font: inherit; font-size: 13.5px; font-weight: 600; color: var(--text-dim); cursor: pointer; }
 .m-open-full .ico { width: 16px; height: 16px; }
@@ -17600,10 +17604,22 @@ function mCardHtml(t, due, dep, bid) {
   // ★ 2026-10-22 (owner): an Admin sees + ticks every department's cabinet checklist on the phone too (grouped; not on the
   //   Service calendar, Service department left out) — the card itself still belongs to `dep` (done / ring / list)
   const clAll = isAdmin() && (bid ? bid !== SERVICE_BOARD : !isServiceBoard()), clDep = clAll ? null : dep;
-  const clItems = x => (x.checklist || []).filter(i => clDep ? i.deptId === clDep : !(clAll && sameDept(i.deptId, SERVICE_DEPT)));
-  const clProg = x => { const L = clItems(x), d = L.filter(i => i.done).length; return { done: d, total: L.length }; };
-  const cabs = clAll ? (t.subtasks || []).filter(x => clItems(x).length) : mCabs(t, dep);
-  const cabDone = cabs.filter(x => { const p = clAll ? clProg(x) : checklistProgress(x, dep || null); return p.done === p.total; }).length;
+  const clItems0 = x => (x.checklist || []).filter(i => clDep ? i.deptId === clDep : !(clAll && sameDept(i.deptId, SERVICE_DEPT)));
+  // ★ 2026-11-05 (owner: มือถือเห็นเช็คลิสต์ของเรา ไม่ใช่ของ PMO) — a department counted from the PMO (ฝ่ายผลิต) shows the PMO's own
+  //   lines (read only, like the desktop popover); its old template lines here are left out of the list and the count
+  const pmoOn = (x, d) => !!(d && pmoDeptCount(x, d));
+  const clItems = x => clItems0(x).filter(i => !pmoOn(x, i.deptId));
+  const clDeps = x => {
+    if (clDep) return [clDep];
+    const has = new Set(clItems0(x).map(i => i.deptId));
+    Object.keys(pmoCfg().deptMap || {}).forEach(d => { if (getDept(d) && pmoOn(x, d) && !(clAll && sameDept(d, SERVICE_DEPT))) has.add(d); });
+    const ord = deptOrderIds(t);
+    return [...ord.filter(id => has.has(id)), ...[...has].filter(id => !ord.includes(id))];
+  };
+  const clProg = x => clDeps(x).reduce((a, d) => { const p = checklistProgress(x, d); return { done: a.done + p.done, total: a.total + p.total }; }, { done: 0, total: 0 });
+  const agg = clAll || !dep;
+  const cabs = agg ? (t.subtasks || []).filter(x => clProg(x).total > 0) : mCabs(t, dep);
+  const cabDone = cabs.filter(x => { const p = agg ? clProg(x) : checklistProgress(x, dep); return p.done === p.total; }).length;
   const pct = cabs.length ? Math.round(cabDone / cabs.length * 100) : (done ? 100 : 0);
   const st = getStatus(t.statusId);
   const hold = !done && taskOnHold(t);
@@ -17613,10 +17629,9 @@ function mCardHtml(t, due, dep, bid) {
   if (open) {
     const stg = dep ? taskStage(t, dep) : null;
     const rows = cabs.map(x => {
-      const p = clAll ? clProg(x) : checklistProgress(x, dep || null), so = mOpenSub.has(x.id);
-      const items = clAll ? clItems(x) : (x.checklist || []).filter(i => !dep || i.deptId === dep);
-      const groups = clDep ? [[null, items]] : (() => { const ord = deptOrderIds(t), has = new Set(items.map(i => i.deptId));
-        return [...ord.filter(id => has.has(id)), ...[...has].filter(id => !ord.includes(id))].map(id => [id, items.filter(i => i.deptId === id)]); })();
+      const p = agg ? clProg(x) : checklistProgress(x, dep), so = mOpenSub.has(x.id);
+      const items = (clAll ? clItems0(x) : (x.checklist || []).filter(i => !dep || i.deptId === dep)).filter(i => !pmoOn(x, i.deptId));
+      const groups = (clDep ? [clDep] : clDeps(x)).map(id => [clDep ? null : id, items.filter(i => clDep || i.deptId === id), pmoOn(x, id) ? pmoLinesFor(x, id) : []]);
       return `<div class="m-cab${p.done === p.total ? " full" : ""}${so ? " open" : ""}">
         <div class="m-cab-head" data-sub="${escapeHtml(x.id)}">
           <button type="button" class="m-dot" data-substatus="${escapeHtml(x.id)}" style="--dot:${getStatus(x.statusId).color}" aria-label="สถานะตู้"></button>
@@ -17624,7 +17639,8 @@ function mCardHtml(t, due, dep, bid) {
           ${(() => { const bp = bomProgress(x), bn = bomNoteItems(x).length; return bp.total ? `<button type="button" class="m-bom${bp.done === bp.total ? " full" : ""}" data-bom="${escapeHtml(x.id)}">${ico("archive")}${bp.done}/${bp.total}${bn ? `<span class="m-cab-note">${bn}</span>` : ""}</button>` : ""; })()}
           ${(() => { const n = items.filter(i => i.note && !i.noteDone).length; return n ? `<span class="m-cab-note">${n}</span>` : ""; })()}<span class="m-cab-n">${p.done}/${p.total}</span><span class="m-chev">${so ? "▴" : "▾"}</span>
         </div>
-        ${so ? `<div class="m-items">${groups.map(([gid, list]) => (gid ? `<div class="m-items-dept">${escapeHtml((getDept(gid) || {}).name || "")}</div>` : "") + list.map(i =>
+        ${so ? `<div class="m-items">${groups.map(([gid, list, pl]) => (gid ? `<div class="m-items-dept">${escapeHtml((getDept(gid) || {}).name || "")}</div>` : "") + pl.map(([text, on, , remark]) =>
+          `<div class="m-item-wrap"><div class="m-item m-item-pmo${on ? " on" : ""}"><span class="m-box">${on ? ico("check") : ""}</span><span class="m-item-t">${escapeHtml(text || "")}</span><span class="cl-pmo-tag">PMO</span></div></div>${remark ? `<div class="m-note-line"><span class="m-note">${escapeHtml(remark)}</span></div>` : ""}`).join("") + list.map(i =>
           `<div class="m-item-wrap"><button type="button" class="m-item${i.done ? " on" : ""}" data-item="${escapeHtml(x.id)}|${escapeHtml(i.id)}"><span class="m-box">${i.done ? ico("check") : ""}</span><span class="m-item-t">${escapeHtml(i.text || "")}</span>${tickWhoHtml(i)}</button><button type="button" class="m-note-btn${i.note && !i.noteDone ? " has" : ""}" data-note="${escapeHtml(x.id)}|${escapeHtml(i.id)}" aria-label="หมายเหตุ">${ico("message")}</button></div>${i.note ? mNoteLine(i, `${escapeHtml(x.id)}|${escapeHtml(i.id)}`) : ""}`).join("")).join("")}</div>` : ""}
       </div>`;
     }).join("");
@@ -17640,7 +17656,7 @@ function mCardHtml(t, due, dep, bid) {
   const R = 19, C = 2 * Math.PI * R;
   // ★ 2026-10-12 (owner): the ring counts CHECKLIST ITEMS ticked (this department's; all departments when none chosen) —
   //   shows work has started even before a whole cabinet is finished. Cabinets done moved to the step line.
-  const items = dep ? deptProgress(t, dep) : (t.subtasks || []).reduce((a, x) => { const p = checklistProgress(x, null); return { done: a.done + p.done, total: a.total + p.total }; }, { done: 0, total: 0 });
+  const items = dep ? deptProgress(t, dep) : (t.subtasks || []).reduce((a, x) => { const p = clProg(x); return { done: a.done + p.done, total: a.total + p.total }; }, { done: 0, total: 0 });
   // ★ 2026-11-01 (owner): the big number = the WHOLE project (all departments / PMO %), my department's own count below it.
   //   My department finished → full green ✓ (the card goes to "เสร็จแล้ว" as before) + "รวม N%" while the project isn't done.
   const all = projectPctAll(t), depName = dep ? (getDept(dep) || {}).name || "" : "";
