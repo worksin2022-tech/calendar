@@ -2220,6 +2220,12 @@ body.chip-dragging .task-chip.span-pull { pointer-events: none; }
   transition: opacity .18s, transform .18s;
 }
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+/* ★ 2026-11-05 a newer version is on the web → "มีเวอร์ชันใหม่ · รีโหลด" (never reloads by itself) */
+.upd-bar { position: fixed; left: 50%; top: calc(env(safe-area-inset-top, 0px) + 10px); transform: translateX(-50%); z-index: 9990; display: flex; align-items: center; gap: 10px;
+  padding: 8px 8px 8px 14px; border-radius: 12px; background: var(--panel); color: var(--text); border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  box-shadow: var(--shadow-lg); font-size: 13.5px; font-weight: 600; max-width: calc(100vw - 24px); white-space: nowrap; }
+.upd-bar > .ico { width: 18px; height: 18px; color: var(--accent); flex: 0 0 auto; }
+.upd-bar button { border: 0; border-radius: 8px; padding: 6px 12px; background: var(--accent); color: #fff; font: inherit; cursor: pointer; }
 /* profile modal → "แจ้งเตือนบนเครื่องนี้" (web push) */
 .push-box { margin-top: 12px; padding: 12px; border:1px solid var(--border); border-radius:10px; background:var(--b-fafafb, #fafafb); }
 .push-box h5 { margin: 0 0 4px; font-size: 13.5px; }
@@ -9954,6 +9960,36 @@ const pmoPullOnReturn = () => {
 };
 document.addEventListener("visibilitychange", pmoPullOnReturn);
 window.addEventListener("focus", pmoPullOnReturn);
+// ★ 2026-11-05 (owner: คนใช้เยอะ ไม่รู้ใครไม่ปิดแอป) — old code left open on some device undid a tick (it applied a PMO snapshot older
+//   than the command). The page's ETag / Last-Modified (a HEAD request, a few hundred bytes, GitHub Pages — not Supabase) is read at
+//   start, every 10 minutes while on screen and on coming back (at most every 2 min); when it changes → a bar "มีเวอร์ชันใหม่" with a
+//   reload button. Never reloads by itself (something may be half typed).
+let _verBase = null, _verAt = 0, _verNew = false;
+async function checkAppVersion() {
+  if (_verNew || !/^https?:$/.test(location.protocol) || document.visibilityState !== "visible") return;
+  _verAt = Date.now();
+  try {
+    const r = await fetch(location.pathname + "?vchk=" + Date.now(), { method: "HEAD", cache: "no-store" });
+    if (!r.ok) return;
+    const v = r.headers.get("ETag") || r.headers.get("Last-Modified") || "";
+    if (!v) return;
+    if (_verBase === null) { _verBase = v; return; }
+    if (v !== _verBase) { _verNew = true; showUpdateBar(); }
+  } catch (_) {}
+}
+function showUpdateBar() {
+  if (document.querySelector(".upd-bar")) return;
+  const bar = document.createElement("div");
+  bar.className = "upd-bar"; bar.setAttribute("role", "status");
+  bar.innerHTML = `${ico("restore")}<span>มีเวอร์ชันใหม่</span><button type="button">รีโหลด</button>`;
+  bar.querySelector("button").addEventListener("click", () => location.reload());
+  document.body.appendChild(bar);
+}
+setTimeout(checkAppVersion, 2000);
+setInterval(checkAppVersion, 600000);
+const verOnReturn = () => { if (document.visibilityState === "visible" && Date.now() - _verAt > 120e3) checkAppVersion(); };
+document.addEventListener("visibilitychange", verOnReturn);
+window.addEventListener("focus", verOnReturn);
 // รับงาน / ไม่รับ — the task here + a command for the bot; false = cancelled / not allowed
 async function pmoDecide(row, status, extra, from = "pending") {
   const sb = getSupabase(); if (!sb) return;
