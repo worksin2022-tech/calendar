@@ -8440,8 +8440,17 @@ function openChecklistPopover(anchorEl, sub, onChange, opts = {}) {
   const pop = document.createElement("div");
   pop.className = "checklist-popover";
 
+  // all departments: summed per department so a PMO-counted one uses the PMO's numbers (2026-11-05)
+  function popProg() {
+    if (deptId) return checklistProgress(sub, deptId);
+    const ids = new Set(sub.checklist.map(i => i.deptId));
+    Object.keys(pmoCfg().deptMap || {}).forEach(d => { if (getDept(d) && pmoDeptCount(sub, d)) ids.add(d); });
+    let done = 0, total = 0;
+    ids.forEach(d => { if (!d || (opts.noService && sameDept(d, SERVICE_DEPT))) return; const p = checklistProgress(sub, d); done += p.done; total += p.total; });
+    return { done, total, pct: total ? Math.round(done / total * 100) : 0 };
+  }
   function paintBar() {
-    const p = checklistProgress(sub, deptId);
+    const p = popProg();
     const bar = pop.querySelector(".cl-pop-bar");
     const pct = pop.querySelector(".cl-pop-pct");
     if (bar) { bar.style.width = p.pct + "%"; bar.style.background = p.pct === 100 ? "#10b981" : "var(--accent)"; }
@@ -8519,7 +8528,7 @@ function openChecklistPopover(anchorEl, sub, onChange, opts = {}) {
     return r;
   }
   function render() {
-    const p = checklistProgress(sub, deptId);
+    const p = popProg();
     const title = deptId ? `Checklist · ${escapeHtml((getDept(deptId) || {}).name || "")}` : "Checklist (ทุกแผนก)";
     pop.innerHTML = `
       <div class="cl-pop-head">
@@ -8528,24 +8537,25 @@ function openChecklistPopover(anchorEl, sub, onChange, opts = {}) {
       </div>
       <div class="cl-pop-track"><div class="cl-pop-bar" style="width:${p.pct}%;background:${p.pct===100?'#10b981':'var(--accent)'}"></div></div>
       <div class="cl-pop-items" data-items></div>
-      ${deptId ? `<button type="button" class="cl-pop-add" data-act="add">+ เพิ่มรายการ</button>` : ""}
+      ${deptId && !pmoDeptCount(sub, deptId) ? `<button type="button" class="cl-pop-add" data-act="add">+ เพิ่มรายการ</button>` : ""}
     `;
     const itemsEl = pop.querySelector("[data-items]");
     if (!structOk) pop.querySelectorAll('[data-act="add"]').forEach(b => b.remove());
     if (deptId) {
-      sub.checklist.filter(i => i.deptId === deptId).forEach(it => itemsEl.appendChild(buildItemRow(it)));
+      // ★ 2026-11-05 (owner: ทำเหมือนมือถือ) — a department counted from the PMO shows only the PMO's lines; old templates hidden
+      if (!pmoDeptCount(sub, deptId)) sub.checklist.filter(i => i.deptId === deptId).forEach(it => itemsEl.appendChild(buildItemRow(it)));
       pmoRows(deptId).forEach(r => itemsEl.appendChild(r));
       pop.querySelector('[data-act="add"]')?.addEventListener("click", () => addItem(deptId));
     } else {
       // grouped by department (project's department order)
       deptOrderIds(task || (state.tasks || []).find(t => (t.subtasks || []).includes(sub))).map(getDept).filter(Boolean)
         .filter(d => !(opts.noService && sameDept(d.id, SERVICE_DEPT))).forEach(d => {
-        const items = sub.checklist.filter(i => i.deptId === d.id), pmoR = pmoRows(d.id);
+        const items = pmoDeptCount(sub, d.id) ? [] : sub.checklist.filter(i => i.deptId === d.id), pmoR = pmoRows(d.id);
         if (!items.length && !pmoR.length) return;
         const grp = document.createElement("div");
         grp.className = "cl-pop-group";
         grp.innerHTML = `${deptIco(d)}${escapeHtml(d.name)} <span class="cl-pop-group-add" title="เพิ่มรายการ">+</span>`;
-        if (structOk) grp.querySelector(".cl-pop-group-add").addEventListener("click", (e) => { e.stopPropagation(); addItem(d.id); });
+        if (structOk && !pmoDeptCount(sub, d.id)) grp.querySelector(".cl-pop-group-add").addEventListener("click", (e) => { e.stopPropagation(); addItem(d.id); });
         else grp.querySelector(".cl-pop-group-add").remove();
         itemsEl.appendChild(grp);
         items.forEach(it => itemsEl.appendChild(buildItemRow(it)));
@@ -15446,7 +15456,8 @@ function deptChecklistTipHtml(t, deptId) {
   if (!dp.total) return `<div class="dash-tip-h">${escapeHtml(d.name)}</div><div class="dash-tip-none">ไม่มีเช็คลิสต์ — ติ๊กเสร็จแบบธรรมดา</div>`;
   const rows = []; let finished = 0;
   (t.subtasks || []).forEach(sub => {
-    const items = (sub.checklist || []).filter(i => i.deptId === deptId);
+    const items = pmoDeptCount(sub, deptId) ? pmoLinesFor(sub, deptId).map(([text, done]) => ({ text, done: !!done }))   // ★ 2026-11-05 PMO lines, not old templates
+      : (sub.checklist || []).filter(i => i.deptId === deptId);
     if (!items.length) return;
     let lastIdx = -1; items.forEach((i, ix) => { if (i.done) lastIdx = ix; });
     const next = items.find(i => !i.done);
