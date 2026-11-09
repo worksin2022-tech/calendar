@@ -1583,19 +1583,42 @@ html, body { touch-action: manipulation; }
 .act-day { position: relative; display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--border); font-size: 13px; font-weight: 700; color: var(--text); cursor: pointer; }
 .act-day .ico { width: 14px; height: 14px; color: var(--text-dim); }
 .act-day input { position: absolute; inset: 0; opacity: 0; width: 100%; cursor: pointer; }
-.act-seg { margin-left: auto; display: inline-flex; padding: 3px; gap: 2px; background: var(--bg); border-radius: 9px; }
-.act-seg button { border: none; background: transparent; color: var(--text-dim); font: inherit; font-size: 12px; font-weight: 700; padding: 4px 9px; border-radius: 7px; cursor: pointer; }
-.act-seg button.on { background: var(--panel); color: var(--text); box-shadow: var(--shadow-sm); }
-.act-row { display: flex; gap: 10px; padding: 9px 11px; border: 1px solid var(--border); border-left: 3px solid var(--border); border-radius: 10px; background: var(--panel); }
-.act-row.act-status { border-left-color: #8b5cf6; }
-.act-row.act-date { border-left-color: #f59e0b; }
-.act-time { flex: 0 0 auto; font-size: 12px; font-weight: 700; color: var(--text-dim); font-variant-numeric: tabular-nums; padding-top: 1px; }
-.act-body { flex: 1 1 auto; min-width: 0; }
-.act-task { display: block; max-width: 100%; border: none; background: none; padding: 0; font: inherit; font-size: 12.5px; font-weight: 700; color: var(--text); text-align: left; cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.act-sum { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin: 0 0 6px; }
+.act-sum button { border: 1px solid transparent; background: var(--bg); border-radius: 10px; padding: 6px 2px 5px; font: inherit; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 1px; color: var(--text-dim); }
+.act-sum b { font-size: 17px; font-weight: 800; line-height: 1.15; color: var(--text); }
+.act-sum span { font-size: 11px; font-weight: 600; }
+.act-sum button.on { background: var(--panel); border-color: var(--border); box-shadow: var(--shadow-sm); color: var(--text); }
+.act-sum-status b { color: #7c3aed; } .act-sum-date b { color: #b45309; } .act-sum-comment b { color: #047857; }
+.am2 .am2-act { gap: 0; }
+.act-row { display: grid; grid-template-columns: 26px minmax(0, 1fr) auto; gap: 10px; align-items: start; padding: 10px 4px; border-top: 1px solid var(--border); }
+.act-ic { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; }
+.act-ic .ico { width: 14px; height: 14px; }
+.act-ic-status { background: color-mix(in srgb, #8b5cf6 15%, transparent); color: #6d28d9; }
+.act-ic-date { background: color-mix(in srgb, #f59e0b 18%, transparent); color: #b45309; }
+.act-ic-comment { background: color-mix(in srgb, #10b981 16%, transparent); color: #047857; }
+.act-ic-pmo { background: color-mix(in srgb, #0b6bcb 13%, transparent); color: #0b6bcb; }
+.act-ic-other { background: var(--bg); color: var(--text-dim); }
+.act-body { min-width: 0; }
+.act-task { display: block; max-width: 100%; border: none; background: none; padding: 0; font: inherit; font-size: 11.5px; font-weight: 600; color: var(--text-dim); text-align: left; cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .act-task:hover { color: var(--accent); }
-.act-task .am2-so { margin-right: 6px; }
-.act-text { font-size: 13px; color: var(--text); margin-top: 2px; word-break: break-word; }
-.act-who { font-size: 11.5px; color: var(--text-faint); margin-top: 2px; }
+.act-so { font-size: 10.5px; font-weight: 700; padding: 0 5px; border-radius: 5px; border: 1px solid var(--border); margin-right: 5px; }
+.act-text { font-size: 13.5px; color: var(--text); margin-top: 2px; line-height: 1.55; word-break: break-word; }
+.act-dim .act-text { color: var(--text-dim); font-size: 12.5px; }
+.act-pill { display: inline-block; padding: 0 8px; border-radius: 999px; font-size: 12px; font-weight: 600; line-height: 1.6; background: var(--bg); border: 1px solid var(--border); color: var(--text); }
+.act-pill.done { background: color-mix(in srgb, #22c55e 16%, transparent); border-color: transparent; color: #15803d; }
+.act-pill.date { background: color-mix(in srgb, #f59e0b 18%, transparent); border-color: transparent; color: #92400e; }
+.act-from { color: var(--text-faint); text-decoration: line-through; }
+.act-tail { color: var(--text-dim); font-size: 12px; margin-left: 4px; }
+.act-bubble { margin-top: 4px; padding: 6px 9px; border-radius: 4px 10px 10px 10px; background: var(--bg); font-size: 13px; color: var(--text); line-height: 1.5; word-break: break-word; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.act-ctag { display: inline-block; margin-right: 6px; padding: 0 6px; border-radius: 999px; font-size: 10.5px; font-weight: 700; vertical-align: 1px; background: color-mix(in srgb, #10b981 15%, transparent); color: #047857; }
+.act-ctag.pmo { background: color-mix(in srgb, #0b6bcb 14%, transparent); color: #0b6bcb; }
+.act-file { color: var(--text-dim); display: inline-flex; align-items: center; gap: 3px; } .act-file .ico { width: 11px; height: 11px; }
+.act-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; padding-top: 1px; max-width: 90px; }
+.act-time { font-size: 12px; font-weight: 700; color: var(--text-dim); font-variant-numeric: tabular-nums; }
+.act-who { font-size: 11px; color: var(--text-faint); max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+:root[data-theme="dark"] .act-ic-status { color: #c4b5fd; } :root[data-theme="dark"] .act-ic-date, :root[data-theme="dark"] .act-pill.date { color: #fcd34d; }
+:root[data-theme="dark"] .act-ic-comment, :root[data-theme="dark"] .act-ctag { color: #6ee7b7; } :root[data-theme="dark"] .act-pill.done { color: #86efac; }
+:root[data-theme="dark"] .act-ic-pmo, :root[data-theme="dark"] .act-ctag.pmo { color: #93c5fd; }
 .alert-modal.am2 .alert-card.am2-card.am2-done { box-shadow: none; background: var(--bg); }
 .am2-done .am2-av { opacity: .75; }
 .am2-msg-clamp { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; background: var(--panel); }
@@ -9892,8 +9915,21 @@ async function pullPmoState(opts = {}) {
             removed.push(...out.map(x => x.text || ""));
             save = true;
           }
+          // ★ 2026-11-09 (owner: ลบตาม PMO เหมือนเช็คลิสต์) — equipment lines (รายการอุปกรณ์) the PMO sent before and no longer has go too,
+          //   including ones already noted "ไม่มีรายการนี้แล้ว" (pmoGone). Same guards: the PMO still sent lines for this cabinet, no
+          //   command of ours newer than this snapshot. Removing equipment never sends anything to the PMO.
+          if (sub.bom && Array.isArray(sub.bom.items)) {
+            const delB = x => x.ext && x.ext.pmoItemId != null && x.ext.pmoLast && !seenIds.has(String(x.ext.pmoItemId))
+              && !((busy.get(String(row.pmo_task_id) + "|" + x.ext.pmoItemId) || 0) >= rowAt);
+            const outB = sub.bom.items.filter(delB);
+            if (outB.length) {
+              sub.bom.items = sub.bom.items.filter(x => !delB(x));
+              removed.push(...outB.map(x => [x.code, x.name].filter(Boolean).join(" ") || x.text || ""));
+              save = true;
+            }
+          }
         }
-        // a line that is no longer in the PMO (equipment / not covered above): never deleted here — noted once in Activity
+        // a line that is no longer in the PMO (not covered above): never deleted here — noted once in Activity
         [...sub.checklist, ...((sub.bom && sub.bom.items) || [])].forEach(x => {
           if (x.ext && x.ext.pmoItemId != null && (busy.get(String(row.pmo_task_id) + "|" + x.ext.pmoItemId) || 0) >= rowAt) return;   // decided on the snapshot after our command
           if (x.ext && x.ext.pmoItemId != null && !seenIds.has(String(x.ext.pmoItemId)) && !x.ext.pmoGone) { x.ext.pmoGone = true; gone.push(x.text || x.code || x.name || ""); }
@@ -17027,6 +17063,27 @@ function activityKind(text) {
   if (/วัน|กำหนด|เลื่อน|FAT/.test(s)) return "date";
   return "other";
 }
+// a status / date Activity line → plain words + pills ("ตู้ “X” (rule): A → B" → ตู้ “X” (rule) [A] → [B]); anything else stays as text
+function actTextHtml(text, kind) {
+  const s = String(text || "").replace(/^[⚡✓]\s*/, "").replace(/^อัตโนมัติ\s*/, "");
+  const pill = (v, cls) => `<span class="act-pill${cls ? " " + cls : ""}">${escapeHtml(v.trim())}</span>`;
+  const doneName = v => /เสร็จ/.test(v) || (state.statuses || []).some(st => st.isDone && st.name === v.trim());
+  if (kind === "status" || kind === "date") {
+    const i = s.lastIndexOf(" → ");
+    if (i > 0) {
+      let left = s.slice(0, i), right = s.slice(i + 3), from = "";
+      const m = left.match(/^(.*?):\s*([^:]+)$/);
+      if (m && kind === "status") { left = m[1]; from = m[2]; }
+      const dm = kind === "date" && left.match(/^(.*?)\s(\d{1,2}\/\d{1,2}(?:\/\d{2,4})?)$/);   // "กำหนด QC 07/11 → 02/11"
+      if (dm) { left = dm[1]; from = dm[2]; }
+      const ex = right.match(/^(\S+)(\s+\(.*\))$/), rv = ex ? ex[1] : right, tail = ex ? ex[2] : "";
+      return `${escapeHtml(left)} ${from ? (kind === "status" ? pill(from, "") : `<span class="act-from">${escapeHtml(from)}</span>`) + " → " : "→ "}${pill(rv, kind === "date" ? "date" : doneName(rv) ? "done" : "")}${tail ? `<span class="act-tail">${escapeHtml(tail)}</span>` : ""}`;
+    }
+    const d = s.match(/^(.*)\s(เสร็จ)$/);
+    if (d) return `${escapeHtml(d[1])} ${pill("เสร็จ", "done")}`;
+  }
+  return escapeHtml(s);
+}
 function activityLog(day) {
   const from = new Date(day + "T00:00:00").getTime(), to = from + 86400000, out = [];
   visibleBoardIds().forEach(bid => {
@@ -17035,7 +17092,9 @@ function activityLog(day) {
     (ws.tasks || []).forEach(t => {
       if (my ? !(t.deptStages || []).some(s => s.deptId === my) : !iSeeTask(t, ws)) return;
       (t.comments || []).forEach(c => {
-        if (c.type === "system" && c.at >= from && c.at < to) out.push({ task: t, c, boardId: bid, kind: activityKind(c.text) });
+        if (!c || !(c.at >= from && c.at < to)) return;
+        // ★ 2026-11-09 (owner): comments too — typed here (Activity ภายใน / to PMO / department alert) or pulled from the PMO
+        out.push({ task: t, c, boardId: bid, kind: c.type === "system" ? activityKind(c.text) : "comment" });
       });
     });
   });
@@ -17080,29 +17139,39 @@ function openAlertPopup(list, opts = {}) {
   const actEl = overlay.querySelector("[data-act-log]");
   let actDay = todayIso(), actKind = "all";
   function renderActLog() {
-    const rows = activityLog(actDay).filter(r => actKind === "all" || r.kind === actKind);
+    const all = activityLog(actDay);
+    const rows = all.filter(r => actKind === "all" || r.kind === actKind);
+    const cnt = k => all.filter(r => k === "all" || r.kind === k).length;
     const isToday = actDay === todayIso();
     actEl.innerHTML = `
       <div class="act-bar">
         <button type="button" class="act-nav" data-d="-1" title="วันก่อน">‹</button>
         <label class="act-day">${ico("calendar")}<span>${isToday ? "วันนี้" : actDay === addDaysIso(todayIso(), -1) ? "เมื่อวาน" : escapeHtml(formatDateTH(actDay))}</span><input type="date" data-pick value="${actDay}" max="${todayIso()}"></label>
         <button type="button" class="act-nav" data-d="1" title="วันถัดไป"${isToday ? " disabled" : ""}>›</button>
-        <div class="act-seg">${[["all", "ทั้งหมด"], ["status", "สถานะ"], ["date", "วันที่"]].map(([k, l]) => `<button type="button" data-k="${k}" class="${actKind === k ? "on" : ""}">${l}</button>`).join("")}</div>
       </div>
-      ${rows.length ? rows.map((r, i) => `
-        <div class="act-row act-${r.kind}">
-          <span class="act-time">${escapeHtml(new Date(r.c.at).toTimeString().slice(0, 5))}</span>
+      <div class="act-sum">${[["all", "ทั้งหมด"], ["status", "สถานะ"], ["date", "วันที่"], ["comment", "คอมเมนต์"]].map(([k, l]) =>
+        `<button type="button" data-k="${k}" class="act-sum-${k}${actKind === k ? " on" : ""}"><b>${cnt(k)}</b><span>${l}</span></button>`).join("")}</div>
+      ${rows.length ? rows.map((r, i) => {
+        const c = r.c, auto = r.kind === "status" && /อัตโนมัติ/.test(c.text || ""), pmoSys = c.type === "system" && c.author === "PMO";
+        const icn = r.kind === "comment" ? "message" : auto ? "zap" : r.kind === "status" ? "check-circle" : r.kind === "date" ? "calendar" : pmoSys ? "cloud" : "edit";
+        const icCls = r.kind === "other" ? (pmoSys ? "pmo" : "other") : r.kind;
+        const who = auto ? "อัตโนมัติ" : String(c.author || "—").replace(/ · PMO$/, "");
+        return `
+        <div class="act-row act-${r.kind}${r.kind === "other" ? " act-dim" : ""}">
+          <span class="act-ic act-ic-${icCls}">${ico(icn)}</span>
           <div class="act-body">
-            <button type="button" class="act-task" data-i="${i}">${(r.task.so || "").trim() ? `<span class="am2-so">${escapeHtml(r.task.so.trim())}</span>` : ""}${escapeHtml(r.task.title || "(ไม่มีชื่องาน)")}</button>
-            <div class="act-text">${escapeHtml(r.c.text || "")}</div>
-            <div class="act-who">${escapeHtml(r.c.author || "—")}${r.boardId !== root.activeBoard ? ` · ${escapeHtml(boardNameOf(r.boardId))}` : ""}</div>
+            <button type="button" class="act-task" data-i="${i}">${(r.task.so || "").trim() ? `<span class="act-so">${escapeHtml(r.task.so.trim())}</span>` : ""}${escapeHtml(r.task.title || "(ไม่มีชื่องาน)")}</button>
+            ${r.kind === "comment"
+              ? `<div class="act-bubble">${(c.ext && c.ext.src === "pmo") || c.toPmo || c.type === "alert" ? `<span class="act-ctag${isPmoEntry(c) ? " pmo" : ""}">${c.ext && c.ext.src === "pmo" ? "PMO" : c.toPmo ? "ส่ง PMO" : "แจ้งเตือน"}</span>` : ""}${escapeHtml(c.text || "") || `<span class="act-file">${ico("clip")} ไฟล์แนบ</span>`}</div>`
+              : `<div class="act-text">${actTextHtml(c.text, r.kind)}</div>`}
           </div>
-        </div>`).join("") : `<div class="am2-empty">${ico("list-check")}<span>ไม่มีความเคลื่อนไหว</span></div>`}`;
+          <div class="act-meta"><span class="act-time">${escapeHtml(new Date(c.at).toTimeString().slice(0, 5))}</span><span class="act-who">${escapeHtml(who)}</span>${r.boardId !== root.activeBoard ? `<span class="act-who">${escapeHtml(boardNameOf(r.boardId))}</span>` : ""}</div>
+        </div>`; }).join("") : `<div class="am2-empty">${ico("list-check")}<span>ไม่มีความเคลื่อนไหว</span></div>`}`;
     actEl.querySelectorAll(".act-nav").forEach(b => b.addEventListener("click", () => { actDay = addDaysIso(actDay, +b.dataset.d); if (actDay > todayIso()) actDay = todayIso(); renderActLog(); }));
     const pick = actEl.querySelector("[data-pick]");
     pick.addEventListener("change", () => { if (pick.value) { actDay = pick.value > todayIso() ? todayIso() : pick.value; renderActLog(); } });
     actEl.querySelector(".act-day").addEventListener("click", e => { if (e.target !== pick) { try { pick.showPicker(); } catch (_) { pick.focus(); } } });
-    actEl.querySelectorAll(".act-seg button").forEach(b => b.addEventListener("click", () => { actKind = b.dataset.k; renderActLog(); }));
+    actEl.querySelectorAll(".act-sum button").forEach(b => b.addEventListener("click", () => { actKind = b.dataset.k; renderActLog(); }));
     actEl.querySelectorAll(".act-task").forEach(b => b.addEventListener("click", () => {
       const r = rows[+b.dataset.i]; close(); if (r.boardId !== root.activeBoard) setBoard(r.boardId); openTaskModal(r.task.id); }));
   }
