@@ -1573,6 +1573,29 @@ html, body { touch-action: manipulation; }
 .am2-tab .am2-count[hidden] { display: none; }
 .am2-empty { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 26px 0; color: var(--text-faint); font-size: 13px; }
 .am2-empty .ico { width: 28px; height: 28px; }
+/* ★ 2026-11-09 bell › ความเคลื่อนไหว */
+.am2-tab { white-space: nowrap; }
+@media (max-width: 440px) { .am2-tabs { margin: 0 10px 10px; } .am2-tab { font-size: 12px; padding: 7px 4px; gap: 4px; } .am2-tab .ico { display: none; } }
+.am2 .am2-act { gap: 6px; }
+.act-bar { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; padding: 2px 0 8px; background: var(--panel); }
+.act-nav { width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--border); background: var(--panel); color: var(--text); font-size: 18px; line-height: 1; cursor: pointer; }
+.act-nav:disabled { opacity: .35; cursor: default; }
+.act-day { position: relative; display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--border); font-size: 13px; font-weight: 700; color: var(--text); cursor: pointer; }
+.act-day .ico { width: 14px; height: 14px; color: var(--text-dim); }
+.act-day input { position: absolute; inset: 0; opacity: 0; width: 100%; cursor: pointer; }
+.act-seg { margin-left: auto; display: inline-flex; padding: 3px; gap: 2px; background: var(--bg); border-radius: 9px; }
+.act-seg button { border: none; background: transparent; color: var(--text-dim); font: inherit; font-size: 12px; font-weight: 700; padding: 4px 9px; border-radius: 7px; cursor: pointer; }
+.act-seg button.on { background: var(--panel); color: var(--text); box-shadow: var(--shadow-sm); }
+.act-row { display: flex; gap: 10px; padding: 9px 11px; border: 1px solid var(--border); border-left: 3px solid var(--border); border-radius: 10px; background: var(--panel); }
+.act-row.act-status { border-left-color: #8b5cf6; }
+.act-row.act-date { border-left-color: #f59e0b; }
+.act-time { flex: 0 0 auto; font-size: 12px; font-weight: 700; color: var(--text-dim); font-variant-numeric: tabular-nums; padding-top: 1px; }
+.act-body { flex: 1 1 auto; min-width: 0; }
+.act-task { display: block; max-width: 100%; border: none; background: none; padding: 0; font: inherit; font-size: 12.5px; font-weight: 700; color: var(--text); text-align: left; cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.act-task:hover { color: var(--accent); }
+.act-task .am2-so { margin-right: 6px; }
+.act-text { font-size: 13px; color: var(--text); margin-top: 2px; word-break: break-word; }
+.act-who { font-size: 11.5px; color: var(--text-faint); margin-top: 2px; }
 .alert-modal.am2 .alert-card.am2-card.am2-done { box-shadow: none; background: var(--bg); }
 .am2-done .am2-av { opacity: .75; }
 .am2-msg-clamp { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; background: var(--panel); }
@@ -16995,6 +17018,29 @@ function alertHistory() {
   });
   return out.sort((a, b) => (b.c.at || 0) - (a.c.at || 0)).slice(0, 80);
 }
+// ★ 2026-11-09 (owner): the bell's "ความเคลื่อนไหว" tab — every Activity system line written on `day`, in the jobs of MY
+//   department (a job with my department's stage; no department → every job I can see), every calendar I can open, newest
+//   first. Nothing new is stored: logActivity already stamps who + when on the job.
+function activityKind(text) {
+  const s = String(text || "");
+  if (/สถานะ|เสร็จ|อัตโนมัติ|^ตู้ “[^”]*” →/.test(s)) return "status";
+  if (/วัน|กำหนด|เลื่อน|FAT/.test(s)) return "date";
+  return "other";
+}
+function activityLog(day) {
+  const from = new Date(day + "T00:00:00").getTime(), to = from + 86400000, out = [];
+  visibleBoardIds().forEach(bid => {
+    const ws = root.boards[bid]; if (!ws) return;
+    const my = myDeptIn(ws);
+    (ws.tasks || []).forEach(t => {
+      if (my ? !(t.deptStages || []).some(s => s.deptId === my) : !iSeeTask(t, ws)) return;
+      (t.comments || []).forEach(c => {
+        if (c.type === "system" && c.at >= from && c.at < to) out.push({ task: t, c, boardId: bid, kind: activityKind(c.text) });
+      });
+    });
+  });
+  return out.sort((a, b) => b.c.at - a.c.at);
+}
 function openAlertPopup(list, opts = {}) {
   list = (list || pendingAlerts()).slice();
   const seenBefore = bellSeenAt();
@@ -17013,9 +17059,11 @@ function openAlertPopup(list, opts = {}) {
       <div class="am2-tabs">
         <button type="button" class="am2-tab" data-tab="pending">ยังไม่รับทราบ<span class="am2-count" data-count${list.length ? "" : " hidden"}>${list.length}</span></button>
         <button type="button" class="am2-tab" data-tab="history">${ico("history")} ประวัติ</button>
+        <button type="button" class="am2-tab" data-tab="act">${ico("list-check")} ความเคลื่อนไหว</button>
       </div>
       <div class="alert-list" data-list></div>
       <div class="alert-list am2-hist" data-hist hidden></div>
+      <div class="alert-list am2-act" data-act-log hidden></div>
     </div>`;
   document.body.appendChild(overlay);
   const listEl = overlay.querySelector("[data-list]");
@@ -17024,8 +17072,39 @@ function openAlertPopup(list, opts = {}) {
   const emptyPending = () => { listEl.innerHTML = `<div class="am2-empty">${ico("check-circle")}<span>ไม่มีการแจ้งเตือนค้าง</span></div>`; };
   function showTab(tab) {
     overlay.querySelectorAll(".am2-tab").forEach(b => b.classList.toggle("on", b.dataset.tab === tab));
-    listEl.hidden = tab !== "pending"; histEl.hidden = tab !== "history";
+    listEl.hidden = tab !== "pending"; histEl.hidden = tab !== "history"; actEl.hidden = tab !== "act";
     if (tab === "history") renderHistory();
+    if (tab === "act") renderActLog();
+  }
+  // ★ 2026-11-09 (owner): ความเคลื่อนไหว — the Activity lines (status / dates / ticks …) of my department's jobs, one day at a time
+  const actEl = overlay.querySelector("[data-act-log]");
+  let actDay = todayIso(), actKind = "all";
+  function renderActLog() {
+    const rows = activityLog(actDay).filter(r => actKind === "all" || r.kind === actKind);
+    const isToday = actDay === todayIso();
+    actEl.innerHTML = `
+      <div class="act-bar">
+        <button type="button" class="act-nav" data-d="-1" title="วันก่อน">‹</button>
+        <label class="act-day">${ico("calendar")}<span>${isToday ? "วันนี้" : actDay === addDaysIso(todayIso(), -1) ? "เมื่อวาน" : escapeHtml(formatDateTH(actDay))}</span><input type="date" data-pick value="${actDay}" max="${todayIso()}"></label>
+        <button type="button" class="act-nav" data-d="1" title="วันถัดไป"${isToday ? " disabled" : ""}>›</button>
+        <div class="act-seg">${[["all", "ทั้งหมด"], ["status", "สถานะ"], ["date", "วันที่"]].map(([k, l]) => `<button type="button" data-k="${k}" class="${actKind === k ? "on" : ""}">${l}</button>`).join("")}</div>
+      </div>
+      ${rows.length ? rows.map((r, i) => `
+        <div class="act-row act-${r.kind}">
+          <span class="act-time">${escapeHtml(new Date(r.c.at).toTimeString().slice(0, 5))}</span>
+          <div class="act-body">
+            <button type="button" class="act-task" data-i="${i}">${(r.task.so || "").trim() ? `<span class="am2-so">${escapeHtml(r.task.so.trim())}</span>` : ""}${escapeHtml(r.task.title || "(ไม่มีชื่องาน)")}</button>
+            <div class="act-text">${escapeHtml(r.c.text || "")}</div>
+            <div class="act-who">${escapeHtml(r.c.author || "—")}${r.boardId !== root.activeBoard ? ` · ${escapeHtml(boardNameOf(r.boardId))}` : ""}</div>
+          </div>
+        </div>`).join("") : `<div class="am2-empty">${ico("list-check")}<span>ไม่มีความเคลื่อนไหว</span></div>`}`;
+    actEl.querySelectorAll(".act-nav").forEach(b => b.addEventListener("click", () => { actDay = addDaysIso(actDay, +b.dataset.d); if (actDay > todayIso()) actDay = todayIso(); renderActLog(); }));
+    const pick = actEl.querySelector("[data-pick]");
+    pick.addEventListener("change", () => { if (pick.value) { actDay = pick.value > todayIso() ? todayIso() : pick.value; renderActLog(); } });
+    actEl.querySelector(".act-day").addEventListener("click", e => { if (e.target !== pick) { try { pick.showPicker(); } catch (_) { pick.focus(); } } });
+    actEl.querySelectorAll(".act-seg button").forEach(b => b.addEventListener("click", () => { actKind = b.dataset.k; renderActLog(); }));
+    actEl.querySelectorAll(".act-task").forEach(b => b.addEventListener("click", () => {
+      const r = rows[+b.dataset.i]; close(); if (r.boardId !== root.activeBoard) setBoard(r.boardId); openTaskModal(r.task.id); }));
   }
   overlay.querySelectorAll(".am2-tab").forEach(b => b.addEventListener("click", () => showTab(b.dataset.tab)));
   function renderHistory() {
