@@ -4245,7 +4245,18 @@ function moDigits(v) { const m = String(v || "").match(/(\d{3,})\s*$/); return m
 
 // ctx = { task, sub, commit(), title }
 function openBomPanel(ctx) {
-  const { task, sub } = ctx;
+  let { task, sub } = ctx;
+  // ★ 2026-11-10 (owner: ติ๊กอุปกรณ์หลายอัน ปิดแล้วบันทึกแค่ 4) — the task popup / cloud sync replaces the task's objects (a PMO pull, someone
+  //   else's save → adoptIntoModal copies a fresh task in); this panel kept the OLD cabinet, so later ticks changed an orphan that
+  //   was never saved. Always work on the live cabinet (same id) and repaint when it was swapped.
+  const subId = sub.id;
+  function live() {
+    const t2 = ctx.liveTask ? ctx.liveTask() : null; if (t2) task = t2;
+    const s2 = ((task && task.subtasks) || []).find(x => x.id === subId);
+    if (s2 && s2 !== sub) { sub = s2; return true; }
+    return false;
+  }
+  const curItems = () => { live(); return (sub.bom && sub.bom.items) || []; };
   document.querySelectorAll(".bom-overlay").forEach(n => n.remove());
   const ov = document.createElement("div");
   ov.className = "overlay bom-overlay";
@@ -4256,7 +4267,12 @@ function openBomPanel(ctx) {
   const body = ov.querySelector("[data-bbody]");
   ov.querySelector("[data-bsub]").textContent = [sub.mo, sub.text].filter(Boolean).join(" · ");
   let q = "", hideDone = false;
-  const close = () => { ov.remove(); document.removeEventListener("keydown", onEsc, true); ctx.onClose && ctx.onClose(); };
+  const onApp = () => setTimeout(() => {
+    if (!ov.isConnected || !live() || !body.querySelector(".bom-list")) return;
+    const st = body.querySelector(".bom-list").scrollTop; renderList(); const l2 = body.querySelector(".bom-list"); if (l2) l2.scrollTop = st;
+  }, 0);
+  document.addEventListener("app-rendered", onApp);
+  const close = () => { ov.remove(); document.removeEventListener("keydown", onEsc, true); document.removeEventListener("app-rendered", onApp); ctx.onClose && ctx.onClose(); };
   const onEsc = (e) => { if (e.key === "Escape") { e.stopPropagation(); close(); } };
   document.addEventListener("keydown", onEsc, true);
   ov.addEventListener("mousedown", (e) => { if (e.target === ov) close(); });
@@ -4280,6 +4296,7 @@ function openBomPanel(ctx) {
   const pickFile = () => { if (!canEdit()) { permDenied("สิทธิ์ของคุณนำเข้ารายการอุปกรณ์ไม่ได้"); return; } fileIn.click(); };
 
   function renderList() {
+    live();
     const bom = sub.bom, items = (bom && bom.items) || [];
     if (!items.length) {
       body.innerHTML = `<div class="bom-empty">${ico("file-text")}<div>ยังไม่มีรายการอุปกรณ์</div>${canEdit() ? `<button type="button" class="btn btn-primary" data-bimp>${ico("upload")} นำเข้าใบสั่งผลิต (PDF)</button>` : ""}</div>`;
@@ -4311,16 +4328,16 @@ function openBomPanel(ctx) {
     body.querySelectorAll("[data-bdel]").forEach(btn => btn.addEventListener("click", (e) => {
       e.preventDefault(); e.stopPropagation();
       if (!canEdit()) { permDenied("สิทธิ์ของคุณลบรายการไม่ได้"); return; }
-      const id = btn.closest(".bom-row").dataset.bid, ix = items.findIndex(x => x.id === id); if (ix < 0) return;
+      const id = btn.closest(".bom-row").dataset.bid, items = curItems(), ix = items.findIndex(x => x.id === id); if (ix < 0) return;
       const gone = items.splice(ix, 1)[0];
       ctx.commit();
       const st = body.querySelector(".bom-list").scrollTop; renderList(); const l2 = body.querySelector(".bom-list"); if (l2) l2.scrollTop = st;
-      toast(`ลบ “${gone.code || gone.name}” แล้ว`, { label: "เลิกทำ", run: () => { items.splice(Math.min(ix, items.length), 0, gone); ctx.commit(); renderList(); } });
+      toast(`ลบ “${gone.code || gone.name}” แล้ว`, { label: "เลิกทำ", run: () => { const it2 = curItems(); it2.splice(Math.min(ix, it2.length), 0, gone); ctx.commit(); renderList(); } });
     }));
     body.querySelector("[data-bdelall]")?.addEventListener("click", async () => {
       if (!canEdit()) { permDenied("สิทธิ์ของคุณลบรายการไม่ได้"); return; }
       if (!await confirmDialog({ icon: "trash", title: "ลบรายการอุปกรณ์ทั้งหมดของตู้นี้?", message: `${items.length} รายการ (รวมที่ติ๊กไว้)`, confirmText: "ลบทั้งหมด", danger: true })) return;
-      delete sub.bom;
+      live(); delete sub.bom;
       logActivity(task, `ลบรายการอุปกรณ์ ตู้ “${sub.text || "(ไม่มีชื่อ)"}”`);
       ctx.commit(true); renderList();
     });
@@ -4329,7 +4346,7 @@ function openBomPanel(ctx) {
     body.querySelectorAll("[data-bnote]").forEach(b => b.addEventListener("click", (e) => {
       e.preventDefault(); e.stopPropagation();
       if (!canTick()) { permDenied("สิทธิ์ของคุณเขียนหมายเหตุไม่ได้"); return; }
-      const it = items.find(x => x.id === b.closest(".bom-item").dataset.bid); if (!it) return;
+      const it = curItems().find(x => x.id === b.closest(".bom-item").dataset.bid); if (!it) return;
       promptDialog({ title: (it.code ? it.code + " · " : "") + (it.name || "หมายเหตุ"), placeholder: "หมายเหตุ…", value: it.note || "", confirmText: "บันทึก", altText: !it.note ? "" : it.noteDone ? "เปิดอีกครั้ง" : "✓ เคลียร์" }).then(v => {
         if (v === null || !ov.isConnected) return;
         if (v && v.alt ? setNoteDone(task, it, !it.noteDone) : setItemNote(task, it, v)) { ctx.commit(); keepScroll(); }
@@ -4338,11 +4355,11 @@ function openBomPanel(ctx) {
     body.querySelectorAll("[data-bnclr]").forEach(b => b.addEventListener("click", (e) => {
       e.preventDefault(); e.stopPropagation();
       if (!canTick()) { permDenied("สิทธิ์ของคุณเขียนหมายเหตุไม่ได้"); return; }
-      const it = items.find(x => x.id === b.closest(".bom-item").dataset.bid);
+      const it = curItems().find(x => x.id === b.closest(".bom-item").dataset.bid);
       if (it && setNoteDone(task, it, !it.noteDone)) { ctx.commit(); keepScroll(); }
     }));
     body.querySelectorAll(".bom-row").forEach(row => row.querySelector("input").addEventListener("change", (e) => {
-      const it = items.find(x => x.id === row.dataset.bid); if (!it) return;
+      const it = curItems().find(x => x.id === row.dataset.bid); if (!it) return;
       if (!canTick()) { permDenied("สิทธิ์ของคุณติ๊กรายการไม่ได้"); e.target.checked = !!it.done; return; }
       if (e.target.checked && noteBlocksTick(it)) {
         e.target.checked = false; toast(NOTE_BLOCK_MSG);
@@ -4388,6 +4405,7 @@ function openBomPanel(ctx) {
       body.querySelector("[data-bcancel]").addEventListener("click", renderList);
       body.querySelector("[data-bok]").addEventListener("click", async () => {
         if (!canEdit()) { permDenied("สิทธิ์ของคุณนำเข้ารายการอุปกรณ์ไม่ได้"); return; }
+        live();
         const had = sub.bom && (sub.bom.items || []).length;
         if (had && !await confirmDialog({ icon: "file-text", title: "แทนที่รายการอุปกรณ์เดิม?", message: "รายการที่รหัสตรงกันจะคงการติ๊กไว้", confirmText: "แทนที่", danger: false })) return;
         bomApply(task, sub, res, lines.filter(l => !l.cons || pickCons.has(l.k)), fileName);
@@ -18028,7 +18046,8 @@ function mListClick(e) {
   if (bomB) {
     e.stopPropagation();
     const sub = (t.subtasks || []).find(x => x.id === bomB.dataset.bom); if (!sub) return;
-    openBomPanel({ task: t, sub, commit: () => { t.updatedAt = Date.now(); saveState(); }, onClose: () => renderMobile() });
+    const liveT = () => (state.tasks || []).find(x => x.id === t.id) || t;   // ★ 2026-11-10 a sync may replace the task object
+    openBomPanel({ task: t, sub, liveTask: liveT, commit: () => { liveT().updatedAt = Date.now(); saveState(); }, onClose: () => renderMobile() });
     return;
   }
   const sh = e.target.closest("[data-sub]");
