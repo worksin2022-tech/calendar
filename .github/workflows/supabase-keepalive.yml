@@ -1,0 +1,36 @@
+# Keeps the Supabase Free project from being paused for inactivity (e.g. long holidays when nobody opens the app
+# and the PMO bot PC is off). Once a day it runs one tiny read on the database through the REST API.
+# The project URL + public anon key are read from index.html (they are public in the page already) — no secrets.
+# A failed run (project paused / unreachable) makes GitHub e-mail the repo owner.
+name: Supabase keep-alive
+
+on:
+  schedule:
+    - cron: "17 2 * * *"   # every day 02:17 UTC = 09:17 Thailand
+  workflow_dispatch: {}      # "Run workflow" button for a manual test
+
+permissions:
+  contents: read
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: index.html
+          sparse-checkout-cone-mode: false
+      - name: Ping Supabase
+        run: |
+          URL=$(grep -oE 'https://[a-z0-9]+\.supabase\.co' index.html | sort -u | head -1)
+          KEY=$(grep -oE 'eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+' index.html | head -1)
+          if [ -z "$URL" ] || [ -z "$KEY" ]; then echo "Supabase URL/key not found in index.html"; exit 1; fi
+          for i in 1 2 3; do
+            CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 "$URL/rest/v1/boards?select=id&limit=1" -H "apikey: $KEY" -H "Authorization: Bearer $KEY")
+            echo "try $i: HTTP $CODE"
+            if [ "$CODE" = "200" ]; then exit 0; fi
+            sleep 20
+          done
+          echo "Supabase did not answer 200 — the project may be paused: open https://supabase.com/dashboard and press Restore"
+          exit 1
