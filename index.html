@@ -2467,6 +2467,29 @@ body.chip-dragging .task-chip.span-pull { pointer-events: none; }
 .ta-reply-x:hover { color: var(--danger); }
 .ta-item-head .ta-pin + .ta-del { margin-left: 0; }
 @media (hover: none) { .ta-pin, .ta-del { opacity: 1; } }
+/* ★ 2026-11-17 (owner: เวลา/วันที่ชิดขวาตลอด ให้ดูเป็นระเบียบ) — one line per header; the date/time is always the last thing on the right
+   (reply / pin / ✕ sit just before it); a long name or badge is cut with "…" instead of pushing the time to a new line */
+.ta-item-head, .ta-alert-head { flex-wrap: nowrap; min-width: 0; }
+.ta-item-head .ta-author, .ta-alert-head .ta-author { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ta-alert-head .ta-alert-badge { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 0 1 auto; }
+.ta-item-head .ta-src-sent, .ta-item-head .ta-av, .ta-alert-head .ta-av { flex: 0 0 auto; }
+.ta-item-head .ta-time, .ta-alert-head .ta-alert-time { order: 9; margin-left: 0; flex: 0 0 auto; white-space: nowrap; }
+.ta-item-head .ta-reply, .ta-alert-head .ta-reply, .ta-item-head .ta-pin, .ta-alert-head .ta-pin, .ta-item-head .ta-del, .ta-alert-head .ta-del { flex: 0 0 auto; }
+.ta-item-head .ta-src-sent { min-width: 0; overflow: hidden; text-overflow: ellipsis; flex: 0 3 auto; }   /* the tag gives way before the name */
+.ta-item-head .ta-author, .ta-alert-head .ta-author { flex: 0 1 auto; }
+.ta-alert-head .ta-alert-badge { flex-shrink: 3; }
+/* the free space sits after the name (or its "ส่งถึง PMO" tag) → reply / pin / ✕ hug the time at the right */
+.ta-item-head .ta-reply, .ta-alert-head .ta-reply, .ta-item-head .ta-pin, .ta-alert-head .ta-pin, .ta-item-head .ta-del, .ta-alert-head .ta-del { margin-left: 0 !important; }
+.ta-item-head .ta-author, .ta-alert-head .ta-author { margin-right: auto; }
+.ta-item-head .ta-author:has(+ .ta-src-sent) { margin-right: 0; }
+.ta-item-head .ta-src-sent { margin-right: auto; }
+/* mouse devices: the (invisible) reply / pin / ✕ take no room until the comment is hovered — a short name stays whole */
+@media (hover: hover) {
+  .ta-item-head .ta-reply, .ta-item-head .ta-pin:not(.on), .ta-item-head .ta-del,
+  .ta-alert-head .ta-reply, .ta-alert-head .ta-pin:not(.on), .ta-alert-head .ta-del { display: none; }
+  .ta-item:hover .ta-item-head .ta-reply, .ta-item:hover .ta-item-head .ta-pin, .ta-item:hover .ta-item-head .ta-del,
+  .ta-alert:hover .ta-alert-head .ta-reply, .ta-alert:hover .ta-alert-head .ta-pin, .ta-alert:hover .ta-alert-head .ta-del { display: inline-flex; }
+}
 /* pinned strip — sticks to the top of the feed */
 .ta-pins { position: sticky; top: -12px; z-index: 5; margin: -12px -14px 0; padding: 6px 14px 8px; background: var(--panel); border-bottom: 1px solid var(--border); box-shadow: var(--shadow-sm); }
 .ta-pins-head { display: flex; align-items: center; gap: 6px; width: 100%; border: none; background: transparent; color: var(--text); font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; padding: 2px 0; }
@@ -5948,7 +5971,7 @@ function runAutomations(task, before, manualBase) {
       subFired = r; sub.statusId = r.statusId;
     });
     if (sub.statusId === subStart) return;
-    logActivity(task, `⚡ อัตโนมัติ ตู้ “${sub.text || "(ไม่มีชื่อ)"}” (${automationRuleLabel(subFired)}): ${getStatus(subStart).name} → ${getStatus(sub.statusId).name}`);
+    logActivity(task, `⚡ อัตโนมัติ ตู้ “${sub.text || "(ไม่มีชื่อ)"}” (${automationRuleLabel(subFired)}): ${getStatus(subStart).name} → ${getStatus(sub.statusId).name}`, "อัตโนมัติ");
     notifyStatusChange(task, sub, subStart, sub.statusId);
     toast(`⚡ ตู้ ${sub.text || ""} → “${getStatus(sub.statusId).name}”`);
     changed = true;
@@ -5964,7 +5987,7 @@ function runAutomations(task, before, manualBase) {
     fired = r; task.statusId = r.statusId;
   });
   if (task.statusId !== startId) {
-    logActivity(task, `⚡ อัตโนมัติ (${automationRuleLabel(fired)}): ${getStatus(startId).name} → ${getStatus(task.statusId).name}`);
+    logActivity(task, `⚡ อัตโนมัติ (${automationRuleLabel(fired)}): ${getStatus(startId).name} → ${getStatus(task.statusId).name}`, "อัตโนมัติ");
     notifyStatusChange(task, null, startId, task.statusId);
     toast(`⚡ งาน → “${getStatus(task.statusId).name}”`);
     changed = true;
@@ -7019,7 +7042,7 @@ function getDeptIn(ws, id) { return (ws.departments || []).find(d => d.id === id
 function changedByName(t, before, fallback) {
   const old = new Set(((before && before.comments) || []).map(c => c.id));
   const sys = (t.comments || []).filter(c => c.type === "system" && c.author && !old.has(c.id));
-  return sys.length ? sys[sys.length - 1].author : (fallback || "");
+  return sys.length ? (isAutoLine(sys[sys.length - 1]) ? "อัตโนมัติ" : sys[sys.length - 1].author) : (fallback || "");
 }
 function notifyRemoteBoardChange(ws, newTasks, oldTasksById, savedBy, boardId) {
   const L = t => ({ board: boardId || "", task: t && t.id });   // ★ 2026-10-21: click the notification → open this task
@@ -11642,7 +11665,7 @@ function openTaskModal(taskId, defaults={}) {
       sys.dataset.cid = c.id;
       sys.innerHTML = `
         <span class="ta-sys-dot"></span>
-        <span class="ta-sys-text">${c.author ? `<span class="ta-sys-author">${escapeHtml(c.author)}</span> ` : ""}${escapeHtml(c.text)}</span>
+        <span class="ta-sys-text">${c.author && !isAutoLine(c) ? `<span class="ta-sys-author">${escapeHtml(c.author)}</span> ` : ""}${escapeHtml(c.text)}</span>
         <span class="ta-sys-time">${formatDateTimeTH(c.at)}</span>`;
       return sys;
     };
@@ -11653,7 +11676,7 @@ function openTaskModal(taskId, defaults={}) {
       const key = run[0].id, last = run[run.length - 1], open = _sysOpen.has(key);
       const grp = document.createElement("div");
       grp.className = "ta-sysgrp" + (open ? " open" : "");
-      grp.innerHTML = `<button type="button" class="ta-sysgrp-head"><span class="ta-sysgrp-caret">▸</span><span class="ta-sysgrp-n">${run.length}</span><span class="ta-sysgrp-lbl">กิจกรรมอัตโนมัติ</span><span class="ta-sysgrp-last">${last.author ? escapeHtml(last.author) + " " : ""}${escapeHtml(last.text)}</span><span class="ta-sys-time">${formatDateTimeTH(last.at)}</span></button><div class="ta-sysgrp-body"></div>`;
+      grp.innerHTML = `<button type="button" class="ta-sysgrp-head"><span class="ta-sysgrp-caret">▸</span><span class="ta-sysgrp-n">${run.length}</span><span class="ta-sysgrp-lbl">กิจกรรมอัตโนมัติ</span><span class="ta-sysgrp-last">${last.author && !isAutoLine(last) ? escapeHtml(last.author) + " " : ""}${escapeHtml(last.text)}</span><span class="ta-sys-time">${formatDateTimeTH(last.at)}</span></button><div class="ta-sysgrp-body"></div>`;
       const body = grp.querySelector(".ta-sysgrp-body");
       run.forEach(c => body.appendChild(sysRow(c)));
       grp.querySelector(".ta-sysgrp-head").addEventListener("click", () => {
@@ -12421,6 +12444,10 @@ function formatDateTimeTH(ts) {
 /* ---------- Activity logging ---------- */
 // currentUser() is defined earlier, near the Supabase auth block (returns the signed-in profile's name)
 // append a system activity entry to a task's feed (records who did it)
+// ★ 2026-11-17 (owner: กิจกรรมอัตโนมัติชอบขึ้นเป็นชื่อคนแบบสุ่ม) — an ⚡ automation line was stamped with whoever's device ran the rule
+//   (often the device that pulled PMO ticks first) → it is shown WITHOUT a person's name; new lines are written as author "อัตโนมัติ".
+//   Old lines keep their stored author (nothing rewritten) — only the display changes.
+function isAutoLine(c) { return !!c && c.type === "system" && /^⚡/.test(String(c.text || "")); }
 function logActivity(task, text, author) {   // author: default = whoever is using this browser; "PMO" for changes pulled from PMO
   if (!task) return;
   if (!Array.isArray(task.comments)) task.comments = [];
@@ -17194,7 +17221,7 @@ function openAlertPopup(list, opts = {}) {
       <div class="act-sum">${[["all", "ทั้งหมด"], ["status", "สถานะ"], ["date", "วันที่"], ["comment", "คอมเมนต์"]].map(([k, l]) =>
         `<button type="button" data-k="${k}" class="act-sum-${k}${actKind === k ? " on" : ""}"><b>${cnt(k)}</b><span>${l}</span></button>`).join("")}</div>
       ${rows.length ? rows.map((r, i) => {
-        const c = r.c, auto = r.kind === "status" && /อัตโนมัติ/.test(c.text || ""), pmoSys = c.type === "system" && c.author === "PMO";
+        const c = r.c, auto = isAutoLine(c) || (r.kind === "status" && /อัตโนมัติ/.test(c.text || "")), pmoSys = c.type === "system" && c.author === "PMO";
         const icn = r.kind === "comment" ? "message" : auto ? "zap" : r.kind === "status" ? "check-circle" : r.kind === "date" ? "calendar" : pmoSys ? "cloud" : "edit";
         const icCls = r.kind === "other" ? (pmoSys ? "pmo" : "other") : r.kind;
         const who = auto ? "อัตโนมัติ" : String(c.author || "—").replace(/ · PMO$/, "");
