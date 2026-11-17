@@ -3368,6 +3368,9 @@ body.chip-dragging .task-chip.span-pull { pointer-events: none; }
 .auto-st-dot { width: 10px; height: 10px; border-radius:50%; flex: 0 0 auto; display: inline-block; margin-right: 2px; }
 .auto-card { background:var(--b-fafbfc, #fafbfc); border:1px solid var(--border); border-radius:8px; padding: 2px 0 6px; margin-bottom: 8px; }
 .auto-card .cl-tpl-row { background:transparent; margin-bottom: 0; }
+.tl-card .cl-tpl-row input.tl-in[type=text] { flex: 1 1 170px; min-width: 140px; border:1px solid var(--border-strong); border-radius:6px; padding: 6px 8px; font-size: 13px; background:var(--b-ffffff, #fff); color:var(--text); }
+.tl-card .tl-in[hidden], .tl-card select[hidden] { display: none; } .tl-card select[data-need], .tl-card select[data-nobom] { flex: 1 1 200px; min-width: 170px; }
+.tl-card.off .tl-in, .tl-card.off select, .tl-card.off .auto-word { opacity: .45; }
 .auto-card.off select, .auto-card.off .auto-word { opacity: .45; }
 .auto-sub { display: flex; align-items: center; gap: 8px; padding: 0 8px 4px 34px; }
 .auto-sub select.auto-logic { flex: 0 0 auto; font-weight: 700; color:var(--accent); }
@@ -5755,15 +5758,36 @@ function noteItems(sub, deptId) { return ((sub && sub.checklist) || []).filter(i
 // ★ 2026-10-27 (owner): an item with an OPEN note can't be ticked until its note is cleared (✓). Unticking is always allowed.
 const NOTE_BLOCK_MSG = "เคลียร์หมายเหตุของข้อนี้ก่อน จึงจะติ๊กได้";
 function noteBlocksTick(it) { return !!(it && !it.done && it.note && !it.noteDone); }
-// ★ 2026-11-17 (owner): the checklist line "ตรวจเช็คอุปกรณ์" can't be ticked while the cabinet's equipment list (รายการอุปกรณ์ / BOM)
-//   isn't all ticked. A cabinet with no equipment list = allowed. Unticking is always allowed. Ticks made in the PMO itself can't be stopped.
-function isEquipCheckItem(it) { return /ตรวจเช็ค\s*อุปกรณ์/.test(String((it && it.text) || "")); }
-function equipBlocksTick(sub, it) {
-  if (!it || it.done || !isEquipCheckItem(it)) return null;
-  const p = bomProgress(sub);
-  return p.total && p.done < p.total ? p : null;
+/* ★ 2026-11-17 (owner) ⚙ อัตโนมัติ › "ห้ามติ๊กจนกว่า…" — state.settings.tickLocks = [{ id, on, item, need, needItem, noBom }]
+   item:     part of a checklist line's name (spaces / case ignored) — e.g. "ตรวจเช็คอุปกรณ์"
+   need:     "bom"    = the cabinet's equipment list (รายการอุปกรณ์) is all ticked   · noBom "allow" | "block" when the cabinet has none
+             "item"   = the line(s) named needItem in the same cabinet are ticked (none in this cabinet = allowed)
+             "others" = every other line of the same department in this cabinet is ticked
+   Only blocks TICKING (unticking is always allowed). Ticks made in the PMO itself can't be stopped. First rule that blocks wins. */
+function tlNorm(v) { return String(v || "").replace(/\s+/g, "").toLowerCase(); }
+function tickLocks() { const a = state.settings && state.settings.tickLocks; return Array.isArray(a) ? a : []; }
+function tickLockReason(sub, it) {
+  if (!sub || !it || it.done) return "";
+  const name = tlNorm(it.text);
+  for (const r of tickLocks()) {
+    if (!r || r.on === false || !tlNorm(r.item) || !name.includes(tlNorm(r.item))) continue;
+    if (r.need === "item") {
+      const want = tlNorm(r.needItem); if (!want) continue;
+      const lines = (sub.checklist || []).filter(x => x !== it && tlNorm(x.text).includes(want));
+      const left = lines.filter(x => !x.done);
+      if (left.length) return `ติ๊ก “${left[0].text}” ก่อน จึงจะติ๊กข้อนี้ได้`;
+    } else if (r.need === "others") {
+      const lines = (sub.checklist || []).filter(x => x !== it && x.deptId === it.deptId);
+      const done = lines.filter(x => x.done).length;
+      if (done < lines.length) return `ติ๊กรายการอื่นของแผนกนี้ให้ครบก่อน (${done}/${lines.length}) จึงจะติ๊กข้อนี้ได้`;
+    } else {   // "bom"
+      const p = bomProgress(sub);
+      if (p.total && p.done < p.total) return `เช็ครายการอุปกรณ์ให้ครบก่อน (${p.done}/${p.total}) จึงจะติ๊กได้`;
+      if (!p.total && r.noBom === "block") return "ตู้นี้ยังไม่มีรายการอุปกรณ์ — นำเข้าและเช็คให้ครบก่อน จึงจะติ๊กได้";
+    }
+  }
+  return "";
 }
-function equipBlockMsg(p) { return `เช็ครายการอุปกรณ์ให้ครบก่อน (${p.done}/${p.total}) จึงจะติ๊กได้`; }
 function clearNoteDone(it) { delete it.noteDone; delete it.noteDoneBy; delete it.noteDoneAt; }
 const noteLabel = it => it.text || (it.name ? "อุปกรณ์ " + (it.code ? it.code + " " : "") + it.name : "") || "รายการ";
 // ★ 2026-11-01 (owner): equipment items (sub.bom.items) carry the same note as checklist items — same fields / rules / log
@@ -6512,6 +6536,8 @@ function migrateState(s) {
   if (typeof s.settings.crossMention !== "boolean") s.settings.crossMention = false;   // @mention people of other departments
   // 🔒 block rules (off unless an admin turns them on)
   if (!s.settings.blockRules || typeof s.settings.blockRules !== "object") s.settings.blockRules = { subNeedChecklist: false, taskNeedSubs: false };
+  // ★ 2026-11-17 "ห้ามติ๊กจนกว่า…" — seeded ONCE (property missing) with the rule that was built in on c2d382a; an emptied list stays empty
+  if (!("tickLocks" in s.settings)) s.settings.tickLocks = [{ id: "tl_equip", on: true, item: "ตรวจเช็คอุปกรณ์", need: "bom", noBom: "allow" }];
   // 🔗 IT system link (Edge Function it-sync): enabled = this calendar receives new SOs; codes = { deptId: "IT code, …" }
   // ⚙ ฟิลด์เพิ่มเติม → "ทุกแผนก (ใช้ร่วมกัน)": fields of the whole calendar, value stored on task.fields (2026-10-07)
   if (!Array.isArray(s.sharedFields)) s.sharedFields = [];
@@ -8602,8 +8628,8 @@ function openChecklistPopover(anchorEl, sub, onChange, opts = {}) {
         noteL.classList.remove("cl-note-shake"); void noteL.offsetWidth; noteL.classList.add("cl-note-shake");
         return;
       }
-      const eqB = cb.checked && equipBlocksTick(sub, it);
-      if (eqB) { cb.checked = false; toast(equipBlockMsg(eqB)); return; }
+      const lockWhy = cb.checked ? tickLockReason(sub, it) : "";
+      if (lockWhy) { cb.checked = false; toast(lockWhy); return; }
       const was = task ? isDeptComplete(task, it.deptId) : false;
       it.done = cb.checked;
       stampTick(it); whoS.innerHTML = tickWhoHtml(it);
@@ -14034,6 +14060,9 @@ function buildAutomationPanel(container) {
       <input type="checkbox" data-br="taskNeedSubs" ${br.taskNeedSubs ? "checked" : ""} />
       <span class="settings-toggle-text"><span class="settings-toggle-title">โครงการกดเสร็จไม่ได้ ถ้ายังมีตู้ที่ไม่เสร็จ</span></span>
     </label>
+    <h4 class="settings-h" style="margin-top:16px">${ico("ban")} ห้ามติ๊กจนกว่า…</h4>
+    <div data-tlocks></div>
+    <button class="btn btn-sm" data-act="add-tlock">+ เพิ่มกฎ</button>
     <h4 class="settings-h" style="margin-top:16px">${ico("ban")} สถานะที่ห้ามเปลี่ยนอัตโนมัติ</h4>
     <div class="perm-dept-list" data-autolock></div>
     <h4 class="settings-h" style="margin-top:16px">${ico("zap")} อัตโนมัติ</h4>
@@ -14042,6 +14071,53 @@ function buildAutomationPanel(container) {
   `;
   container.appendChild(sec);
   sec.querySelectorAll("[data-br]").forEach(cb => cb.addEventListener("change", () => { br[cb.dataset.br] = cb.checked; saveState(); }));
+  // ★ 2026-11-17 ห้ามติ๊กจนกว่า… (tickLocks — see tickLockReason)
+  if (!Array.isArray(state.settings.tickLocks)) state.settings.tickLocks = [];
+  const tlEl = sec.querySelector("[data-tlocks]");
+  const tlNames = [...new Set((state.departments || []).flatMap(d => (d.checklist || []).map(x => String(x || "").trim())).filter(Boolean))];
+  const tlListId = "tlItems" + Date.now();
+  function renderTickLocks() {
+    const tl = state.settings.tickLocks;
+    tlEl.innerHTML = (tl.length ? "" : `<div class="cf-empty">ยังไม่มีกฎ</div>`)
+      + `<datalist id="${tlListId}">${tlNames.map(n => `<option value="${escapeHtml(n)}">`).join("")}</datalist>`;
+    tl.forEach((r, i) => {
+      const card = document.createElement("div");
+      card.className = "auto-card tl-card" + (r.on === false ? " off" : "");
+      card.innerHTML = `
+        <div class="cl-tpl-row auto-row">
+          <input type="checkbox" data-on title="เปิด/ปิด" ${r.on === false ? "" : "checked"} />
+          <span class="auto-word">ห้ามติ๊ก</span>
+          <input type="text" class="tl-in" data-item list="${tlListId}" placeholder="ชื่อรายการ" value="${escapeHtml(r.item || "")}" />
+          <span class="auto-word">จนกว่า</span>
+          <select data-need>
+            <option value="bom">รายการอุปกรณ์ของตู้ครบ</option>
+            <option value="item">ติ๊กรายการนี้แล้ว…</option>
+            <option value="others">รายการอื่นของแผนกเดียวกันครบ</option>
+          </select>
+          <input type="text" class="tl-in" data-needitem list="${tlListId}" placeholder="ชื่อรายการที่ต้องติ๊กก่อน" value="${escapeHtml(r.needItem || "")}" ${r.need === "item" ? "" : "hidden"} />
+          <select data-nobom ${r.need === "item" || r.need === "others" ? "hidden" : ""}>
+            <option value="allow">ตู้ไม่มีรายการอุปกรณ์ = ติ๊กได้</option>
+            <option value="block">ตู้ไม่มีรายการอุปกรณ์ = ห้ามติ๊ก</option>
+          </select>
+          <button class="btn btn-ghost btn-sm btn-danger" data-del title="ลบกฎ">✕</button>
+        </div>`;
+      card.querySelector("[data-need]").value = r.need === "item" || r.need === "others" ? r.need : "bom";
+      card.querySelector("[data-nobom]").value = r.noBom === "block" ? "block" : "allow";
+      card.querySelector("[data-on]").addEventListener("change", (e) => { r.on = e.target.checked; card.classList.toggle("off", !r.on); saveState(); });
+      card.querySelector("[data-item]").addEventListener("change", (e) => { r.item = e.target.value.trim(); saveState(); });
+      card.querySelector("[data-needitem]").addEventListener("change", (e) => { r.needItem = e.target.value.trim(); saveState(); });
+      card.querySelector("[data-need]").addEventListener("change", (e) => { r.need = e.target.value; saveState(); renderTickLocks(); });
+      card.querySelector("[data-nobom]").addEventListener("change", (e) => { r.noBom = e.target.value; saveState(); });
+      card.querySelector("[data-del]").addEventListener("click", () => { tl.splice(i, 1); saveState(); renderTickLocks(); });
+      tlEl.appendChild(card);
+    });
+  }
+  renderTickLocks();
+  sec.querySelector('[data-act="add-tlock"]').addEventListener("click", () => {
+    state.settings.tickLocks.push({ id: uid("tl"), on: true, item: "", need: "bom", noBom: "allow" });
+    saveState(); renderTickLocks();
+    const ins = tlEl.querySelectorAll("[data-item]"); if (ins.length) ins[ins.length - 1].focus();
+  });
   if (!Array.isArray(state.settings.autoLockStatuses)) state.settings.autoLockStatuses = [];
   const lockEl = sec.querySelector("[data-autolock]");
   lockEl.innerHTML = (state.statuses || []).map(st =>
@@ -18053,7 +18129,7 @@ function mListClick(e) {
     const sub = (t.subtasks || []).find(x => x.id === sid), it = sub && (sub.checklist || []).find(i => i.id === iid);
     if (!it) return;
     if (noteBlocksTick(it)) { toast(NOTE_BLOCK_MSG); return; }
-    { const eqB = equipBlocksTick(sub, it); if (eqB) { toast(equipBlockMsg(eqB)); return; } }
+    { const lockWhy = mWithBoard(bid, () => tickLockReason(sub, it)); if (lockWhy) { toast(lockWhy); return; } }
     mWithBoard(bid, () => {   // that calendar's departments / automations
       const snap = automationSnapshot(t), was = isDeptComplete(t, it.deptId);
       it.done = !it.done; stampTick(it);
