@@ -5755,6 +5755,15 @@ function noteItems(sub, deptId) { return ((sub && sub.checklist) || []).filter(i
 // ★ 2026-10-27 (owner): an item with an OPEN note can't be ticked until its note is cleared (✓). Unticking is always allowed.
 const NOTE_BLOCK_MSG = "เคลียร์หมายเหตุของข้อนี้ก่อน จึงจะติ๊กได้";
 function noteBlocksTick(it) { return !!(it && !it.done && it.note && !it.noteDone); }
+// ★ 2026-11-17 (owner): the checklist line "ตรวจเช็คอุปกรณ์" can't be ticked while the cabinet's equipment list (รายการอุปกรณ์ / BOM)
+//   isn't all ticked. A cabinet with no equipment list = allowed. Unticking is always allowed. Ticks made in the PMO itself can't be stopped.
+function isEquipCheckItem(it) { return /ตรวจเช็ค\s*อุปกรณ์/.test(String((it && it.text) || "")); }
+function equipBlocksTick(sub, it) {
+  if (!it || it.done || !isEquipCheckItem(it)) return null;
+  const p = bomProgress(sub);
+  return p.total && p.done < p.total ? p : null;
+}
+function equipBlockMsg(p) { return `เช็ครายการอุปกรณ์ให้ครบก่อน (${p.done}/${p.total}) จึงจะติ๊กได้`; }
 function clearNoteDone(it) { delete it.noteDone; delete it.noteDoneBy; delete it.noteDoneAt; }
 const noteLabel = it => it.text || (it.name ? "อุปกรณ์ " + (it.code ? it.code + " " : "") + it.name : "") || "รายการ";
 // ★ 2026-11-01 (owner): equipment items (sub.bom.items) carry the same note as checklist items — same fields / rules / log
@@ -8593,6 +8602,8 @@ function openChecklistPopover(anchorEl, sub, onChange, opts = {}) {
         noteL.classList.remove("cl-note-shake"); void noteL.offsetWidth; noteL.classList.add("cl-note-shake");
         return;
       }
+      const eqB = cb.checked && equipBlocksTick(sub, it);
+      if (eqB) { cb.checked = false; toast(equipBlockMsg(eqB)); return; }
       const was = task ? isDeptComplete(task, it.deptId) : false;
       it.done = cb.checked;
       stampTick(it); whoS.innerHTML = tickWhoHtml(it);
@@ -18042,6 +18053,7 @@ function mListClick(e) {
     const sub = (t.subtasks || []).find(x => x.id === sid), it = sub && (sub.checklist || []).find(i => i.id === iid);
     if (!it) return;
     if (noteBlocksTick(it)) { toast(NOTE_BLOCK_MSG); return; }
+    { const eqB = equipBlocksTick(sub, it); if (eqB) { toast(equipBlockMsg(eqB)); return; } }
     mWithBoard(bid, () => {   // that calendar's departments / automations
       const snap = automationSnapshot(t), was = isDeptComplete(t, it.deptId);
       it.done = !it.done; stampTick(it);
