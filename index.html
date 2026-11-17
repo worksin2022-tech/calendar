@@ -3866,8 +3866,11 @@ function mentionCandidates() {
 // who may be assigned on the CURRENT board = people who can actually see it (see visibleBoardIds)
 function assignCandidates() {
   const svc = isServiceBoard();
+  // ★ 2026-11-17 (owner): only people who can OPEN this calendar (same rule as the sidebar / RLS can_see_board)
+  const bid = root.activeBoard, allIds = (root.boardMeta || []).map(b => b.id);
   return [...teamProfiles.values()].filter(p => svc ? (p.dept_id === SERVICE_DEPT || p.role === "admin") : p.dept_id !== SERVICE_DEPT)
-    .filter(canSeePerson);
+    .filter(canSeePerson)
+    .filter(p => allowedBoardIdsFor(p, allIds).includes(bid));
 }
 // overlapping profile photos for a calendar chip
 function assigneeStack(t, max = 3) {
@@ -9579,6 +9582,19 @@ function pmoApplyDues(t, dues) {
   if (dirty) t.ext.pmoDues = JSON.parse(sig);   // remembered (saved) even when nothing moved → a date changed here later is kept
   return { msg: msgs.join(" · "), dirty };
 }
+// ★ 2026-11-17 (owner: เลื่อนวันจบโครงการใน PMO แอปต้องเลื่อนตาม) — bot v1.16 sends the project's end date ("end"). Same rule as the
+//   department dates: follows the PMO only when the PMO value CHANGES (t.ext.pmoEnd = last seen) → a date moved here stays until the PMO
+//   moves it again. First time seen (bot ≤1.15 never sent it) = only remembered, nothing moves; ⚙ "ใช้ค่าตาม PMO" (force) takes it now.
+//   Only the project end date — department / cabinet dates are not shifted with it.
+function pmoApplyEnd(t, end, force) {
+  if (!t || !t.ext || !/^\d{4}-\d{2}-\d{2}$/.test(String(end || ""))) return { msg: "", dirty: false };
+  const had = "pmoEnd" in t.ext, last = t.ext.pmoEnd;
+  if (had && last === end && !(force && t.date !== end)) return { msg: "", dirty: false };
+  let msg = "";
+  if ((had || force) && t.date !== end) { msg = `วันจบโครงการ ${t.date ? formatDateTH(t.date) + " → " : ""}${formatDateTH(end)}`; t.date = end; }
+  t.ext.pmoEnd = end;
+  return { msg, dirty: true };
+}
 // equipment = linked to another department's line (the warehouse) OR in a work group named "…อุปกรณ์…" (a line typed in by hand there)
 function pmoIsEquip(it) { return !!it && ((it.from != null && it.from !== "") || /อุปกรณ์/.test(String(it.group || ""))); }
 function pmoAddEquip(sub, it, so) {
@@ -9963,6 +9979,9 @@ async function pullPmoState(opts = {}) {
       const du = pmoApplyDues(t, row.data && row.data.dues), dueMsg = du.msg;
       if (du.dirty) save = true;
       if (dueMsg) { logActivity(t, "อัปเดต · " + dueMsg, "PMO"); changes++; save = true; t.updatedAt = Date.now(); }
+      const en = pmoApplyEnd(t, row.data && row.data.end, !!opts.force);
+      if (en.dirty) save = true;
+      if (en.msg) { logActivity(t, "อัปเดต · " + en.msg, "PMO"); changes++; t.updatedAt = Date.now(); }
       const fatMsg = pmoApplyFat(t, row.data && row.data.fat);
       if (fatMsg) { logActivity(t, "อัปเดต · " + fatMsg, "PMO"); changes++; save = true; t.updatedAt = Date.now(); }
       if (dropped) { logActivity(t, `เอารายการของแผนกอื่นออก ${dropped} รายการ (ใน PMO ไม่เปลี่ยน)`, "PMO"); changes++; }
