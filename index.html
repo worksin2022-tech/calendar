@@ -9402,8 +9402,9 @@ function pmoTickCommands(prevJson, json) {
       const prof = [...teamProfiles.values()].find(p => p.display_name === c.author);
       const pdep = prof && prof.dept_id ? (deptIdIn(b, prof.dept_id) || prof.dept_id) : "";
       if (!prof) return;
-      // the PMO shows the bot's account as the poster → say who really wrote it: "QC · สมชาย: …" (department here · name)
-      const dn = ((b.departments || []).find(d => d.id === pdep) || {}).name;
+      // the PMO shows the bot's account as the poster → say who really wrote it: "สมชาย: …"
+      // ★ 2026-11-17 (owner): just the person's name — no "<department> · " in front any more
+      const dn = "";
       const text = `${dn ? dn + " · " : ""}${c.author || "—"}: ${head}${c.text || ""}${nFiles ? ` (แนบไฟล์ ${nFiles} ไฟล์ในแอป QC)` : ""}`.trim();
       // text keeps "(แนบไฟล์ N ไฟล์ในแอป QC)" for a bot ≤ 1.8; v1.9 attaches `files` and sends `textBare` (+ a note for any file it couldn't attach)
       const bare = `${dn ? dn + " · " : ""}${c.author || "—"}: ${head}${c.text || ""}`.trim();
@@ -11668,7 +11669,7 @@ function openTaskModal(taskId, defaults={}) {
     const pmo = v === "pmo", may = canPostPmo();
     commentInput.placeholder = pmo ? (may ? "พิมพ์ถึง PMO…" : "ส่งถึง PMO ได้เฉพาะแผนกที่เชื่อมกับ PMO") : inPlaceholder;
     const send = modal.querySelector('[data-act="send-comment"]'); if (send) send.textContent = pmo ? "ส่งถึง PMO" : "ส่ง";
-    if (pmo && may) { const d = getDept(myDeptId()); srcTo.textContent = `ส่งในชื่อ “${d ? d.name + " · " : ""}${currentUser()}”`; }
+    if (pmo && may) srcTo.textContent = `ส่งในชื่อ “${currentUser()}”`;
     srcTo.hidden = !(pmo && may);
     if (canComment()) [commentInput, send].forEach(el => { if (el) { el.disabled = pmo && !may; el.classList.toggle("perm-off", pmo && !may); } });
     renderFeed();
